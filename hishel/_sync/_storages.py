@@ -8,6 +8,7 @@ from threading import Lock
 
 from httpcore import Request, Response
 
+from hishel import FileManager
 from hishel._serializers import BaseSerializer
 
 from .._serializers import PickleSerializer
@@ -16,11 +17,11 @@ from .._utils import load_path_map
 logging.basicConfig(level=1)
 
 __all__ = (
-    'AsyncBaseStorage',
-    'AsyncFileStorage'
+    'BaseStorage',
+    'FileStorage'
 )
 
-class AsyncBaseStorage:
+class BaseStorage:
 
     def __init__(self,
                  serializer: tp.Optional[BaseSerializer] = None) -> None:
@@ -36,7 +37,7 @@ class AsyncBaseStorage:
         raise NotImplementedError()
 
 
-class AsyncFileStorage(AsyncBaseStorage):
+class FileStorage(BaseStorage):
     RANDOM_FILENAME_LENGTH = 15
 
     def __init__(self,
@@ -59,13 +60,16 @@ class AsyncFileStorage(AsyncBaseStorage):
             self._path_map_file.touch()
 
         self._path_map_lock = Lock()
+        self._file_manager = FileManager(is_binary=self._serializer.is_binary)
 
     def _update_maps(self) -> None:
-        self._path_map_file.write_text(
+        self._file_manager.write_to(
+            str(self._path_map_file),
             json.dumps({
                 key: str(value)
                 for key, value in self._path_map.items()
-            })
+            }),
+            is_binary=False
         )
 
     def store(self, key: str, response: Response) -> None:
@@ -83,20 +87,19 @@ class AsyncFileStorage(AsyncBaseStorage):
                 self._path_map[key] = response_path
                 self._update_maps()
 
-            if self._serializer.is_binary:
-                response_path.write_bytes(self._serializer.dumps(response))
-            else:
-                response_path.write_text(self._serializer.dumps(response))
+            self._file_manager.write_to(
+                str(response_path),
+                self._serializer.dumps(response)
+            )
 
     def retreive(self, key: str) -> tp.Optional[Response]:
 
         with self._path_map_lock:
             if key in self._path_map:
                 response_path = self._path_map[key]
-                if self._serializer.is_binary:
-                    return self._serializer.loads(response_path.read_bytes())
-                else:
-                    return self._serializer.loads(response_path.read_text())
+                return self._serializer.loads(
+                    self._file_manager.read_from(str(response_path))
+                )
 
     def delete(self, key: str) -> bool:
 

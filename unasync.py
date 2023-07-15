@@ -7,12 +7,16 @@ SUBS = [
     ('async def', 'def'),
     ('async with', 'with'),
     ('async for', 'for'),
+    ('await ', ''),
+    ('AsyncFileStorage', 'FileStorage'),
+    ('AsyncBaseStorage', 'BaseStorage'),
+    ('AsyncFileManager', 'FileManager'),
     ('asynccontextmanager', 'contextmanager'),
     ('__aenter__', '__enter__'),
     ('__aexit__', '__exit__'),
     ('__aiter__', '__iter__'),
-    ('@pytest.mark.anyio', ''),
-    ('@pytest.mark.trio', ''),
+    ('*@pytest.mark.anyio', ''),
+    ('*@pytest.mark.trio', ''),
 ]
 COMPILED_SUBS = [
     (re.compile(r'(^|\b)' + regex + r'($|\b)'), repl)

@@ -64,13 +64,6 @@ module = "tests.*"
 disallow_untyped_defs = false
 check_untyped_defs = true
 
-[[tool.mypy.overrides]]
-module = "h2.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "hpack.*"
-ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = ["-rxXs", "--strict-config", "--strict-markers"]

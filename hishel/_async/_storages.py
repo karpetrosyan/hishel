@@ -5,9 +5,10 @@ import string
 import typing as tp
 from pathlib import Path
 from threading import Lock
-
+import anyio
 from httpcore import Request, Response
 
+from hishel import AsyncFileManager
 from hishel._serializers import BaseSerializer
 
 from .._serializers import PickleSerializer
@@ -59,13 +60,16 @@ class AsyncFileStorage(AsyncBaseStorage):
             self._path_map_file.touch()
 
         self._path_map_lock = Lock()
+        self._file_manager = AsyncFileManager(is_binary=self._serializer.is_binary)
 
     async def _update_maps(self) -> None:
-        self._path_map_file.write_text(
+        await self._file_manager.write_to(
+            str(self._path_map_file),
             json.dumps({
                 key: str(value)
                 for key, value in self._path_map.items()
-            })
+            }),
+            is_binary=False
         )
 
     async def store(self, key: str, response: Response) -> None:
@@ -81,22 +85,21 @@ class AsyncFileStorage(AsyncBaseStorage):
                         break
                 response_path = self._base_path / filename
                 self._path_map[key] = response_path
-                self._update_maps()
+                await self._update_maps()
 
-            if self._serializer.is_binary:
-                response_path.write_bytes(self._serializer.dumps(response))
-            else:
-                response_path.write_text(self._serializer.dumps(response))
+            await self._file_manager.write_to(
+                str(response_path),
+                self._serializer.dumps(response)
+            )
 
     async def retreive(self, key: str) -> tp.Optional[Response]:
 
         with self._path_map_lock:
             if key in self._path_map:
                 response_path = self._path_map[key]
-                if self._serializer.is_binary:
-                    return self._serializer.loads(response_path.read_bytes())
-                else:
-                    return self._serializer.loads(response_path.read_text())
+                return self._serializer.loads(
+                    await self._file_manager.read_from(str(response_path))
+                )
 
     async def delete(self, key: str) -> bool:
 
@@ -105,6 +108,6 @@ class AsyncFileStorage(AsyncBaseStorage):
                 response_path = self._path_map[key]
                 response_path.unlink()
                 del self._path_map[key]
-                self._update_maps()
+                await self._update_maps()
                 return True
         return False

@@ -1,12 +1,13 @@
 from httpcore import Request, Response
 
-from hishel import FileStorage
+from hishel import AsyncFileStorage
 from hishel._utils import generate_key
+import pytest
 
+@pytest.mark.anyio
+async def test_filestorage(use_temp_dir):
 
-def test_storage(use_temp_dir):
-
-    storage = FileStorage()
+    storage = AsyncFileStorage()
 
     request = Request(
         b"GET",
@@ -25,19 +26,19 @@ def test_storage(use_temp_dir):
         content=b'test'
     )
 
-    storage.store(key, response)
+    await storage.store(key, response)
 
-    response = storage.retreive(key)
+    response = await storage.retreive(key)
     response.read()
     assert isinstance(response, Response)
     assert response.status == 200
     assert response.headers == []
     assert response.content == b'test'
 
+@pytest.mark.anyio
+async def test_filestorage_delete(use_temp_dir):
 
-def test_delete(use_temp_dir):
-
-    storage = FileStorage()
+    storage = AsyncFileStorage()
 
     request = Request(
         b"GET",
@@ -56,10 +57,10 @@ def test_delete(use_temp_dir):
         content=b'test'
     )
 
-    storage.store(key, response)
+    await storage.store(key, response)
 
-    response = storage.retreive(key)
+    response = await storage.retreive(key)
     assert response
 
-    storage.delete(key)
-    assert not storage.retreive(key)
+    await storage.delete(key)
+    assert not await storage.retreive(key)

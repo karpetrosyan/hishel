@@ -12,6 +12,7 @@ class BaseSerializer:
     def loads(self, data: tp.Union[str, bytes]) -> Response:
         raise NotImplementedError()
 
+    @property
     def is_binary(self) -> bool:
         raise NotImplementedError()
 
@@ -25,5 +26,6 @@ class PickleSerializer:
         assert isinstance(data, bytes)
         return pickle.loads(data)
 
+    @property
     def is_binary(self) -> bool:
         return True
