@@ -1,0 +1,101 @@
+[build-system]
+requires = ["hatchling", "hatch-fancy-pypi-readme"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hishel"
+dynamic = ["readme", "version"]
+description = "Persistant cache implementation for httpx and httpcore"
+license = "BSD-3-Clause"
+requires-python = ">=3.7"
+authors = [
+    { name = "Kar Petrosyan", email = "kar.petrosyanpy@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Framework :: AsyncIO",
+    "Framework :: Trio",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Internet :: WWW/HTTP",
+]
+dependencies = [
+    "httpcore",
+]
+
+[project.urls]
+Homepage = "https://github.com/karosis88/hishel"
+Source = "https://github.com/karosis88/hishel"
+
+[tool.hatch.version]
+path = "hishel/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/hishel",
+    "/CHANGELOG.md",
+    "/README.md",
+]
+
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "CHANGELOG.md"
+
+[tool.mypy]
+strict = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "h2.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "hpack.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = ["-rxXs", "--strict-config", "--strict-markers"]
+markers = ["copied_from(source, changes=None): mark test as copied from somewhere else, along with a description of changes made to accodomate e.g. our test setup"]
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+omit = [
+    "venv/*", 
+    "hishel/_sync/*"
+]
+include = ["hishel/*", "tests/*"]
+
+[tool.ruff]
+exclude = [
+    "hishel/_sync",
+    "tests/_sync",
+]
+line-length = 120
+select = [
+    "E",
+    "F",
+    "W",
+    "I"
+]
+
+[tool.ruff.isort]
+combine-as-imports = true
