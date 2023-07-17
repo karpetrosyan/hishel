@@ -1,7 +1,10 @@
 
+import json
+from pathlib import Path
+
 from httpcore import Request
 
-from hishel._utils import extract_header_values, generate_key, header_presents
+from hishel._utils import extract_header_values, generate_key, header_presents, load_path_map
 
 
 def test_generate_key():
@@ -68,7 +71,7 @@ def test_extract_header_single_value():
 def test_header_presents():
     headers = [
         (b'Content-Type', b'application/json'),
-        (b'Content-Type', b'application/html')
+        (b'Content-Type', b'application/html'),
         (b'Accept', b'application/json')
     ]
 
@@ -77,3 +80,19 @@ def test_header_presents():
 
     transfer_encoding_presents = header_presents(headers, b'Transfer-Encoding')
     assert not transfer_encoding_presents
+
+def test_load_path_map(use_temp_dir):
+
+    path_maps = {
+        "first_path": '/home/test',
+        "second_path": 'test'
+    }
+
+    with open('map', 'wt') as f:
+        f.write(json.dumps(path_maps))
+
+    maps = load_path_map(Path('map'))
+
+    assert len(maps) == 2
+    assert maps['first_path'] == Path('/home/test')
+    assert maps['second_path'] == Path('test')
