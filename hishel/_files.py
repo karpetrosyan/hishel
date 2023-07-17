@@ -26,21 +26,16 @@ class AsyncFileManager(AsyncBaseFileManager):
                        data: tp.Union[bytes, str],
                        is_binary: tp.Optional[bool] = None) -> None:
         is_binary = self.is_binary if is_binary is None else is_binary
-        if is_binary:
-            assert isinstance(data, bytes)
-            await anyio.Path(path).write_bytes(data)
-        else:
-            assert isinstance(data, str)
-            await anyio.Path(path).write_text(data)
+        mode = 'wb' if is_binary else 'wt'
+        async with await anyio.open_file(path, mode) as f:  # type: ignore[call-overload]
+            await f.write(data)
 
     async def read_from(self, path: str, is_binary: tp.Optional[bool] = None) -> tp.Union[bytes, str]:
         is_binary = self.is_binary if is_binary is None else is_binary
+        mode = 'rb' if is_binary else 'rt'
 
-        if is_binary:
-            return await anyio.Path(path).read_bytes()
-        else:  # pragma: no cover
-            return await anyio.Path(path).read_text()
-        assert False
+        async with await anyio.open_file(path, mode) as f:  # type: ignore[call-overload]
+            return tp.cast(tp.Union[bytes, str], await f.read())
 
 class BaseFileManager:
 
