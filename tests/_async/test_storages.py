@@ -66,3 +66,12 @@ async def test_filestorage_delete(use_temp_dir):
 
     await storage.delete(key)
     assert not await storage.retreive(key)
+
+
+@pytest.mark.anyio
+async def test_filestorage_delete_missing(use_temp_dir):
+
+    storage = AsyncFileStorage()
+
+    deleted = await storage.delete("invalid key")
+    assert not deleted

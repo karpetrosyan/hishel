@@ -66,3 +66,12 @@ def test_filestorage_delete(use_temp_dir):
 
     storage.delete(key)
     assert not storage.retreive(key)
+
+
+
+def test_filestorage_delete_missing(use_temp_dir):
+
+    storage = FileStorage()
+
+    deleted = storage.delete("invalid key")
+    assert not deleted

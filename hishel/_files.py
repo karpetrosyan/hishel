@@ -38,7 +38,7 @@ class AsyncFileManager(AsyncBaseFileManager):
 
         if is_binary:
             return await anyio.Path(path).read_bytes()
-        else:
+        else:  # pragma: no cover
             return await anyio.Path(path).read_text()
         assert False
 
