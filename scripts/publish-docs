@@ -1,0 +1,3 @@
+#! /bin/bash -ex
+
+mkdocs gh-deploy --force

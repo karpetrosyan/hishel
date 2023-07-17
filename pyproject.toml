@@ -77,6 +77,12 @@ omit = [
 ]
 include = ["hishel/*", "tests/*"]
 
+[tool.coverage.report]
+exclude_also = [
+  '__repr__',
+  'raise NotImplementedError()'
+]
+
 [tool.ruff]
 exclude = [
     "hishel/_sync",

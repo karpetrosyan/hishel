@@ -6,11 +6,11 @@ import typing as tp
 from pathlib import Path
 from threading import Lock
 
-from httpcore import Request, Response
+from httpcore import Response
 
-from hishel import FileManager
 from hishel._serializers import BaseSerializer
 
+from .._files import FileManager
 from .._serializers import PickleSerializer
 from .._utils import load_path_map
 
@@ -25,7 +25,7 @@ class BaseStorage:
 
     def __init__(self,
                  serializer: tp.Optional[BaseSerializer] = None) -> None:
-        if serializer:
+        if serializer:  # pragma: no cover
             self._serializer = serializer
         else:
             self._serializer = PickleSerializer()
@@ -33,7 +33,7 @@ class BaseStorage:
     def store(self, key: str, response: Response) -> None:
         raise NotImplementedError()
 
-    def retreive(self, key: str, request: Request) -> tp.Optional[Response]:
+    def retreive(self, key: str) -> tp.Optional[Response]:
         raise NotImplementedError()
 
 
@@ -44,7 +44,7 @@ class FileStorage(BaseStorage):
                  serializer: tp.Optional[BaseSerializer] = None,
                  base_path: tp.Optional[Path] = None) -> None:
         super().__init__(serializer)
-        if base_path:
+        if base_path:  # pragma: no cover
             self._base_path = base_path
         else:
             self._base_path = Path('./cache/hishel')
@@ -53,10 +53,10 @@ class FileStorage(BaseStorage):
             self._base_path.mkdir(parents=True)
         self._path_map_file = self._base_path / 'maps'
 
-        if self._path_map_file.is_file():
+        if self._path_map_file.is_file():  # pragma: no cover
             self._path_map = load_path_map(self._path_map_file)
         else:
-            self._path_map: tp.Dict[str, Path] = {}
+            self._path_map: tp.Dict[str, Path] = {}  # type: ignore[no-redef]
             self._path_map_file.touch()
 
         self._path_map_lock = Lock()
@@ -75,8 +75,7 @@ class FileStorage(BaseStorage):
     def store(self, key: str, response: Response) -> None:
 
         with self._path_map_lock:
-            if key in self._path_map:
-                logging.debug("Overriding an existing Response")
+            if key in self._path_map:  # pragma: no cover
                 response_path = self._path_map[key]
             else:
                 while True:
@@ -100,6 +99,7 @@ class FileStorage(BaseStorage):
                 return self._serializer.loads(
                     self._file_manager.read_from(str(response_path))
                 )
+        return None
 
     def delete(self, key: str) -> bool:
 

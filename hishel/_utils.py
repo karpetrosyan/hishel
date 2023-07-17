@@ -4,7 +4,7 @@ from pathlib import Path
 
 from httpcore import URL
 
-from hishel import Vary
+from ._headers import Vary
 
 
 def generate_key(method: bytes,
@@ -28,7 +28,7 @@ def generate_key(method: bytes,
 
 
 def extract_header_values(
-    headers: tp.Tuple[bytes, bytes],
+    headers: tp.List[tp.Tuple[bytes, bytes]],
     header_key: bytes,
     single: bool = False
 ) -> tp.List[bytes]:
@@ -45,14 +45,14 @@ def extract_header_values(
 def load_path_map(
     path: Path,
 ) -> tp.Dict[str, Path]:
-    dct = json.loads(path.read_text)
+    dct: tp.Dict[str, Path] = json.loads(path.read_text())
 
     for key, value in dct.items():
         dct[key] = Path(dct[key])
     return dct
 
 def header_presents(
-    headers: tp.Tuple[bytes, bytes],
+    headers: tp.List[tp.Tuple[bytes, bytes]],
     header_key: bytes
 ) -> bool:
     return bool(extract_header_values(headers, header_key, single=True))

@@ -1,0 +1,7 @@
+#! /bin/bash -e
+set -x
+
+./scripts/check
+coverage run -m pytest tests
+
+coverage report --show-missing --skip-covered --fail-under=100

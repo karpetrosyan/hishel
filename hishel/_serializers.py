@@ -17,14 +17,14 @@ class BaseSerializer:
         raise NotImplementedError()
 
 
-class PickleSerializer:
+class PickleSerializer(BaseSerializer):
 
     def dumps(self, response: Response) -> tp.Union[str, bytes]:
         return pickle.dumps(response)
 
     def loads(self, data: tp.Union[str, bytes]) -> Response:
         assert isinstance(data, bytes)
-        return pickle.loads(data)
+        return tp.cast(Response, pickle.loads(data))
 
     @property
     def is_binary(self) -> bool:

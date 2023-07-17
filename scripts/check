@@ -1,0 +1,6 @@
+#! /bin/bash -ex
+
+
+python unasync.py check
+ruff .
+mypy tests hishel
