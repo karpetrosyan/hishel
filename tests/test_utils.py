@@ -1,8 +1,7 @@
 
 from httpcore import Request
 
-from hishel._utils import generate_key
-from hishel._utils import extract_header_values
+from hishel._utils import extract_header_values, generate_key, header_presents
 
 
 def test_generate_key():
@@ -64,3 +63,17 @@ def test_extract_header_single_value():
         headers, b'Content-Type', single=True
     )
     assert values == [b'application/json']
+
+
+def test_header_presents():
+    headers = [
+        (b'Content-Type', b'application/json'),
+        (b'Content-Type', b'application/html')
+        (b'Accept', b'application/json')
+    ]
+
+    accept_presents = header_presents(headers, b'Accept')
+    assert accept_presents
+
+    transfer_encoding_presents = header_presents(headers, b'Transfer-Encoding')
+    assert not transfer_encoding_presents
