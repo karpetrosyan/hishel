@@ -41,6 +41,14 @@ def extract_header_values(
                 break
     return extracted_headers
 
+def extract_header_values_decoded(
+    headers: tp.List[tp.Tuple[bytes, bytes]],
+    header_key: bytes,
+    single: bool = False
+) -> tp.List[bytes]:
+    values = extract_header_values(headers=headers, header_key=header_key, single=single)
+    return [value.decode() for value in values]
+
 
 def load_path_map(
     path: Path,
