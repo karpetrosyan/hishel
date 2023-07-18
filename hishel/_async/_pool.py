@@ -1,3 +1,4 @@
+import logging
 import ssl
 import typing as tp
 
@@ -10,6 +11,7 @@ from .._serializers import PickleSerializer
 from .._utils import generate_key
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
+logger = logging.getLogger('hishel.pool')
 
 class AsyncCacheConnectionPool(AsyncConnectionPool):
 
@@ -57,13 +59,14 @@ class AsyncCacheConnectionPool(AsyncConnectionPool):
             request.url,
             request.headers
         )
-
         stored_resposne = await self._storage.retreive(key)
 
         if stored_resposne:
+            logger.debug("A response to this request was found.")
             res = self._controller.construct_response_from_cache(request=request, response=stored_resposne)
 
             if isinstance(res, Response):
+                logger.debug(f"Using cached response for the {request.url}")
                 return res
             elif isinstance(res, Request):
                 response = await super().handle_async_request(res)
@@ -72,10 +75,12 @@ class AsyncCacheConnectionPool(AsyncConnectionPool):
                 await self._storage.store(key, updated_response)
                 return updated_response
             assert False, "invalid return value for `construct_response_from_cache`"
-
+        logger.debug("A response to this request was not found.")
         response = await super().handle_async_request(request)
 
         if self._controller.is_cachable(request=request, response=response):
             await self._storage.store(key, response)
+        else:
+            logger.debug("ignoring the response because it cannot be cached")
 
         return response

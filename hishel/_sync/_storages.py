@@ -1,5 +1,4 @@
 import json
-import logging
 import random
 import string
 import typing as tp
@@ -13,8 +12,6 @@ from hishel._serializers import BaseSerializer
 from .._files import FileManager
 from .._serializers import PickleSerializer
 from .._utils import load_path_map
-
-logging.basicConfig(level=1)
 
 __all__ = (
     'BaseStorage',

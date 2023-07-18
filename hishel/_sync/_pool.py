@@ -1,3 +1,4 @@
+import logging
 import ssl
 import typing as tp
 
@@ -10,6 +11,7 @@ from .._serializers import PickleSerializer
 from .._utils import generate_key
 from ._storages import BaseStorage, FileStorage
 
+logger = logging.getLogger('hishel.pool')
 
 class CacheConnectionPool(ConnectionPool):
 
@@ -57,13 +59,14 @@ class CacheConnectionPool(ConnectionPool):
             request.url,
             request.headers
         )
-
         stored_resposne = self._storage.retreive(key)
 
         if stored_resposne:
+            logger.debug("A response to this request was found.")
             res = self._controller.construct_response_from_cache(request=request, response=stored_resposne)
 
             if isinstance(res, Response):
+                logger.debug(f"Using cached response for the {request.url}")
                 return res
             elif isinstance(res, Request):
                 response = super().handle_request(res)
@@ -72,10 +75,12 @@ class CacheConnectionPool(ConnectionPool):
                 self._storage.store(key, updated_response)
                 return updated_response
             assert False, "invalid return value for `construct_response_from_cache`"
-
+        logger.debug("A response to this request was not found.")
         response = super().handle_request(request)
 
         if self._controller.is_cachable(request=request, response=response):
             self._storage.store(key, response)
+        else:
+            logger.debug("ignoring the response because it cannot be cached")
 
         return response
