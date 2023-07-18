@@ -35,9 +35,11 @@ class Controller:
         response_cache_control = CacheControl.from_value(
             extract_header_values_decoded(response.headers, b'cache-control')
         )
-
         # the request method is understood by the cache
         if method not in self._cacheable_methods:
+            return False
+
+        if response.status not in self._cacheable_status_codes:
             return False
 
         # the response status code is final
@@ -48,7 +50,7 @@ class Controller:
         if response_cache_control.no_store:
             return False
 
-        expires_presents = header_presents(response.headers, b'expiers')
+        expires_presents = header_presents(response.headers, b'expires')
         # the response contains at least one of the following:
         # - a public response directive (see Section 5.2.2.9);
         # - a private response directive, if the cache is not shared (see Section 5.2.2.7);
@@ -171,6 +173,9 @@ class Controller:
         freshness_lifetime = self.get_freshness_lifetime(response)
         age = self.get_age(response)
 
+        if freshness_lifetime is None or age is None:
+            raise RuntimeError("Invalid response, can't calculate age")
+
         is_fresh = age > freshness_lifetime
 
         if is_fresh or self.alloweed_stale(response):
@@ -178,7 +183,7 @@ class Controller:
 
         else:
             self.make_request_conditional(request=request, response=response)
-            return Request
+            return request
 
     def handle_validation_response(self, old_response: Response, new_response: Response) -> Response:
 
