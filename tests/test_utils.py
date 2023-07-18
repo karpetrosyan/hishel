@@ -4,11 +4,12 @@ from pathlib import Path
 
 from httpcore import Request
 
+from hishel._controller import get_updated_headers
+
 from hishel._utils import (
     extract_header_values,
     extract_header_values_decoded,
     generate_key,
-    get_updated_headers,
     header_presents,
     load_path_map,
     parse_date,

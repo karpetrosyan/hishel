@@ -7,12 +7,76 @@ from ._headers import CacheControl
 from ._utils import (
     extract_header_values,
     extract_header_values_decoded,
-    get_updated_headers,
     header_presents,
     parse_date,
 )
 
 HEURISTICALLY_CACHABLE = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
+
+def get_updated_headers(
+        stored_response_headers: tp.List[tp.Tuple[bytes, bytes]],
+        new_response_headers: tp.List[tp.Tuple[bytes, bytes]]
+    ) -> tp.List[tp.Tuple[bytes, bytes]]:
+        updated_headers = []
+
+        checked = set()
+
+        for key, value in stored_response_headers:
+            if key not in checked and key.lower() != b'content-length':
+                checked.add(key)
+                values = extract_header_values(new_response_headers, key)
+
+                if values:
+                    updated_headers.extend([(key, value) for value in values])
+                else:
+                    values = extract_header_values(stored_response_headers, key)
+                    updated_headers.extend([(key, value) for value in values])
+
+        for key, value in new_response_headers:
+            if key not in checked and key.lower() != b'content-length':
+                values = extract_header_values(new_response_headers, key)
+                updated_headers.extend([(key, value) for value in values])
+
+        return updated_headers
+
+
+def get_freshness_lifetime(response: Response) -> tp.Optional[int]:
+
+    response_cache_control = CacheControl.from_value(
+        extract_header_values_decoded(response.headers, b'Cache-Control'))
+
+    if response_cache_control.max_age is not None:
+        return response_cache_control.max_age
+
+    if header_presents(response.headers, b'expires'):
+        expires = extract_header_values_decoded(response.headers, b'expires', single=True)[0]
+        expires_timestamp = parse_date(expires)
+        date = extract_header_values_decoded(response.headers, b'date', single=True)[0]
+        date_timestamp = parse_date(date)
+
+        return expires_timestamp - date_timestamp
+    return None
+
+def get_age(response: Response) -> tp.Optional[int]:
+
+    date = parse_date(extract_header_values_decoded(response.headers, b'date')[0])
+
+    now = time.time()
+
+    apparent_age = max(0, now - date)
+    return int(apparent_age)
+
+def alloweed_stale(response: Response) -> bool:
+    response_cache_control = CacheControl.from_value(
+        extract_header_values_decoded(response.headers, b'Cache-Control'))
+
+    if response_cache_control.no_cache:
+        return False
+
+    if response_cache_control.must_revalidate:
+        return False
+
+    return True
 
 class Controller:
 
@@ -84,33 +148,8 @@ class Controller:
         # response is a cachable!
         return True
 
-    def get_freshness_lifetime(self, response: Response) -> tp.Optional[int]:
 
-        response_cache_control = CacheControl.from_value(
-            extract_header_values_decoded(response.headers, b'Cache-Control'))
-
-        if response_cache_control.max_age is not None:
-            return response_cache_control.max_age
-
-        if header_presents(response.headers, b'expires'):
-            expires = extract_header_values_decoded(response.headers, b'expires', single=True)[0]
-            expires_timestamp = parse_date(expires)
-            date = extract_header_values_decoded(response.headers, b'date', single=True)[0]
-            date_timestamp = parse_date(date)
-
-            return expires_timestamp - date_timestamp
-        return None
-
-    def get_age(self, response: Response) -> tp.Optional[int]:
-
-        date = parse_date(extract_header_values_decoded(response.headers, b'date')[0])
-
-        now = time.time()
-
-        apparent_age = max(0, now - date)
-        return int(apparent_age)
-
-    def make_request_conditional(self, request: Request, response: Response) -> None:
+    def _make_request_conditional(self, request: Request, response: Response) -> None:
 
         if header_presents(response.headers, b'last-modified'):
             last_modified = extract_header_values(response.headers, b'last-modified', single=True)[0]
@@ -130,17 +169,6 @@ class Controller:
 
         request.headers.extend(precondition_headers)
 
-    def alloweed_stale(self, response: Response) -> bool:
-        response_cache_control = CacheControl.from_value(
-            extract_header_values_decoded(response.headers, b'Cache-Control'))
-
-        if response_cache_control.no_cache:
-            return False
-
-        if response_cache_control.must_revalidate:
-            return False
-
-        return True
 
     def construct_response_from_cache(self,
                                       request: Request,
@@ -150,22 +178,22 @@ class Controller:
             extract_header_values_decoded(response.headers, b'Cache-Control'))
 
         if response_cache_control.no_cache:
-            self.make_request_conditional(request=request, response=response)
+            self._make_request_conditional(request=request, response=response)
             return request
 
-        freshness_lifetime = self.get_freshness_lifetime(response)
-        age = self.get_age(response)
+        freshness_lifetime = get_freshness_lifetime(response)
+        age = get_age(response)
 
         if freshness_lifetime is None or age is None:
             raise RuntimeError("Invalid response, can't calculate age")
 
         is_fresh = age > freshness_lifetime
 
-        if is_fresh or self.alloweed_stale(response):
+        if is_fresh or alloweed_stale(response):
             return response
 
         else:
-            self.make_request_conditional(request=request, response=response)
+            self._make_request_conditional(request=request, response=response)
             return request
 
     def handle_validation_response(self, old_response: Response, new_response: Response) -> Response:
