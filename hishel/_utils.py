@@ -72,3 +72,30 @@ def parse_date(date: str) -> int:
     expires = parsedate_tz(date)
     timestamp = calendar.timegm(expires[:6])  # type: ignore
     return timestamp
+
+
+def get_updated_headers(
+        stored_response_headers: tp.List[tp.Tuple[bytes, bytes]],
+        new_response_headers: tp.List[tp.Tuple[bytes, bytes]]
+    ) -> tp.List[tp.Tuple[bytes, bytes]]:
+        updated_headers = []
+
+        checked = set()
+
+        for key, value in stored_response_headers:
+            if key not in checked and key.lower() != b'content-length':
+                checked.add(key)
+                values = extract_header_values(new_response_headers, key)
+
+                if values:
+                    updated_headers.extend([(key, value) for value in values])
+                else:
+                    values = extract_header_values(stored_response_headers, key)
+                    updated_headers.extend([(key, value) for value in values])
+
+        for key, value in new_response_headers:
+            if key not in checked and key.lower() != b'content-length':
+                values = extract_header_values(new_response_headers, key)
+                updated_headers.extend([(key, value) for value in values])
+
+        return updated_headers

@@ -40,7 +40,7 @@ def test_is_cachable_for_non_cachables():
     )
 
     resposne = Response(
-        201,
+        200,
         headers=[
         ]
     )
@@ -97,6 +97,44 @@ def test_is_cachable_for_unsupported_status():
         200,
         headers=[
             (b'Expires', b'some-date')
+        ]
+    )
+
+    assert not controller.is_cachable(request=request, response=resposne)
+
+
+def test_is_cachable_for_not_final():
+    controller = Controller(cacheable_status_codes=[100])
+
+    request = Request(
+        b'GET',
+        b'https://example.com',
+        headers=[]
+    )
+
+    resposne = Response(
+        100,
+        headers=[
+            (b'Expires', b'some-date')
+        ]
+    )
+
+    assert not controller.is_cachable(request=request, response=resposne)
+
+
+def test_is_cachable_for_no_store():
+    controller = Controller(cache_heuristically=True)
+
+    request = Request(
+        b'GET',
+        b'https://example.com',
+        headers=[]
+    )
+
+    resposne = Response(
+        200,
+        headers=[
+            (b'Cache-Control', b'no-store')
         ]
     )
 
