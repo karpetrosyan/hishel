@@ -2,8 +2,8 @@ import typing as tp
 
 from httpcore import Request, Response
 
-from .._headers import CacheControl
-from .._utils import extract_header_values_decoded, header_presents
+from ._headers import CacheControl
+from ._utils import extract_header_values_decoded, header_presents
 
 HEURISTICALLY_CACHABLE = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
 
