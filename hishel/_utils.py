@@ -1,5 +1,7 @@
+import calendar
 import json
 import typing as tp
+from email.utils import parsedate_tz
 from pathlib import Path
 
 from httpcore import URL
@@ -64,3 +66,9 @@ def header_presents(
     header_key: bytes
 ) -> bool:
     return bool(extract_header_values(headers, header_key, single=True))
+
+
+def parse_date(date: str) -> int:
+    expires = parsedate_tz(date)
+    timestamp = calendar.timegm(expires[:6])  # type: ignore
+    return timestamp
