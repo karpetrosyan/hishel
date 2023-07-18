@@ -49,7 +49,7 @@ def test_is_cachable_for_non_cachables():
 
 
 def test_is_cachable_for_heuristically_cachable():
-    controller = Controller()
+    controller = Controller(cache_heuristically=True)
 
     request = Request(
         b'GET',
@@ -58,12 +58,12 @@ def test_is_cachable_for_heuristically_cachable():
     )
 
     resposne = Response(
-        201,
+        200,
         headers=[
         ]
     )
 
-    assert not controller.is_cachable(request=request, response=resposne)
+    assert controller.is_cachable(request=request, response=resposne)
 
 
 def test_is_cachable_for_unsupported_method():
