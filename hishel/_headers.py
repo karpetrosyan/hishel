@@ -56,6 +56,61 @@ def strip_ows_around(text: str) -> str:
 def normalize_directive(text: str) -> str:
     return text.replace('-', '_')
 
+def parse_cache_control(cache_control_values: List[str]) -> "CacheControl":
+
+    directives = {}
+
+    for cache_control_value in cache_control_values:
+        if 'no-cache=' in cache_control_value or "private=" in cache_control_value:
+            cache_control_splited = [cache_control_value]
+        else:
+            cache_control_splited = cache_control_value.split(',')
+
+        for directive in cache_control_splited:
+            key: str = ""
+            value: Optional[str] = None
+            dquote = False
+
+            if not directive:
+                raise ParseError("The directive should not be left blank.")
+
+            directive = strip_ows_around(directive)
+
+            if not directive:
+                raise ParseError("The directive should not contain only whitespaces.")
+
+            for i, key_char in enumerate(directive):
+                if key_char == '=':
+                    value = directive[i+1:]
+
+                    if not value:
+                        raise ParseError("The directive value cannot be left blank.")
+
+                    if value[0] == '"':
+                        dquote = True
+                    if dquote and value[-1] != '"':
+                        raise ParseError("Invalid quotes around the value.")
+
+                    if not dquote:
+                        for value_char in value:
+                            if value_char not in tchar:
+                                raise ParseError(f"The character '{value_char!r}' "
+                                                    "is not permitted for the unquoted values.")
+                    else:
+                        for value_char in value[1:-1]:
+                            if value_char not in qdtext:
+                                raise ParseError(f"The character '{value_char!r}' "
+                                                    "is not permitted for the quoted values.")
+                    break
+
+                if key_char not in tchar:
+                    raise ParseError(f"The character '{key_char!r}' is not permitted in the directive name.")
+                key += key_char
+            directives[key] = value
+    validated_data = CacheControl.validate(directives)
+    return CacheControl(**validated_data)
+
+
 class Vary:
 
     def __init__(self, values: List[str]) -> None:
@@ -109,61 +164,6 @@ class CacheControl:
         self.stale_if_error = stale_if_error
         self.stale_while_revalidate = stale_while_revalidate
 
-
-    @classmethod
-    def from_value(cls, cache_control_values: List[str]) -> "CacheControl":
-
-        directives = {}
-
-        for cache_control_value in cache_control_values:
-            if 'no-cache=' in cache_control_value or "private=" in cache_control_value:
-                cache_control_splited = [cache_control_value]
-            else:
-                cache_control_splited = cache_control_value.split(',')
-
-            for directive in cache_control_splited:
-                key: str = ""
-                value: Optional[str] = None
-                dquote = False
-
-                if not directive:
-                    raise ParseError("The directive should not be left blank.")
-
-                directive = strip_ows_around(directive)
-
-                if not directive:
-                    raise ParseError("The directive should not contain only whitespaces.")
-
-                for i, key_char in enumerate(directive):
-                    if key_char == '=':
-                        value = directive[i+1:]
-
-                        if not value:
-                            raise ParseError("The directive value cannot be left blank.")
-
-                        if value[0] == '"':
-                            dquote = True
-                        if dquote and value[-1] != '"':
-                            raise ParseError("Invalid quotes around the value.")
-
-                        if not dquote:
-                            for value_char in value:
-                                if value_char not in tchar:
-                                    raise ParseError(f"The character '{value_char!r}' "
-                                                     "is not permitted for the unquoted values.")
-                        else:
-                            for value_char in value[1:-1]:
-                                if value_char not in qdtext:
-                                    raise ParseError(f"The character '{value_char!r}' "
-                                                     "is not permitted for the quoted values.")
-                        break
-
-                    if key_char not in tchar:
-                        raise ParseError(f"The character '{key_char!r}' is not permitted in the directive name.")
-                    key += key_char
-                directives[key] = value
-        validated_data = cls.validate(directives)
-        return cls(**validated_data)
 
     @classmethod
     def validate(cls, directives: Dict[str, Any]) -> Dict[str, Any]:

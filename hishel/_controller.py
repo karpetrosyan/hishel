@@ -3,7 +3,8 @@ import typing as tp
 
 from httpcore import Request, Response
 
-from ._headers import CacheControl
+from hishel._headers import parse_cache_control
+
 from ._utils import (
     extract_header_values,
     extract_header_values_decoded,
@@ -42,7 +43,7 @@ def get_updated_headers(
 
 def get_freshness_lifetime(response: Response) -> tp.Optional[int]:
 
-    response_cache_control = CacheControl.from_value(
+    response_cache_control = parse_cache_control(
         extract_header_values_decoded(response.headers, b'Cache-Control'))
 
     if response_cache_control.max_age is not None:
@@ -67,7 +68,7 @@ def get_age(response: Response) -> tp.Optional[int]:
     return int(apparent_age)
 
 def alloweed_stale(response: Response) -> bool:
-    response_cache_control = CacheControl.from_value(
+    response_cache_control = parse_cache_control(
         extract_header_values_decoded(response.headers, b'Cache-Control'))
 
     if response_cache_control.no_cache:
@@ -104,7 +105,7 @@ class Controller:
 
 
         method = request.method.decode('ascii')
-        response_cache_control = CacheControl.from_value(
+        response_cache_control = parse_cache_control(
             extract_header_values_decoded(response.headers, b'cache-control')
         )
         # the request method is understood by the cache
@@ -174,7 +175,7 @@ class Controller:
                                       request: Request,
                                       response: Response) -> tp.Union[Response, Request]:
 
-        response_cache_control = CacheControl.from_value(
+        response_cache_control = parse_cache_control(
             extract_header_values_decoded(response.headers, b'Cache-Control'))
 
         if response_cache_control.no_cache:
