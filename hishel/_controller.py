@@ -13,7 +13,8 @@ class Controller:
 
     def __init__(self,
                  cacheable_methods: tp.Optional[tp.List[str]] = None,
-                 cacheable_status_codes: tp.Optional[tp.List[int]] = None):
+                 cacheable_status_codes: tp.Optional[tp.List[int]] = None,
+                 cache_heuristically: bool = False):
 
         if cacheable_methods:
             self._cacheable_methods = cacheable_methods
@@ -24,6 +25,7 @@ class Controller:
             self._cacheable_status_codes = cacheable_status_codes
         else:
             self._cacheable_status_codes = [200]
+        self._cache_heuristically = cache_heuristically
 
     def is_cachable(self, request: Request, response: Response) -> bool:
         """
@@ -65,9 +67,8 @@ class Controller:
                 response_cache_control.private,
                 expires_presents,
                 response_cache_control.max_age is not None,
-                response.status in HEURISTICALLY_CACHABLE
             ]
-        ):
+        ) or self._cache_heuristically and response.status not in HEURISTICALLY_CACHABLE:
             return False
 
         # response is a cachable!
