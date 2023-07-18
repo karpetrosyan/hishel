@@ -20,7 +20,14 @@ class BaseSerializer:
 class PickleSerializer(BaseSerializer):
 
     def dumps(self, response: Response) -> tp.Union[str, bytes]:
-        return pickle.dumps(response)
+        response.read()
+        clone_response = Response(
+            status=response.status,
+            headers=response.headers,
+            content=response.content,
+            extensions={key: value for key, value in response.extensions.items() if key != 'network_stream'}
+        )
+        return pickle.dumps(clone_response)
 
     def loads(self, data: tp.Union[str, bytes]) -> Response:
         assert isinstance(data, bytes)
