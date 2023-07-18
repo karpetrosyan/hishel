@@ -4,7 +4,13 @@ from pathlib import Path
 
 from httpcore import Request
 
-from hishel._utils import extract_header_values, generate_key, header_presents, load_path_map
+from hishel._utils import (
+    extract_header_values,
+    extract_header_values_decoded,
+    generate_key,
+    header_presents,
+    load_path_map,
+)
 
 
 def test_generate_key():
@@ -55,6 +61,17 @@ def test_extract_header_values():
         headers, b'Content-Type'
     )
     assert values == [b'application/json', b'application/html']
+
+def test_extract_header_values_decoded():
+    headers = [
+        (b'Content-Type', b'application/json'),
+        (b'Content-Type', b'application/html')
+    ]
+
+    values = extract_header_values_decoded(
+        headers, b'Content-Type'
+    )
+    assert values == ['application/json', 'application/html']
 
 def test_extract_header_single_value():
     headers = [

@@ -3,7 +3,7 @@ import typing as tp
 from httpcore import Request, Response
 
 from ._headers import CacheControl
-from ._utils import extract_header_values_decoded, header_presents
+from ._utils import extract_header_values, extract_header_values_decoded, header_presents
 
 HEURISTICALLY_CACHABLE = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
 
@@ -67,6 +67,33 @@ class Controller:
         ):
             return False
 
+        # response is a cachable!
+        return True
 
 
+    def get_updated_headers(
+        self,
+        stored_response_headers: tp.List[tp.Tuple[bytes, bytes]],
+        new_response_headers: tp.List[tp.Tuple[bytes, bytes]]
+    ) -> tp.List[tp.Tuple[bytes, bytes]]:
+        updated_headers = []
 
+        checked = set()
+
+        for key, value in stored_response_headers:
+            if key not in checked and key.lower() != b'content-length':
+                checked.add(key)
+                values = extract_header_values(new_response_headers, key)
+
+                if values:
+                    updated_headers.extend([(key, value) for value in values])
+                else:
+                    values = extract_header_values(stored_response_headers, key)
+                    updated_headers.extend([(key, value) for value in values])
+
+        for key, value in new_response_headers:
+            if key not in checked and key.lower() != b'content-length':
+                values = extract_header_values(new_response_headers, key)
+                updated_headers.extend([(key, value) for value in values])
+
+        return updated_headers
