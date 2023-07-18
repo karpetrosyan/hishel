@@ -58,11 +58,11 @@ def get_freshness_lifetime(response: Response) -> tp.Optional[int]:
         return expires_timestamp - date_timestamp
     return None
 
-def get_age(response: Response) -> tp.Optional[int]:
+def get_age(response: Response, clock: "BaseClock") -> tp.Optional[int]:
 
     date = parse_date(extract_header_values_decoded(response.headers, b'date')[0])
 
-    now = time.time()
+    now = clock.now()
 
     apparent_age = max(0, now - date)
     return int(apparent_age)
@@ -79,13 +79,24 @@ def alloweed_stale(response: Response) -> bool:
 
     return True
 
+class BaseClock:
+
+    def now(self) -> int:
+        raise NotImplementedError()
+
+class Clock(BaseClock):
+
+    def now(self) -> int:
+        return int(time.time())
+
 class Controller:
 
 
     def __init__(self,
                  cacheable_methods: tp.Optional[tp.List[str]] = None,
                  cacheable_status_codes: tp.Optional[tp.List[int]] = None,
-                 cache_heuristically: bool = False):
+                 cache_heuristically: bool = False,
+                 clock: tp.Optional[BaseClock] = None):
 
         if cacheable_methods:
             self._cacheable_methods = cacheable_methods
@@ -96,6 +107,11 @@ class Controller:
             self._cacheable_status_codes = cacheable_status_codes
         else:
             self._cacheable_status_codes = [200]
+
+        if clock:
+            self._clock = clock
+        else:
+            self._clock = Clock()
         self._cache_heuristically = cache_heuristically
 
     def is_cachable(self, request: Request, response: Response) -> bool:
@@ -183,7 +199,7 @@ class Controller:
             return request
 
         freshness_lifetime = get_freshness_lifetime(response)
-        age = get_age(response)
+        age = get_age(response, self._clock)
 
         if freshness_lifetime is None or age is None:
             raise RuntimeError("Invalid response, can't calculate age")
