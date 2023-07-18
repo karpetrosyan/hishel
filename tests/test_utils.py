@@ -11,7 +11,7 @@ from hishel._utils import (
     get_updated_headers,
     header_presents,
     load_path_map,
-    parse_date
+    parse_date,
 )
 
 
