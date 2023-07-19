@@ -70,6 +70,7 @@ class CacheConnectionPool(ConnectionPool):
                 return res
             elif isinstance(res, Request):
                 response = super().handle_request(res)
+                response.read()
                 updated_response = self._controller.handle_validation_response(
                     old_response=stored_resposne, new_response=response)
                 self._storage.store(key, updated_response)
@@ -77,6 +78,7 @@ class CacheConnectionPool(ConnectionPool):
             assert False, "invalid return value for `construct_response_from_cache`"
         logger.debug("A response to this request was not found.")
         response = super().handle_request(request)
+        response.read()
 
         if self._controller.is_cachable(request=request, response=response):
             self._storage.store(key, response)

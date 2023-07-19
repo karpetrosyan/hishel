@@ -1,4 +1,4 @@
--e .
+-e .[yaml]
 
 # linting
 ruff==0.0.270

@@ -16,6 +16,7 @@ SUBS = [
     ('AsyncNetworkBackend', 'NetworkBackend'),
     ('AsyncCacheConnectionPool', 'CacheConnectionPool'),
     ('handle_async_request', 'handle_request'),
+    ('aread', 'read'),
     ('__aenter__', '__enter__'),
     ('__aexit__', '__exit__'),
     ('__aiter__', '__iter__'),

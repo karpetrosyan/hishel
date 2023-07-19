@@ -70,6 +70,7 @@ class AsyncCacheConnectionPool(AsyncConnectionPool):
                 return res
             elif isinstance(res, Request):
                 response = await super().handle_async_request(res)
+                await response.aread()
                 updated_response = self._controller.handle_validation_response(
                     old_response=stored_resposne, new_response=response)
                 await self._storage.store(key, updated_response)
@@ -77,6 +78,7 @@ class AsyncCacheConnectionPool(AsyncConnectionPool):
             assert False, "invalid return value for `construct_response_from_cache`"
         logger.debug("A response to this request was not found.")
         response = await super().handle_async_request(request)
+        await response.aread()
 
         if self._controller.is_cachable(request=request, response=response):
             await self._storage.store(key, response)
