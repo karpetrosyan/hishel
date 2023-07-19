@@ -10,7 +10,12 @@ def test_dict_serializer_dump():
         headers=[
             (b'Content-Type', b'application/json'),
             (b'Transfer-Encoding', b'chunked')
-        ]
+        ],
+        content=b'test',
+        extensions={
+            'reason_phrase': b'OK',
+            'http_version': b'HTTP/1.1'
+        }
     )
     response.read()
     response_dict = DictSerializer().dumps(response)
@@ -29,8 +34,11 @@ def test_dict_serializer_dump():
             '            "chunked"',
             '        ]',
             '    ],',
-            '    "content": "",',
-            '    "extensions": {}',
+            '    "content": "dGVzdA==",',
+            '    "extensions": {',
+            '        "reason_phrase": "OK",',
+            '        "http_version": "HTTP/1.1"',
+            '    }',
             '}'
         ]
     )
@@ -51,8 +59,11 @@ def test_dict_serializer_loads():
             '            "chunked"',
             '        ]',
             '    ],',
-            '    "content": "",',
-            '    "extensions": {}',
+            '    "content": "dGVzdA==",',
+            '    "extensions": {',
+            '        "reason_phrase": "OK",',
+            '        "http_version": "HTTP/1.1"',
+            '    }',
             '}'
         ]
     )
@@ -64,8 +75,12 @@ def test_dict_serializer_loads():
         (b'Content-Type', b'application/json'),
         (b'Transfer-Encoding', b'chunked')
     ]
-    assert response.content == b""
-
+    assert response.content == b"test"
+    assert response.extensions == {
+        'http_version': b'HTTP/1.1',
+        'reason_phrase': b'OK'
+    }
+    
 def test_yaml_serializer_dump():
 
     response = Response(
@@ -73,15 +88,22 @@ def test_yaml_serializer_dump():
         headers=[
             (b'Content-Type', b'application/json'),
             (b'Transfer-Encoding', b'chunked')
-        ]
+        ],
+        content=b'test',
+        extensions={
+            'reason_phrase': b'OK',
+            'http_version': b'HTTP/1.1'
+        }
     )
     response.read()
     response_dict = YamlSerializer().dumps(response)
 
     assert response_dict == '\n'.join(
             [
-                "content: ''",
-                "extensions: {}",
+                "content: dGVzdA==",  # b'test'
+                "extensions:",
+                "  http_version: HTTP/1.1",
+                "  reason_phrase: OK",
                 "headers:",
                 "- - Content-Type",
                 "  - application/json",
@@ -96,8 +118,10 @@ def test_yaml_serializer_loads():
 
     raw_response = '\n'.join(
             [
-                "content: ''",
-                "extensions: {}",
+                "content: dGVzdA==",  # b'test'
+                "extensions:",
+                "  http_version: HTTP/1.1",
+                "  reason_phrase: OK",
                 "headers:",
                 "- - Content-Type",
                 "  - application/json",
@@ -115,4 +139,8 @@ def test_yaml_serializer_loads():
         (b'Content-Type', b'application/json'),
         (b'Transfer-Encoding', b'chunked')
     ]
-    assert response.content == b""
+    assert response.content == b"test"
+    assert response.extensions == {
+        'http_version': b'HTTP/1.1',
+        'reason_phrase': b'OK'
+    }
