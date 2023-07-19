@@ -30,7 +30,6 @@ class BaseStorage:
 
 
 class FileStorage(BaseStorage):
-    RANDOM_FILENAME_LENGTH = 15
 
     def __init__(self,
                  serializer: tp.Optional[BaseSerializer] = None,
