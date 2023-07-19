@@ -1,0 +1,27 @@
+name: publish
+on: workflow_dispatch
+
+permissions:
+  contents: write
+
+jobs:
+  pypi-publish:
+    name: upload release to PyPI
+    runs-on: ubuntu-latest
+
+    env:
+      HISHEL_PYPI: ${{ secrets.HISHEL_PYPI }}
+
+    steps:
+      - uses: "actions/checkout@v3"
+      - uses: "actions/setup-python@v4"
+        with:
+          python-version: 3.7
+      - name: "Install dependencies"
+        run: "pip install -r requirements.txt"
+      - name: "Build"
+        run: "hatch build"
+      - name: "Publish docs"
+        run: ./scripts/publish-docs
+      - name: "Publish"
+        run: "./scripts/publish"
