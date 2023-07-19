@@ -121,6 +121,8 @@ class Controller:
             According to https://www.rfc-editor.org/rfc/rfc9111.html#section-3
         """
 
+        if response.status in (301, 308):
+            return True
 
         method = request.method.decode('ascii')
         response_cache_control = parse_cache_control(
@@ -192,6 +194,9 @@ class Controller:
     def construct_response_from_cache(self,
                                       request: Request,
                                       response: Response) -> tp.Union[Response, Request]:
+
+        if response.status in (301, 308):
+            return response
 
         response_cache_control = parse_cache_control(
             extract_header_values_decoded(response.headers, b'Cache-Control'))
