@@ -1,6 +1,4 @@
 
-import json
-from pathlib import Path
 
 from httpcore import Request
 
@@ -10,7 +8,6 @@ from hishel._utils import (
     extract_header_values_decoded,
     generate_key,
     header_presents,
-    load_path_map,
     parse_date,
 )
 
@@ -28,7 +25,7 @@ def test_generate_key():
         request.headers
     )
 
-    assert key == "GETURL(scheme=b'https', host=b'example.com', port=None, target=b'/')"
+    assert key == "bd152069787aaad359c85af6f2edbb25"
 
 def test_generate_key_with_vary():
     request = Request(
@@ -47,10 +44,7 @@ def test_generate_key_with_vary():
         request.headers
     )
 
-    assert key == (
-        "GETURL(scheme=b'https', host=b'example.com', port=None, "
-        "target=b'/')Content-Type=application/jsonAccept=application/json"
-    )
+    assert key == "cb44189c538f1200bb8430a27dadff8b"
 
 
 def test_extract_header_values():
@@ -99,23 +93,6 @@ def test_header_presents():
 
     transfer_encoding_presents = header_presents(headers, b'Transfer-Encoding')
     assert not transfer_encoding_presents
-
-def test_load_path_map(use_temp_dir):
-
-    path_maps = {
-        "first_path": '/home/test',
-        "second_path": 'test'
-    }
-
-    with open('map', 'wt') as f:
-        f.write(json.dumps(path_maps))
-
-    maps = load_path_map(Path('map'))
-
-    assert len(maps) == 2
-    assert maps['first_path'] == Path('/home/test')
-    assert maps['second_path'] == Path('test')
-
 
 def test_get_updated_headers():
 

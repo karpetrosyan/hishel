@@ -80,7 +80,7 @@ def test_dict_serializer_loads():
         'http_version': b'HTTP/1.1',
         'reason_phrase': b'OK'
     }
-    
+
 def test_yaml_serializer_dump():
 
     response = Response(

@@ -1,8 +1,7 @@
 import calendar
-import json
 import typing as tp
 from email.utils import parsedate_tz
-from pathlib import Path
+from hashlib import blake2b
 
 from httpcore import URL
 
@@ -18,15 +17,21 @@ def generate_key(method: bytes,
     for vary_value in vary._values:
         vary_headers_suffix += vary_value.encode('ascii') + b'='
         vary_headers_suffix += b', '.join(extract_header_values(headers, vary_value.encode('ascii')))
-    key = ''.join(
-        [
-            method.decode('ascii'),
-            repr(url),
-            vary_headers_suffix.decode('ascii'),
-        ]
-    )
 
-    return key
+    port = f":{url.port}" if url.port is not None else ""
+    encoded_url = f'{url.scheme.decode("ascii")}://{url.host.decode("ascii")}{port}{url.target.decode("ascii")}'.encode('ascii')
+
+    key_parts = [
+            method,
+            encoded_url,
+            vary_headers_suffix,
+         ]
+
+
+    key = blake2b(digest_size=16)
+    for part in key_parts:
+        key.update(part)
+    return key.hexdigest()
 
 
 def extract_header_values(
@@ -51,15 +56,6 @@ def extract_header_values_decoded(
     values = extract_header_values(headers=headers, header_key=header_key, single=single)
     return [value.decode() for value in values]
 
-
-def load_path_map(
-    path: Path,
-) -> tp.Dict[str, Path]:
-    dct: tp.Dict[str, Path] = json.loads(path.read_text())
-
-    for key, value in dct.items():
-        dct[key] = Path(dct[key])
-    return dct
 
 def header_presents(
     headers: tp.List[tp.Tuple[bytes, bytes]],
