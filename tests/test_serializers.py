@@ -1,13 +1,10 @@
-import sys
 
-import pytest
 from httpcore import Response
 
 from hishel._serializers import DictSerializer, PickleSerializer, YamlSerializer
 
 
-@pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python3.8 or higher")
-def test_pickle_serializer_dumps():
+def test_pickle_serializer_dumps_and_loads():
 
     response = Response(
         status=200,
@@ -22,45 +19,7 @@ def test_pickle_serializer_dumps():
         }
     )
     response.read()
-    response_dict = PickleSerializer().dumps(response)
-    assert response_dict == b"".join(
-        [
-            b"\x80\x04\x95\x16\x01\x00\x00\x00\x00\x00\x00\x8c\x08httpcore\x94\x8c\x08",
-            b"Response\x94\x93\x94)\x81\x94}\x94(\x8c\x06",
-            b"status\x94K\xc8\x8c\x07",
-            b"headers\x94]\x94(C\x0c",
-            b"Content-Type\x94C\x10application/json\x94\x86\x94C\x11",
-            b"Transfer-Encoding\x94C\x07chunked\x94\x86\x94e\x8c\x06",
-            b"stream\x94\x8c\x10httpcore._models\x94\x8c\n",
-            b"ByteStream\x94\x93\x94)\x81\x94}\x94\x8c\x08",
-            b"_content\x94C\x04test\x94sb\x8c\n",
-            b"extensions\x94}\x94(\x8c\r",
-            b"reason_phrase\x94C\x02OK\x94\x8c\x0c",
-            b"http_version\x94C\x08HTTP/1.1\x94u\x8c\x10",
-            b"_stream_consumed\x94\x89ub.",
-        ]
-    )
-
-@pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python3.8 or higher")
-def test_pickle_serializer_loads():
-
-    raw_response = b"".join(
-        [
-            b"\x80\x04\x95\x16\x01\x00\x00\x00\x00\x00\x00\x8c\x08httpcore\x94\x8c\x08",
-            b"Response\x94\x93\x94)\x81\x94}\x94(\x8c\x06",
-            b"status\x94K\xc8\x8c\x07",
-            b"headers\x94]\x94(C\x0c",
-            b"Content-Type\x94C\x10application/json\x94\x86\x94C\x11",
-            b"Transfer-Encoding\x94C\x07chunked\x94\x86\x94e\x8c\x06",
-            b"stream\x94\x8c\x10httpcore._models\x94\x8c\n",
-            b"ByteStream\x94\x93\x94)\x81\x94}\x94\x8c\x08",
-            b"_content\x94C\x04test\x94sb\x8c\n",
-            b"extensions\x94}\x94(\x8c\r",
-            b"reason_phrase\x94C\x02OK\x94\x8c\x0c",
-            b"http_version\x94C\x08HTTP/1.1\x94u\x8c\x10",
-            b"_stream_consumed\x94\x89ub.",
-        ]
-    )
+    raw_response = PickleSerializer().dumps(response)
 
     response = PickleSerializer().loads(raw_response)
     response.read()
