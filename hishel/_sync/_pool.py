@@ -5,7 +5,7 @@ from httpcore._sync.interfaces import RequestInterface
 from httpcore._models import Request, Response
 
 from .._controller import Controller
-from .._serializers import PickleSerializer
+from .._serializers import DictSerializer
 from .._utils import generate_key
 from ._storages import BaseStorage, FileStorage
 
@@ -22,7 +22,7 @@ class CacheConnectionPool(RequestInterface):
         if storage is not None:
             self._storage = storage
         else:
-            self._storage = FileStorage(serializer=PickleSerializer())
+            self._storage = FileStorage(serializer=DictSerializer())
 
         if cache_controller is not None:
             self._controller = cache_controller

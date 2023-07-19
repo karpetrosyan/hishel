@@ -5,7 +5,7 @@ from httpcore._async.interfaces import AsyncRequestInterface
 from httpcore._models import Request, Response
 
 from .._controller import Controller
-from .._serializers import PickleSerializer
+from .._serializers import DictSerializer
 from .._utils import generate_key
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
@@ -22,7 +22,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
         if storage is not None:
             self._storage = storage
         else:
-            self._storage = AsyncFileStorage(serializer=PickleSerializer())
+            self._storage = AsyncFileStorage(serializer=DictSerializer())
 
         if cache_controller is not None:
             self._controller = cache_controller
