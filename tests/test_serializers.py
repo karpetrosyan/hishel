@@ -100,16 +100,16 @@ def test_yaml_serializer_dump():
 
     assert response_dict == '\n'.join(
             [
-                "content: dGVzdA==",  # b'test'
-                "extensions:",
-                "  http_version: HTTP/1.1",
-                "  reason_phrase: OK",
+                "status: 200",
                 "headers:",
                 "- - Content-Type",
                 "  - application/json",
                 "- - Transfer-Encoding",
                 "  - chunked",
-                "status: 200",
+                "content: dGVzdA==",
+                "extensions:",
+                "  reason_phrase: OK",
+                "  http_version: HTTP/1.1",
                 ""
             ]
     )
@@ -118,16 +118,16 @@ def test_yaml_serializer_loads():
 
     raw_response = '\n'.join(
             [
-                "content: dGVzdA==",  # b'test'
-                "extensions:",
-                "  http_version: HTTP/1.1",
-                "  reason_phrase: OK",
+                "status: 200",
                 "headers:",
                 "- - Content-Type",
                 "  - application/json",
                 "- - Transfer-Encoding",
                 "  - chunked",
-                "status: 200",
+                "content: dGVzdA==",
+                "extensions:",
+                "  reason_phrase: OK",
+                "  http_version: HTTP/1.1",
                 ""
             ]
     )

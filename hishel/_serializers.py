@@ -96,7 +96,7 @@ class YamlSerializer(BaseSerializer):
                 key: value.decode('ascii') for key, value in response.extensions.items() 
                 if key in KNOWN_RESPONSE_EXTENSIONS}
         }
-        return yaml.safe_dump(response_dict)
+        return yaml.safe_dump(response_dict, sort_keys=False)
 
     def loads(self, data: str | bytes) -> Response:
         response_dict = yaml.safe_load(data)
