@@ -62,6 +62,7 @@ class AsyncCacheConnectionPool(AsyncConnectionPool):
         stored_resposne = await self._storage.retreive(key)
 
         if stored_resposne:
+            await stored_resposne.aread()
             logger.debug("A response to this request was found.")
             res = self._controller.construct_response_from_cache(request=request, response=stored_resposne)
 

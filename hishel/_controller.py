@@ -107,7 +107,7 @@ class Controller:
         if cacheable_status_codes:
             self._cacheable_status_codes = cacheable_status_codes
         else:
-            self._cacheable_status_codes = [200]
+            self._cacheable_status_codes = [200, 301, 308]
 
         if clock:  # pragma: no cover
             self._clock = clock
@@ -121,19 +121,21 @@ class Controller:
             According to https://www.rfc-editor.org/rfc/rfc9111.html#section-3
         """
 
+        method = request.method.decode('ascii')
+
+        if response.status not in self._cacheable_status_codes:
+            return False
+
         if response.status in (301, 308):
             return True
 
-        method = request.method.decode('ascii')
-        response_cache_control = parse_cache_control(
-            extract_header_values_decoded(response.headers, b'cache-control')
-        )
         # the request method is understood by the cache
         if method not in self._cacheable_methods:
             return False
 
-        if response.status not in self._cacheable_status_codes:
-            return False
+        response_cache_control = parse_cache_control(
+            extract_header_values_decoded(response.headers, b'cache-control')
+        )
 
         # the response status code is final
         if response.status // 100 == 1:
