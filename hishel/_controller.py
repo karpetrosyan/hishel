@@ -96,7 +96,8 @@ class Controller:
                  cacheable_methods: tp.Optional[tp.List[str]] = None,
                  cacheable_status_codes: tp.Optional[tp.List[int]] = None,
                  cache_heuristically: bool = False,
-                 clock: tp.Optional[BaseClock] = None):
+                 clock: tp.Optional[BaseClock] = None,
+                 allow_stale: bool = False):
 
         if cacheable_methods:
             self._cacheable_methods = cacheable_methods
@@ -113,6 +114,7 @@ class Controller:
         else:
             self._clock = Clock()
         self._cache_heuristically = cache_heuristically
+        self._allow_stale = allow_stale
 
     def is_cachable(self, request: Request, response: Response) -> bool:
         """
@@ -204,9 +206,8 @@ class Controller:
         if freshness_lifetime is None or age is None:
             raise RuntimeError("Invalid response, can't calculate age")
 
-        is_fresh = age > freshness_lifetime
-
-        if is_fresh or alloweed_stale(response):
+        is_fresh = freshness_lifetime > age
+        if is_fresh or (self._allow_stale and alloweed_stale(response)):
             return response
 
         else:
