@@ -301,6 +301,88 @@ def test_make_conditional_request_with_last_modified():
         (b'If-Unmodified-Since', b'Wed, 21 Oct 2015 07:28:00 GMT')
     ]
 
+def test_construct_response_from_cache_redirect():
+    controller = Controller()
+    response = Response(status=301)
+    request = Request("GET", "https://example.com")
+    assert response is controller.construct_response_from_cache(request=request, response=response)
+
+def test_construct_response_from_cache_fresh():
+    class MockedClock(BaseClock):
+
+        def now(self) -> int:
+            return 1440504000
+
+    controller = Controller(
+        clock=MockedClock()
+    )
+    response = Response(
+        status=200,
+        headers=[
+            (b'Cache-Control', b'max-age=3600'),
+            (b'Date', b'Mon, 25 Aug 2015 12:00:00 GMT')
+        ]
+    )
+    request = Request("GET", "https://example.com")
+    assert response is controller.construct_response_from_cache(request=request, response=response)
+
+
+def test_construct_response_from_cache_stale():
+    class MockedClock(BaseClock):
+
+        def now(self) -> int:
+            return 1440504002
+
+    controller = Controller(
+        clock=MockedClock()
+    )
+    response = Response(
+        status=200,
+        headers=[
+            (b'Cache-Control', b'max-age=1'),
+            (b'Date', b'Mon, 25 Aug 2015 12:00:00 GMT')
+        ]
+    )
+    request = Request("GET", "https://example.com")
+    conditional_request = controller.construct_response_from_cache(request=request, response=response)
+    assert isinstance(conditional_request, Request)
+
+def test_construct_response_from_cache_stale_with_allowed_stale():
+    class MockedClock(BaseClock):
+
+        def now(self) -> int:
+            return 1440504002
+
+    controller = Controller(
+        clock=MockedClock(),
+        allow_stale=True
+    )
+    response = Response(
+        status=200,
+        headers=[
+            (b'Cache-Control', b'max-age=1'),
+            (b'Date', b'Mon, 25 Aug 2015 12:00:00 GMT')
+        ]
+    )
+    request = Request("GET", "https://example.com")
+    assert response is controller.construct_response_from_cache(request=request, response=response)
+
+def test_construct_response_from_cache_with_no_cache():
+
+    controller = Controller(
+        allow_stale=True
+    )
+    response = Response(
+        status=200,
+        headers=[
+            (b'Cache-Control', b'max-age=1, no-cache'),
+            (b'Date', b'Mon, 25 Aug 2015 12:00:00 GMT')
+        ]
+    )
+    request = Request("GET", "https://example.com")
+    conditional_request = controller.construct_response_from_cache(request=request, response=response)
+    assert isinstance(conditional_request, Request)
+
 
 def test_handle_validation_response_changed():
     controller = Controller()
@@ -322,6 +404,7 @@ def test_handle_validation_response_changed():
 
     assert response.headers == [(b'new-response', b'true')]
     assert response.content == b'new'
+
 
 def test_handle_validation_response_not_changed():
     controller = Controller()

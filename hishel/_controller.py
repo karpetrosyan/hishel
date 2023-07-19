@@ -210,7 +210,7 @@ class Controller:
         freshness_lifetime = get_freshness_lifetime(response)
         age = get_age(response, self._clock)
 
-        if freshness_lifetime is None or age is None:
+        if freshness_lifetime is None or age is None:  # pragma: no cover
             raise RuntimeError("Invalid response, can't calculate age")
 
         is_fresh = freshness_lifetime > age
