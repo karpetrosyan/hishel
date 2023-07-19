@@ -82,7 +82,7 @@ class DictSerializer(BaseSerializer):
 class YamlSerializer(BaseSerializer):
 
 
-    def dumps(self, response: Response) -> str | bytes:
+    def dumps(self, response: Response) -> tp.Union[str, bytes]:
         response_dict = {
             "status": response.status,
             "headers": [
@@ -97,7 +97,7 @@ class YamlSerializer(BaseSerializer):
         }
         return yaml.safe_dump(response_dict, sort_keys=False)
 
-    def loads(self, data: str | bytes) -> Response:
+    def loads(self, data: tp.Union[str, bytes]) -> Response:
         response_dict = yaml.safe_load(data)
 
         return Response(
