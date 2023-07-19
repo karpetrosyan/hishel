@@ -39,7 +39,7 @@ class FileStorage(BaseStorage):
         if base_path:  # pragma: no cover
             self._base_path = base_path
         else:
-            self._base_path = Path('./cache/hishel')
+            self._base_path = Path('./.cache/hishel')
 
         if not self._base_path.is_dir():
             self._base_path.mkdir(parents=True)
