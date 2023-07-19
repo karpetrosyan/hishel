@@ -300,3 +300,51 @@ def test_make_conditional_request_with_last_modified():
         (b'Content-Type', b'application/json'),
         (b'If-Unmodified-Since', b'Wed, 21 Oct 2015 07:28:00 GMT')
     ]
+
+
+def test_handle_validation_response_changed():
+    controller = Controller()
+
+    old_response = Response(
+        status=200,
+        headers=[(b'old-response', b'true')],
+        content=b'old'
+    )
+
+    new_response = Response(
+        status=200,
+        headers=[(b'new-response', b'true')],
+        content=b'new'
+    )
+
+    response = controller.handle_validation_response(old_response=old_response, new_response=new_response)
+    response.read()
+
+    assert response.headers == [(b'new-response', b'true')]
+    assert response.content == b'new'
+
+def test_handle_validation_response_not_changed():
+    controller = Controller()
+
+    old_response = Response(
+        status=200,
+        headers=[(b'old-response', b'true')],
+        content=b'old'
+    )
+
+    new_response = Response(
+        status=304,
+        headers=[
+            (b'new-response', b'false'),
+            (b'old-response', b'true')
+        ],
+    )
+
+    response = controller.handle_validation_response(old_response=old_response, new_response=new_response)
+    response.read()
+
+    assert response.headers == [
+            (b'old-response', b'true'),
+            (b'new-response', b'false')
+            ]
+    assert response.content == b'old'
