@@ -179,7 +179,6 @@ def test_get_freshness_lifetime_with_expires():
 
 def test_get_age():
 
-
     class MockedClock(BaseClock):
 
         def now(self) -> int:

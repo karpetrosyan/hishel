@@ -38,7 +38,7 @@ class PickleSerializer(BaseSerializer):
         return tp.cast(Response, pickle.loads(data))
 
     @property
-    def is_binary(self) -> bool:
+    def is_binary(self) -> bool:  # pragma: no cover
         return True
 
 class DictSerializer(BaseSerializer):
@@ -114,5 +114,5 @@ class YamlSerializer(BaseSerializer):
         )
 
     @property
-    def is_binary(self) -> bool:
+    def is_binary(self) -> bool:  # pragma: no cover
         return False
