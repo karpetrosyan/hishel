@@ -1,9 +1,7 @@
 import logging
-import ssl
 import typing as tp
 
-from httpcore import AsyncConnectionPool
-from httpcore._backends.base import SOCKET_OPTION, AsyncNetworkBackend
+from httpcore._async.interfaces import AsyncRequestInterface
 from httpcore._models import Request, Response
 
 from .._controller import Controller
@@ -13,34 +11,13 @@ from ._storages import AsyncBaseStorage, AsyncFileStorage
 
 logger = logging.getLogger('hishel.pool')
 
-class AsyncCacheConnectionPool(AsyncConnectionPool):
+class AsyncCacheConnectionPool(AsyncRequestInterface):
 
     def __init__(self,
-                 ssl_context: tp.Optional[ssl.SSLContext] = None,
-                 max_connections: tp.Optional[int] = 10,
-                 max_keepalive_connections: tp.Optional[int] = None,
-                 keepalive_expiry: tp.Optional[float] = None,
-                 http1: bool = True,
-                 http2: bool = False,
-                 retries: int = 0,
-                 local_address: tp.Optional[str] = None,
-                 uds: tp.Optional[str] = None,
-                 network_backend: tp.Optional[AsyncNetworkBackend] = None,
-                 socket_options: tp.Optional[tp.Iterable[SOCKET_OPTION]] = None,
+                 pool: AsyncRequestInterface,
                  storage: tp.Optional[AsyncBaseStorage] = None,
                  cache_controller: tp.Optional[Controller] = None) -> None:
-        super().__init__(ssl_context,
-                         max_connections,
-                         max_keepalive_connections,
-                         keepalive_expiry,
-                         http1,
-                         http2,
-                         retries,
-                         local_address,
-                         uds,
-                         network_backend,
-                         socket_options
-                         )
+        self._pool = pool
 
         if storage is not None:
             self._storage = storage
@@ -70,15 +47,17 @@ class AsyncCacheConnectionPool(AsyncConnectionPool):
                 logger.debug(f"Using cached response for the {request.url}")
                 return res
             elif isinstance(res, Request):
-                response = await super().handle_async_request(res)
+                response = await self._pool.handle_async_request(res)
                 await response.aread()
                 updated_response = self._controller.handle_validation_response(
-                    old_response=stored_resposne, new_response=response)
+                    old_response=stored_resposne, new_response=response
+                )
                 await self._storage.store(key, updated_response)
                 return updated_response
+
             assert False, "invalid return value for `construct_response_from_cache`"
         logger.debug("A response to this request was not found.")
-        response = await super().handle_async_request(request)
+        response = await self._pool.handle_async_request(request)
         await response.aread()
 
         if self._controller.is_cachable(request=request, response=response):

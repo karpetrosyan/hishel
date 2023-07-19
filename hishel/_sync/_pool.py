@@ -1,9 +1,7 @@
 import logging
-import ssl
 import typing as tp
 
-from httpcore import ConnectionPool
-from httpcore._backends.base import SOCKET_OPTION, NetworkBackend
+from httpcore._sync.interfaces import RequestInterface
 from httpcore._models import Request, Response
 
 from .._controller import Controller
@@ -13,34 +11,13 @@ from ._storages import BaseStorage, FileStorage
 
 logger = logging.getLogger('hishel.pool')
 
-class CacheConnectionPool(ConnectionPool):
+class CacheConnectionPool(RequestInterface):
 
     def __init__(self,
-                 ssl_context: tp.Optional[ssl.SSLContext] = None,
-                 max_connections: tp.Optional[int] = 10,
-                 max_keepalive_connections: tp.Optional[int] = None,
-                 keepalive_expiry: tp.Optional[float] = None,
-                 http1: bool = True,
-                 http2: bool = False,
-                 retries: int = 0,
-                 local_address: tp.Optional[str] = None,
-                 uds: tp.Optional[str] = None,
-                 network_backend: tp.Optional[NetworkBackend] = None,
-                 socket_options: tp.Optional[tp.Iterable[SOCKET_OPTION]] = None,
+                 pool: RequestInterface,
                  storage: tp.Optional[BaseStorage] = None,
                  cache_controller: tp.Optional[Controller] = None) -> None:
-        super().__init__(ssl_context,
-                         max_connections,
-                         max_keepalive_connections,
-                         keepalive_expiry,
-                         http1,
-                         http2,
-                         retries,
-                         local_address,
-                         uds,
-                         network_backend,
-                         socket_options
-                         )
+        self._pool = pool
 
         if storage is not None:
             self._storage = storage
@@ -70,15 +47,17 @@ class CacheConnectionPool(ConnectionPool):
                 logger.debug(f"Using cached response for the {request.url}")
                 return res
             elif isinstance(res, Request):
-                response = super().handle_request(res)
+                response = self._pool.handle_request(res)
                 response.read()
                 updated_response = self._controller.handle_validation_response(
-                    old_response=stored_resposne, new_response=response)
+                    old_response=stored_resposne, new_response=response
+                )
                 self._storage.store(key, updated_response)
                 return updated_response
+
             assert False, "invalid return value for `construct_response_from_cache`"
         logger.debug("A response to this request was not found.")
-        response = super().handle_request(request)
+        response = self._pool.handle_request(request)
         response.read()
 
         if self._controller.is_cachable(request=request, response=response):
