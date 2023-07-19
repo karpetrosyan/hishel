@@ -232,3 +232,71 @@ def test_clock():
     date_07_19_2023 = 1689764505
     assert Clock().now() > date_07_19_2023
 
+def test_permanent_redirect_cache():
+    controller = Controller()
+
+    request = Request(
+        b"GET",
+        b"https://example.com"
+    )
+
+    response = Response(status=301)
+
+    assert controller.is_cachable(request=request, response=response)
+
+    response = Response(status=302)
+
+    assert not controller.is_cachable(request=request, response=response)
+
+
+def test_make_conditional_request_with_etag():
+
+    controller = Controller()
+
+    request = Request(
+        b"GET",
+        b"https://example.com",
+        headers=[
+            (b'Content-Type', b'application/json'),
+        ]
+    )
+
+    response = Response(
+        status=200,
+        headers=[
+            (b'Etag', b'some-etag')
+        ]
+    )
+
+    controller._make_request_conditional(request=request, response=response)
+
+    assert request.headers == [
+        (b'Content-Type', b'application/json'),
+        (b'If-None-Match', b'some-etag')
+    ]
+
+def test_make_conditional_request_with_last_modified():
+
+    controller = Controller()
+
+    request = Request(
+        b"GET",
+        b"https://example.com",
+        headers=[
+            (b'Content-Type', b'application/json'),
+        ]
+    )
+
+    response = Response(
+        status=200,
+        headers=[
+            (b'Last-Modified', b'Wed, 21 Oct 2015 07:28:00 GMT')
+        ]
+    )
+
+    controller._make_request_conditional(request=request, response=response)
+
+    assert request.headers == [
+        (b'Content-Type', b'application/json'),
+        (b'If-Unmodified-Since', b'Wed, 21 Oct 2015 07:28:00 GMT')
+    ]
