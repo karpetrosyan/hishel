@@ -6,7 +6,7 @@ from httpcore import Response
 from hishel._serializers import BaseSerializer
 
 from .._files import AsyncFileManager
-from .._serializers import PickleSerializer
+from .._serializers import DictSerializer
 
 __all__ = (
     'AsyncBaseStorage',
@@ -20,7 +20,7 @@ class AsyncBaseStorage:
         if serializer:  # pragma: no cover
             self._serializer = serializer
         else:
-            self._serializer = PickleSerializer()
+            self._serializer = DictSerializer()
 
     async def store(self, key: str, response: Response) -> None:
         raise NotImplementedError()

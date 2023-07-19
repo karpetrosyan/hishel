@@ -25,7 +25,6 @@ class BaseSerializer:
 class PickleSerializer(BaseSerializer):
 
     def dumps(self, response: Response) -> tp.Union[str, bytes]:
-        response.read()
         clone_response = Response(
             status=response.status,
             headers=response.headers,

@@ -26,6 +26,7 @@ def test_filestorage(use_temp_dir):
         headers=[],
         content=b'test'
     )
+    response.read()
 
     storage.store(key, response)
 
@@ -58,6 +59,7 @@ def test_filestorage_delete(use_temp_dir):
         headers=[],
         content=b'test'
     )
+    response.read()
 
     storage.store(key, response)
 
