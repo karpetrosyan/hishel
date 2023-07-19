@@ -6,6 +6,8 @@ import typing as tp
 import yaml
 from httpcore import Response
 
+HEADERS_ENCODING = 'iso-8859-1'
+KNOWN_RESPONSE_EXTENSIONS = ('http_version', 'reason_phrase')
 
 class BaseSerializer:
 
@@ -28,7 +30,7 @@ class PickleSerializer(BaseSerializer):
             status=response.status,
             headers=response.headers,
             content=response.content,
-            extensions={key: value for key, value in response.extensions.items() if key != 'network_stream'}
+            extensions={key: value for key, value in response.extensions.items() if key in KNOWN_RESPONSE_EXTENSIONS}
         )
         return pickle.dumps(clone_response)
 
@@ -46,9 +48,14 @@ class DictSerializer(BaseSerializer):
         response_dict = {
             "status": response.status,
             "headers": [
-                (key.decode(), value.decode()) for key, value in response.headers],
+                (
+                    key.decode(HEADERS_ENCODING), 
+                    value.decode(HEADERS_ENCODING)
+                ) for key, value in response.headers],
             "content": base64.b64encode(response.content).decode('ascii'),
-            "extensions": {key: value for key, value in response.extensions.items() if key.lower() != "network_stream"}
+            "extensions": {
+                key: value.decode('ascii') for key, value in response.extensions.items() 
+                if key in KNOWN_RESPONSE_EXTENSIONS}
         }
 
         return json.dumps(response_dict, indent=4)
@@ -60,10 +67,13 @@ class DictSerializer(BaseSerializer):
             status=response_dict["status"],
             headers=[
                 (
-                    key.encode('ascii'),
-                    value.encode('ascii')
+                    key.encode(HEADERS_ENCODING),
+                    value.encode(HEADERS_ENCODING)
                 ) for key, value in response_dict["headers"]],
-            content=base64.b64decode(response_dict["content"].encode())
+            content=base64.b64decode(response_dict["content"].encode('ascii')),
+            extensions={
+                key: value.encode('ascii') for key, value in response_dict["extensions"].items() 
+                if key in KNOWN_RESPONSE_EXTENSIONS}
         )
 
     @property
@@ -77,9 +87,14 @@ class YamlSerializer(BaseSerializer):
         response_dict = {
             "status": response.status,
             "headers": [
-                (key.decode(), value.decode()) for key, value in response.headers],
+                (
+                    key.decode(HEADERS_ENCODING), 
+                    value.decode(HEADERS_ENCODING)
+                ) for key, value in response.headers],
             "content": base64.b64encode(response.content).decode('ascii'),
-            "extensions": {key: value for key, value in response.extensions.items() if key.lower() != "network_stream"}
+            "extensions": {
+                key: value.decode('ascii') for key, value in response.extensions.items() 
+                if key in KNOWN_RESPONSE_EXTENSIONS}
         }
         return yaml.safe_dump(response_dict)
 
@@ -90,10 +105,13 @@ class YamlSerializer(BaseSerializer):
             status=response_dict["status"],
             headers=[
                 (
-                    key.encode('ascii'),
-                    value.encode('ascii')
+                    key.encode(HEADERS_ENCODING),
+                    value.encode(HEADERS_ENCODING)
                 ) for key, value in response_dict["headers"]],
-            content=base64.b64decode(response_dict["content"].encode())
+            content=base64.b64decode(response_dict["content"].encode('ascii')),
+            extensions={
+                key: value.encode('ascii') for key, value in response_dict["extensions"].items() 
+                if key in KNOWN_RESPONSE_EXTENSIONS}
         )
 
     @property

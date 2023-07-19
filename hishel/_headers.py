@@ -193,7 +193,6 @@ class CacheControl:
                 else:
                     values = []
                     for list_value in value[1:-1].split(','):
-                        print(repr(list_value))
                         if not list_value:
                             raise ValidationError("The list value must not be empty.")
                         list_value = strip_ows_around(list_value)
