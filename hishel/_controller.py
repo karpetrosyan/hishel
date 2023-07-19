@@ -67,7 +67,7 @@ def get_age(response: Response, clock: "BaseClock") -> tp.Optional[int]:
     apparent_age = max(0, now - date)
     return int(apparent_age)
 
-def alloweed_stale(response: Response) -> bool:
+def allowed_stale(response: Response) -> bool:
     response_cache_control = parse_cache_control(
         extract_header_values_decoded(response.headers, b'Cache-Control'))
 
@@ -109,7 +109,7 @@ class Controller:
         else:
             self._cacheable_status_codes = [200]
 
-        if clock:
+        if clock:  # pragma: no cover
             self._clock = clock
         else:
             self._clock = Clock()
@@ -212,7 +212,7 @@ class Controller:
             raise RuntimeError("Invalid response, can't calculate age")
 
         is_fresh = freshness_lifetime > age
-        if is_fresh or (self._allow_stale and alloweed_stale(response)):
+        if is_fresh or (self._allow_stale and allowed_stale(response)):
             return response
 
         else:

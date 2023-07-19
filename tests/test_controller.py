@@ -1,6 +1,6 @@
 from httpcore import Request, Response
 
-from hishel._controller import BaseClock, Controller, get_age, get_freshness_lifetime
+from hishel._controller import BaseClock, Clock, Controller, allowed_stale, get_age, get_freshness_lifetime
 
 
 def test_is_cachable_for_cachables():
@@ -191,3 +191,44 @@ def test_get_age():
     )
     age = get_age(response=response, clock=MockedClock())
     assert age == 86400  # One day
+
+
+def test_allowed_stale_no_cache():
+
+    response = Response(
+        status=200,
+        headers=[
+            (b'Cache-Control', b'no-cache')
+        ]
+    )
+
+    assert not allowed_stale(response)
+
+def test_allowed_stale_must_revalidate():
+
+    response = Response(
+        status=200,
+        headers=[
+            (b'Cache-Control', b'must-revalidate')
+        ]
+    )
+
+    assert not allowed_stale(response)
+
+
+def test_allowed_stale_allowed():
+
+    response = Response(
+        status=200,
+        headers=[
+            (b'Cache-Control', b'max-age=3600')
+        ]
+    )
+
+    assert allowed_stale(response)
+
+
+def test_clock():
+    date_07_19_2023 = 1689764505
+    assert Clock().now() > date_07_19_2023
+
