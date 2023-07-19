@@ -1,8 +1,12 @@
+import sys
+
+import pytest
 from httpcore import Response
 
 from hishel._serializers import DictSerializer, PickleSerializer, YamlSerializer
 
 
+@pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python3.8 or higher")
 def test_pickle_serializer_dumps():
 
     response = Response(
@@ -37,6 +41,7 @@ def test_pickle_serializer_dumps():
         ]
     )
 
+@pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python3.8 or higher")
 def test_pickle_serializer_loads():
 
     raw_response = b"".join(
