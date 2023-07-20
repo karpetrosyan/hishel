@@ -1,3 +1,4 @@
+import logging
 import typing as tp
 from pathlib import Path
 
@@ -7,6 +8,8 @@ from hishel._serializers import BaseSerializer
 
 from .._files import AsyncFileManager
 from .._serializers import DictSerializer
+
+logger = logging.getLogger('hishel.storages')
 
 __all__ = (
     'AsyncBaseStorage',

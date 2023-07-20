@@ -6,7 +6,7 @@ from httpcore._models import Request, Response
 
 from .._controller import Controller
 from .._serializers import DictSerializer
-from .._utils import generate_key
+from .._utils import generate_key, normalized_url
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
 logger = logging.getLogger('hishel.pool')
@@ -38,15 +38,18 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
         )
         stored_resposne = await self._storage.retreive(key)
 
+        url = normalized_url(request.url)
+
         if stored_resposne:
             await stored_resposne.aread()
-            logger.debug("A response to this request was found.")
+            logger.debug(f"The cached response for the `{url}` url was found.")
             res = self._controller.construct_response_from_cache(request=request, response=stored_resposne)
 
             if isinstance(res, Response):
-                logger.debug(f"Using cached response for the {request.url}")
+                logger.debug(f"For the `{url}` url, the cached response was used.")
                 return res
             elif isinstance(res, Request):
+                logger.debug(f"Validating the response associated with the `{url}` url.")
                 response = await self._pool.handle_async_request(res)
                 await response.aread()
                 updated_response = self._controller.handle_validation_response(
@@ -56,13 +59,13 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                 return updated_response
 
             assert False, "invalid return value for `construct_response_from_cache`"
-        logger.debug("A response to this request was not found.")
+        logger.debug(f"A cached response to the url `{url}` was not found.")
         response = await self._pool.handle_async_request(request)
         await response.aread()
 
         if self._controller.is_cachable(request=request, response=response):
             await self._storage.store(key, response)
         else:
-            logger.debug("ignoring the response because it cannot be cached")
+            logger.debug(f"The response to the `{url}` url is not cacheable.")
 
         return response
