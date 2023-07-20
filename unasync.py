@@ -14,6 +14,8 @@ SUBS = [
     ('AsyncConnectionPool', 'ConnectionPool'),
     ('asynccontextmanager', 'contextmanager'),
     ('AsyncNetworkBackend', 'NetworkBackend'),
+    ('AsyncCacheTransport', 'CacheTransport'),
+    ('AsyncBaseTransport', 'BaseTransport'),
     ('AsyncCacheConnectionPool', 'CacheConnectionPool'),
     ('handle_async_request', 'handle_request'),
     ('aread', 'read'),
