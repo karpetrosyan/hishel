@@ -19,6 +19,10 @@ from ._storages import BaseStorage, FileStorage
 
 logger = logging.getLogger('hishel.transports')
 
+__all__ = (
+    "CacheTransport",
+)
+
 class CacheTransport(httpx.BaseTransport):
 
     def __init__(self,

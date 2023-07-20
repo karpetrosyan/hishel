@@ -11,6 +11,10 @@ from ._storages import AsyncBaseStorage, AsyncFileStorage
 
 logger = logging.getLogger('hishel.pool')
 
+__all__ = (
+    "AsyncCacheConnectionPool",
+)
+
 class AsyncCacheConnectionPool(AsyncRequestInterface):
 
     def __init__(self,

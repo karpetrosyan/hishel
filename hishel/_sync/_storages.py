@@ -12,8 +12,7 @@ from .._serializers import DictSerializer
 logger = logging.getLogger('hishel.storages')
 
 __all__ = (
-    'BaseStorage',
-    'FileStorage'
+    'FileStorage',
 )
 
 class BaseStorage:

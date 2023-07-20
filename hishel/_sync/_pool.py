@@ -11,6 +11,10 @@ from ._storages import BaseStorage, FileStorage
 
 logger = logging.getLogger('hishel.pool')
 
+__all__ = (
+    "CacheConnectionPool",
+)
+
 class CacheConnectionPool(RequestInterface):
 
     def __init__(self,

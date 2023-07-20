@@ -19,6 +19,10 @@ from ._storages import AsyncBaseStorage, AsyncFileStorage
 
 logger = logging.getLogger('hishel.transports')
 
+__all__ = (
+    "AsyncCacheTransport",
+)
+
 class AsyncCacheTransport(httpx.AsyncBaseTransport):
 
     def __init__(self,
