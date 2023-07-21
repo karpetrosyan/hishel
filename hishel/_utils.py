@@ -4,7 +4,6 @@ from email.utils import parsedate_tz
 from hashlib import blake2b
 
 import httpcore
-import httpx
 from httpcore import URL
 
 from ._headers import Vary
@@ -27,6 +26,8 @@ def normalized_url(url: tp.Union[httpcore.URL, str, bytes]) -> str:
 def generate_key(method: bytes,
                  url: URL,
                  headers: tp.List[tp.Tuple[bytes, bytes]]) -> str:
+
+    # TODO: sort vary headers
     vary_values = [val.decode('ascii') for val in extract_header_values(headers, b'vary')]
     vary = Vary.from_value(vary_values=vary_values)
     vary_headers_suffix = b""
@@ -83,43 +84,3 @@ def parse_date(date: str) -> int:
     expires = parsedate_tz(date)
     timestamp = calendar.timegm(expires[:6])  # type: ignore
     return timestamp
-
-def to_httpx_response(httpcore_response: httpcore.Response) -> httpx.Response:
-
-    response = httpx.Response(
-        status_code=httpcore_response.status,
-        headers=httpcore_response.headers,
-        content=httpcore_response.content,
-        extensions=httpcore_response.extensions
-    )
-    response.read()
-    return response
-
-def to_httpcore_response(httpx_response: httpx.Response) -> httpcore.Response:
-
-    response = httpcore.Response(
-        status=httpx_response.status_code,
-        headers=httpx_response.headers.raw,
-        content=httpx_response.content,
-        extensions=httpx_response.extensions
-    )
-    response.read()
-    return response
-
-def to_httpx_request(httpcore_request: httpcore.Request) -> httpx.Request:
-
-    return httpx.Request(
-        httpcore_request.method,
-        normalized_url(httpcore_request.url),
-        headers=httpcore_request.headers,
-        extensions=httpcore_request.extensions
-    )
-
-def to_httpcore_request(httpx_request: httpx.Request) -> httpcore.Request:
-    return httpcore.Request(
-        httpx_request.method,
-        str(httpx_request.url),
-        headers=httpx_request.headers.raw,
-        extensions=httpx_request.extensions
-    )
-
