@@ -25,10 +25,10 @@ class CacheConnectionPool(RequestInterface):
 
         if storage is not None:
             self._storage = storage
-        else:
+        else:  # pragma: no cover
             self._storage = FileStorage(serializer=DictSerializer())
 
-        if cache_controller is not None:
+        if cache_controller is not None:  # pragma: no cover
             self._controller = cache_controller
         else:
             self._controller = Controller()
