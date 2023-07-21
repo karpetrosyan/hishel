@@ -1,13 +1,7 @@
 import typing as tp
 
 import httpx
-from httpx._config import (
-    DEFAULT_LIMITS,
-    DEFAULT_MAX_REDIRECTS,
-    DEFAULT_TIMEOUT_CONFIG,
-    Limits,
-)
-from httpx._transports.base import BaseTransport
+from httpx._config import DEFAULT_LIMITS, DEFAULT_MAX_REDIRECTS, DEFAULT_TIMEOUT_CONFIG
 from httpx._types import (
     AuthTypes,
     CertTypes,
@@ -28,7 +22,10 @@ __all__ = (
     'CacheClient',
 )
 
+EventHook = tp.Callable[..., tp.Any]
+
 class CacheClient(httpx.Client):
+
     def __init__(
         self,
         *,
@@ -41,16 +38,16 @@ class CacheClient(httpx.Client):
         http1: bool = True,
         http2: bool = False,
         proxies: tp.Optional[ProxiesTypes] = None,
-        mounts: tp.Optional[tp.Mapping[str, BaseTransport]] = None,
+        mounts: tp.Optional[tp.Mapping[str, httpx.BaseTransport]] = None,
         timeout: TimeoutTypes = DEFAULT_TIMEOUT_CONFIG,
         follow_redirects: bool = False,
-        limits: Limits = DEFAULT_LIMITS,
+        limits: httpx.Limits = DEFAULT_LIMITS,
         max_redirects: int = DEFAULT_MAX_REDIRECTS,
         event_hooks: tp.Optional[
-            tp.Mapping[str, tp.List[tp.Callable[..., tp.Any]]]
+            tp.Mapping[str, tp.List[EventHook]]
         ] = None,
         base_url: URLTypes = "",
-        transport: tp.Optional[BaseTransport] = None,
+        transport: tp.Optional[httpx.BaseTransport] = None,
         app: tp.Optional[tp.Callable[..., tp.Any]] = None,
         trust_env: bool = True,
         default_encoding: tp.Union[str, tp.Callable[[bytes], str]] = "utf-8",

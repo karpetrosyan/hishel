@@ -42,7 +42,6 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             self._controller = Controller()
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-
         httpcore_request = to_httpcore_request(httpx_request=request)
         key = generate_key(
             httpcore_request.method,

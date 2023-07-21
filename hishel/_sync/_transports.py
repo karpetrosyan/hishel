@@ -42,7 +42,6 @@ class CacheTransport(httpx.BaseTransport):
             self._controller = Controller()
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
-
         httpcore_request = to_httpcore_request(httpx_request=request)
         key = generate_key(
             httpcore_request.method,
