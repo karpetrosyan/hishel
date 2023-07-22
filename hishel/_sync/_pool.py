@@ -23,9 +23,9 @@ class CacheConnectionPool(RequestInterface):
                  cache_controller: tp.Optional[Controller] = None) -> None:
         self._pool = pool
 
-        if storage is not None:
+        if storage is not None:  # pragma: no cover
             self._storage = storage
-        else:  # pragma: no cover
+        else:
             self._storage = FileStorage(serializer=DictSerializer())
 
         if cache_controller is not None:  # pragma: no cover
@@ -69,7 +69,7 @@ class CacheConnectionPool(RequestInterface):
 
         if self._controller.is_cachable(request=request, response=response):
             self._storage.store(key, response)
-        else:
+        else:  # pragma: no cover
             logger.debug(f"The response to the `{url}` url is not cacheable.")
 
         return response

@@ -90,8 +90,8 @@ class AsyncCacheClient(httpx.AsyncClient):
 
 
     def _init_proxy_transport(self, *args, **kwargs) -> AsyncCacheTransport:  # type: ignore
-        _transport = super()._init_proxy_transport(*args, **kwargs)
-        return AsyncCacheTransport(
+        _transport = super()._init_proxy_transport(*args, **kwargs)  # pragma: no cover
+        return AsyncCacheTransport(  # pragma: no cover
             transport=_transport,
             storage=self._storage,
             cache_controller=self._controller

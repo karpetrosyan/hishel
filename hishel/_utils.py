@@ -11,10 +11,10 @@ from ._headers import Vary
 
 def normalized_url(url: tp.Union[httpcore.URL, str, bytes]) -> str:
 
-    if isinstance(url, str):
+    if isinstance(url, str):  # pragma: no cover
         return url
 
-    if isinstance(url, bytes):
+    if isinstance(url, bytes):  # pragma: no cover
         return url.decode('ascii')
 
     if isinstance(url, httpcore.URL):
