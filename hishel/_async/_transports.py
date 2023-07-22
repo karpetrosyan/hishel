@@ -29,7 +29,6 @@ async def to_httpx_response(httpcore_response: httpcore.Response) -> httpx.Respo
         stream=MockStream(httpcore_response.content),
         extensions=httpcore_response.extensions
     )
-    await response.aread()  # TODO: drop this line?
     return response
 
 async def to_httpcore_response(httpx_response: httpx.Response) -> httpcore.Response:
