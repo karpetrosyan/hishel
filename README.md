@@ -9,7 +9,7 @@
 
 ## Features
 
-- 💾 Persistence: Responses are cached in the **persistent memory** for later use.
+- 💾 Persistence: Responses are cached in the [**persistent memory**](https://en.m.wikipedia.org/wiki/Persistent_memory) for later use.
 - 🤲 Compatibility: It is very simple to integrate with your **existing httpx client, transport, or httpcore pool.**
 - 🤗 Easy to use: You continue to use the httpx and httpcore interfaces. **Can be integrated with no changes to the code.**
 - 🧠 Smart: Attempts to clearly implement RFC 9111, understands `Vary`, `Etag`, `Last-Modified`,  `Cache-Control`, and `Expires` headers, and **handles response re-validation automatically**.
