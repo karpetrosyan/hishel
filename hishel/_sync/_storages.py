@@ -2,6 +2,7 @@ import logging
 import typing as tp
 from pathlib import Path
 
+import redis
 from httpcore import Response
 
 from hishel._serializers import BaseSerializer
@@ -13,6 +14,7 @@ logger = logging.getLogger('hishel.storages')
 
 __all__ = (
     'FileStorage',
+    'RedisStorage'
 )
 
 class BaseStorage:
@@ -28,6 +30,9 @@ class BaseStorage:
         raise NotImplementedError()
 
     def retreive(self, key: str) -> tp.Optional[Response]:
+        raise NotImplementedError()
+
+    def aclose(self) -> None:
         raise NotImplementedError()
 
 
@@ -65,6 +70,9 @@ class FileStorage(BaseStorage):
             )
         return None
 
+    def aclose(self) -> None:
+        return
+
     def delete(self, key: str) -> bool:
         response_path = self._base_path / key
 
@@ -72,3 +80,32 @@ class FileStorage(BaseStorage):
             response_path.unlink()
             return True
         return False
+
+
+class RedisStorage(BaseStorage):
+
+    def __init__(self,
+                 serializer: tp.Optional[BaseSerializer] = None,
+                 client: tp.Optional[redis.Redis] = None) -> None:
+        super().__init__(serializer)
+
+        if client is None:
+            self.client = redis.Redis()
+        else:
+            self.client = client
+
+    def store(self, key: str, response: Response) -> None:
+
+        self.client.set(key, self._serializer.dumps(response))
+
+    def retreive(self, key: str) -> tp.Optional[Response]:
+
+        cached_response = self.client.get(key)
+        if cached_response is None:
+            return None
+
+        return self._serializer.loads(cached_response)
+
+    def delete(self, key: str) -> bool:
+
+        return self.client.delete(key) > 0

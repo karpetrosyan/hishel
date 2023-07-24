@@ -2,6 +2,7 @@ import logging
 import typing as tp
 from pathlib import Path
 
+import redis.asyncio as redis
 from httpcore import Response
 
 from hishel._serializers import BaseSerializer
@@ -13,6 +14,7 @@ logger = logging.getLogger('hishel.storages')
 
 __all__ = (
     'AsyncFileStorage',
+    'AsyncRedisStorage'
 )
 
 class AsyncBaseStorage:
@@ -28,6 +30,9 @@ class AsyncBaseStorage:
         raise NotImplementedError()
 
     async def retreive(self, key: str) -> tp.Optional[Response]:
+        raise NotImplementedError()
+
+    async def aclose(self) -> None:
         raise NotImplementedError()
 
 
@@ -65,6 +70,9 @@ class AsyncFileStorage(AsyncBaseStorage):
             )
         return None
 
+    async def aclose(self) -> None:
+        return
+
     async def delete(self, key: str) -> bool:
         response_path = self._base_path / key
 
@@ -72,3 +80,32 @@ class AsyncFileStorage(AsyncBaseStorage):
             response_path.unlink()
             return True
         return False
+
+
+class AsyncRedisStorage(AsyncBaseStorage):
+
+    def __init__(self,
+                 serializer: tp.Optional[BaseSerializer] = None,
+                 client: tp.Optional[redis.Redis] = None) -> None:
+        super().__init__(serializer)
+
+        if client is None:
+            self.client = redis.Redis()
+        else:
+            self.client = client
+
+    async def store(self, key: str, response: Response) -> None:
+
+        await self.client.set(key, self._serializer.dumps(response))
+
+    async def retreive(self, key: str) -> tp.Optional[Response]:
+
+        cached_response = await self.client.get(key)
+        if cached_response is None:
+            return None
+
+        return self._serializer.loads(cached_response)
+
+    async def delete(self, key: str) -> bool:
+
+        return await self.client.delete(key) > 0

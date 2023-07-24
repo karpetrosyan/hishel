@@ -15,6 +15,8 @@ SUBS = [
     ('asynccontextmanager', 'contextmanager'),
     ('AsyncNetworkBackend', 'NetworkBackend'),
     ('AsyncByteStream', 'SyncByteStream'),
+    ('AsyncRedisStorage', 'RedisStorage'),
+    ('import redis.asyncio as redis', 'import redis'),
     ('AsyncCacheTransport', 'CacheTransport'),
     ('AsyncHTTPTransport', 'HTTPTransport'),
     ('aiter_raw', 'iter_raw'),
@@ -35,6 +37,7 @@ SUBS = [
     ('__aiter__', '__iter__'),
     ('*@pytest.mark.anyio', ''),
     ('*@pytest.mark.trio', ''),
+    ('*@pytest.mark.asyncio', ''),
 ]
 COMPILED_SUBS = [
     (re.compile(r'(^|\b)' + regex + r'($|\b)'), repl)
