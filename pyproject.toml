@@ -38,6 +38,10 @@ yaml = [
     "pyyaml==6.0.1",
 ]
 
+redis = [
+    "redis==4.6.0"
+]
+
 [project.urls]
 Homepage = "https://github.com/karosis88/hishel"
 Source = "https://github.com/karosis88/hishel"
