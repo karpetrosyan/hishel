@@ -32,7 +32,7 @@ class BaseStorage:
     def retreive(self, key: str) -> tp.Optional[Response]:
         raise NotImplementedError()
 
-    def aclose(self) -> None:
+    def close(self) -> None:
         raise NotImplementedError()
 
 
@@ -70,7 +70,7 @@ class FileStorage(BaseStorage):
             )
         return None
 
-    def aclose(self) -> None:
+    def close(self) -> None:
         return
 
     def delete(self, key: str) -> bool:
@@ -109,3 +109,6 @@ class RedisStorage(BaseStorage):
     def delete(self, key: str) -> bool:
 
         return self.client.delete(key) > 0
+
+    def close(self) -> None:
+        return self.client.close()

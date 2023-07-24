@@ -109,3 +109,6 @@ class AsyncRedisStorage(AsyncBaseStorage):
     async def delete(self, key: str) -> bool:
 
         return await self.client.delete(key) > 0
+
+    async def aclose(self) -> None:
+        return await self.client.close()
