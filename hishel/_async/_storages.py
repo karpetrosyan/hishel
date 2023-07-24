@@ -86,21 +86,21 @@ class AsyncRedisStorage(AsyncBaseStorage):
 
     def __init__(self,
                  serializer: tp.Optional[BaseSerializer] = None,
-                 client: tp.Optional[redis.Redis] = None) -> None:
+                 client: tp.Optional[redis.Redis] = None) -> None:  # type: ignore
         super().__init__(serializer)
 
         if client is None:
-            self.client = redis.Redis()
+            self._client = redis.Redis()  # type: ignore
         else:
-            self.client = client
+            self._client = client
 
     async def store(self, key: str, response: Response) -> None:
 
-        await self.client.set(key, self._serializer.dumps(response))
+        await self._client.set(key, self._serializer.dumps(response))
 
     async def retreive(self, key: str) -> tp.Optional[Response]:
 
-        cached_response = await self.client.get(key)
+        cached_response = await self._client.get(key)
         if cached_response is None:
             return None
 
@@ -108,7 +108,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
 
     async def delete(self, key: str) -> bool:
 
-        return await self.client.delete(key) > 0
+        return await self._client.delete(key) > 0
 
     async def aclose(self) -> None:
-        return await self.client.close()
+        await self._client.close()

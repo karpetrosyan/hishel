@@ -86,21 +86,21 @@ class RedisStorage(BaseStorage):
 
     def __init__(self,
                  serializer: tp.Optional[BaseSerializer] = None,
-                 client: tp.Optional[redis.Redis] = None) -> None:
+                 client: tp.Optional[redis.Redis] = None) -> None:  # type: ignore
         super().__init__(serializer)
 
         if client is None:
-            self.client = redis.Redis()
+            self._client = redis.Redis()  # type: ignore
         else:
-            self.client = client
+            self._client = client
 
     def store(self, key: str, response: Response) -> None:
 
-        self.client.set(key, self._serializer.dumps(response))
+        self._client.set(key, self._serializer.dumps(response))
 
     def retreive(self, key: str) -> tp.Optional[Response]:
 
-        cached_response = self.client.get(key)
+        cached_response = self._client.get(key)
         if cached_response is None:
             return None
 
@@ -108,7 +108,7 @@ class RedisStorage(BaseStorage):
 
     def delete(self, key: str) -> bool:
 
-        return self.client.delete(key) > 0
+        return self._client.delete(key) > 0
 
     def close(self) -> None:
-        return self.client.close()
+        self._client.close()

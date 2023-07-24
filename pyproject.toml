@@ -68,6 +68,8 @@ path = "CHANGELOG.md"
 [tool.mypy]
 strict = true
 show_error_codes = true
+warn_unused_ignores = false
+
 
 [[tool.mypy.overrides]]
 module = "tests.*"
