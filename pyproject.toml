@@ -78,7 +78,6 @@ check_untyped_defs = true
 
 [tool.pytest.ini_options]
 addopts = ["-rxXs", "--strict-config", "--strict-markers"]
-markers = ["copied_from(source, changes=None): mark test as copied from somewhere else, along with a description of changes made to accodomate e.g. our test setup"]
 filterwarnings = []
 
 [tool.coverage.run]
