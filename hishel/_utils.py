@@ -99,7 +99,7 @@ def parse_date(date: str) -> int:
     return timestamp
 
 
-def get_current_datetime(clock: tp.Optional[Clock] = None) -> str:
+def get_current_datetime(clock: tp.Optional[BaseClock] = None) -> str:
 
     if clock is None:
         clock = Clock()

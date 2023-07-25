@@ -1,4 +1,5 @@
 import logging
+import time
 import typing as tp
 from pathlib import Path
 
@@ -40,7 +41,8 @@ class AsyncFileStorage(AsyncBaseStorage):
 
     def __init__(self,
                  serializer: tp.Optional[BaseSerializer] = None,
-                 base_path: tp.Optional[Path] = None) -> None:
+                 base_path: tp.Optional[Path] = None,
+                 max_cache_age: tp.Optional[int] = None) -> None:
         super().__init__(serializer)
         if base_path:  # pragma: no cover
             self._base_path = base_path
@@ -51,6 +53,7 @@ class AsyncFileStorage(AsyncBaseStorage):
             self._base_path.mkdir(parents=True)
 
         self._file_manager = AsyncFileManager(is_binary=self._serializer.is_binary)
+        self._max_cache_age = max_cache_age
 
     async def store(self, key: str, response: Response) -> None:
 
@@ -81,22 +84,37 @@ class AsyncFileStorage(AsyncBaseStorage):
             return True
         return False
 
+    async def _remove_expired_caches(self) -> None:
+
+        if self._max_cache_age is None:
+            return
+
+        for file in self._base_path.iterdir():
+            if file.is_file():
+                age = time.time() - file.stat().st_mtime
+                if age > self._max_cache_age:
+                    file.unlink()
+
 
 class AsyncRedisStorage(AsyncBaseStorage):
 
     def __init__(self,
                  serializer: tp.Optional[BaseSerializer] = None,
-                 client: tp.Optional[redis.Redis] = None) -> None:  # type: ignore
+                 client: tp.Optional[redis.Redis] = None,  # type: ignore
+                 max_cache_age: tp.Optional[int] = None) -> None:
         super().__init__(serializer)
 
         if client is None:
             self._client = redis.Redis()  # type: ignore
         else:
             self._client = client
+        self._max_cache_age = max_cache_age
 
     async def store(self, key: str, response: Response) -> None:
 
-        await self._client.set(key, self._serializer.dumps(response))
+        await self._client.set(key,
+                               self._serializer.dumps(response),
+                               ex=self._max_cache_age)
 
     async def retreive(self, key: str) -> tp.Optional[Response]:
 
