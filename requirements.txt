@@ -8,7 +8,6 @@ black==23.3.0
 # tests
 pytest==7.3.1
 pytest-asyncio==0.21.1
-pytest-redis
 types-redis==4.6.0.3
 trio==0.21.0
 coverage==7.2.7
