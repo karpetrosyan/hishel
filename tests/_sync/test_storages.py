@@ -2,7 +2,7 @@ import pytest
 from httpcore import Request, Response
 
 from hishel import FileStorage, RedisStorage
-from hishel._utils import generate_key
+from hishel._utils import sleep, generate_key
 
 
 
@@ -28,34 +28,6 @@ def test_filestorage(use_temp_dir):
 
 
 
-def test_filestorage_delete(use_temp_dir):
-    storage = FileStorage()
-
-    request = Request(b"GET", "https://example.com")
-
-    key = generate_key(request.method, request.url, request.headers)
-
-    response = Response(200, headers=[], content=b"test")
-    response.read()
-
-    storage.store(key, response)
-
-    stored_response = storage.retreive(key)
-    assert stored_response
-
-    storage.delete(key)
-    assert not storage.retreive(key)
-
-
-
-def test_filestorage_delete_missing(use_temp_dir):
-    storage = FileStorage()
-
-    deleted = storage.delete("invalid key")
-    assert not deleted
-
-
-
 def test_redisstorage():
     storage = RedisStorage()
 
@@ -78,28 +50,48 @@ def test_redisstorage():
 
 
 
-def test_redisstorage_delete():
-    storage = RedisStorage()
+def test_filestorage_expired():
+    storage = FileStorage(max_cache_age=1)
+    first_request = Request(b"GET", "https://example.com")
+    second_request = Request(b"GET", "https://anotherexample.com")
 
-    request = Request(b"GET", "https://example.com")
-
-    key = generate_key(request.method, request.url, request.headers)
+    first_key = generate_key(
+        first_request.method, first_request.url, first_request.headers
+    )
+    second_key = generate_key(
+        second_request.method, second_request.url, second_request.headers
+    )
 
     response = Response(200, headers=[], content=b"test")
     response.read()
 
-    storage.store(key, response)
+    storage.store(first_key, response)
 
-    stored_response = storage.retreive(key)
-    assert stored_response
+    sleep(2)
+    storage.store(second_key, response)
 
-    storage.delete(key)
-    assert not storage.retreive(key)
-
+    assert storage.retreive(first_key) is None
 
 
-def test_redisstorage_delete_missing():
-    storage = RedisStorage()
 
-    deleted = storage.delete("invalid key")
-    assert not deleted
+def test_redisstorage_expired():
+    storage = RedisStorage(max_cache_age=1)
+    first_request = Request(b"GET", "https://example.com")
+    second_request = Request(b"GET", "https://anotherexample.com")
+
+    first_key = generate_key(
+        first_request.method, first_request.url, first_request.headers
+    )
+    second_key = generate_key(
+        second_request.method, second_request.url, second_request.headers
+    )
+
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+
+    storage.store(first_key, response)
+
+    sleep(2)
+    storage.store(second_key, response)
+
+    assert storage.retreive(first_key) is None

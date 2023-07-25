@@ -10,6 +10,7 @@ from hishel._serializers import BaseSerializer
 
 from .._files import AsyncFileManager
 from .._serializers import DictSerializer
+from .._synchronization import AsyncLock
 
 logger = logging.getLogger("hishel.storages")
 
@@ -51,42 +52,41 @@ class AsyncFileStorage(AsyncBaseStorage):
 
         self._file_manager = AsyncFileManager(is_binary=self._serializer.is_binary)
         self._max_cache_age = max_cache_age
+        self._lock = AsyncLock()
 
     async def store(self, key: str, response: Response) -> None:
         response_path = self._base_path / key
-        await self._file_manager.write_to(
-            str(response_path), self._serializer.dumps(response)
-        )
+
+        async with self._lock:
+            await self._file_manager.write_to(
+                str(response_path), self._serializer.dumps(response)
+            )
+        await self._remove_expired_caches()
 
     async def retreive(self, key: str) -> tp.Optional[Response]:
         response_path = self._base_path / key
 
-        if response_path.exists():
-            return self._serializer.loads(
-                await self._file_manager.read_from(str(response_path))
-            )
+        async with self._lock:
+            if response_path.exists():
+                return self._serializer.loads(
+                    await self._file_manager.read_from(str(response_path))
+                )
+        await self._remove_expired_caches()
         return None
 
     async def aclose(self) -> None:
         return
 
-    async def delete(self, key: str) -> bool:
-        response_path = self._base_path / key
-
-        if response_path.exists():
-            response_path.unlink()
-            return True
-        return False
-
     async def _remove_expired_caches(self) -> None:
         if self._max_cache_age is None:
             return
 
-        for file in self._base_path.iterdir():
-            if file.is_file():
-                age = time.time() - file.stat().st_mtime
-                if age > self._max_cache_age:
-                    file.unlink()
+        async with self._lock:
+            for file in self._base_path.iterdir():
+                if file.is_file():
+                    age = time.time() - file.stat().st_mtime
+                    if age > self._max_cache_age:
+                        file.unlink()
 
 
 class AsyncRedisStorage(AsyncBaseStorage):
@@ -115,9 +115,6 @@ class AsyncRedisStorage(AsyncBaseStorage):
             return None
 
         return self._serializer.loads(cached_response)
-
-    async def delete(self, key: str) -> bool:
-        return await self._client.delete(key) > 0
 
     async def aclose(self) -> None:
         await self._client.close()

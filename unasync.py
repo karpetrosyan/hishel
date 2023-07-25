@@ -28,6 +28,8 @@ SUBS = [
     ('handle_async_request', 'handle_request'),
     ('aread', 'read'),
     ('aclose', 'close'),
+    ('asleep', 'sleep'),
+    ('AsyncLock', 'Lock'),
     ('from httpcore._async.interfaces import AsyncRequestInterface',
      'from httpcore._sync.interfaces import RequestInterface'),
      ("from hishel._async._transports", "from hishel._sync._transports"),

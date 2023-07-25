@@ -10,6 +10,7 @@ from hishel._serializers import BaseSerializer
 
 from .._files import FileManager
 from .._serializers import DictSerializer
+from .._synchronization import Lock
 
 logger = logging.getLogger("hishel.storages")
 
@@ -51,42 +52,41 @@ class FileStorage(BaseStorage):
 
         self._file_manager = FileManager(is_binary=self._serializer.is_binary)
         self._max_cache_age = max_cache_age
+        self._lock = Lock()
 
     def store(self, key: str, response: Response) -> None:
         response_path = self._base_path / key
-        self._file_manager.write_to(
-            str(response_path), self._serializer.dumps(response)
-        )
+
+        with self._lock:
+            self._file_manager.write_to(
+                str(response_path), self._serializer.dumps(response)
+            )
+        self._remove_expired_caches()
 
     def retreive(self, key: str) -> tp.Optional[Response]:
         response_path = self._base_path / key
 
-        if response_path.exists():
-            return self._serializer.loads(
-                self._file_manager.read_from(str(response_path))
-            )
+        with self._lock:
+            if response_path.exists():
+                return self._serializer.loads(
+                    self._file_manager.read_from(str(response_path))
+                )
+        self._remove_expired_caches()
         return None
 
     def close(self) -> None:
         return
 
-    def delete(self, key: str) -> bool:
-        response_path = self._base_path / key
-
-        if response_path.exists():
-            response_path.unlink()
-            return True
-        return False
-
     def _remove_expired_caches(self) -> None:
         if self._max_cache_age is None:
             return
 
-        for file in self._base_path.iterdir():
-            if file.is_file():
-                age = time.time() - file.stat().st_mtime
-                if age > self._max_cache_age:
-                    file.unlink()
+        with self._lock:
+            for file in self._base_path.iterdir():
+                if file.is_file():
+                    age = time.time() - file.stat().st_mtime
+                    if age > self._max_cache_age:
+                        file.unlink()
 
 
 class RedisStorage(BaseStorage):
@@ -115,9 +115,6 @@ class RedisStorage(BaseStorage):
             return None
 
         return self._serializer.loads(cached_response)
-
-    def delete(self, key: str) -> bool:
-        return self._client.delete(key) > 0
 
     def close(self) -> None:
         self._client.close()

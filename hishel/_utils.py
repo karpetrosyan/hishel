@@ -5,6 +5,7 @@ import typing as tp
 from email.utils import parsedate_tz
 from hashlib import blake2b
 
+import anyio
 import httpcore
 from httpcore import URL
 
@@ -105,3 +106,11 @@ def get_current_datetime(clock: tp.Optional[BaseClock] = None) -> str:
         current_timestamp, tz=datetime.timezone(datetime.timedelta(0))
     )
     return current_datetime.strftime("%a, %d %b %Y %X GMT")
+
+
+async def asleep(seconds: int) -> None:
+    await anyio.sleep(seconds)
+
+
+def sleep(seconds: int) -> None:
+    time.sleep(seconds)
