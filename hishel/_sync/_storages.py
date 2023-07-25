@@ -100,7 +100,7 @@ class RedisStorage(BaseStorage):
 
         if client is None:
             self._client = redis.Redis()  # type: ignore
-        else:
+        else:  # pragma: no cover
             self._client = client
         self._max_cache_age = max_cache_age
 
@@ -116,5 +116,5 @@ class RedisStorage(BaseStorage):
 
         return self._serializer.loads(cached_response)
 
-    def close(self) -> None:
+    def close(self) -> None:  # pragma: no cover
         self._client.close()

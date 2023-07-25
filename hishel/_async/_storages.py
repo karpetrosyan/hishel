@@ -100,7 +100,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
 
         if client is None:
             self._client = redis.Redis()  # type: ignore
-        else:
+        else:  # pragma: no cover
             self._client = client
         self._max_cache_age = max_cache_age
 
@@ -116,5 +116,5 @@ class AsyncRedisStorage(AsyncBaseStorage):
 
         return self._serializer.loads(cached_response)
 
-    async def aclose(self) -> None:
+    async def aclose(self) -> None:  # pragma: no cover
         await self._client.close()

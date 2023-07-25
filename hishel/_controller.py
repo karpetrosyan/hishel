@@ -15,6 +15,8 @@ from ._utils import (
 
 HEURISTICALLY_CACHABLE = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
 
+__all__ = ("Controller",)
+
 
 def get_updated_headers(
     stored_response_headers: tp.List[tp.Tuple[bytes, bytes]],
@@ -94,6 +96,7 @@ class Controller:
         cache_heuristically: bool = False,
         clock: tp.Optional[BaseClock] = None,
         allow_stale: bool = False,
+        always_revalidate: bool = False,
     ):
         if cacheable_methods:
             self._cacheable_methods = cacheable_methods
@@ -111,6 +114,7 @@ class Controller:
             self._clock = Clock()
         self._cache_heuristically = cache_heuristically
         self._allow_stale = allow_stale
+        self._always_revalidate = always_revalidate
 
     def is_cachable(self, request: Request, response: Response) -> bool:
         """
@@ -197,7 +201,11 @@ class Controller:
             extract_header_values_decoded(response.headers, b"Cache-Control")
         )
 
-        if response_cache_control.no_cache:
+        if (
+            self._always_revalidate
+            or response_cache_control.no_cache
+            or response_cache_control.must_revalidate
+        ):
             self._make_request_conditional(request=request, response=response)
             return request
 

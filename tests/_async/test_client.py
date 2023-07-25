@@ -4,7 +4,7 @@ import hishel
 
 
 @pytest.mark.anyio
-async def test_transport():
+async def test_client():
     async with hishel.AsyncCacheClient() as client:
         await client.request(
             "GET",

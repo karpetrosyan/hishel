@@ -1,5 +1,4 @@
 import calendar
-import datetime
 import time
 import typing as tp
 from email.utils import parsedate_tz
@@ -96,16 +95,6 @@ def parse_date(date: str) -> int:
     expires = parsedate_tz(date)
     timestamp = calendar.timegm(expires[:6])  # type: ignore
     return timestamp
-
-
-def get_current_datetime(clock: tp.Optional[BaseClock] = None) -> str:
-    if clock is None:
-        clock = Clock()
-    current_timestamp = clock.now()
-    current_datetime = datetime.datetime.fromtimestamp(
-        current_timestamp, tz=datetime.timezone(datetime.timedelta(0))
-    )
-    return current_datetime.strftime("%a, %d %b %Y %X GMT")
 
 
 async def asleep(seconds: int) -> None:

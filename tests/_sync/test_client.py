@@ -4,7 +4,7 @@ import hishel
 
 
 
-def test_transport():
+def test_client():
     with hishel.CacheClient() as client:
         client.request(
             "GET",

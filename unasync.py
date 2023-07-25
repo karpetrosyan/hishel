@@ -26,6 +26,7 @@ SUBS = [
     ('AsyncClient', 'Client'),
     ('AsyncCacheConnectionPool', 'CacheConnectionPool'),
     ('handle_async_request', 'handle_request'),
+    ('install_on_async_client', 'install_on_client'),
     ('aread', 'read'),
     ('aclose', 'close'),
     ('asleep', 'sleep'),

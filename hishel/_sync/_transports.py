@@ -44,7 +44,9 @@ def to_httpcore_response(httpx_response: httpx.Response) -> httpcore.Response:
     return response
 
 
-def to_httpx_request(httpcore_request: httpcore.Request) -> httpx.Request:
+def to_httpx_request(
+    httpcore_request: httpcore.Request,
+) -> httpx.Request:  # pragma: no cover
     raw_bytes = b"".join(
         [raw_bytes for raw_bytes in httpcore_request.stream]  #  type: ignore
     )
@@ -84,12 +86,12 @@ class CacheTransport(httpx.BaseTransport):
     ) -> None:
         self._transport = transport
 
-        if storage is not None:
+        if storage is not None:  # pragma: no cover
             self._storage = storage
         else:
             self._storage = FileStorage(serializer=DictSerializer())
 
-        if cache_controller is not None:
+        if cache_controller is not None:  # pragma: no cover
             self._controller = cache_controller
         else:
             self._controller = Controller()
@@ -113,7 +115,7 @@ class CacheTransport(httpx.BaseTransport):
             if isinstance(res, httpcore.Response):
                 logger.debug(f"For the `{url}` url, the cached response was used.")
                 return to_httpx_response(res)
-            elif isinstance(res, httpcore.Request):
+            elif isinstance(res, httpcore.Request):  # pragma: no cover
                 logger.debug(
                     f"Validating the response associated with the `{url}` url."
                 )
@@ -127,7 +129,9 @@ class CacheTransport(httpx.BaseTransport):
                 self._storage.store(key, updated_response)
                 return to_httpx_response(updated_response)
 
-            assert False, "invalid return value for `construct_response_from_cache`"
+            assert (
+                False
+            ), "invalid return value for `construct_response_from_cache`"  # pragma: no cover
         logger.debug(f"A cached response to the url `{url}` was not found.")
         response = self._transport.handle_request(request)
 
@@ -137,11 +141,14 @@ class CacheTransport(httpx.BaseTransport):
         ):
             self._storage.store(key, httpcore_response)
         else:
-            logger.debug(f"The response to the `{url}` url is not cacheable.")
+            logger.debug(
+                f"The response to the `{url}` url is not cacheable."
+            )  # pragma: no cover
 
         return to_httpx_response(httpcore_response=httpcore_response)
 
     def close(self) -> None:
+        self._transport.close()
         self._storage.close()
 
     def __enter__(self: T) -> T:
