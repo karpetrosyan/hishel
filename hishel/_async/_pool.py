@@ -1,4 +1,5 @@
 import logging
+import types
 import typing as tp
 
 from httpcore._async.interfaces import AsyncRequestInterface
@@ -10,6 +11,8 @@ from .._utils import generate_key, normalized_url
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
 logger = logging.getLogger('hishel.pool')
+
+T = tp.TypeVar("T")
 
 __all__ = (
     "AsyncCacheConnectionPool",
@@ -52,7 +55,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
             if isinstance(res, Response):
                 logger.debug(f"For the `{url}` url, the cached response was used.")
                 return res
-            elif isinstance(res, Request):
+            elif isinstance(res, Request):  # pragma: no cover
                 logger.debug(f"Validating the response associated with the `{url}` url.")
                 response = await self._pool.handle_async_request(res)
                 await response.aread()
@@ -62,7 +65,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                 await self._storage.store(key, updated_response)
                 return updated_response
 
-            assert False, "invalid return value for `construct_response_from_cache`"
+            assert False, "invalid return value for `construct_response_from_cache`"  # pragma: no cover
         logger.debug(f"A cached response to the url `{url}` was not found.")
         response = await self._pool.handle_async_request(request)
         await response.aread()
@@ -73,3 +76,17 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
             logger.debug(f"The response to the `{url}` url is not cacheable.")
 
         return response
+
+    async def aclose(self) -> None:
+        await self._storage.aclose()
+
+    async def __aenter__(self: T) -> T:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: tp.Optional[tp.Type[BaseException]] = None,
+        exc_value: tp.Optional[BaseException] = None,
+        traceback: tp.Optional[types.TracebackType] = None,
+    ) -> None:
+        await self.aclose()

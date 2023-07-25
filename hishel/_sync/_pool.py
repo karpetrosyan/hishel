@@ -1,4 +1,5 @@
 import logging
+import types
 import typing as tp
 
 from httpcore._sync.interfaces import RequestInterface
@@ -10,6 +11,8 @@ from .._utils import generate_key, normalized_url
 from ._storages import BaseStorage, FileStorage
 
 logger = logging.getLogger('hishel.pool')
+
+T = tp.TypeVar("T")
 
 __all__ = (
     "CacheConnectionPool",
@@ -52,7 +55,7 @@ class CacheConnectionPool(RequestInterface):
             if isinstance(res, Response):
                 logger.debug(f"For the `{url}` url, the cached response was used.")
                 return res
-            elif isinstance(res, Request):
+            elif isinstance(res, Request):  # pragma: no cover
                 logger.debug(f"Validating the response associated with the `{url}` url.")
                 response = self._pool.handle_request(res)
                 response.read()
@@ -62,7 +65,7 @@ class CacheConnectionPool(RequestInterface):
                 self._storage.store(key, updated_response)
                 return updated_response
 
-            assert False, "invalid return value for `construct_response_from_cache`"
+            assert False, "invalid return value for `construct_response_from_cache`"  # pragma: no cover
         logger.debug(f"A cached response to the url `{url}` was not found.")
         response = self._pool.handle_request(request)
         response.read()
@@ -73,3 +76,17 @@ class CacheConnectionPool(RequestInterface):
             logger.debug(f"The response to the `{url}` url is not cacheable.")
 
         return response
+
+    def close(self) -> None:
+        self._storage.close()
+
+    def __enter__(self: T) -> T:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: tp.Optional[tp.Type[BaseException]] = None,
+        exc_value: tp.Optional[BaseException] = None,
+        traceback: tp.Optional[types.TracebackType] = None,
+    ) -> None:
+        self.close()

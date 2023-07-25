@@ -1,4 +1,5 @@
 import logging
+import types
 import typing as tp
 from typing import AsyncIterator
 
@@ -20,6 +21,8 @@ logger = logging.getLogger('hishel.transports')
 __all__ = (
     "AsyncCacheTransport",
 )
+T = tp.TypeVar("T")
+
 
 async def to_httpx_response(httpcore_response: httpcore.Response) -> httpx.Response:
 
@@ -128,3 +131,17 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             logger.debug(f"The response to the `{url}` url is not cacheable.")
 
         return await to_httpx_response(httpcore_response=httpcore_response)
+
+    async def aclose(self) -> None:
+        await self._storage.aclose()
+
+    async def __aenter__(self: T) -> T:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: tp.Optional[tp.Type[BaseException]] = None,
+        exc_value: tp.Optional[BaseException] = None,
+        traceback: tp.Optional[types.TracebackType] = None,
+    ) -> None:
+        await self.aclose()

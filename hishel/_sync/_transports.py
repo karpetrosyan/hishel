@@ -1,4 +1,5 @@
 import logging
+import types
 import typing as tp
 from typing import Iterator
 
@@ -20,6 +21,8 @@ logger = logging.getLogger('hishel.transports')
 __all__ = (
     "CacheTransport",
 )
+T = tp.TypeVar("T")
+
 
 def to_httpx_response(httpcore_response: httpcore.Response) -> httpx.Response:
 
@@ -128,3 +131,17 @@ class CacheTransport(httpx.BaseTransport):
             logger.debug(f"The response to the `{url}` url is not cacheable.")
 
         return to_httpx_response(httpcore_response=httpcore_response)
+
+    def close(self) -> None:
+        self._storage.close()
+
+    def __enter__(self: T) -> T:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: tp.Optional[tp.Type[BaseException]] = None,
+        exc_value: tp.Optional[BaseException] = None,
+        traceback: tp.Optional[types.TracebackType] = None,
+    ) -> None:
+        self.close()
