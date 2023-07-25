@@ -19,7 +19,7 @@
 ## Features
 
 - 💾 Persistence: Responses are cached in the [**persistent memory**](https://en.m.wikipedia.org/wiki/Persistent_memory) for later use.
-- 🤲 Compatibility: It is very simple to integrate with your **existing httpx client, transport, or httpcore pool.**
+- 🤲 Compatibility: It is completely compatible with your existing transports or connection pools, **whether they are default, custom, or provided by third-party libraries.**
 - 🤗 Easy to use: You continue to use the httpx and httpcore interfaces. **Can be integrated with no changes to the code.**
 - 🧠 Smart: Attempts to clearly implement RFC 9111, understands `Vary`, `Etag`, `Last-Modified`,  `Cache-Control`, and `Expires` headers, and **handles response re-validation automatically**.
 - ⚙️ Configurable: You can specify the **backend** where the responses should be stored, the **serializer**, and you can write your own **backends and serializers**. You can also specify which parts of RFC 9111 **should be ignored and which should not**, for example, you can explicitly disable stale responses for your safety or enable re-validation for each response before using it. 
@@ -43,70 +43,9 @@ with hishel.CacheClient() as client:
     client.get("https://www.github.com")  # takes from the cache (very fast!)
 ```
 
-If the response is cacheable according to **RFC 9111**, hishel will save it for later use, so the user only needs to change the client and the rest of the staff will be done automatically.
+If the response is cacheable according to **RFC 9111**, hishel will save it for later use, so the user only needs to change the **client and the rest of the staff will be done automatically.**
 
-By default, Hishel stores responses in the **./cache/hishel** directory, but this behavior can be overridden by explicitly specifying storage.
-
-If we look, we can see that a new file was created in that directory. This is our serialized response. Hishel uses the json serializer by default, but we can explicitly set the other supported serializers, such as **YAML** and **Pickle** serializers.
-
-This is how the file looks.
-
-``` json
-{
-    "status": 301,
-    "headers": [
-        [
-            "Location",
-            "http://www.google.com/"
-        ],
-        [
-            "Content-Type",
-            "text/html; charset=UTF-8"
-        ],
-        [
-            "Content-Security-Policy-Report-Only",
-            "object-src 'none';base-uri 'self';script-src 'nonce-Ifk03ScgVPq-s5nrobBQVA' 'strict-dynamic' 'report-sample' 'unsafe-eval' 'unsafe-inline' https: http:;report-uri https://csp.withgoogle.com/csp/gws/other-hp"
-        ],
-        [
-            "Date",
-            "Tue, 25 Jul 2023 11:39:56 GMT"
-        ],
-        [
-            "Expires",
-            "Thu, 24 Aug 2023 11:39:56 GMT"
-        ],
-        [
-            "Cache-Control",
-            "public, max-age=2592000"
-        ],
-        [
-            "Server",
-            "gws"
-        ],
-        [
-            "Content-Length",
-            "219"
-        ],
-        [
-            "X-XSS-Protection",
-            "0"
-        ],
-        [
-            "X-Frame-Options",
-            "SAMEORIGIN"
-        ]
-    ],
-    "content": "PEhUTUw+PEhFQUQ+PG1ldGEgaHR0cC1lcXVpdj0iY29udGVudC10eXBlIiBjb250ZW50PSJ0ZXh0L2h0bWw7Y2hhcnNldD11dGYtOCI+CjxUSVRMRT4zMDEgTW92ZWQ8L1RJVExFPjwvSEVBRD48Qk9EWT4KPEgxPjMwMSBNb3ZlZDwvSDE+ClRoZSBkb2N1bWVudCBoYXMgbW92ZWQKPEEgSFJFRj0iaHR0cDovL3d3dy5nb29nbGUuY29tLyI+aGVyZTwvQT4uDQo8L0JPRFk+PC9IVE1MPg0K",
-    "extensions": {
-        "http_version": "HTTP/1.1",
-        "reason_phrase": "Moved Permanently"
-    }
-}
-```
-
-There is all the information required to rebuild the response, including the content value encoded in base64.
-
-Hishel also works well with httpcore, and you can make your httpcore connection pools cacheable with a single line of code.
+Hishel also works well with httpcore, and you can **make your httpcore connection pools cacheable with a single line of code.**
 
 Your existing code
 ``` python
@@ -146,3 +85,20 @@ req = httpx.Request("GET",
 cache_transport.handle_request(req)
 cache_transport.handle_request(req)
 ```
+
+## How and where are the responses saved?
+
+Hishel supports a variety of backends for storing responses, but the **filesystem is the default**.
+
+You can also use another backend, such as **redis**, to store your responses, or even **write your own** if necessary.
+
+
+## Contributing
+
+Hishel is a powerful tool, but it is also a new project with potential flaws, so we welcome contributions!
+
+The most common strategy for contributing `Hishel` appears to be:
+
+- Fork the project
+- Make change
+- Open the pull request
