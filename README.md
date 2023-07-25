@@ -2,6 +2,9 @@
 
 [![PyPI - Version](https://img.shields.io/pypi/v/hishel.svg)](https://pypi.org/project/hishel)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/hishel.svg)](https://pypi.org/project/hishel)
+![PyPI - License](https://img.shields.io/pypi/l/hishel)
+![Codecov](https://img.shields.io/codecov/c/github/karosis88/hishel)
+
 
 -----
 
