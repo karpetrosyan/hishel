@@ -1,4 +1,10 @@
-# hishel
+<p align="center">
+  <a href=""><img width="350" height="250" src="https://raw.githubusercontent.com/karosis88/hishel/master/.github/logo.jpg" alt='HTTPX'></a>
+</p>
+
+
+<p align="center"><strong>Hishel</strong> <em>- An elegant HTTP Cache implementation for httpx and httpcore.</em></p>
+
 
 [![PyPI - Version](https://img.shields.io/pypi/v/hishel.svg)](https://pypi.org/project/hishel)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/hishel.svg)](https://pypi.org/project/hishel)
@@ -16,6 +22,9 @@
 - 🤲 Compatibility: It is very simple to integrate with your **existing httpx client, transport, or httpcore pool.**
 - 🤗 Easy to use: You continue to use the httpx and httpcore interfaces. **Can be integrated with no changes to the code.**
 - 🧠 Smart: Attempts to clearly implement RFC 9111, understands `Vary`, `Etag`, `Last-Modified`,  `Cache-Control`, and `Expires` headers, and **handles response re-validation automatically**.
+- ⚙️ Configurable: You can specify the **backend** where the responses should be stored, the **serializer**, and you can write your own **backends and serializers**. You can also specify which parts of RFC 9111 **should be ignored and which should not**, for example, you can explicitly disable stale responses for your safety or enable re-validation for each response before using it. 
+- 🚀 Very fast: When **IO is not required**, your requests are even faster.
+
 
 ## QuickStart
 
