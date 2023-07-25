@@ -1,6 +1,7 @@
 from httpcore import Request, Response
 
-from hishel._controller import BaseClock, Clock, Controller, allowed_stale, get_age, get_freshness_lifetime
+from hishel._controller import Controller, allowed_stale, get_age, get_freshness_lifetime
+from hishel._utils import BaseClock, Clock
 
 
 def test_is_cachable_for_cachables():
@@ -186,7 +187,7 @@ def test_get_age():
     response = Response(
         status=200,
         headers=[
-            (b'Date', b'Mon, 25 Aug 2015 12:00:00 GMT')
+            (b'Date', b'Tue, 25 Aug 2015 12:00:00 GMT')
         ]
     )
     age = get_age(response=response, clock=MockedClock())

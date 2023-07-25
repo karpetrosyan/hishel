@@ -1,16 +1,10 @@
-import time
 import typing as tp
 
 from httpcore import Request, Response
 
 from hishel._headers import parse_cache_control
 
-from ._utils import (
-    extract_header_values,
-    extract_header_values_decoded,
-    header_presents,
-    parse_date,
-)
+from ._utils import BaseClock, Clock, extract_header_values, extract_header_values_decoded, header_presents, parse_date
 
 HEURISTICALLY_CACHABLE = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
 
@@ -78,16 +72,6 @@ def allowed_stale(response: Response) -> bool:
         return False
 
     return True
-
-class BaseClock:
-
-    def now(self) -> int:
-        raise NotImplementedError()
-
-class Clock(BaseClock):
-
-    def now(self) -> int:
-        return int(time.time())
 
 class Controller:
 

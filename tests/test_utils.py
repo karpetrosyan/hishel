@@ -4,9 +4,11 @@ from httpcore import Request
 
 from hishel._controller import get_updated_headers
 from hishel._utils import (
+    BaseClock,
     extract_header_values,
     extract_header_values_decoded,
     generate_key,
+    get_current_datetime,
     header_presents,
     parse_date,
 )
@@ -120,3 +122,24 @@ def test_parse_date():
     date = "Mon, 25 Aug 2015 12:00:00 GMT"
     timestamp = parse_date(date)
     assert timestamp == 1440504000
+
+
+def test_get_current_datetime():
+
+    class FixedClock(BaseClock):
+
+        def now(self) -> int:
+            return 1440504000
+
+    date = get_current_datetime(clock=FixedClock())
+
+    assert date == 'Tue, 25 Aug 2015 12:00:00 GMT'
+
+    class FixedClock(BaseClock):
+
+        def now(self) -> int:
+            return 1440504000 + 86400
+
+    date = get_current_datetime(clock=FixedClock())
+
+    assert date == 'Wed, 26 Aug 2015 12:00:00 GMT'
