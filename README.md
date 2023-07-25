@@ -29,9 +29,9 @@ Let's begin with an example of a httpx client.
 ```python
 import hishel
 
-client = hishel.CacheClient()
-client.get("https://www.github.com")
-client.get("https://www.github.com")  # takes from the cache (very fast!)
+with hishel.CacheClient() as client:
+    client.get("https://www.github.com")
+    client.get("https://www.github.com")  # takes from the cache (very fast!)
 ```
 
 If the response is cacheable according to **RFC 9111**, hishel will save it for later use, so the user only needs to change the client and the rest of the staff will be done automatically.
@@ -47,31 +47,47 @@ This is how the file looks.
     "status": 301,
     "headers": [
         [
-            "Server",
-            "nginx"
+            "Location",
+            "http://www.google.com/"
+        ],
+        [
+            "Content-Type",
+            "text/html; charset=UTF-8"
+        ],
+        [
+            "Content-Security-Policy-Report-Only",
+            "object-src 'none';base-uri 'self';script-src 'nonce-Ifk03ScgVPq-s5nrobBQVA' 'strict-dynamic' 'report-sample' 'unsafe-eval' 'unsafe-inline' https: http:;report-uri https://csp.withgoogle.com/csp/gws/other-hp"
         ],
         [
             "Date",
-            "Fri, 21 Jul 2023 14:23:50 GMT"
+            "Tue, 25 Jul 2023 11:39:56 GMT"
+        ],
+        [
+            "Expires",
+            "Thu, 24 Aug 2023 11:39:56 GMT"
+        ],
+        [
+            "Cache-Control",
+            "public, max-age=2592000"
+        ],
+        [
+            "Server",
+            "gws"
         ],
         [
             "Content-Length",
+            "219"
+        ],
+        [
+            "X-XSS-Protection",
             "0"
         ],
         [
-            "Connection",
-            "keep-alive"
-        ],
-        [
-            "Location",
-            "https://httpbun.org"
-        ],
-        [
-            "X-Powered-By",
-            "httpbun/3c0dc05883dd9212ac38b04705037d50b02f2596"
+            "X-Frame-Options",
+            "SAMEORIGIN"
         ]
     ],
-    "content": "",
+    "content": "PEhUTUw+PEhFQUQ+PG1ldGEgaHR0cC1lcXVpdj0iY29udGVudC10eXBlIiBjb250ZW50PSJ0ZXh0L2h0bWw7Y2hhcnNldD11dGYtOCI+CjxUSVRMRT4zMDEgTW92ZWQ8L1RJVExFPjwvSEVBRD48Qk9EWT4KPEgxPjMwMSBNb3ZlZDwvSDE+ClRoZSBkb2N1bWVudCBoYXMgbW92ZWQKPEEgSFJFRj0iaHR0cDovL3d3dy5nb29nbGUuY29tLyI+aGVyZTwvQT4uDQo8L0JPRFk+PC9IVE1MPg0K",
     "extensions": {
         "http_version": "HTTP/1.1",
         "reason_phrase": "Moved Permanently"
@@ -104,3 +120,20 @@ pool = hishel.CacheConnectionPool(pool=pool)
 
 As you can see, it is **extremely simple to integrate**. 
 
+Because `Hishel` respects your custom transports and connection pools, it requires the real **ConnectionPool** and the real **HTTPTransport** to work on top of it.
+
+**Transports** example:
+
+``` python
+import httpx
+import hishel
+
+transport = httpx.HTTPTransport()
+cache_transport = hishel.CacheTransport(transport=transport)
+
+req = httpx.Request("GET",
+                    "https://google.com")
+
+cache_transport.handle_request(req)
+cache_transport.handle_request(req)
+```
