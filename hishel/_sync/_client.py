@@ -6,8 +6,6 @@ from hishel._sync._transports import CacheTransport
 
 __all__ = ("CacheClient",)
 
-EventHook = tp.Callable[..., tp.Any]
-
 
 class CacheClient(httpx.Client):
     def __init__(self, *args: tp.Any, **kwargs: tp.Any):
