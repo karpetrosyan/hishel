@@ -1,6 +1,7 @@
 #! /bin/bash -ex
 
 
-python unasync.py check
-ruff .
+black --check --diff --exclude '/(_sync)/' tests hishel
+ruff tests hishel
 mypy tests hishel
+python unasync.py check

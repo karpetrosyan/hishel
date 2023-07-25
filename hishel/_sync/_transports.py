@@ -16,45 +16,46 @@ from .._controller import Controller
 from .._serializers import DictSerializer
 from ._storages import BaseStorage, FileStorage
 
-logger = logging.getLogger('hishel.transports')
+logger = logging.getLogger("hishel.transports")
 
-__all__ = (
-    "CacheTransport",
-)
+__all__ = ("CacheTransport",)
 T = tp.TypeVar("T")
 
 
 def to_httpx_response(httpcore_response: httpcore.Response) -> httpx.Response:
-
     response = httpx.Response(
         status_code=httpcore_response.status,
         headers=httpcore_response.headers,
         stream=MockStream(httpcore_response.content),
-        extensions=httpcore_response.extensions
+        extensions=httpcore_response.extensions,
     )
     return response
 
-def to_httpcore_response(httpx_response: httpx.Response) -> httpcore.Response:
 
-    raw_bytes = b''.join([raw_bytes for raw_bytes in httpx_response.iter_raw()])
+def to_httpcore_response(httpx_response: httpx.Response) -> httpcore.Response:
+    raw_bytes = b"".join([raw_bytes for raw_bytes in httpx_response.iter_raw()])
     response = httpcore.Response(
         status=httpx_response.status_code,
         headers=httpx_response.headers.raw,
         content=raw_bytes,
-        extensions=httpx_response.extensions
+        extensions=httpx_response.extensions,
     )
     response.read()
     return response
 
+
 def to_httpx_request(httpcore_request: httpcore.Request) -> httpx.Request:
-    raw_bytes = b''.join([raw_bytes for raw_bytes in httpcore_request.stream]) #  type: ignore
+    raw_bytes = b"".join(
+        [raw_bytes for raw_bytes in httpcore_request.stream]  #  type: ignore
+    )
     return httpx.Request(
         httpcore_request.method,
         normalized_url(httpcore_request.url),
         headers=httpcore_request.headers,
         extensions=httpcore_request.extensions,
-        stream=MockStream(raw_bytes)
+        stream=MockStream(raw_bytes),
     )
+
 
 def to_httpcore_request(httpx_request: httpx.Request) -> httpcore.Request:
     return httpcore.Request(
@@ -62,23 +63,25 @@ def to_httpcore_request(httpx_request: httpx.Request) -> httpcore.Request:
         str(httpx_request.url),
         headers=httpx_request.headers.raw,
         content=httpx_request.content,
-        extensions=httpx_request.extensions
+        extensions=httpx_request.extensions,
     )
 
-class MockStream(SyncByteStream):
 
+class MockStream(SyncByteStream):
     def __init__(self, content: bytes) -> None:
         self.content = content
 
     def __iter__(self) -> Iterator[bytes]:
         yield self.content
 
-class CacheTransport(httpx.BaseTransport):
 
-    def __init__(self,
-                 transport: httpx.BaseTransport,
-                 storage: tp.Optional[BaseStorage] = None,
-                 cache_controller: tp.Optional[Controller] = None) -> None:
+class CacheTransport(httpx.BaseTransport):
+    def __init__(
+        self,
+        transport: httpx.BaseTransport,
+        storage: tp.Optional[BaseStorage] = None,
+        cache_controller: tp.Optional[Controller] = None,
+    ) -> None:
         self._transport = transport
 
         if storage is not None:
@@ -94,9 +97,7 @@ class CacheTransport(httpx.BaseTransport):
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         httpcore_request = to_httpcore_request(httpx_request=request)
         key = generate_key(
-            httpcore_request.method,
-            httpcore_request.url,
-            httpcore_request.headers
+            httpcore_request.method, httpcore_request.url, httpcore_request.headers
         )
         url = normalized_url(httpcore_request.url)
 
@@ -105,17 +106,23 @@ class CacheTransport(httpx.BaseTransport):
         if stored_resposne:
             stored_resposne.read()
             logger.debug(f"The cached response for the `{url}` url was found.")
-            res = self._controller.construct_response_from_cache(request=httpcore_request, response=stored_resposne)
+            res = self._controller.construct_response_from_cache(
+                request=httpcore_request, response=stored_resposne
+            )
 
             if isinstance(res, httpcore.Response):
                 logger.debug(f"For the `{url}` url, the cached response was used.")
                 return to_httpx_response(res)
             elif isinstance(res, httpcore.Request):
-                logger.debug(f"Validating the response associated with the `{url}` url.")
-                response = self._transport.handle_request(to_httpx_request(res))
+                logger.debug(
+                    f"Validating the response associated with the `{url}` url."
+                )
+                response = self._transport.handle_request(
+                    to_httpx_request(res)
+                )
                 updated_response = self._controller.handle_validation_response(
                     old_response=stored_resposne,
-                    new_response=to_httpcore_response(response)
+                    new_response=to_httpcore_response(response),
                 )
                 self._storage.store(key, updated_response)
                 return to_httpx_response(updated_response)
@@ -125,7 +132,9 @@ class CacheTransport(httpx.BaseTransport):
         response = self._transport.handle_request(request)
 
         httpcore_response = to_httpcore_response(response)
-        if self._controller.is_cachable(request=httpcore_request, response=httpcore_response):
+        if self._controller.is_cachable(
+            request=httpcore_request, response=httpcore_response
+        ):
             self._storage.store(key, httpcore_response)
         else:
             logger.debug(f"The response to the `{url}` url is not cacheable.")

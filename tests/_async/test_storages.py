@@ -7,25 +7,13 @@ from hishel._utils import generate_key
 
 @pytest.mark.anyio
 async def test_filestorage(use_temp_dir):
-
     storage = AsyncFileStorage()
 
-    request = Request(
-        b"GET",
-        "https://example.com"
-    )
+    request = Request(b"GET", "https://example.com")
 
-    key = generate_key(
-        request.method,
-        request.url,
-        request.headers
-    )
+    key = generate_key(request.method, request.url, request.headers)
 
-    response = Response(
-        200,
-        headers=[],
-        content=b'test'
-    )
+    response = Response(200, headers=[], content=b"test")
     await response.aread()
 
     await storage.store(key, response)
@@ -36,29 +24,18 @@ async def test_filestorage(use_temp_dir):
     assert isinstance(storead_response, Response)
     assert storead_response.status == 200
     assert storead_response.headers == []
-    assert storead_response.content == b'test'
+    assert storead_response.content == b"test"
+
 
 @pytest.mark.anyio
 async def test_filestorage_delete(use_temp_dir):
-
     storage = AsyncFileStorage()
 
-    request = Request(
-        b"GET",
-        "https://example.com"
-    )
+    request = Request(b"GET", "https://example.com")
 
-    key = generate_key(
-        request.method,
-        request.url,
-        request.headers
-    )
+    key = generate_key(request.method, request.url, request.headers)
 
-    response = Response(
-        200,
-        headers=[],
-        content=b'test'
-    )
+    response = Response(200, headers=[], content=b"test")
     await response.aread()
 
     await storage.store(key, response)
@@ -72,7 +49,6 @@ async def test_filestorage_delete(use_temp_dir):
 
 @pytest.mark.anyio
 async def test_filestorage_delete_missing(use_temp_dir):
-
     storage = AsyncFileStorage()
 
     deleted = await storage.delete("invalid key")
@@ -81,25 +57,13 @@ async def test_filestorage_delete_missing(use_temp_dir):
 
 @pytest.mark.asyncio
 async def test_redisstorage():
-
     storage = AsyncRedisStorage()
 
-    request = Request(
-        b"GET",
-        "https://example.com"
-    )
+    request = Request(b"GET", "https://example.com")
 
-    key = generate_key(
-        request.method,
-        request.url,
-        request.headers
-    )
+    key = generate_key(request.method, request.url, request.headers)
 
-    response = Response(
-        200,
-        headers=[],
-        content=b'test'
-    )
+    response = Response(200, headers=[], content=b"test")
     await response.aread()
 
     await storage.store(key, response)
@@ -110,30 +74,18 @@ async def test_redisstorage():
     assert isinstance(storead_response, Response)
     assert storead_response.status == 200
     assert storead_response.headers == []
-    assert storead_response.content == b'test'
+    assert storead_response.content == b"test"
 
 
 @pytest.mark.asyncio
 async def test_redisstorage_delete():
-
     storage = AsyncRedisStorage()
 
-    request = Request(
-        b"GET",
-        "https://example.com"
-    )
+    request = Request(b"GET", "https://example.com")
 
-    key = generate_key(
-        request.method,
-        request.url,
-        request.headers
-    )
+    key = generate_key(request.method, request.url, request.headers)
 
-    response = Response(
-        200,
-        headers=[],
-        content=b'test'
-    )
+    response = Response(200, headers=[], content=b"test")
     await response.aread()
 
     await storage.store(key, response)

@@ -1,4 +1,5 @@
 #! /bin/bash -ex
 
-ruff --fix .
+black hishel tests
+ruff --fix hishel tests
 python unasync.py

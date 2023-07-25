@@ -10,20 +10,20 @@ from .._serializers import DictSerializer
 from .._utils import generate_key, normalized_url
 from ._storages import BaseStorage, FileStorage
 
-logger = logging.getLogger('hishel.pool')
+logger = logging.getLogger("hishel.pool")
 
 T = tp.TypeVar("T")
 
-__all__ = (
-    "CacheConnectionPool",
-)
+__all__ = ("CacheConnectionPool",)
+
 
 class CacheConnectionPool(RequestInterface):
-
-    def __init__(self,
-                 pool: RequestInterface,
-                 storage: tp.Optional[BaseStorage] = None,
-                 cache_controller: tp.Optional[Controller] = None) -> None:
+    def __init__(
+        self,
+        pool: RequestInterface,
+        storage: tp.Optional[BaseStorage] = None,
+        cache_controller: tp.Optional[Controller] = None,
+    ) -> None:
         self._pool = pool
 
         if storage is not None:  # pragma: no cover
@@ -37,12 +37,7 @@ class CacheConnectionPool(RequestInterface):
             self._controller = Controller()
 
     def handle_request(self, request: Request) -> Response:
-
-        key = generate_key(
-            request.method,
-            request.url,
-            request.headers
-        )
+        key = generate_key(request.method, request.url, request.headers)
         stored_resposne = self._storage.retreive(key)
 
         url = normalized_url(request.url)
@@ -50,13 +45,17 @@ class CacheConnectionPool(RequestInterface):
         if stored_resposne:
             stored_resposne.read()
             logger.debug(f"The cached response for the `{url}` url was found.")
-            res = self._controller.construct_response_from_cache(request=request, response=stored_resposne)
+            res = self._controller.construct_response_from_cache(
+                request=request, response=stored_resposne
+            )
 
             if isinstance(res, Response):
                 logger.debug(f"For the `{url}` url, the cached response was used.")
                 return res
             elif isinstance(res, Request):  # pragma: no cover
-                logger.debug(f"Validating the response associated with the `{url}` url.")
+                logger.debug(
+                    f"Validating the response associated with the `{url}` url."
+                )
                 response = self._pool.handle_request(res)
                 response.read()
                 updated_response = self._controller.handle_validation_response(
@@ -65,7 +64,9 @@ class CacheConnectionPool(RequestInterface):
                 self._storage.store(key, updated_response)
                 return updated_response
 
-            assert False, "invalid return value for `construct_response_from_cache`"  # pragma: no cover
+            assert (
+                False
+            ), "invalid return value for `construct_response_from_cache`"  # pragma: no cover
         logger.debug(f"A cached response to the url `{url}` was not found.")
         response = self._pool.handle_request(request)
         response.read()

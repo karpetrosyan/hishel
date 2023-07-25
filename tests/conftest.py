@@ -11,6 +11,6 @@ def use_temp_dir(tmpdir):
     os.chdir(cur_dir)
 
 
-@pytest.fixture(scope='function', autouse=True)
+@pytest.fixture(scope="function", autouse=True)
 def use_redisdb(redisdb):
     ...

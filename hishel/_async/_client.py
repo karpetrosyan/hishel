@@ -18,14 +18,12 @@ from hishel._async._storages import AsyncBaseStorage
 from hishel._async._transports import AsyncCacheTransport
 from hishel._controller import Controller
 
-__all__ = (
-    'AsyncCacheClient',
-)
+__all__ = ("AsyncCacheClient",)
 
 EventHook = tp.Callable[..., tp.Any]
 
-class AsyncCacheClient(httpx.AsyncClient):
 
+class AsyncCacheClient(httpx.AsyncClient):
     def __init__(
         self,
         *,
@@ -43,18 +41,15 @@ class AsyncCacheClient(httpx.AsyncClient):
         follow_redirects: bool = False,
         limits: httpx.Limits = DEFAULT_LIMITS,
         max_redirects: int = DEFAULT_MAX_REDIRECTS,
-        event_hooks: tp.Optional[
-            tp.Mapping[str, tp.List[EventHook]]
-        ] = None,
+        event_hooks: tp.Optional[tp.Mapping[str, tp.List[EventHook]]] = None,
         base_url: URLTypes = "",
         transport: tp.Optional[httpx.AsyncBaseTransport] = None,
         app: tp.Optional[tp.Callable[..., tp.Any]] = None,
         trust_env: bool = True,
         default_encoding: tp.Union[str, tp.Callable[[bytes], str]] = "utf-8",
         cache_storage: tp.Optional[AsyncBaseStorage] = None,
-        cache_controller: tp.Optional[Controller] = None
+        cache_controller: tp.Optional[Controller] = None,
     ):
-
         self._storage = cache_storage
         self._controller = cache_controller
         super().__init__(
@@ -77,22 +72,21 @@ class AsyncCacheClient(httpx.AsyncClient):
             transport=transport,
             app=app,
             trust_env=trust_env,
-            default_encoding=default_encoding)
+            default_encoding=default_encoding,
+        )
 
-
-    def _init_transport(self, *args, **kwargs)-> AsyncCacheTransport:  # type: ignore
+    def _init_transport(self, *args, **kwargs) -> AsyncCacheTransport:  # type: ignore
         _transport = super()._init_transport(*args, **kwargs)
         return AsyncCacheTransport(
             transport=_transport,
             storage=self._storage,
-            cache_controller=self._controller
+            cache_controller=self._controller,
         )
-
 
     def _init_proxy_transport(self, *args, **kwargs) -> AsyncCacheTransport:  # type: ignore
         _transport = super()._init_proxy_transport(*args, **kwargs)  # pragma: no cover
         return AsyncCacheTransport(  # pragma: no cover
             transport=_transport,
             storage=self._storage,
-            cache_controller=self._controller
+            cache_controller=self._controller,
         )

@@ -18,14 +18,12 @@ from hishel._sync._storages import BaseStorage
 from hishel._sync._transports import CacheTransport
 from hishel._controller import Controller
 
-__all__ = (
-    'CacheClient',
-)
+__all__ = ("CacheClient",)
 
 EventHook = tp.Callable[..., tp.Any]
 
-class CacheClient(httpx.Client):
 
+class CacheClient(httpx.Client):
     def __init__(
         self,
         *,
@@ -43,18 +41,15 @@ class CacheClient(httpx.Client):
         follow_redirects: bool = False,
         limits: httpx.Limits = DEFAULT_LIMITS,
         max_redirects: int = DEFAULT_MAX_REDIRECTS,
-        event_hooks: tp.Optional[
-            tp.Mapping[str, tp.List[EventHook]]
-        ] = None,
+        event_hooks: tp.Optional[tp.Mapping[str, tp.List[EventHook]]] = None,
         base_url: URLTypes = "",
         transport: tp.Optional[httpx.BaseTransport] = None,
         app: tp.Optional[tp.Callable[..., tp.Any]] = None,
         trust_env: bool = True,
         default_encoding: tp.Union[str, tp.Callable[[bytes], str]] = "utf-8",
         cache_storage: tp.Optional[BaseStorage] = None,
-        cache_controller: tp.Optional[Controller] = None
+        cache_controller: tp.Optional[Controller] = None,
     ):
-
         self._storage = cache_storage
         self._controller = cache_controller
         super().__init__(
@@ -77,22 +72,21 @@ class CacheClient(httpx.Client):
             transport=transport,
             app=app,
             trust_env=trust_env,
-            default_encoding=default_encoding)
+            default_encoding=default_encoding,
+        )
 
-
-    def _init_transport(self, *args, **kwargs)-> CacheTransport:  # type: ignore
+    def _init_transport(self, *args, **kwargs) -> CacheTransport:  # type: ignore
         _transport = super()._init_transport(*args, **kwargs)
         return CacheTransport(
             transport=_transport,
             storage=self._storage,
-            cache_controller=self._controller
+            cache_controller=self._controller,
         )
-
 
     def _init_proxy_transport(self, *args, **kwargs) -> CacheTransport:  # type: ignore
         _transport = super()._init_proxy_transport(*args, **kwargs)  # pragma: no cover
         return CacheTransport(  # pragma: no cover
             transport=_transport,
             storage=self._storage,
-            cache_controller=self._controller
+            cache_controller=self._controller,
         )

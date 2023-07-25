@@ -7,25 +7,13 @@ from hishel._utils import generate_key
 
 
 def test_filestorage(use_temp_dir):
-
     storage = FileStorage()
 
-    request = Request(
-        b"GET",
-        "https://example.com"
-    )
+    request = Request(b"GET", "https://example.com")
 
-    key = generate_key(
-        request.method,
-        request.url,
-        request.headers
-    )
+    key = generate_key(request.method, request.url, request.headers)
 
-    response = Response(
-        200,
-        headers=[],
-        content=b'test'
-    )
+    response = Response(200, headers=[], content=b"test")
     response.read()
 
     storage.store(key, response)
@@ -36,29 +24,18 @@ def test_filestorage(use_temp_dir):
     assert isinstance(storead_response, Response)
     assert storead_response.status == 200
     assert storead_response.headers == []
-    assert storead_response.content == b'test'
+    assert storead_response.content == b"test"
+
 
 
 def test_filestorage_delete(use_temp_dir):
-
     storage = FileStorage()
 
-    request = Request(
-        b"GET",
-        "https://example.com"
-    )
+    request = Request(b"GET", "https://example.com")
 
-    key = generate_key(
-        request.method,
-        request.url,
-        request.headers
-    )
+    key = generate_key(request.method, request.url, request.headers)
 
-    response = Response(
-        200,
-        headers=[],
-        content=b'test'
-    )
+    response = Response(200, headers=[], content=b"test")
     response.read()
 
     storage.store(key, response)
@@ -72,7 +49,6 @@ def test_filestorage_delete(use_temp_dir):
 
 
 def test_filestorage_delete_missing(use_temp_dir):
-
     storage = FileStorage()
 
     deleted = storage.delete("invalid key")
@@ -81,25 +57,13 @@ def test_filestorage_delete_missing(use_temp_dir):
 
 
 def test_redisstorage():
-
     storage = RedisStorage()
 
-    request = Request(
-        b"GET",
-        "https://example.com"
-    )
+    request = Request(b"GET", "https://example.com")
 
-    key = generate_key(
-        request.method,
-        request.url,
-        request.headers
-    )
+    key = generate_key(request.method, request.url, request.headers)
 
-    response = Response(
-        200,
-        headers=[],
-        content=b'test'
-    )
+    response = Response(200, headers=[], content=b"test")
     response.read()
 
     storage.store(key, response)
@@ -110,30 +74,18 @@ def test_redisstorage():
     assert isinstance(storead_response, Response)
     assert storead_response.status == 200
     assert storead_response.headers == []
-    assert storead_response.content == b'test'
+    assert storead_response.content == b"test"
 
 
 
 def test_redisstorage_delete():
-
     storage = RedisStorage()
 
-    request = Request(
-        b"GET",
-        "https://example.com"
-    )
+    request = Request(b"GET", "https://example.com")
 
-    key = generate_key(
-        request.method,
-        request.url,
-        request.headers
-    )
+    key = generate_key(request.method, request.url, request.headers)
 
-    response = Response(
-        200,
-        headers=[],
-        content=b'test'
-    )
+    response = Response(200, headers=[], content=b"test")
     response.read()
 
     storage.store(key, response)

@@ -6,11 +6,11 @@ import typing as tp
 import yaml
 from httpcore import Response
 
-HEADERS_ENCODING = 'iso-8859-1'
-KNOWN_RESPONSE_EXTENSIONS = ('http_version', 'reason_phrase')
+HEADERS_ENCODING = "iso-8859-1"
+KNOWN_RESPONSE_EXTENSIONS = ("http_version", "reason_phrase")
+
 
 class BaseSerializer:
-
     def dumps(self, response: Response) -> tp.Union[str, bytes]:
         raise NotImplementedError()
 
@@ -23,13 +23,16 @@ class BaseSerializer:
 
 
 class PickleSerializer(BaseSerializer):
-
     def dumps(self, response: Response) -> tp.Union[str, bytes]:
         clone_response = Response(
             status=response.status,
             headers=response.headers,
             content=response.content,
-            extensions={key: value for key, value in response.extensions.items() if key in KNOWN_RESPONSE_EXTENSIONS}
+            extensions={
+                key: value
+                for key, value in response.extensions.items()
+                if key in KNOWN_RESPONSE_EXTENSIONS
+            },
         )
         return pickle.dumps(clone_response)
 
@@ -41,20 +44,21 @@ class PickleSerializer(BaseSerializer):
     def is_binary(self) -> bool:  # pragma: no cover
         return True
 
-class DictSerializer(BaseSerializer):
 
+class DictSerializer(BaseSerializer):
     def dumps(self, response: Response) -> tp.Union[str, bytes]:
         response_dict = {
             "status": response.status,
             "headers": [
-                (
-                    key.decode(HEADERS_ENCODING),
-                    value.decode(HEADERS_ENCODING)
-                ) for key, value in response.headers],
-            "content": base64.b64encode(response.content).decode('ascii'),
+                (key.decode(HEADERS_ENCODING), value.decode(HEADERS_ENCODING))
+                for key, value in response.headers
+            ],
+            "content": base64.b64encode(response.content).decode("ascii"),
             "extensions": {
-                key: value.decode('ascii') for key, value in response.extensions.items()
-                if key in KNOWN_RESPONSE_EXTENSIONS}
+                key: value.decode("ascii")
+                for key, value in response.extensions.items()
+                if key in KNOWN_RESPONSE_EXTENSIONS
+            },
         }
 
         return json.dumps(response_dict, indent=4)
@@ -65,35 +69,36 @@ class DictSerializer(BaseSerializer):
         return Response(
             status=response_dict["status"],
             headers=[
-                (
-                    key.encode(HEADERS_ENCODING),
-                    value.encode(HEADERS_ENCODING)
-                ) for key, value in response_dict["headers"]],
-            content=base64.b64decode(response_dict["content"].encode('ascii')),
+                (key.encode(HEADERS_ENCODING), value.encode(HEADERS_ENCODING))
+                for key, value in response_dict["headers"]
+            ],
+            content=base64.b64decode(response_dict["content"].encode("ascii")),
             extensions={
-                key: value.encode('ascii') for key, value in response_dict["extensions"].items()
-                if key in KNOWN_RESPONSE_EXTENSIONS}
+                key: value.encode("ascii")
+                for key, value in response_dict["extensions"].items()
+                if key in KNOWN_RESPONSE_EXTENSIONS
+            },
         )
 
     @property
     def is_binary(self) -> bool:
         return False
 
+
 class YamlSerializer(BaseSerializer):
-
-
     def dumps(self, response: Response) -> tp.Union[str, bytes]:
         response_dict = {
             "status": response.status,
             "headers": [
-                (
-                    key.decode(HEADERS_ENCODING),
-                    value.decode(HEADERS_ENCODING)
-                ) for key, value in response.headers],
-            "content": base64.b64encode(response.content).decode('ascii'),
+                (key.decode(HEADERS_ENCODING), value.decode(HEADERS_ENCODING))
+                for key, value in response.headers
+            ],
+            "content": base64.b64encode(response.content).decode("ascii"),
             "extensions": {
-                key: value.decode('ascii') for key, value in response.extensions.items()
-                if key in KNOWN_RESPONSE_EXTENSIONS}
+                key: value.decode("ascii")
+                for key, value in response.extensions.items()
+                if key in KNOWN_RESPONSE_EXTENSIONS
+            },
         }
         return yaml.safe_dump(response_dict, sort_keys=False)
 
@@ -103,14 +108,15 @@ class YamlSerializer(BaseSerializer):
         return Response(
             status=response_dict["status"],
             headers=[
-                (
-                    key.encode(HEADERS_ENCODING),
-                    value.encode(HEADERS_ENCODING)
-                ) for key, value in response_dict["headers"]],
-            content=base64.b64decode(response_dict["content"].encode('ascii')),
+                (key.encode(HEADERS_ENCODING), value.encode(HEADERS_ENCODING))
+                for key, value in response_dict["headers"]
+            ],
+            content=base64.b64decode(response_dict["content"].encode("ascii")),
             extensions={
-                key: value.encode('ascii') for key, value in response_dict["extensions"].items()
-                if key in KNOWN_RESPONSE_EXTENSIONS}
+                key: value.encode("ascii")
+                for key, value in response_dict["extensions"].items()
+                if key in KNOWN_RESPONSE_EXTENSIONS
+            },
         )
 
     @property
