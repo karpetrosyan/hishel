@@ -13,7 +13,7 @@ from hishel._utils import (
 )
 
 from .._controller import Controller
-from .._serializers import DictSerializer
+from .._serializers import JSONSerializer
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
 logger = logging.getLogger("hishel.transports")
@@ -82,17 +82,17 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         self,
         transport: httpx.AsyncBaseTransport,
         storage: tp.Optional[AsyncBaseStorage] = None,
-        cache_controller: tp.Optional[Controller] = None,
+        controller: tp.Optional[Controller] = None,
     ) -> None:
         self._transport = transport
 
         if storage is not None:  # pragma: no cover
             self._storage = storage
         else:
-            self._storage = AsyncFileStorage(serializer=DictSerializer())
+            self._storage = AsyncFileStorage(serializer=JSONSerializer())
 
-        if cache_controller is not None:  # pragma: no cover
-            self._controller = cache_controller
+        if controller is not None:  # pragma: no cover
+            self._controller = controller
         else:
             self._controller = Controller()
 

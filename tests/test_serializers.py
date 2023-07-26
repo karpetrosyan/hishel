@@ -1,6 +1,6 @@
 from httpcore import Response
 
-from hishel._serializers import DictSerializer, PickleSerializer, YamlSerializer
+from hishel._serializers import JSONSerializer, PickleSerializer, YamlSerializer
 
 
 def test_pickle_serializer_dumps_and_loads():
@@ -38,7 +38,7 @@ def test_dict_serializer_dumps():
         extensions={"reason_phrase": b"OK", "http_version": b"HTTP/1.1"},
     )
     response.read()
-    response_dict = DictSerializer().dumps(response)
+    response_dict = JSONSerializer().dumps(response)
 
     assert response_dict == "\n".join(
         [
@@ -88,7 +88,7 @@ def test_dict_serializer_loads():
         ]
     )
 
-    response = DictSerializer().loads(raw_response)
+    response = JSONSerializer().loads(raw_response)
     response.read()
     assert response.status == 200
     assert response.headers == [

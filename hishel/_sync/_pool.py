@@ -6,7 +6,7 @@ from httpcore._sync.interfaces import RequestInterface
 from httpcore._models import Request, Response
 
 from .._controller import Controller
-from .._serializers import DictSerializer
+from .._serializers import JSONSerializer
 from .._utils import generate_key, normalized_url
 from ._storages import BaseStorage, FileStorage
 
@@ -22,17 +22,17 @@ class CacheConnectionPool(RequestInterface):
         self,
         pool: RequestInterface,
         storage: tp.Optional[BaseStorage] = None,
-        cache_controller: tp.Optional[Controller] = None,
+        controller: tp.Optional[Controller] = None,
     ) -> None:
         self._pool = pool
 
         if storage is not None:  # pragma: no cover
             self._storage = storage
         else:
-            self._storage = FileStorage(serializer=DictSerializer())
+            self._storage = FileStorage(serializer=JSONSerializer())
 
-        if cache_controller is not None:  # pragma: no cover
-            self._controller = cache_controller
+        if controller is not None:  # pragma: no cover
+            self._controller = controller
         else:
             self._controller = Controller()
 
