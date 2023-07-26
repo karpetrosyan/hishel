@@ -28,7 +28,7 @@ markdown_extensions:
   
 
 nav:
-  - Introduction: intro.md
+  - Introduction: index.md
   - User Guide:
       - Clients: clients.md
       - Transports: transports.md
