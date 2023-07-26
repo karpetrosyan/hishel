@@ -9,8 +9,8 @@ __all__ = ("CacheClient",)
 
 class CacheClient(httpx.Client):
     def __init__(self, *args: tp.Any, **kwargs: tp.Any):
-        self._storage = kwargs.get("storage", None)
-        self._controller = kwargs.get("controller", None)
+        self._storage = kwargs.pop("storage") if "storage" in kwargs else None
+        self._controller = kwargs.pop("controller") if "controller" in kwargs else None
         super().__init__(*args, **kwargs)
 
     def _init_transport(self, *args, **kwargs) -> CacheTransport:  # type: ignore

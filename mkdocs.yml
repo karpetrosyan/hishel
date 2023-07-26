@@ -1,0 +1,37 @@
+site_name: Hishel
+repo_url: https://github.com/karosis88/hishel
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+  custom_dir: docs/overrides
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - attr_list
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true 
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  
+
+nav:
+  - Introduction: intro.md
+  - User Guide:
+      - Clients: clients.md
+      - Transports: transports.md
+      - Pools: pools.md
+      - Storages: storages.md
+      - Serializers: serializers.md
