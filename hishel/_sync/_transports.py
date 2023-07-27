@@ -60,6 +60,7 @@ def to_httpx_request(
 
 
 def to_httpcore_request(httpx_request: httpx.Request) -> httpcore.Request:
+    httpx_request.read()  # read the request to access .content
     return httpcore.Request(
         httpx_request.method,
         str(httpx_request.url),

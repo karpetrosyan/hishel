@@ -59,7 +59,8 @@ async def to_httpx_request(
     )
 
 
-def to_httpcore_request(httpx_request: httpx.Request) -> httpcore.Request:
+async def to_httpcore_request(httpx_request: httpx.Request) -> httpcore.Request:
+    await httpx_request.read()  # read the request to access .content
     return httpcore.Request(
         httpx_request.method,
         str(httpx_request.url),
@@ -97,7 +98,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             self._controller = Controller()
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        httpcore_request = to_httpcore_request(httpx_request=request)
+        httpcore_request = await to_httpcore_request(httpx_request=request)
         key = generate_key(
             httpcore_request.method, httpcore_request.url, httpcore_request.headers
         )
