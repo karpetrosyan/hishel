@@ -2,7 +2,7 @@ import typing as tp
 
 from httpcore import Request, Response
 
-from hishel._headers import parse_cache_control
+from hishel._headers import Vary, parse_cache_control
 
 from ._utils import (
     BaseClock,
@@ -191,6 +191,17 @@ class Controller:
 
         request.headers.extend(precondition_headers)
 
+    def _validate_vary(self, request: Request, response: Response):
+        vary_header = extract_header_values_decoded(response.headers, b"vary")
+        vary = Vary.from_value(vary_values=vary_header)
+        for vary_header in vary._values:
+            if extract_header_values(
+                request.headers, vary_header
+            ) != extract_header_values(response.headers, vary_header):
+                return False
+
+        return True
+
     def construct_response_from_cache(
         self, request: Request, response: Response
     ) -> tp.Union[Response, Request]:
@@ -201,6 +212,15 @@ class Controller:
             extract_header_values_decoded(response.headers, b"Cache-Control")
         )
 
+        # request header fields nominated by the stored
+        # response (if any) match those presented (see Section 4.1)
+        if not self._validate_vary(request=request, response=response):
+            # If the vary headers does not match, then do not use the response
+            return request
+
+        # the stored response does not contain the
+        # no-cache directive (Section 5.2.2.4), unless
+        # it is successfully validated (Section 4.3)
         if (
             self._always_revalidate
             or response_cache_control.no_cache
@@ -216,10 +236,15 @@ class Controller:
             raise RuntimeError("Invalid response, can't calculate age")
 
         is_fresh = freshness_lifetime > age
+
+        # the stored response is one of the following:
+        #   fresh (see Section 4.2), or
+        #   allowed to be served stale (see Section 4.2.4), or
+        #   successfully validated (see Section 4.3).
         if is_fresh or (self._allow_stale and allowed_stale(response)):
             return response
-
         else:
+            # Otherwise, make a conditional request
             self._make_request_conditional(request=request, response=response)
             return request
 

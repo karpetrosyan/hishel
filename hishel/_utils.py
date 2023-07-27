@@ -8,7 +8,7 @@ import anyio
 import httpcore
 from httpcore import URL
 
-from ._headers import Vary
+HEADERS_ENCODING = "iso-8859-1"
 
 
 class BaseClock:
@@ -37,7 +37,6 @@ def normalized_url(url: tp.Union[httpcore.URL, str, bytes]) -> str:
 def generate_key(
     method: bytes, url: URL, headers: tp.List[tp.Tuple[bytes, bytes]]
 ) -> str:
-
     encoded_url = normalized_url(url).encode("ascii")
 
     key_parts = [
@@ -52,8 +51,12 @@ def generate_key(
 
 
 def extract_header_values(
-    headers: tp.List[tp.Tuple[bytes, bytes]], header_key: bytes, single: bool = False
+    headers: tp.List[tp.Tuple[bytes, bytes]],
+    header_key: tp.Union[bytes, str],
+    single: bool = False,
 ) -> tp.List[bytes]:
+    if isinstance(header_key, str):
+        header_key = header_key.encode(HEADERS_ENCODING)
     extracted_headers = []
 
     for key, value in headers:
@@ -70,7 +73,7 @@ def extract_header_values_decoded(
     values = extract_header_values(
         headers=headers, header_key=header_key, single=single
     )
-    return [value.decode() for value in values]
+    return [value.decode(HEADERS_ENCODING) for value in values]
 
 
 def header_presents(
