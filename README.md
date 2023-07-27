@@ -43,32 +43,22 @@ with hishel.CacheClient() as client:
     client.get("https://www.github.com")  # takes from the cache (very fast!)
 ```
 
-If the response is cacheable according to **RFC 9111**, hishel will save it for later use, so the user only needs to change the **client and the rest of the staff will be done automatically.**
+or in asynchronous context
 
-Hishel also works well with httpcore, and you can **make your httpcore connection pools cacheable with a single line of code.**
-
-Your existing code
-``` python
-from httpcore import ConnectionPool
-
-pool = ConnectionPool()
-
-...
-```
-
-Adding HTTP caching to your program will make it much faster and more efficient.
-``` python
+```python
 import hishel
-from httpcore import ConnectionPool
 
-pool = ConnectionPool()
-pool = hishel.CacheConnectionPool(pool=pool)
-...
+async with hishel.AsyncCacheClient() as client:
+    await client.get("https://www.github.com")
+    await client.get("https://www.github.com")  # takes from the cache
 ```
 
-As you can see, it is **extremely simple to integrate**. 
+## HTTPX and HTTP Core
 
-Because `Hishel` respects your custom transports and connection pools, it requires the real **ConnectionPool** and the real **HTTPTransport** to work on top of it.
+`Hishel` also supports the transports of `HTTPX` and the connection pools of `HTTP Core`.
+
+`Hishel` respects existing **transports** and **connection pools** and can therefore work **on top of them**, making hishel a very **compatible and flexible library**.
+
 
 **Transports** example:
 
@@ -79,26 +69,38 @@ import hishel
 transport = httpx.HTTPTransport()
 cache_transport = hishel.CacheTransport(transport=transport)
 
-req = httpx.Request("GET",
-                    "https://google.com")
+req = httpx.Request("GET", "https://www.github.com")
 
 cache_transport.handle_request(req)
-cache_transport.handle_request(req)
+cache_transport.handle_request(req)  # takes from the cache
+```
+
+**Connection Pool** example:
+
+
+```python
+import httpcore
+import hishel
+
+pool = hishel.CacheConnectionPool(pool=httpcore.ConnectionPool())
+
+pool.request("GET", "https://www.github.com")
+pool.request("GET", "https://www.github.com")  # takes from the cache
+
 ```
 
 ## How and where are the responses saved?
 
-Hishel supports a variety of backends for storing responses, but the **filesystem is the default**.
-
-You can also use another backend, such as **redis**, to store your responses, or even **write your own** if necessary.
+The responses are stored by `Hishel` in [storages](TODO). `Hishel` has a variety of built-in storage options, but the default storage is a [filesystem storage](TODO). You can switch the storage to another one that `Hishel` offers or, if necessary, write your own; for more information, see the storage documentation.
 
 
 ## Contributing
 
-Hishel is a powerful tool, but it is also a new project with potential flaws, so we welcome contributions!
+`Hishel` is a powerful tool, but it is also a new project with potential flaws, so we welcome contributions!
 
-The most common strategy for contributing `Hishel` appears to be:
+You can open the pull request by following these instructions if you want to improve `Hishel`. 💓
 
-- Fork the project
-- Make change
-- Open the pull request
+- Fork the project.
+- Make change.
+- Open the pull request.
+

@@ -9,6 +9,8 @@ from httpcore import Response
 HEADERS_ENCODING = "iso-8859-1"
 KNOWN_RESPONSE_EXTENSIONS = ("http_version", "reason_phrase")
 
+__all__ = ("PickleSerializer", "JSONSerializer", "YamlSerializer", "BaseSerializer")
+
 
 class BaseSerializer:
     def dumps(self, response: Response) -> tp.Union[str, bytes]:
@@ -45,7 +47,7 @@ class PickleSerializer(BaseSerializer):
         return True
 
 
-class DictSerializer(BaseSerializer):
+class JSONSerializer(BaseSerializer):
     def dumps(self, response: Response) -> tp.Union[str, bytes]:
         response_dict = {
             "status": response.status,

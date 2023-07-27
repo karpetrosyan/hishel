@@ -9,7 +9,7 @@ from httpcore import Response
 from hishel._serializers import BaseSerializer
 
 from .._files import FileManager
-from .._serializers import DictSerializer
+from .._serializers import JSONSerializer
 from .._synchronization import Lock
 
 logger = logging.getLogger("hishel.storages")
@@ -22,7 +22,7 @@ class BaseStorage:
         if serializer:  # pragma: no cover
             self._serializer = serializer
         else:
-            self._serializer = DictSerializer()
+            self._serializer = JSONSerializer()
 
     def store(self, key: str, response: Response) -> None:
         raise NotImplementedError()

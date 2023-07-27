@@ -13,7 +13,7 @@ from hishel._utils import (
 )
 
 from .._controller import Controller
-from .._serializers import DictSerializer
+from .._serializers import JSONSerializer
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
 logger = logging.getLogger("hishel.transports")
@@ -59,7 +59,8 @@ async def to_httpx_request(
     )
 
 
-def to_httpcore_request(httpx_request: httpx.Request) -> httpcore.Request:
+async def to_httpcore_request(httpx_request: httpx.Request) -> httpcore.Request:
+    await httpx_request.read()  # read the request to access .content
     return httpcore.Request(
         httpx_request.method,
         str(httpx_request.url),
@@ -82,22 +83,22 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         self,
         transport: httpx.AsyncBaseTransport,
         storage: tp.Optional[AsyncBaseStorage] = None,
-        cache_controller: tp.Optional[Controller] = None,
+        controller: tp.Optional[Controller] = None,
     ) -> None:
         self._transport = transport
 
         if storage is not None:  # pragma: no cover
             self._storage = storage
         else:
-            self._storage = AsyncFileStorage(serializer=DictSerializer())
+            self._storage = AsyncFileStorage(serializer=JSONSerializer())
 
-        if cache_controller is not None:  # pragma: no cover
-            self._controller = cache_controller
+        if controller is not None:  # pragma: no cover
+            self._controller = controller
         else:
             self._controller = Controller()
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        httpcore_request = to_httpcore_request(httpx_request=request)
+        httpcore_request = await to_httpcore_request(httpx_request=request)
         key = generate_key(
             httpcore_request.method, httpcore_request.url, httpcore_request.headers
         )

@@ -13,7 +13,7 @@ from hishel._utils import (
 )
 
 from .._controller import Controller
-from .._serializers import DictSerializer
+from .._serializers import JSONSerializer
 from ._storages import BaseStorage, FileStorage
 
 logger = logging.getLogger("hishel.transports")
@@ -60,6 +60,7 @@ def to_httpx_request(
 
 
 def to_httpcore_request(httpx_request: httpx.Request) -> httpcore.Request:
+    httpx_request.read()  # read the request to access .content
     return httpcore.Request(
         httpx_request.method,
         str(httpx_request.url),
@@ -82,17 +83,17 @@ class CacheTransport(httpx.BaseTransport):
         self,
         transport: httpx.BaseTransport,
         storage: tp.Optional[BaseStorage] = None,
-        cache_controller: tp.Optional[Controller] = None,
+        controller: tp.Optional[Controller] = None,
     ) -> None:
         self._transport = transport
 
         if storage is not None:  # pragma: no cover
             self._storage = storage
         else:
-            self._storage = FileStorage(serializer=DictSerializer())
+            self._storage = FileStorage(serializer=JSONSerializer())
 
-        if cache_controller is not None:  # pragma: no cover
-            self._controller = cache_controller
+        if controller is not None:  # pragma: no cover
+            self._controller = controller
         else:
             self._controller = Controller()
 
