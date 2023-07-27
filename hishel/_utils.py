@@ -37,24 +37,12 @@ def normalized_url(url: tp.Union[httpcore.URL, str, bytes]) -> str:
 def generate_key(
     method: bytes, url: URL, headers: tp.List[tp.Tuple[bytes, bytes]]
 ) -> str:
-    # TODO: sort vary headers
-    vary_values = [
-        val.decode("ascii") for val in extract_header_values(headers, b"vary")
-    ]
-    vary = Vary.from_value(vary_values=vary_values)
-    vary_headers_suffix = b""
-    for vary_value in vary._values:
-        vary_headers_suffix += vary_value.encode("ascii") + b"="
-        vary_headers_suffix += b", ".join(
-            extract_header_values(headers, vary_value.encode("ascii"))
-        )
 
     encoded_url = normalized_url(url).encode("ascii")
 
     key_parts = [
         method,
         encoded_url,
-        vary_headers_suffix,
     ]
 
     key = blake2b(digest_size=16)
