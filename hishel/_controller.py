@@ -289,7 +289,7 @@ class Controller:
 
         This method takes care of what to do with the incoming 
         validation response; if it is a 304 response, it updates 
-        the header with the new response and returns it.
+        the headers with the new response and returns it.
 
         This method mirrors the relevant section from RFC 9111, 
         see (https://www.rfc-editor.org/rfc/rfc9111.html#name-handling-a-validation-respo).
