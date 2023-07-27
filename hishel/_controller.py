@@ -98,27 +98,22 @@ class Controller:
         allow_stale: bool = False,
         always_revalidate: bool = False,
     ):
-        if cacheable_methods:
-            self._cacheable_methods = cacheable_methods
-        else:
-            self._cacheable_methods = ["GET"]
-
-        if cacheable_status_codes:
-            self._cacheable_status_codes = cacheable_status_codes
-        else:
-            self._cacheable_status_codes = [200, 301, 308]
-
-        if clock:  # pragma: no cover
-            self._clock = clock
-        else:
-            self._clock = Clock()
+        
+        self._cacheable_methods = cacheable_methods if cacheable_methods else ["GET"]
+        self._cacheable_status_codes = cacheable_status_codes if cacheable_status_codes else [200, 301, 308] 
+        self._clock = clock if clock else Clock()
         self._cache_heuristically = cache_heuristically
         self._allow_stale = allow_stale
         self._always_revalidate = always_revalidate
 
     def is_cachable(self, request: Request, response: Response) -> bool:
         """
-        According to https://www.rfc-editor.org/rfc/rfc9111.html#section-3
+        Determines whether the response may be cached.
+
+        The only thing this method does is determine whether the 
+        response associated with this request can be cached for later use. 
+        `https://www.rfc-editor.org/rfc/rfc9111.html#name-storing-responses-in-caches` 
+        lists the steps that this method simply follows.
         """
 
         method = request.method.decode("ascii")
@@ -171,6 +166,15 @@ class Controller:
         return True
 
     def _make_request_conditional(self, request: Request, response: Response) -> None:
+        """
+        Adds the precondition headers needed for response validation.
+
+        This method will use the "Last-Modified" or "Etag" headers 
+        if they are provided in order to create precondition headers.
+
+        See also (https://www.rfc-editor.org/rfc/rfc9111.html#name-sending-a-validation-reques)
+        """
+
         if header_presents(response.headers, b"last-modified"):
             last_modified = extract_header_values(
                 response.headers, b"last-modified", single=True
@@ -191,10 +195,21 @@ class Controller:
 
         request.headers.extend(precondition_headers)
 
-    def _validate_vary(self, request: Request, response: Response):
+    def _validate_vary(self, request: Request, response: Response) -> bool:
+        
+        """
+        Determines whether the "vary" headers in the request and response headers are identical.
+
+        See also (https://www.rfc-editor.org/rfc/rfc9111.html#name-calculating-cache-keys-with).
+        """
+
         vary_header = extract_header_values_decoded(response.headers, b"vary")
         vary = Vary.from_value(vary_values=vary_header)
         for vary_header in vary._values:
+
+            if vary_header == '*':
+                return False
+
             if extract_header_values(
                 request.headers, vary_header
             ) != extract_header_values(response.headers, vary_header):
@@ -204,7 +219,25 @@ class Controller:
 
     def construct_response_from_cache(
         self, request: Request, response: Response
-    ) -> tp.Union[Response, Request]:
+    ) -> tp.Union[Response, Request, None]:
+        
+        """
+        Specifies whether the response should be used, skipped, or validated by the cache.
+
+        This method makes a decision regarding what to do with 
+        the stored response when it is retrieved from storage. 
+        It might be ready for use or it might need to be revalidated. 
+        This method mirrors the relevant section from RFC 9111, 
+        see (https://www.rfc-editor.org/rfc/rfc9111.html#name-constructing-responses-from).
+
+        Returns:
+            Response: This response is applicable to the request.
+            Request: This response can be used for this request, but it must first be revalidated.
+            None: It is not possible to use this response for this request.
+        """
+
+        # Use of responses with status codes 301 and 308 is always 
+        # legal as long as they don't adhere to any caching rules.
         if response.status in (301, 308):
             return response
 
@@ -216,7 +249,7 @@ class Controller:
         # response (if any) match those presented (see Section 4.1)
         if not self._validate_vary(request=request, response=response):
             # If the vary headers does not match, then do not use the response
-            return request
+            return None
 
         # the stored response does not contain the
         # no-cache directive (Section 5.2.2.4), unless
@@ -251,6 +284,16 @@ class Controller:
     def handle_validation_response(
         self, old_response: Response, new_response: Response
     ) -> Response:
+        """
+        Handles incoming validation response.
+
+        This method takes care of what to do with the incoming 
+        validation response; if it is a 304 response, it updates 
+        the header with the new response and returns it.
+
+        This method mirrors the relevant section from RFC 9111, 
+        see (https://www.rfc-editor.org/rfc/rfc9111.html#name-handling-a-validation-respo).
+        """
         if new_response.status == 304:
             headers = get_updated_headers(
                 stored_response_headers=old_response.headers,
