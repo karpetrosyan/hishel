@@ -43,30 +43,38 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
         url = normalized_url(request.url)
 
         if stored_resposne:
-            await stored_resposne.aread()
+            # Try using the stored response if it was discovered.
+            
             logger.debug(f"The cached response for the `{url}` url was found.")
+
+            await stored_resposne.aread()
             res = self._controller.construct_response_from_cache(
                 request=request, response=stored_resposne
             )
 
             if isinstance(res, Response):
+                # Simply use the response if the controller determines it is ready for use.
                 logger.debug(f"For the `{url}` url, the cached response was used.")
                 return res
-            elif isinstance(res, Request):  # pragma: no cover
+            
+            if isinstance(res, Request):
                 logger.debug(
                     f"Validating the response associated with the `{url}` url."
                 )
                 response = await self._pool.handle_async_request(res)
                 await response.aread()
+
                 updated_response = self._controller.handle_validation_response(
                     old_response=stored_resposne, new_response=response
                 )
                 await self._storage.store(key, updated_response)
                 return updated_response
+            
+            logger.debug(
+                f"A stored response for the `{url}` was discovered, "
+                "but it was incompatible with the request."
+            )
 
-            assert (
-                False
-            ), "invalid return value for `construct_response_from_cache`"  # pragma: no cover
         logger.debug(f"A cached response to the url `{url}` was not found.")
         response = await self._pool.handle_async_request(request)
         await response.aread()
