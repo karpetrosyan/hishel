@@ -11,6 +11,8 @@ SUBS = [
     ('AsyncFileStorage', 'FileStorage'),
     ('AsyncBaseStorage', 'BaseStorage'),
     ('AsyncFileManager', 'FileManager'),
+    ('MockAsyncConnectionPool', 'MockConnectionPool'),
+    ('MockAsyncTransport', 'MockTransport'),
     ('AsyncConnectionPool', 'ConnectionPool'),
     ('asynccontextmanager', 'contextmanager'),
     ('AsyncNetworkBackend', 'NetworkBackend'),
