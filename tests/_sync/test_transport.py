@@ -5,14 +5,14 @@ import hishel
 
 
 
-def test_transport():
-    with httpx.HTTPTransport() as transport:
+def test_transport_301():
+    with hishel.MockTransport() as transport:
+        transport.add_responses(
+            [httpx.Response(301, headers=[(b"Location", b"https://example.com")])]
+        )
         with hishel.CacheTransport(transport=transport) as cache_transport:
-            request = httpx.Request(
-                "GET",
-                "https://httpbun.org/redirect/?url=https%3A//httpbun.org&status_code=301",
-            )
+            request = httpx.Request("GET", "https://www.example.com")
 
             cache_transport.handle_request(request)
             response = cache_transport.handle_request(request)
-            assert "network_stream" not in response.extensions
+            assert response.extensions["from_cache"]

@@ -1,12 +1,15 @@
 import typing as tp
+from types import TracebackType
 
 import httpcore
 import httpx
+from httpcore._sync.interfaces import RequestInterface
+from typing_extensions import Self
 
 __all__ = ("MockConnectionPool", "MockTransport")
 
 
-class MockConnectionPool(httpcore.ConnectionPool):
+class MockConnectionPool(RequestInterface):
     def handle_request(
         self, request: httpcore.Request
     ) -> httpcore.Response:
@@ -16,6 +19,17 @@ class MockConnectionPool(httpcore.ConnectionPool):
         if not hasattr(self, "mocked_responses"):
             self.mocked_responses = []
         self.mocked_responses.extend(responses)
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: tp.Optional[tp.Type[BaseException]] = None,
+        exc_value: tp.Optional[BaseException] = None,
+        traceback: tp.Optional[TracebackType] = None,
+    ) -> None:
+        ...
 
 
 class MockTransport(httpx.BaseTransport):
