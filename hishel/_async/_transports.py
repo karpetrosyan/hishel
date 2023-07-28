@@ -60,6 +60,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             if isinstance(res, httpcore.Response):
                 # Simply use the response if the controller determines it is ready for use.
                 assert isinstance(res.stream, tp.AsyncIterable)
+                res.extensions["from_cache"] = True  # type: ignore[index]
                 return Response(
                     status_code=res.status,
                     headers=res.headers,
@@ -96,6 +97,9 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 await self._storage.store(key, httpcore_response)
 
                 assert isinstance(httpcore_response.stream, tp.AsyncIterable)
+                httpcore_response.extensions["from_cache"] = (  # type: ignore[index]
+                    httpcore_response.status == 304
+                )
                 return Response(
                     status_code=httpcore_response.status,
                     headers=httpcore_response.headers,
@@ -118,6 +122,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             await httpcore_response.aread()
             await self._storage.store(key, httpcore_response)
 
+        response.extensions["from_cache"] = False  # type: ignore[index]
         return response
 
     async def aclose(self) -> None:

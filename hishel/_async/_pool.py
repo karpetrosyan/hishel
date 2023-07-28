@@ -42,6 +42,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
 
             if isinstance(res, Response):
                 # Simply use the response if the controller determines it is ready for use.
+                res.extensions["from_cache"] = True  # type: ignore[index]
                 return res
 
             if isinstance(res, Request):
@@ -55,6 +56,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                     old_response=stored_resposne, new_response=response
                 )
                 await self._storage.store(key, response)
+                response.extensions["from_cache"] = response.status == 304  # type: ignore[index]
                 return response
 
         response = await self._pool.handle_async_request(request)
@@ -63,6 +65,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
             await response.aread()
             await self._storage.store(key, response)
 
+        response.extensions["from_cache"] = False  # type: ignore[index]
         return response
 
     async def aclose(self) -> None:
