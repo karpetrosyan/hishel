@@ -3,6 +3,8 @@ import typing as tp
 import httpcore
 import httpx
 
+__all__ = ("MockConnectionPool", "MockTransport")
+
 
 class MockConnectionPool(httpcore.ConnectionPool):
     def handle_request(
