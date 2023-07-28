@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.3 (7/28/2023)
+
+- Add `from_cache` response extension.
+- Add `typing_extensions` into the requirements.
+
 ## 0.0.2 (7/25/2023)
 
 - Add [redis](https://redis.io/) support.
