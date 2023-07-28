@@ -16,6 +16,7 @@ types-redis==4.6.0.3
 trio==0.21.0
 coverage==7.2.7
 types-PyYAML==6.0.12.10
+typing_extensions==4.7.1
 
 # build
 hatch==1.7.0

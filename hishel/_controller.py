@@ -285,8 +285,8 @@ class Controller:
         """
         Handles incoming validation response.
 
-        This method takes care of what to do with the incoming 
-        validation response; if it is a 304 response, it updates 
+        This method takes care of what to do with the incoming
+        validation response; if it is a 304 response, it updates
         the headers with the new response and returns it.
 
         This method mirrors the relevant section from RFC 9111,

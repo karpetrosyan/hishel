@@ -5,13 +5,15 @@ import httpcore
 import httpx
 from httpx import Request, Response
 from httpx._transports.default import AsyncResponseStream
-from typing_extensions import Self
 
 from hishel._utils import generate_key, normalized_url
 
 from .._controller import Controller
 from .._serializers import JSONSerializer
 from ._storages import AsyncBaseStorage, AsyncFileStorage
+
+if tp.TYPE_CHECKING:
+    from typing_extensions import Self
 
 __all__ = ("AsyncCacheTransport",)
 
@@ -121,7 +123,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
     async def aclose(self) -> None:
         await self._storage.aclose()
 
-    async def __aenter__(self) -> Self:
+    async def __aenter__(self) -> "Self":
         return self
 
     async def __aexit__(
