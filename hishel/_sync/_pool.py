@@ -1,4 +1,3 @@
-import logging
 import types
 import typing as tp
 
@@ -7,10 +6,8 @@ from httpcore._models import Request, Response
 
 from .._controller import Controller
 from .._serializers import JSONSerializer
-from .._utils import generate_key, normalized_url
+from .._utils import generate_key
 from ._storages import BaseStorage, FileStorage
-
-logger = logging.getLogger("hishel.pool")
 
 T = tp.TypeVar("T")
 
@@ -25,56 +22,46 @@ class CacheConnectionPool(RequestInterface):
         controller: tp.Optional[Controller] = None,
     ) -> None:
         self._pool = pool
-
-        if storage is not None:  # pragma: no cover
-            self._storage = storage
-        else:
-            self._storage = FileStorage(serializer=JSONSerializer())
-
-        if controller is not None:  # pragma: no cover
-            self._controller = controller
-        else:
-            self._controller = Controller()
+        self._storage = (
+            storage
+            if storage is not None
+            else FileStorage(serializer=JSONSerializer())
+        )
+        self._controller = controller if controller is not None else Controller()
 
     def handle_request(self, request: Request) -> Response:
-        key = generate_key(request.method, request.url, request.headers)
+        key = generate_key(request)
         stored_resposne = self._storage.retreive(key)
 
-        url = normalized_url(request.url)
-
         if stored_resposne:
-            stored_resposne.read()
-            logger.debug(f"The cached response for the `{url}` url was found.")
+            # Try using the stored response if it was discovered.
+
             res = self._controller.construct_response_from_cache(
                 request=request, response=stored_resposne
             )
 
             if isinstance(res, Response):
-                logger.debug(f"For the `{url}` url, the cached response was used.")
+                # Simply use the response if the controller determines it is ready for use.
                 return res
-            elif isinstance(res, Request):  # pragma: no cover
-                logger.debug(
-                    f"Validating the response associated with the `{url}` url."
-                )
+
+            if isinstance(res, Request):
+                # Re-validating the response.
+
                 response = self._pool.handle_request(res)
                 response.read()
-                updated_response = self._controller.handle_validation_response(
+
+                # Merge headers with the stale response.
+                self._controller.handle_validation_response(
                     old_response=stored_resposne, new_response=response
                 )
-                self._storage.store(key, updated_response)
-                return updated_response
+                self._storage.store(key, response)
+                return response
 
-            assert (
-                False
-            ), "invalid return value for `construct_response_from_cache`"  # pragma: no cover
-        logger.debug(f"A cached response to the url `{url}` was not found.")
         response = self._pool.handle_request(request)
-        response.read()
 
         if self._controller.is_cachable(request=request, response=response):
+            response.read()
             self._storage.store(key, response)
-        else:  # pragma: no cover
-            logger.debug(f"The response to the `{url}` url is not cacheable.")
 
         return response
 

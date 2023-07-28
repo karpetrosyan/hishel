@@ -1,81 +1,19 @@
-import logging
 import types
 import typing as tp
-from typing import AsyncIterator
 
 import httpcore
 import httpx
-from httpx._types import AsyncByteStream
+from httpx import Request, Response
+from httpx._transports.default import AsyncResponseStream
+from typing_extensions import Self
 
-from hishel._utils import (
-    generate_key,
-    normalized_url,
-)
+from hishel._utils import generate_key, normalized_url
 
 from .._controller import Controller
 from .._serializers import JSONSerializer
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
-logger = logging.getLogger("hishel.transports")
-
 __all__ = ("AsyncCacheTransport",)
-T = tp.TypeVar("T")
-
-
-async def to_httpx_response(httpcore_response: httpcore.Response) -> httpx.Response:
-    response = httpx.Response(
-        status_code=httpcore_response.status,
-        headers=httpcore_response.headers,
-        stream=MockStream(httpcore_response.content),
-        extensions=httpcore_response.extensions,
-    )
-    return response
-
-
-async def to_httpcore_response(httpx_response: httpx.Response) -> httpcore.Response:
-    raw_bytes = b"".join([raw_bytes async for raw_bytes in httpx_response.aiter_raw()])
-    response = httpcore.Response(
-        status=httpx_response.status_code,
-        headers=httpx_response.headers.raw,
-        content=raw_bytes,
-        extensions=httpx_response.extensions,
-    )
-    await response.aread()
-    return response
-
-
-async def to_httpx_request(
-    httpcore_request: httpcore.Request,
-) -> httpx.Request:  # pragma: no cover
-    raw_bytes = b"".join(
-        [raw_bytes async for raw_bytes in httpcore_request.stream]  #  type: ignore
-    )
-    return httpx.Request(
-        httpcore_request.method,
-        normalized_url(httpcore_request.url),
-        headers=httpcore_request.headers,
-        extensions=httpcore_request.extensions,
-        stream=MockStream(raw_bytes),
-    )
-
-
-async def to_httpcore_request(httpx_request: httpx.Request) -> httpcore.Request:
-    await httpx_request.read()  # read the request to access .content
-    return httpcore.Request(
-        httpx_request.method,
-        str(httpx_request.url),
-        headers=httpx_request.headers.raw,
-        content=httpx_request.content,
-        extensions=httpx_request.extensions,
-    )
-
-
-class MockStream(AsyncByteStream):
-    def __init__(self, content: bytes) -> None:
-        self.content = content
-
-    async def __aiter__(self) -> AsyncIterator[bytes]:
-        yield self.content
 
 
 class AsyncCacheTransport(httpx.AsyncBaseTransport):
@@ -86,73 +24,104 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         controller: tp.Optional[Controller] = None,
     ) -> None:
         self._transport = transport
-
-        if storage is not None:  # pragma: no cover
-            self._storage = storage
-        else:
-            self._storage = AsyncFileStorage(serializer=JSONSerializer())
-
-        if controller is not None:  # pragma: no cover
-            self._controller = controller
-        else:
-            self._controller = Controller()
-
-    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        httpcore_request = await to_httpcore_request(httpx_request=request)
-        key = generate_key(
-            httpcore_request.method, httpcore_request.url, httpcore_request.headers
+        self._storage = (
+            storage
+            if storage is not None
+            else AsyncFileStorage(serializer=JSONSerializer())
         )
-        url = normalized_url(httpcore_request.url)
+        self._controller = controller if controller is not None else Controller()
 
+    async def handle_async_request(self, request: Request) -> Response:
+        httpcore_request = httpcore.Request(
+            method=request.method,
+            url=httpcore.URL(
+                scheme=request.url.raw_scheme,
+                host=request.url.raw_host,
+                port=request.url.port,
+                target=request.url.raw_path,
+            ),
+            headers=request.headers.raw,
+            content=request.stream,
+            extensions=request.extensions,
+        )
+
+        key = generate_key(httpcore_request)
         stored_resposne = await self._storage.retreive(key)
 
         if stored_resposne:
-            await stored_resposne.aread()
-            logger.debug(f"The cached response for the `{url}` url was found.")
+            # Try using the stored response if it was discovered.
+
             res = self._controller.construct_response_from_cache(
                 request=httpcore_request, response=stored_resposne
             )
 
             if isinstance(res, httpcore.Response):
-                logger.debug(f"For the `{url}` url, the cached response was used.")
-                return await to_httpx_response(res)
-            elif isinstance(res, httpcore.Request):  # pragma: no cover
-                logger.debug(
-                    f"Validating the response associated with the `{url}` url."
+                # Simply use the response if the controller determines it is ready for use.
+                assert isinstance(res.stream, tp.AsyncIterable)
+                return Response(
+                    status_code=res.status,
+                    headers=res.headers,
+                    stream=AsyncResponseStream(res.stream),
+                    extensions=res.extensions,
+                )
+
+            if isinstance(res, httpcore.Request):
+                # Re-validating the response.
+                assert isinstance(res.stream, tp.AsyncIterable)
+                revalidation_request = Request(
+                    method=res.method,
+                    url=normalized_url(res.url),
+                    headers=res.headers,
+                    stream=AsyncResponseStream(res.stream),
                 )
                 response = await self._transport.handle_async_request(
-                    await to_httpx_request(res)
+                    revalidation_request
                 )
-                updated_response = self._controller.handle_validation_response(
-                    old_response=stored_resposne,
-                    new_response=await to_httpcore_response(response),
+                assert isinstance(response.stream, tp.AsyncIterable)
+                httpcore_response = httpcore.Response(
+                    status=response.status_code,
+                    headers=response.headers.raw,
+                    content=AsyncResponseStream(response.stream),
+                    extensions=response.extensions,
                 )
-                await self._storage.store(key, updated_response)
-                return await to_httpx_response(updated_response)
 
-            assert (
-                False
-            ), "invalid return value for `construct_response_from_cache`"  # pragma: no cover
-        logger.debug(f"A cached response to the url `{url}` was not found.")
+                # Merge headers with the stale response.
+                self._controller.handle_validation_response(
+                    old_response=stored_resposne, new_response=httpcore_response
+                )
+
+                await httpcore_response.aread()
+                await self._storage.store(key, httpcore_response)
+
+                assert isinstance(httpcore_response.stream, tp.AsyncIterable)
+                return Response(
+                    status_code=httpcore_response.status,
+                    headers=httpcore_response.headers,
+                    stream=AsyncResponseStream(httpcore_response.stream),
+                    extensions=httpcore_response.extensions,
+                )
+
         response = await self._transport.handle_async_request(request)
+        assert isinstance(response.stream, tp.AsyncIterable)
+        httpcore_response = httpcore.Response(
+            status=response.status_code,
+            headers=response.headers.raw,
+            content=AsyncResponseStream(response.stream),
+            extensions=response.extensions,
+        )
 
-        httpcore_response = await to_httpcore_response(response)
         if self._controller.is_cachable(
             request=httpcore_request, response=httpcore_response
         ):
+            await httpcore_response.aread()
             await self._storage.store(key, httpcore_response)
-        else:
-            logger.debug(
-                f"The response to the `{url}` url is not cacheable."
-            )  # pragma: no cover
 
-        return await to_httpx_response(httpcore_response=httpcore_response)
+        return response
 
     async def aclose(self) -> None:
-        await self._transport.aclose()
         await self._storage.aclose()
 
-    async def __aenter__(self: T) -> T:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(

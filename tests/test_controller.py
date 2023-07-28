@@ -316,6 +316,7 @@ def test_handle_validation_response_not_changed():
     new_response = Response(
         status=304,
         headers=[(b"new-response", b"false"), (b"old-response", b"true")],
+        content=b"new",
     )
 
     response = controller.handle_validation_response(
@@ -325,3 +326,55 @@ def test_handle_validation_response_not_changed():
 
     assert response.headers == [(b"old-response", b"true"), (b"new-response", b"false")]
     assert response.content == b"old"
+
+
+def test_vary_validation():
+    request = Request(
+        method="GET",
+        url="https://example.com",
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+        ],
+    )
+
+    response = Response(
+        status=200,
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+            (b"Vary", b"Content-Type, Content-Language"),
+        ],
+    )
+
+    controller = Controller()
+
+    assert controller._validate_vary(request=request, response=response)
+
+    response.headers.pop(0)
+
+    assert not controller._validate_vary(request=request, response=response)
+
+
+def test_vary_validation_value_mismatch():
+    request = Request(
+        method="GET",
+        url="https://example.com",
+        headers=[
+            (b"Content-Type", b"application/html"),
+            (b"Content-Language", b"en-US"),
+        ],
+    )
+
+    response = Response(
+        status=200,
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+            (b"Vary", b"Content-Type, Content-Language"),
+        ],
+    )
+
+    controller = Controller()
+
+    assert not controller._validate_vary(request=request, response=response)

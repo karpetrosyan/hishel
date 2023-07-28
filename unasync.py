@@ -24,6 +24,8 @@ SUBS = [
     ('AsyncBaseTransport', 'BaseTransport'),
     ('AsyncCacheClient', 'CacheClient'),
     ('AsyncClient', 'Client'),
+    ('AsyncIterable', 'Iterable'),
+    ('AsyncResponseStream', 'ResponseStream'),
     ('AsyncCacheConnectionPool', 'CacheConnectionPool'),
     ('handle_async_request', 'handle_request'),
     ('install_on_async_client', 'install_on_client'),
