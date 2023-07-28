@@ -316,6 +316,7 @@ def test_handle_validation_response_not_changed():
     new_response = Response(
         status=304,
         headers=[(b"new-response", b"false"), (b"old-response", b"true")],
+        content=b"new",
     )
 
     response = controller.handle_validation_response(

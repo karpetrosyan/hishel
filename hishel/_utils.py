@@ -6,7 +6,6 @@ from hashlib import blake2b
 
 import anyio
 import httpcore
-from httpcore import URL
 
 HEADERS_ENCODING = "iso-8859-1"
 
@@ -34,13 +33,11 @@ def normalized_url(url: tp.Union[httpcore.URL, str, bytes]) -> str:
     assert False, "Invalid type for `normalized_url`"  # pragma: no cover
 
 
-def generate_key(
-    method: bytes, url: URL, headers: tp.List[tp.Tuple[bytes, bytes]]
-) -> str:
-    encoded_url = normalized_url(url).encode("ascii")
+def generate_key(request: httpcore.Request) -> str:
+    encoded_url = normalized_url(request.url).encode("ascii")
 
     key_parts = [
-        method,
+        request.method,
         encoded_url,
     ]
 

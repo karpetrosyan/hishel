@@ -34,6 +34,7 @@ client.get("GET", "https://example.com")  # will use filesystem as a storage
 ```
 
 
+
 ## Redis
 However, because the FileStorage class is already a default, there is no need to explicitly specify it; instead, we can select another backend, such as the popular in memory database redis!
 

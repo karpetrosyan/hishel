@@ -11,7 +11,7 @@ def test_filestorage(use_temp_dir):
 
     request = Request(b"GET", "https://example.com")
 
-    key = generate_key(request.method, request.url, request.headers)
+    key = generate_key(request)
 
     response = Response(200, headers=[], content=b"test")
     response.read()
@@ -33,7 +33,7 @@ def test_redisstorage():
 
     request = Request(b"GET", "https://example.com")
 
-    key = generate_key(request.method, request.url, request.headers)
+    key = generate_key(request)
 
     response = Response(200, headers=[], content=b"test")
     response.read()
@@ -55,12 +55,8 @@ def test_filestorage_expired():
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
-    first_key = generate_key(
-        first_request.method, first_request.url, first_request.headers
-    )
-    second_key = generate_key(
-        second_request.method, second_request.url, second_request.headers
-    )
+    first_key = generate_key(first_request)
+    second_key = generate_key(second_request)
 
     response = Response(200, headers=[], content=b"test")
     response.read()
@@ -79,12 +75,8 @@ def test_redisstorage_expired():
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
-    first_key = generate_key(
-        first_request.method, first_request.url, first_request.headers
-    )
-    second_key = generate_key(
-        second_request.method, second_request.url, second_request.headers
-    )
+    first_key = generate_key(first_request)
+    second_key = generate_key(second_request)
 
     response = Response(200, headers=[], content=b"test")
     response.read()

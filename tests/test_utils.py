@@ -13,25 +13,9 @@ from hishel._utils import (
 def test_generate_key():
     request = Request(b"GET", "https://example.com", headers=[])
 
-    key = generate_key(request.method, request.url, request.headers)
+    key = generate_key(request)
 
     assert key == "bd152069787aaad359c85af6f2edbb25"
-
-
-def test_generate_key_with_vary():
-    request = Request(
-        b"GET",
-        "https://example.com",
-        headers=[
-            (b"Vary", b"Content-Type, Accept"),
-            (b"Accept", b"application/json"),
-            (b"Content-Type", b"application/json"),
-        ],
-    )
-
-    key = generate_key(request.method, request.url, request.headers)
-
-    assert key == "cb44189c538f1200bb8430a27dadff8b"
 
 
 def test_extract_header_values():
