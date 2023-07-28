@@ -49,15 +49,16 @@ class CacheConnectionPool(RequestInterface):
                 # Re-validating the response.
 
                 response = self._pool.handle_request(res)
-                response.read()
 
                 # Merge headers with the stale response.
-                self._controller.handle_validation_response(
+                full_response = self._controller.handle_validation_response(
                     old_response=stored_resposne, new_response=response
                 )
-                self._storage.store(key, response)
-                response.extensions["from_cache"] = response.status == 304  # type: ignore[index]
-                return response
+
+                full_response.read()
+                self._storage.store(key, full_response)
+                full_response.extensions["from_cache"] = response.status == 304  # type: ignore[index]
+                return full_response
 
         response = self._pool.handle_request(request)
 

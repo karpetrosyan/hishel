@@ -49,15 +49,16 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                 # Re-validating the response.
 
                 response = await self._pool.handle_async_request(res)
-                await response.aread()
 
                 # Merge headers with the stale response.
-                self._controller.handle_validation_response(
+                full_response = self._controller.handle_validation_response(
                     old_response=stored_resposne, new_response=response
                 )
-                await self._storage.store(key, response)
-                response.extensions["from_cache"] = response.status == 304  # type: ignore[index]
-                return response
+
+                await full_response.aread()
+                await self._storage.store(key, full_response)
+                full_response.extensions["from_cache"] = response.status == 304  # type: ignore[index]
+                return full_response
 
         response = await self._pool.handle_async_request(request)
 

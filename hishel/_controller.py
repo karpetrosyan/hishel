@@ -207,7 +207,7 @@ class Controller:
         vary = Vary.from_value(vary_values=vary_headers)
         for vary_header in vary._values:
             if vary_header == "*":
-                return False
+                return False  # pragma: no cover
 
             if extract_header_values(
                 request.headers, vary_header
@@ -247,7 +247,7 @@ class Controller:
         # response (if any) match those presented (see Section 4.1)
         if not self._validate_vary(request=request, response=response):
             # If the vary headers does not match, then do not use the response
-            return None
+            return None  # pragma: no cover
 
         # the stored response does not contain the
         # no-cache directive (Section 5.2.2.4), unless

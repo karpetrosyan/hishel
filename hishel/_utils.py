@@ -55,7 +55,6 @@ def extract_header_values(
     if isinstance(header_key, str):
         header_key = header_key.encode(HEADERS_ENCODING)
     extracted_headers = []
-
     for key, value in headers:
         if key.lower() == header_key.lower():
             extracted_headers.append(value)

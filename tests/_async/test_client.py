@@ -1,17 +1,22 @@
+import httpx
 import pytest
 
 import hishel
 
 
 @pytest.mark.anyio
-async def test_client():
-    async with hishel.AsyncCacheClient() as client:
-        await client.request(
-            "GET",
-            "https://httpbun.org/redirect/?url=https%3A//httpbun.org&status_code=301",
+async def test_client_301():
+    async with hishel.MockAsyncTransport() as transport:
+        transport.add_responses(
+            [httpx.Response(301, headers=[(b"Location", b"https://example.com")])]
         )
-        response = await client.request(
-            "GET",
-            "https://httpbun.org/redirect/?url=https%3A//httpbun.org&status_code=301",
-        )
-        assert "network_stream" not in response.extensions  # from cache
+        async with hishel.AsyncCacheClient(transport=transport) as client:
+            await client.request(
+                "GET",
+                "https://www.example.com",
+            )
+            response = await client.request(
+                "GET",
+                "https://www.example.com",
+            )
+            assert response.extensions["from_cache"]

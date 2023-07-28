@@ -12,7 +12,7 @@ from .._controller import Controller
 from .._serializers import JSONSerializer
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
-if tp.TYPE_CHECKING:
+if tp.TYPE_CHECKING:  # pragma: no cover
     from typing_extensions import Self
 
 __all__ = ("AsyncCacheTransport",)
@@ -89,22 +89,22 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 )
 
                 # Merge headers with the stale response.
-                self._controller.handle_validation_response(
+                full_response = self._controller.handle_validation_response(
                     old_response=stored_resposne, new_response=httpcore_response
                 )
 
-                await httpcore_response.aread()
-                await self._storage.store(key, httpcore_response)
+                await full_response.aread()
+                await self._storage.store(key, full_response)
 
-                assert isinstance(httpcore_response.stream, tp.AsyncIterable)
-                httpcore_response.extensions["from_cache"] = (  # type: ignore[index]
+                assert isinstance(full_response.stream, tp.AsyncIterable)
+                full_response.extensions["from_cache"] = (  # type: ignore[index]
                     httpcore_response.status == 304
                 )
                 return Response(
-                    status_code=httpcore_response.status,
-                    headers=httpcore_response.headers,
-                    stream=AsyncResponseStream(httpcore_response.stream),
-                    extensions=httpcore_response.extensions,
+                    status_code=full_response.status,
+                    headers=full_response.headers,
+                    stream=AsyncResponseStream(full_response.stream),
+                    extensions=full_response.extensions,
                 )
 
         response = await self._transport.handle_async_request(request)

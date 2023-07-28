@@ -12,7 +12,7 @@ from .._controller import Controller
 from .._serializers import JSONSerializer
 from ._storages import BaseStorage, FileStorage
 
-if tp.TYPE_CHECKING:
+if tp.TYPE_CHECKING:  # pragma: no cover
     from typing_extensions import Self
 
 __all__ = ("CacheTransport",)
@@ -89,22 +89,22 @@ class CacheTransport(httpx.BaseTransport):
                 )
 
                 # Merge headers with the stale response.
-                self._controller.handle_validation_response(
+                full_response = self._controller.handle_validation_response(
                     old_response=stored_resposne, new_response=httpcore_response
                 )
 
-                httpcore_response.read()
-                self._storage.store(key, httpcore_response)
+                full_response.read()
+                self._storage.store(key, full_response)
 
-                assert isinstance(httpcore_response.stream, tp.Iterable)
-                httpcore_response.extensions["from_cache"] = (  # type: ignore[index]
+                assert isinstance(full_response.stream, tp.Iterable)
+                full_response.extensions["from_cache"] = (  # type: ignore[index]
                     httpcore_response.status == 304
                 )
                 return Response(
-                    status_code=httpcore_response.status,
-                    headers=httpcore_response.headers,
-                    stream=ResponseStream(httpcore_response.stream),
-                    extensions=httpcore_response.extensions,
+                    status_code=full_response.status,
+                    headers=full_response.headers,
+                    stream=ResponseStream(full_response.stream),
+                    extensions=full_response.extensions,
                 )
 
         response = self._transport.handle_request(request)
