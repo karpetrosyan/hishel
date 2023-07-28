@@ -42,6 +42,7 @@ class CacheConnectionPool(RequestInterface):
 
             if isinstance(res, Response):
                 # Simply use the response if the controller determines it is ready for use.
+                res.extensions["from_cache"] = True  # type: ignore[index]
                 return res
 
             if isinstance(res, Request):
@@ -55,6 +56,7 @@ class CacheConnectionPool(RequestInterface):
                     old_response=stored_resposne, new_response=response
                 )
                 self._storage.store(key, response)
+                response.extensions["from_cache"] = response.status == 304  # type: ignore[index]
                 return response
 
         response = self._pool.handle_request(request)
@@ -63,6 +65,7 @@ class CacheConnectionPool(RequestInterface):
             response.read()
             self._storage.store(key, response)
 
+        response.extensions["from_cache"] = False  # type: ignore[index]
         return response
 
     def close(self) -> None:

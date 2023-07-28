@@ -60,6 +60,7 @@ class CacheTransport(httpx.BaseTransport):
             if isinstance(res, httpcore.Response):
                 # Simply use the response if the controller determines it is ready for use.
                 assert isinstance(res.stream, tp.Iterable)
+                res.extensions["from_cache"] = True  # type: ignore[index]
                 return Response(
                     status_code=res.status,
                     headers=res.headers,
@@ -96,6 +97,9 @@ class CacheTransport(httpx.BaseTransport):
                 self._storage.store(key, httpcore_response)
 
                 assert isinstance(httpcore_response.stream, tp.Iterable)
+                httpcore_response.extensions["from_cache"] = (  # type: ignore[index]
+                    httpcore_response.status == 304
+                )
                 return Response(
                     status_code=httpcore_response.status,
                     headers=httpcore_response.headers,
@@ -118,6 +122,7 @@ class CacheTransport(httpx.BaseTransport):
             httpcore_response.read()
             self._storage.store(key, httpcore_response)
 
+        response.extensions["from_cache"] = False  # type: ignore[index]
         return response
 
     def close(self) -> None:
