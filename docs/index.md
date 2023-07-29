@@ -11,7 +11,6 @@
 ![PyPI - License](https://img.shields.io/pypi/l/hishel)
 ![Codecov](https://img.shields.io/codecov/c/github/karosis88/hishel)
 
-
 -----
 
 **Hishel (հիշել, remember)** is a library that implements HTTP Caching for [HTTPX](https://github.com/encode/httpx) and [HTTP Core](https://github.com/encode/httpcore) libraries in accordance with **RFC 9111**, the most recent caching specification.
@@ -22,9 +21,11 @@
 - 🤲 Compatibility: It is completely compatible with your existing transports or connection pools, **whether they are default, custom, or provided by third-party libraries.**
 - 🤗 Easy to use: You continue to use the httpx and httpcore interfaces. **Can be integrated with no changes to the code.**
 - 🧠 Smart: Attempts to clearly implement RFC 9111, understands `Vary`, `Etag`, `Last-Modified`,  `Cache-Control`, and `Expires` headers, and **handles response re-validation automatically**.
-- ⚙️ Configurable: You can specify the **backend** where the responses should be stored, the **serializer**, and you can write your own **backends and serializers**. You can also specify which parts of RFC 9111 **should be ignored and which should not**, for example, you can explicitly disable stale responses for your safety or enable re-validation for each response before using it. 
-- 🚀 Very fast: When **IO is not required**, your requests are even faster.
+- ⚙️ Configurable: You have complete control over how the responses are stored and serialized, and there is built-in support for filesystem and redis backends.
+- 🚀 Very fast: Your requests will be even faster if there are **no IO operations**.
 
+## Documentation
+Go through the [Hishel documentation](#https://karosis88.github.io/hishel/).
 
 ## QuickStart
 
@@ -91,7 +92,8 @@ pool.request("GET", "https://www.github.com")  # takes from the cache
 
 ## How and where are the responses saved?
 
-The responses are stored by `Hishel` in [storages](TODO). `Hishel` has a variety of built-in storage options, but the default storage is a [filesystem storage](TODO). You can switch the storage to another one that `Hishel` offers or, if necessary, write your own; for more information, see the storage documentation.
+The responses are stored by `Hishel` in [storages](https://karosis88.github.io/hishel/userguide/#storages).
+You have complete control over them; you can change storage or even write your own if necessary.
 
 
 ## Contributing
