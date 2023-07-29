@@ -18,6 +18,10 @@ if tp.TYPE_CHECKING:  # pragma: no cover
 __all__ = ("CacheTransport",)
 
 
+def fake_stream(content: bytes) -> tp.Iterable[bytes]:
+    yield content
+
+
 class CacheTransport(httpx.BaseTransport):
     def __init__(
         self,
@@ -46,7 +50,6 @@ class CacheTransport(httpx.BaseTransport):
             content=request.stream,
             extensions=request.extensions,
         )
-
         key = generate_key(httpcore_request)
         stored_resposne = self._storage.retreive(key)
 
@@ -103,7 +106,7 @@ class CacheTransport(httpx.BaseTransport):
                 return Response(
                     status_code=full_response.status,
                     headers=full_response.headers,
-                    stream=ResponseStream(full_response.stream),
+                    stream=ResponseStream(fake_stream(full_response.content)),
                     extensions=full_response.extensions,
                 )
 
@@ -123,7 +126,12 @@ class CacheTransport(httpx.BaseTransport):
             self._storage.store(key, httpcore_response)
 
         response.extensions["from_cache"] = False  # type: ignore[index]
-        return response
+        return Response(
+            status_code=httpcore_response.status,
+            headers=httpcore_response.headers,
+            stream=ResponseStream(fake_stream(httpcore_response.content)),
+            extensions=httpcore_response.extensions,
+        )
 
     def close(self) -> None:
         self._storage.close()

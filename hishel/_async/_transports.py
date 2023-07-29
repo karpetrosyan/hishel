@@ -18,6 +18,10 @@ if tp.TYPE_CHECKING:  # pragma: no cover
 __all__ = ("AsyncCacheTransport",)
 
 
+async def fake_stream(content: bytes) -> tp.AsyncIterable[bytes]:
+    yield content
+
+
 class AsyncCacheTransport(httpx.AsyncBaseTransport):
     def __init__(
         self,
@@ -46,7 +50,6 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             content=request.stream,
             extensions=request.extensions,
         )
-
         key = generate_key(httpcore_request)
         stored_resposne = await self._storage.retreive(key)
 
@@ -103,7 +106,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 return Response(
                     status_code=full_response.status,
                     headers=full_response.headers,
-                    stream=AsyncResponseStream(full_response.stream),
+                    stream=AsyncResponseStream(fake_stream(full_response.content)),
                     extensions=full_response.extensions,
                 )
 
@@ -123,7 +126,12 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             await self._storage.store(key, httpcore_response)
 
         response.extensions["from_cache"] = False  # type: ignore[index]
-        return response
+        return Response(
+            status_code=httpcore_response.status,
+            headers=httpcore_response.headers,
+            stream=AsyncResponseStream(fake_stream(httpcore_response.content)),
+            extensions=httpcore_response.extensions,
+        )
 
     async def aclose(self) -> None:
         await self._storage.aclose()

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.5 (7/29/2023)
+
+- Fix httpx response streaming.
+
 ## 0.0.4 (7/29/2023)
 
 - Change `YamlSerializer` name to `YAMLSerializer`.
