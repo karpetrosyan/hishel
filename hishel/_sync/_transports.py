@@ -51,10 +51,12 @@ class CacheTransport(httpx.BaseTransport):
             extensions=request.extensions,
         )
         key = generate_key(httpcore_request)
-        stored_resposne = self._storage.retreive(key)
+        stored_data = self._storage.retreive(key)
 
-        if stored_resposne:
+        if stored_data:
             # Try using the stored response if it was discovered.
+
+            stored_resposne, stored_request = stored_data
 
             res = self._controller.construct_response_from_cache(
                 request=httpcore_request, response=stored_resposne
@@ -97,7 +99,9 @@ class CacheTransport(httpx.BaseTransport):
                 )
 
                 full_response.read()
-                self._storage.store(key, full_response)
+                self._storage.store(
+                    key, response=full_response, request=httpcore_request
+                )
 
                 assert isinstance(full_response.stream, tp.Iterable)
                 full_response.extensions["from_cache"] = (  # type: ignore[index]
@@ -123,7 +127,9 @@ class CacheTransport(httpx.BaseTransport):
         if self._controller.is_cachable(
             request=httpcore_request, response=httpcore_response
         ):
-            self._storage.store(key, httpcore_response)
+            self._storage.store(
+                key, response=httpcore_response, request=httpcore_request
+            )
 
         response.extensions["from_cache"] = False  # type: ignore[index]
         return Response(

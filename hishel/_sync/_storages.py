@@ -4,7 +4,7 @@ import typing as tp
 from pathlib import Path
 
 import redis
-from httpcore import Response
+from httpcore import Request, Response
 
 from hishel._serializers import BaseSerializer
 
@@ -24,10 +24,10 @@ class BaseStorage:
         else:
             self._serializer = JSONSerializer()
 
-    def store(self, key: str, response: Response) -> None:
+    def store(self, key: str, response: Response, request: Request) -> None:
         raise NotImplementedError()
 
-    def retreive(self, key: str) -> tp.Optional[Response]:
+    def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request]]:
         raise NotImplementedError()
 
     def close(self) -> None:
@@ -54,16 +54,17 @@ class FileStorage(BaseStorage):
         self._ttl = ttl
         self._lock = Lock()
 
-    def store(self, key: str, response: Response) -> None:
+    def store(self, key: str, response: Response, request: Request) -> None:
         response_path = self._base_path / key
 
         with self._lock:
             self._file_manager.write_to(
-                str(response_path), self._serializer.dumps(response)
+                str(response_path),
+                self._serializer.dumps(response=response, request=request),
             )
         self._remove_expired_caches()
 
-    def retreive(self, key: str) -> tp.Optional[Response]:
+    def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request]]:
         response_path = self._base_path / key
 
         with self._lock:
@@ -104,10 +105,14 @@ class RedisStorage(BaseStorage):
             self._client = client
         self._ttl = ttl
 
-    def store(self, key: str, response: Response) -> None:
-        self._client.set(key, self._serializer.dumps(response), ex=self._ttl)
+    def store(self, key: str, response: Response, request: Request) -> None:
+        self._client.set(
+            key,
+            self._serializer.dumps(response=response, request=request),
+            ex=self._ttl,
+        )
 
-    def retreive(self, key: str) -> tp.Optional[Response]:
+    def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request]]:
         cached_response = self._client.get(key)
         if cached_response is None:
             return None

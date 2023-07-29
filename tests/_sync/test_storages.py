@@ -16,15 +16,16 @@ def test_filestorage(use_temp_dir):
     response = Response(200, headers=[], content=b"test")
     response.read()
 
-    storage.store(key, response)
+    storage.store(key, response=response, request=request)
 
-    storead_response = storage.retreive(key)
-    assert storead_response is not None
-    storead_response.read()
-    assert isinstance(storead_response, Response)
-    assert storead_response.status == 200
-    assert storead_response.headers == []
-    assert storead_response.content == b"test"
+    stored_data = storage.retreive(key)
+    assert stored_data is not None
+    stored_response, stored_request = stored_data
+    stored_response.read()
+    assert isinstance(stored_response, Response)
+    assert stored_response.status == 200
+    assert stored_response.headers == []
+    assert stored_response.content == b"test"
 
 
 
@@ -38,15 +39,16 @@ def test_redisstorage():
     response = Response(200, headers=[], content=b"test")
     response.read()
 
-    storage.store(key, response)
+    storage.store(key, response=response, request=request)
 
-    storead_response = storage.retreive(key)
-    assert storead_response is not None
-    storead_response.read()
-    assert isinstance(storead_response, Response)
-    assert storead_response.status == 200
-    assert storead_response.headers == []
-    assert storead_response.content == b"test"
+    stored_data = storage.retreive(key)
+    assert stored_data is not None
+    stored_response, stored_request = stored_data
+    stored_response.read()
+    assert isinstance(stored_response, Response)
+    assert stored_response.status == 200
+    assert stored_response.headers == []
+    assert stored_response.content == b"test"
 
 
 
@@ -61,10 +63,10 @@ def test_filestorage_expired():
     response = Response(200, headers=[], content=b"test")
     response.read()
 
-    storage.store(first_key, response)
+    storage.store(first_key, response=response, request=first_request)
 
     sleep(2)
-    storage.store(second_key, response)
+    storage.store(second_key, response=response, request=second_request)
 
     assert storage.retreive(first_key) is None
 
@@ -81,9 +83,9 @@ def test_redisstorage_expired():
     response = Response(200, headers=[], content=b"test")
     response.read()
 
-    storage.store(first_key, response)
+    storage.store(first_key, response=response, request=first_request)
 
     sleep(2)
-    storage.store(second_key, response)
+    storage.store(second_key, response=response, request=second_request)
 
     assert storage.retreive(first_key) is None

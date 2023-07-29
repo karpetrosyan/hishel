@@ -31,10 +31,12 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
 
     async def handle_async_request(self, request: Request) -> Response:
         key = generate_key(request)
-        stored_resposne = await self._storage.retreive(key)
+        stored_data = await self._storage.retreive(key)
 
-        if stored_resposne:
+        if stored_data:
             # Try using the stored response if it was discovered.
+
+            stored_resposne, stored_request = stored_data
 
             res = self._controller.construct_response_from_cache(
                 request=request, response=stored_resposne
@@ -56,7 +58,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                 )
 
                 await full_response.aread()
-                await self._storage.store(key, full_response)
+                await self._storage.store(key, response=full_response, request=request)
                 full_response.extensions["from_cache"] = response.status == 304  # type: ignore[index]
                 return full_response
 
@@ -64,7 +66,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
 
         if self._controller.is_cachable(request=request, response=response):
             await response.aread()
-            await self._storage.store(key, response)
+            await self._storage.store(key, response=response, request=request)
 
         response.extensions["from_cache"] = False  # type: ignore[index]
         return response
