@@ -118,11 +118,11 @@ class CacheTransport(httpx.BaseTransport):
             content=ResponseStream(response.stream),
             extensions=response.extensions,
         )
+        httpcore_response.read()
 
         if self._controller.is_cachable(
             request=httpcore_request, response=httpcore_response
         ):
-            httpcore_response.read()
             self._storage.store(key, httpcore_response)
 
         response.extensions["from_cache"] = False  # type: ignore[index]

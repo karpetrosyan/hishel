@@ -118,11 +118,11 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             content=AsyncResponseStream(response.stream),
             extensions=response.extensions,
         )
+        await httpcore_response.aread()
 
         if self._controller.is_cachable(
             request=httpcore_request, response=httpcore_response
         ):
-            await httpcore_response.aread()
             await self._storage.store(key, httpcore_response)
 
         response.extensions["from_cache"] = False  # type: ignore[index]
