@@ -5,6 +5,12 @@ from hishel._utils import normalized_url
 
 
 def test_pickle_serializer_dumps_and_loads():
+    request = Request(
+        method="GET",
+        url="https://example.com",
+        headers=[(b"Accept-Encoding", b"gzip")],
+        extensions={"sni_hostname": "example.com"},
+    )
     response = Response(
         status=200,
         headers=[
@@ -15,9 +21,9 @@ def test_pickle_serializer_dumps_and_loads():
         extensions={"reason_phrase": b"OK", "http_version": b"HTTP/1.1"},
     )
     response.read()
-    raw_response = PickleSerializer().dumps(response)
+    raw_response = PickleSerializer().dumps(response=response, request=request)
 
-    response = PickleSerializer().loads(raw_response)
+    response, request = PickleSerializer().loads(raw_response)
     response.read()
     assert response.status == 200
     assert response.headers == [
@@ -26,6 +32,11 @@ def test_pickle_serializer_dumps_and_loads():
     ]
     assert response.content == b"test"
     assert response.extensions == {"http_version": b"HTTP/1.1", "reason_phrase": b"OK"}
+
+    assert request.method == b"GET"
+    assert normalized_url(request.url) == "https://example.com/"
+    assert request.headers == [(b"Accept-Encoding", b"gzip")]
+    assert request.extensions == {"sni_hostname": "example.com"}
 
 
 def test_dict_serializer_dumps():

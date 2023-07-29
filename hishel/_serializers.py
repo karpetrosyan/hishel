@@ -39,11 +39,21 @@ class PickleSerializer(BaseSerializer):
                 if key in KNOWN_RESPONSE_EXTENSIONS
             },
         )
-        return pickle.dumps(clone_response)
+        clone_request = Request(
+            method=request.method,
+            url=normalized_url(request.url),
+            headers=request.headers,
+            extensions={
+                key: value
+                for key, value in request.extensions.items()
+                if key in KNOWN_REQUEST_EXTENSIONS
+            },
+        )
+        return pickle.dumps((clone_response, clone_request))
 
     def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request]:
         assert isinstance(data, bytes)
-        return tp.cast(Response, pickle.loads(data))
+        return tp.cast(tp.Tuple[Response, Request], pickle.loads(data))
 
     @property
     def is_binary(self) -> bool:  # pragma: no cover
