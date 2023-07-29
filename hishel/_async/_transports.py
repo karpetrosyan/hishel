@@ -51,10 +51,12 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             extensions=request.extensions,
         )
         key = generate_key(httpcore_request)
-        stored_resposne, stored_request = await self._storage.retreive(key)
+        stored_data = await self._storage.retreive(key)
 
-        if stored_resposne:
+        if stored_data:
             # Try using the stored response if it was discovered.
+
+            stored_resposne, stored_request = stored_data
 
             res = self._controller.construct_response_from_cache(
                 request=httpcore_request, response=stored_resposne
