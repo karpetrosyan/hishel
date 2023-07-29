@@ -1,7 +1,8 @@
-from httpcore import Response, Request
+from httpcore import Request, Response
 
 from hishel._serializers import JSONSerializer, PickleSerializer, YAMLSerializer
 from hishel._utils import normalized_url
+
 
 def test_pickle_serializer_dumps_and_loads():
     response = Response(
@@ -29,14 +30,11 @@ def test_pickle_serializer_dumps_and_loads():
 
 def test_dict_serializer_dumps():
     request = Request(
-        method="GET", 
+        method="GET",
         url="https://example.com",
-        headers=[
-            (b'Accept-Encoding', b'gzip')
-        ],
-        extensions={
-            "sni_hostname": "example.com"
-        })
+        headers=[(b"Accept-Encoding", b"gzip")],
+        extensions={"sni_hostname": "example.com"},
+    )
     response = Response(
         status=200,
         headers=[
@@ -51,39 +49,39 @@ def test_dict_serializer_dumps():
 
     assert full_json == "\n".join(
         [
-            '{',
+            "{",
             '    "response": {',
             '        "status": 200,',
             '        "headers": [',
-            '            [',
+            "            [",
             '                "Content-Type",',
             '                "application/json"',
-            '            ],',
-            '            [',
+            "            ],",
+            "            [",
             '                "Transfer-Encoding",',
             '                "chunked"',
-            '            ]',
-            '        ],',
+            "            ]",
+            "        ],",
             '        "content": "dGVzdA==",',
             '        "extensions": {',
             '            "reason_phrase": "OK",',
             '            "http_version": "HTTP/1.1"',
-            '        }',
-            '    },',
+            "        }",
+            "    },",
             '    "request": {',
             '        "method": "GET",',
             '        "url": "https://example.com/",',
             '        "headers": [',
-            '            [',
+            "            [",
             '                "Accept-Encoding",',
             '                "gzip"',
-            '            ]',
-            '        ],',
+            "            ]",
+            "        ],",
             '        "extensions": {',
             '            "sni_hostname": "example.com"',
-            '        }',
-            '    }',
-            '}',
+            "        }",
+            "    }",
+            "}",
         ]
     )
 
@@ -91,39 +89,39 @@ def test_dict_serializer_dumps():
 def test_dict_serializer_loads():
     raw_response = "\n".join(
         [
-            '{',
+            "{",
             '    "response": {',
             '        "status": 200,',
             '        "headers": [',
-            '            [',
+            "            [",
             '                "Content-Type",',
             '                "application/json"',
-            '            ],',
-            '            [',
+            "            ],",
+            "            [",
             '                "Transfer-Encoding",',
             '                "chunked"',
-            '            ]',
-            '        ],',
+            "            ]",
+            "        ],",
             '        "content": "dGVzdA==",',
             '        "extensions": {',
             '            "reason_phrase": "OK",',
             '            "http_version": "HTTP/1.1"',
-            '        }',
-            '    },',
+            "        }",
+            "    },",
             '    "request": {',
             '        "method": "GET",',
             '        "url": "https://example.com/",',
             '        "headers": [',
-            '            [',
+            "            [",
             '                "Accept-Encoding",',
             '                "gzip"',
-            '            ]',
-            '        ],',
+            "            ]",
+            "        ],",
             '        "extensions": {',
             '            "sni_hostname": "example.com"',
-            '        }',
-            '    }',
-            '}',
+            "        }",
+            "    }",
+            "}",
         ]
     )
 
@@ -137,15 +135,10 @@ def test_dict_serializer_loads():
     assert response.content == b"test"
     assert response.extensions == {"http_version": b"HTTP/1.1", "reason_phrase": b"OK"}
 
-
-    assert request.method == b'GET'
+    assert request.method == b"GET"
     assert normalized_url(request.url) == "https://example.com/"
-    assert request.headers == [
-        (b'Accept-Encoding', b'gzip')
-    ]
-    assert request.extensions == {
-        "sni_hostname": "example.com"
-    }
+    assert request.headers == [(b"Accept-Encoding", b"gzip")]
+    assert request.extensions == {"sni_hostname": "example.com"}
 
 
 def test_yaml_serializer_dumps():

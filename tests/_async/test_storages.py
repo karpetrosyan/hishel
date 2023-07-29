@@ -16,9 +16,9 @@ async def test_filestorage(use_temp_dir):
     response = Response(200, headers=[], content=b"test")
     await response.aread()
 
-    await storage.store(key, response)
+    await storage.store(key, response=response, request=request)
 
-    storead_response = await storage.retreive(key)
+    storead_response, _ = await storage.retreive(key)
     assert storead_response is not None
     storead_response.read()
     assert isinstance(storead_response, Response)
@@ -38,9 +38,9 @@ async def test_redisstorage():
     response = Response(200, headers=[], content=b"test")
     await response.aread()
 
-    await storage.store(key, response)
+    await storage.store(key, response=response, request=request)
 
-    storead_response = await storage.retreive(key)
+    storead_response, _ = await storage.retreive(key)
     assert storead_response is not None
     storead_response.read()
     assert isinstance(storead_response, Response)
@@ -61,10 +61,10 @@ async def test_filestorage_expired():
     response = Response(200, headers=[], content=b"test")
     await response.aread()
 
-    await storage.store(first_key, response)
+    await storage.store(first_key, response=response, request=first_request)
 
     await asleep(2)
-    await storage.store(second_key, response)
+    await storage.store(second_key, response=response, request=second_request)
 
     assert await storage.retreive(first_key) is None
 
@@ -81,9 +81,9 @@ async def test_redisstorage_expired():
     response = Response(200, headers=[], content=b"test")
     await response.aread()
 
-    await storage.store(first_key, response)
+    await storage.store(first_key, response=response, request=first_request)
 
     await asleep(2)
-    await storage.store(second_key, response)
+    await storage.store(second_key, response=response, request=second_request)
 
     assert await storage.retreive(first_key) is None

@@ -4,7 +4,8 @@ import pickle
 import typing as tp
 
 import yaml
-from httpcore import Response, Request
+from httpcore import Request, Response
+
 from hishel._utils import normalized_url
 
 HEADERS_ENCODING = "iso-8859-1"
@@ -66,7 +67,7 @@ class JSONSerializer(BaseSerializer):
         }
 
         request_dict = {
-            "method": request.method.decode('ascii'),
+            "method": request.method.decode("ascii"),
             "url": normalized_url(request.url),
             "headers": [
                 (key.decode(HEADERS_ENCODING), value.decode(HEADERS_ENCODING))
@@ -79,18 +80,15 @@ class JSONSerializer(BaseSerializer):
             },
         }
 
-        full_json = {
-            "response": response_dict,
-            "request": request_dict
-        }
+        full_json = {"response": response_dict, "request": request_dict}
 
         return json.dumps(full_json, indent=4)
 
     def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request]:
         full_json = json.loads(data)
 
-        response_dict = full_json['response']
-        request_dict = full_json['request']
+        response_dict = full_json["response"]
+        request_dict = full_json["request"]
 
         response = Response(
             status=response_dict["status"],
@@ -147,7 +145,7 @@ class YAMLSerializer(BaseSerializer):
     def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request]:
         response_dict = yaml.safe_load(data)
 
-        response = Response(
+        Response(
             status=response_dict["status"],
             headers=[
                 (key.encode(HEADERS_ENCODING), value.encode(HEADERS_ENCODING))

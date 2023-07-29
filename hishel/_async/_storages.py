@@ -4,7 +4,7 @@ import typing as tp
 from pathlib import Path
 
 import redis.asyncio as redis
-from httpcore import Response
+from httpcore import Request, Response
 
 from hishel._serializers import BaseSerializer
 
@@ -24,10 +24,10 @@ class AsyncBaseStorage:
         else:
             self._serializer = JSONSerializer()
 
-    async def store(self, key: str, response: Response) -> None:
+    async def store(self, key: str, response: Response, request: Request) -> None:
         raise NotImplementedError()
 
-    async def retreive(self, key: str) -> tp.Optional[Response]:
+    async def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request]]:
         raise NotImplementedError()
 
     async def aclose(self) -> None:
@@ -54,16 +54,17 @@ class AsyncFileStorage(AsyncBaseStorage):
         self._ttl = ttl
         self._lock = AsyncLock()
 
-    async def store(self, key: str, response: Response) -> None:
+    async def store(self, key: str, response: Response, request: Request) -> None:
         response_path = self._base_path / key
 
         async with self._lock:
             await self._file_manager.write_to(
-                str(response_path), self._serializer.dumps(response)
+                str(response_path),
+                self._serializer.dumps(response=response, request=request),
             )
         await self._remove_expired_caches()
 
-    async def retreive(self, key: str) -> tp.Optional[Response]:
+    async def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request]]:
         response_path = self._base_path / key
 
         async with self._lock:
@@ -104,10 +105,14 @@ class AsyncRedisStorage(AsyncBaseStorage):
             self._client = client
         self._ttl = ttl
 
-    async def store(self, key: str, response: Response) -> None:
-        await self._client.set(key, self._serializer.dumps(response), ex=self._ttl)
+    async def store(self, key: str, response: Response, request: Request) -> None:
+        await self._client.set(
+            key,
+            self._serializer.dumps(response=response, request=request),
+            ex=self._ttl,
+        )
 
-    async def retreive(self, key: str) -> tp.Optional[Response]:
+    async def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request]]:
         cached_response = await self._client.get(key)
         if cached_response is None:
             return None
