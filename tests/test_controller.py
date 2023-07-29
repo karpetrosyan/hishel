@@ -406,3 +406,38 @@ def test_vary_validation_value_mismatch():
     assert not controller._validate_vary(
         request=request, response=response, original_request=original_request
     )
+
+
+def test_vary_validation_value_wildcard():
+    original_request = Request(
+        method="GET",
+        url="https://example.com",
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+        ],
+    )
+
+    request = Request(
+        method="GET",
+        url="https://example.com",
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+        ],
+    )
+
+    response = Response(
+        status=200,
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+            (b"Vary", b"Content-Type, Content-Language, *"),
+        ],
+    )
+
+    controller = Controller()
+
+    assert not controller._validate_vary(
+        request=request, response=response, original_request=original_request
+    )
