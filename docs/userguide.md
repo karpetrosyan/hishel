@@ -329,21 +329,57 @@ Example of the serialized responses:
 
     ``` json
     {
-        "status": 301,
-        "headers": [
-            [
-                "Content-Length",
-                "0"
+        "response": {
+            "status": 301,
+            "headers": [
+                [
+                    "Content-Length",
+                    "0"
+                ],
+                [
+                    "Location",
+                    "https://github.com/"
+                ]
             ],
-            [
-                "Location",
-                "https://github.com/"
-            ]
-        ],
-        "content": "",
-        "extensions": {
-            "http_version": "HTTP/1.1",
-            "reason_phrase": "Moved Permanently"
+            "content": "",
+            "extensions": {
+                "http_version": "HTTP/1.1",
+                "reason_phrase": "Moved Permanently"
+            }
+        },
+        "request": {
+            "method": "GET",
+            "url": "https://www.github.com/",
+            "headers": [
+                [
+                    "Host",
+                    "www.github.com"
+                ],
+                [
+                    "Accept",
+                    "*/*"
+                ],
+                [
+                    "Accept-Encoding",
+                    "gzip, deflate"
+                ],
+                [
+                    "Connection",
+                    "keep-alive"
+                ],
+                [
+                    "User-Agent",
+                    "python-httpx/0.24.1"
+                ]
+            ],
+            "extensions": {
+                "timeout": {
+                    "connect": 5.0,
+                    "read": 5.0,
+                    "write": 5.0,
+                    "pool": 5.0
+                }
+            }
         }
     }
     ```
@@ -351,16 +387,38 @@ Example of the serialized responses:
 === "Yaml"
 
     ``` yaml
-    status: 301
-    headers:
-    - - Content-Length
-    - '0'
-    - - Location
-    - https://github.com/
-    content: ''
-    extensions:
-    http_version: HTTP/1.1
-    reason_phrase: Moved Permanently
+    response:
+      status: 301
+      headers:
+      - - Content-Length
+        - '0'
+      - - Location
+        - https://github.com/
+      content: ''
+      extensions:
+        http_version: HTTP/1.1
+        reason_phrase: Moved Permanently
+    request:
+      method: GET
+      url: https://www.github.com/
+      headers:
+      - - Host
+        - www.github.com
+      - - Accept
+        - '*/*'
+      - - Accept-Encoding
+        - gzip, deflate
+      - - Connection
+        - keep-alive
+      - - User-Agent
+        - python-httpx/0.24.1
+      extensions:
+        timeout:
+          connect: 5.0
+          read: 5.0
+          write: 5.0
+          pool: 5.0
+
     ```
 
 
