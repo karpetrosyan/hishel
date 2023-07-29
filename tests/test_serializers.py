@@ -1,6 +1,6 @@
 from httpcore import Response
 
-from hishel._serializers import JSONSerializer, PickleSerializer, YamlSerializer
+from hishel._serializers import JSONSerializer, PickleSerializer, YAMLSerializer
 
 
 def test_pickle_serializer_dumps_and_loads():
@@ -110,7 +110,7 @@ def test_yaml_serializer_dumps():
         extensions={"reason_phrase": b"OK", "http_version": b"HTTP/1.1"},
     )
     response.read()
-    response_dict = YamlSerializer().dumps(response)
+    response_dict = YAMLSerializer().dumps(response)
 
     assert response_dict == "\n".join(
         [
@@ -146,7 +146,7 @@ def test_yaml_serializer_loads():
         ]
     )
 
-    response = YamlSerializer().loads(raw_response)
+    response = YAMLSerializer().loads(raw_response)
     response.read()
     assert response.status == 200
     assert response.headers == [

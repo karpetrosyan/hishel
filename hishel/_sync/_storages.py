@@ -39,19 +39,19 @@ class FileStorage(BaseStorage):
         self,
         serializer: tp.Optional[BaseSerializer] = None,
         base_path: tp.Optional[Path] = None,
-        max_cache_age: tp.Optional[int] = None,
+        ttl: tp.Optional[int] = None,
     ) -> None:
         super().__init__(serializer)
-        if base_path:  # pragma: no cover
-            self._base_path = base_path
-        else:
-            self._base_path = Path("./.cache/hishel")
+
+        self._base_path = (
+            Path(base_path) if base_path is not None else Path(".cache/hishel")
+        )
 
         if not self._base_path.is_dir():
             self._base_path.mkdir(parents=True)
 
         self._file_manager = FileManager(is_binary=self._serializer.is_binary)
-        self._max_cache_age = max_cache_age
+        self._ttl = ttl
         self._lock = Lock()
 
     def store(self, key: str, response: Response) -> None:
@@ -78,14 +78,14 @@ class FileStorage(BaseStorage):
         return
 
     def _remove_expired_caches(self) -> None:
-        if self._max_cache_age is None:
+        if self._ttl is None:
             return
 
         with self._lock:
             for file in self._base_path.iterdir():
                 if file.is_file():
                     age = time.time() - file.stat().st_mtime
-                    if age > self._max_cache_age:
+                    if age > self._ttl:
                         file.unlink()
 
 
@@ -94,7 +94,7 @@ class RedisStorage(BaseStorage):
         self,
         serializer: tp.Optional[BaseSerializer] = None,
         client: tp.Optional[redis.Redis] = None,  # type: ignore
-        max_cache_age: tp.Optional[int] = None,
+        ttl: tp.Optional[int] = None,
     ) -> None:
         super().__init__(serializer)
 
@@ -102,12 +102,10 @@ class RedisStorage(BaseStorage):
             self._client = redis.Redis()  # type: ignore
         else:  # pragma: no cover
             self._client = client
-        self._max_cache_age = max_cache_age
+        self._ttl = ttl
 
     def store(self, key: str, response: Response) -> None:
-        self._client.set(
-            key, self._serializer.dumps(response), ex=self._max_cache_age
-        )
+        self._client.set(key, self._serializer.dumps(response), ex=self._ttl)
 
     def retreive(self, key: str) -> tp.Optional[Response]:
         cached_response = self._client.get(key)

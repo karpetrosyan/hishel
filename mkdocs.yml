@@ -6,7 +6,17 @@ theme:
   features:
     - content.code.copy
   custom_dir: docs/overrides
-
+  palette:
+    - scheme: default
+      primary: "amber"
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: "amber"
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
@@ -29,9 +39,4 @@ markdown_extensions:
 
 nav:
   - Introduction: index.md
-  - User Guide:
-      - Clients: clients.md
-      - Transports: transports.md
-      - Pools: pools.md
-      - Storages: storages.md
-      - Serializers: serializers.md
+  - User Guide: userguide.md

@@ -51,7 +51,7 @@ def test_redisstorage():
 
 
 def test_filestorage_expired():
-    storage = FileStorage(max_cache_age=1)
+    storage = FileStorage(ttl=1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
@@ -71,7 +71,7 @@ def test_filestorage_expired():
 
 
 def test_redisstorage_expired():
-    storage = RedisStorage(max_cache_age=1)
+    storage = RedisStorage(ttl=1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 

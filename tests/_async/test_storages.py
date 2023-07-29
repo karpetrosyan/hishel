@@ -51,7 +51,7 @@ async def test_redisstorage():
 
 @pytest.mark.asyncio
 async def test_filestorage_expired():
-    storage = AsyncFileStorage(max_cache_age=1)
+    storage = AsyncFileStorage(ttl=1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
@@ -71,7 +71,7 @@ async def test_filestorage_expired():
 
 @pytest.mark.asyncio
 async def test_redisstorage_expired():
-    storage = AsyncRedisStorage(max_cache_age=1)
+    storage = AsyncRedisStorage(ttl=1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
