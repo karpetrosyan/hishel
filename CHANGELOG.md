@@ -1,5 +1,9 @@
 # Changelog
 
+## development
+
+- Fix `Vary` header validation. (#8)
+
 ## 0.0.5 (7/29/2023)
 
 - Fix httpx response streaming.
