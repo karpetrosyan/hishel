@@ -4,4 +4,4 @@ from ._headers import *  # noqa: F403
 from ._serializers import *  # noqa: F403
 from ._sync import *  # noqa: F403
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"

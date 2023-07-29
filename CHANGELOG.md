@@ -1,6 +1,6 @@
 # Changelog
 
-## development
+## 0.0.6 (7/29/2023)
 
 - Fix `Vary` header validation. (#8)
 - Dump original requests with the responses (#7) 
