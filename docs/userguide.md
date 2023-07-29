@@ -110,7 +110,7 @@ with hishel.CacheClient(storage=storage) as client:
 
 It is always preferable to use transports that `Hishel` offers for more dependable and predictable behavior.
 
-We advise you to read the [transports documentation](https://www.python-httpx.org/advanced/#custom-transports) if you have never used `HTTPX's transports` before before continuing.
+We advise you to read the [transports documentation](https://www.python-httpx.org/advanced/#custom-transports) if you have never used `HTTPX's transports` before continuing.
 
 We can divide the httpx library into two parts: the transports and the rest of the httpx library. Transports are the objects that are **actually making the request**.
 
