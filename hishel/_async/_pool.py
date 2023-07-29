@@ -39,7 +39,9 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
             stored_resposne, stored_request = stored_data
 
             res = self._controller.construct_response_from_cache(
-                request=request, response=stored_resposne
+                request=request,
+                response=stored_resposne,
+                original_request=stored_request,
             )
 
             if isinstance(res, Response):

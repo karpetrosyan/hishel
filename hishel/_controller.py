@@ -196,7 +196,9 @@ class Controller:
 
         request.headers.extend(precondition_headers)
 
-    def _validate_vary(self, request: Request, response: Response) -> bool:
+    def _validate_vary(
+        self, request: Request, response: Response, original_request: Request
+    ) -> bool:
         """
         Determines whether the "vary" headers in the request and response headers are identical.
 
@@ -211,13 +213,13 @@ class Controller:
 
             if extract_header_values(
                 request.headers, vary_header
-            ) != extract_header_values(response.headers, vary_header):
+            ) != extract_header_values(original_request.headers, vary_header):
                 return False
 
         return True
 
     def construct_response_from_cache(
-        self, request: Request, response: Response
+        self, request: Request, response: Response, original_request: Request
     ) -> tp.Union[Response, Request, None]:
         """
         Specifies whether the response should be used, skipped, or validated by the cache.
@@ -245,7 +247,9 @@ class Controller:
 
         # request header fields nominated by the stored
         # response (if any) match those presented (see Section 4.1)
-        if not self._validate_vary(request=request, response=response):
+        if not self._validate_vary(
+            request=request, response=response, original_request=original_request
+        ):
             # If the vary headers does not match, then do not use the response
             return None  # pragma: no cover
 

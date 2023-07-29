@@ -59,7 +59,9 @@ class CacheTransport(httpx.BaseTransport):
             stored_resposne, stored_request = stored_data
 
             res = self._controller.construct_response_from_cache(
-                request=httpcore_request, response=stored_resposne
+                request=httpcore_request,
+                response=stored_resposne,
+                original_request=stored_request,
             )
 
             if isinstance(res, httpcore.Response):
