@@ -1,4 +1,6 @@
 import string
+
+import typing as tp
 from typing import Any, Dict, List, Optional, Union
 
 from ._exceptions import ParseError, ValidationError
@@ -58,7 +60,10 @@ def normalize_directive(text: str) -> str:
     return text.replace("-", "_")
 
 
-def parse_cache_control(cache_control_values: List[str]) -> "CacheControl":
+def parse_cache_control(cache_control_values: List[str]) -> tp.Optional["CacheControl"]:
+    if not cache_control_values:
+        return None
+    
     directives = {}
 
     for cache_control_value in cache_control_values:

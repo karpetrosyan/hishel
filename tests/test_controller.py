@@ -83,6 +83,16 @@ def test_is_cachable_for_no_store():
     assert not controller.is_cachable(request=request, response=resposne)
 
 
+def test_is_cachable_without_cachecontrol():
+    controller = Controller(cache_heuristically=True)
+
+    request = Request(b"GET", b"https://example.com", headers=[])
+
+    resposne = Response(200, headers=[(b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT")])
+
+    assert controller.is_cachable(request=request, response=resposne)
+
+
 def test_get_freshness_lifetime():
     response = Response(status=200, headers=[(b"Cache-Control", b"max-age=3600")])
 

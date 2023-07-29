@@ -132,7 +132,7 @@ class Controller:
         response_cache_control = parse_cache_control(
             extract_header_values_decoded(response.headers, b"cache-control")
         )
-
+        
         # the response status code is final
         if response.status // 100 == 1:
             return False
