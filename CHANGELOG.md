@@ -1,5 +1,9 @@
 # Changelog
 
+## development
+
+- Add support for `Heuristic Freshness`. (#11)
+
 ## 0.0.6 (7/29/2023)
 
 - Fix `Vary` header validation. (#8)
