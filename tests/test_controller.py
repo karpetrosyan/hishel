@@ -291,6 +291,21 @@ def test_construct_response_from_cache_with_no_cache():
     assert isinstance(conditional_request, Request)
 
 
+def test_construct_response_heuristically():
+    controller = Controller()
+    response = Response(
+        status=200,
+        headers=[(b'Date', b'Mon, 25 Aug 2015 12:00:00 GMT')]
+    )
+    original_request = Request("GET", "https://example.com")
+    request = Request("GET", "https://example.com")
+
+    response = controller.construct_response_from_cache(
+        request=request, response=response, original_request=original_request
+    )
+
+    assert isinstance(response, Response)
+
 def test_handle_validation_response_changed():
     controller = Controller()
 
