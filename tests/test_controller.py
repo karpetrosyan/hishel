@@ -206,9 +206,10 @@ def test_make_conditional_request_with_last_modified():
 def test_construct_response_from_cache_redirect():
     controller = Controller()
     response = Response(status=301)
+    original_request = Request("GET", "https://example.com")
     request = Request("GET", "https://example.com")
     assert response is controller.construct_response_from_cache(
-        request=request, response=response
+        request=request, response=response, original_request=original_request
     )
 
 
@@ -225,9 +226,10 @@ def test_construct_response_from_cache_fresh():
             (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
         ],
     )
+    original_request = Request("GET", "https://example.com")
     request = Request("GET", "https://example.com")
     assert response is controller.construct_response_from_cache(
-        request=request, response=response
+        request=request, response=response, original_request=original_request
     )
 
 
@@ -244,9 +246,10 @@ def test_construct_response_from_cache_stale():
             (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
         ],
     )
+    original_request = Request("GET", "https://example.com")
     request = Request("GET", "https://example.com")
     conditional_request = controller.construct_response_from_cache(
-        request=request, response=response
+        request=request, response=response, original_request=original_request
     )
     assert isinstance(conditional_request, Request)
 
@@ -264,9 +267,10 @@ def test_construct_response_from_cache_stale_with_allowed_stale():
             (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
         ],
     )
+    original_request = Request("GET", "https://example.com")
     request = Request("GET", "https://example.com")
     assert response is controller.construct_response_from_cache(
-        request=request, response=response
+        request=request, response=response, original_request=original_request
     )
 
 
@@ -279,9 +283,10 @@ def test_construct_response_from_cache_with_no_cache():
             (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
         ],
     )
+    original_request = Request("GET", "https://example.com")
     request = Request("GET", "https://example.com")
     conditional_request = controller.construct_response_from_cache(
-        request=request, response=response
+        request=request, response=response, original_request=original_request
     )
     assert isinstance(conditional_request, Request)
 
@@ -329,6 +334,14 @@ def test_handle_validation_response_not_changed():
 
 
 def test_vary_validation():
+    original_request = Request(
+        method="GET",
+        url="https://example.com",
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+        ],
+    )
     request = Request(
         method="GET",
         url="https://example.com",
@@ -349,14 +362,27 @@ def test_vary_validation():
 
     controller = Controller()
 
-    assert controller._validate_vary(request=request, response=response)
+    assert controller._validate_vary(
+        request=request, response=response, original_request=original_request
+    )
 
-    response.headers.pop(0)
+    original_request.headers.pop(0)
 
-    assert not controller._validate_vary(request=request, response=response)
+    assert not controller._validate_vary(
+        request=request, response=response, original_request=original_request
+    )
 
 
 def test_vary_validation_value_mismatch():
+    original_request = Request(
+        method="GET",
+        url="https://example.com",
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+        ],
+    )
+
     request = Request(
         method="GET",
         url="https://example.com",
@@ -377,4 +403,6 @@ def test_vary_validation_value_mismatch():
 
     controller = Controller()
 
-    assert not controller._validate_vary(request=request, response=response)
+    assert not controller._validate_vary(
+        request=request, response=response, original_request=original_request
+    )
