@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.4 (7/29/2023)
+
+- Change `YamlSerializer` name to `YAMLSerializer`.
+
 ## 0.0.3 (7/28/2023)
 
 - Add `from_cache` response extension.
