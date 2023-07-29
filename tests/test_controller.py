@@ -5,6 +5,7 @@ from hishel._controller import (
     allowed_stale,
     get_age,
     get_freshness_lifetime,
+    get_heuristic_freshness,
 )
 from hishel._utils import BaseClock, Clock
 
@@ -108,6 +109,26 @@ def test_get_freshness_lifetime_with_expires():
 
     freshness_lifetime = get_freshness_lifetime(response=response)
     assert freshness_lifetime == 86400  # one day
+
+
+def test_get_heuristic_freshness():
+    ONE_WEEK = 604_800
+
+    class MockedClock(BaseClock):
+        def now(self) -> int:
+            return 1093435200  # Mon, 25 Aug 2003 12:00:00 GMT
+
+    response = Response(
+        status=200, headers=[(b"Last-Modified", "Mon, 25 Aug 2003 12:00:00 GMT")]
+    )
+    assert get_heuristic_freshness(response=response, clock=MockedClock()) == ONE_WEEK
+
+
+def test_get_heuristic_freshness_without_last_modified():
+    ONE_DAY = 86400
+
+    response = Response(200)
+    assert get_heuristic_freshness(response=response, clock=Clock()) == ONE_DAY
 
 
 def test_get_age():
@@ -292,19 +313,44 @@ def test_construct_response_from_cache_with_no_cache():
 
 
 def test_construct_response_heuristically():
-    controller = Controller()
+    class MockedClock(BaseClock):
+        def now(self) -> int:
+            return 1440590400  # Mon, 26 Aug 2015 12:00:00 GMT
+
+    controller = Controller(cache_heuristically=True, clock=MockedClock())
+
+    # Age less than 7 days
     response = Response(
         status=200,
-        headers=[(b'Date', b'Mon, 25 Aug 2015 12:00:00 GMT')]
+        headers=[
+            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+            (b"Last-Modified", b"Mon, 25 Aug 2003 12:00:00 GMT"),
+        ],
     )
     original_request = Request("GET", "https://example.com")
     request = Request("GET", "https://example.com")
 
-    response = controller.construct_response_from_cache(
+    res = controller.construct_response_from_cache(
         request=request, response=response, original_request=original_request
     )
 
-    assert isinstance(response, Response)
+    assert isinstance(res, Response)
+
+    # Age more than 7 days
+    response = Response(
+        status=200,
+        headers=[
+            (b"Date", b"Mon, 18 Aug 2015 12:00:00 GMT"),
+            (b"Last-Modified", b"Mon, 25 Aug 2003 12:00:00 GMT"),
+        ],
+    )
+
+    res = controller.construct_response_from_cache(
+        request=request, response=response, original_request=original_request
+    )
+
+    assert not isinstance(res, Response)
+
 
 def test_handle_validation_response_changed():
     controller = Controller()

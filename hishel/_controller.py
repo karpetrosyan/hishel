@@ -65,7 +65,27 @@ def get_freshness_lifetime(response: Response) -> tp.Optional[int]:
     return None
 
 
-def get_age(response: Response, clock: "BaseClock") -> tp.Optional[int]:
+def get_heuristic_freshness(response: Response, clock: "BaseClock") -> int:
+    last_modified = extract_header_values_decoded(
+        response.headers, b"last-modified", single=True
+    )
+
+    if last_modified:
+        last_modified_timestamp = parse_date(last_modified[0])
+        now = clock.now()
+
+        ONE_WEEK = 604_800
+
+        return min(ONE_WEEK, int((now - last_modified_timestamp) * 0.1))
+
+    ONE_DAY = 86_400
+    return ONE_DAY
+
+
+def get_age(response: Response, clock: "BaseClock") -> int:
+    if not header_presents(response.headers, b"date"):  # pragma: no cover
+        raise RuntimeError("The `Date` header is missing in the response.")
+
     date = parse_date(extract_header_values_decoded(response.headers, b"date")[0])
 
     now = clock.now()
@@ -265,10 +285,16 @@ class Controller:
             return request
 
         freshness_lifetime = get_freshness_lifetime(response)
-        age = get_age(response, self._clock)
 
-        if freshness_lifetime is None or age is None:  # pragma: no cover
-            raise RuntimeError("Invalid response, can't calculate age")
+        if freshness_lifetime is None:
+            if self._cache_heuristically and response.status in HEURISTICALLY_CACHABLE:
+                freshness_lifetime = get_heuristic_freshness(
+                    response=response, clock=self._clock
+                )
+            else:  # pragma: no cover
+                raise RuntimeError("The lifespan of freshness cannot be calculated.")
+
+        age = get_age(response, self._clock)
 
         is_fresh = freshness_lifetime > age
 
