@@ -140,12 +140,32 @@ class YAMLSerializer(BaseSerializer):
                 if key in KNOWN_RESPONSE_EXTENSIONS
             },
         }
-        return yaml.safe_dump(response_dict, sort_keys=False)
+
+        request_dict = {
+            "method": request.method.decode("ascii"),
+            "url": normalized_url(request.url),
+            "headers": [
+                (key.decode(HEADERS_ENCODING), value.decode(HEADERS_ENCODING))
+                for key, value in request.headers
+            ],
+            "extensions": {
+                key: value
+                for key, value in request.extensions.items()
+                if key in KNOWN_REQUEST_EXTENSIONS
+            },
+        }
+
+        full_json = {"response": response_dict, "request": request_dict}
+
+        return yaml.safe_dump(full_json, sort_keys=False)
 
     def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request]:
-        response_dict = yaml.safe_load(data)
+        full_json = yaml.safe_load(data)
 
-        Response(
+        response_dict = full_json["response"]
+        request_dict = full_json["request"]
+
+        response = Response(
             status=response_dict["status"],
             headers=[
                 (key.encode(HEADERS_ENCODING), value.encode(HEADERS_ENCODING))
@@ -158,6 +178,22 @@ class YAMLSerializer(BaseSerializer):
                 if key in KNOWN_RESPONSE_EXTENSIONS
             },
         )
+
+        request = Request(
+            method=request_dict["method"],
+            url=request_dict["url"],
+            headers=[
+                (key.encode(HEADERS_ENCODING), value.encode(HEADERS_ENCODING))
+                for key, value in request_dict["headers"]
+            ],
+            extensions={
+                key: value
+                for key, value in request_dict["extensions"].items()
+                if key in KNOWN_REQUEST_EXTENSIONS
+            },
+        )
+
+        return response, request
 
     @property
     def is_binary(self) -> bool:  # pragma: no cover
