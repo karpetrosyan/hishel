@@ -10,7 +10,7 @@ from hishel._utils import normalized_url
 try:
     import yaml
 except ImportError:
-    yaml = None
+    yaml = None  # type: ignore
 
 HEADERS_ENCODING = "iso-8859-1"
 KNOWN_RESPONSE_EXTENSIONS = ("http_version", "reason_phrase")

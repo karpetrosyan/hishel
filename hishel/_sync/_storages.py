@@ -18,7 +18,7 @@ __all__ = ("FileStorage", "RedisStorage")
 try:
     import redis
 except ImportError:
-    redis = None
+    redis = None  # type: ignore
 
 
 class BaseStorage:

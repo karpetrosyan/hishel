@@ -18,7 +18,7 @@ __all__ = ("AsyncFileStorage", "AsyncRedisStorage")
 try:
     import redis.asyncio as redis
 except ImportError:
-    redis = None
+    redis = None  # type: ignore
 
 
 class AsyncBaseStorage:
