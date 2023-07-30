@@ -5,6 +5,16 @@ from hishel import AsyncFileStorage, AsyncRedisStorage
 from hishel._utils import asleep, generate_key
 
 
+def is_redis_down() -> bool:
+    import redis
+
+    connection = redis.Redis()
+    try:
+        return not connection.ping()
+    except BaseException:
+        return True
+
+
 @pytest.mark.anyio
 async def test_filestorage(use_temp_dir):
     storage = AsyncFileStorage()
@@ -28,6 +38,7 @@ async def test_filestorage(use_temp_dir):
     assert stored_response.content == b"test"
 
 
+@pytest.mark.skipif(is_redis_down(), reason="Redis server was not found")
 @pytest.mark.asyncio
 async def test_redisstorage():
     storage = AsyncRedisStorage()
@@ -71,6 +82,7 @@ async def test_filestorage_expired():
     assert await storage.retreive(first_key) is None
 
 
+@pytest.mark.skipif(is_redis_down(), reason="Redis server was not found")
 @pytest.mark.asyncio
 async def test_redisstorage_expired():
     storage = AsyncRedisStorage(ttl=1)
