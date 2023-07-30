@@ -1,5 +1,9 @@
 # Changelog
 
+## development
+
+- Skip redis tests if the server was not found. (#16)
+
 ## 0.0.7 (7/30/2023)
 
 - Add support for `Heuristic Freshness`. (#11)
