@@ -29,6 +29,7 @@ classifiers = [
 ]
 dependencies = [
     "httpcore",
+    "httpx"
 ]
 
 [project.optional-dependencies]

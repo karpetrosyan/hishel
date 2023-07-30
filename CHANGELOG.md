@@ -1,6 +1,6 @@
 # Changelog
 
-## development
+## 0.0.7 (7/30/2023)
 
 - Add support for `Heuristic Freshness`. (#11)
 - Change `Controller.cache_heuristically` to `Controller.allow_heuristics`. (#12)
