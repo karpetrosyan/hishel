@@ -4,7 +4,9 @@ from types import TracebackType
 import httpcore
 import httpx
 from httpcore._async.interfaces import AsyncRequestInterface
-from typing_extensions import Self
+
+if tp.TYPE_CHECKING:  # pragma: no cover
+    from typing_extensions import Self
 
 __all__ = ("MockAsyncConnectionPool", "MockAsyncTransport")
 
@@ -20,7 +22,7 @@ class MockAsyncConnectionPool(AsyncRequestInterface):
             self.mocked_responses = []
         self.mocked_responses.extend(responses)
 
-    async def __aenter__(self) -> Self:
+    async def __aenter__(self) -> "Self":
         return self
 
     async def __aexit__(

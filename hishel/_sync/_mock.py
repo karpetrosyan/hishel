@@ -4,7 +4,9 @@ from types import TracebackType
 import httpcore
 import httpx
 from httpcore._sync.interfaces import RequestInterface
-from typing_extensions import Self
+
+if tp.TYPE_CHECKING:  # pragma: no cover
+    from typing_extensions import Self
 
 __all__ = ("MockConnectionPool", "MockTransport")
 
@@ -20,7 +22,7 @@ class MockConnectionPool(RequestInterface):
             self.mocked_responses = []
         self.mocked_responses.extend(responses)
 
-    def __enter__(self) -> Self:
+    def __enter__(self) -> "Self":
         return self
 
     def __exit__(
