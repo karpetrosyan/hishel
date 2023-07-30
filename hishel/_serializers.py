@@ -9,7 +9,7 @@ from hishel._utils import normalized_url
 
 try:
     import yaml
-except ImportError:
+except ImportError:  # pragma: no cover
     yaml = None  # type: ignore
 
 HEADERS_ENCODING = "iso-8859-1"
@@ -141,7 +141,7 @@ class JSONSerializer(BaseSerializer):
 
 class YAMLSerializer(BaseSerializer):
     def dumps(self, response: Response, request: Request) -> tp.Union[str, bytes]:
-        if yaml is None:
+        if yaml is None:  # pragma: no cover
             raise RuntimeError(
                 (
                     f"The `{type(self).__name__}` was used, but the required packages were not found. "
@@ -182,7 +182,7 @@ class YAMLSerializer(BaseSerializer):
         return yaml.safe_dump(full_json, sort_keys=False)
 
     def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request]:
-        if yaml is None:
+        if yaml is None:  # pragma: no cover
             raise RuntimeError(
                 (
                     f"The `{type(self).__name__}` was used, but the required packages were not found. "

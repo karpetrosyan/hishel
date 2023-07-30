@@ -17,7 +17,7 @@ __all__ = ("FileStorage", "RedisStorage")
 
 try:
     import redis
-except ImportError:
+except ImportError:  # pragma: no cover
     redis = None  # type: ignore
 
 
@@ -101,7 +101,7 @@ class RedisStorage(BaseStorage):
         client: tp.Optional["redis.Redis"] = None,  # type: ignore
         ttl: tp.Optional[int] = None,
     ) -> None:
-        if redis is None:
+        if redis is None:  # pragma: no cover
             raise RuntimeError(
                 (
                     f"The `{type(self).__name__}` was used, but the required packages were not found. "
