@@ -113,7 +113,7 @@ class Controller:
         self,
         cacheable_methods: tp.Optional[tp.List[str]] = None,
         cacheable_status_codes: tp.Optional[tp.List[int]] = None,
-        cache_heuristically: bool = False,
+        allow_heuristics: bool = False,
         clock: tp.Optional[BaseClock] = None,
         allow_stale: bool = False,
         always_revalidate: bool = False,
@@ -123,7 +123,7 @@ class Controller:
             cacheable_status_codes if cacheable_status_codes else [200, 301, 308]
         )
         self._clock = clock if clock else Clock()
-        self._cache_heuristically = cache_heuristically
+        self._allow_heuristics = allow_heuristics
         self._allow_stale = allow_stale
         self._always_revalidate = always_revalidate
 
@@ -170,7 +170,7 @@ class Controller:
         # - if the cache is shared: an s-maxage response directive (see Section 5.2.2.10);
         # - a cache extension that allows it to be cached (see Section 5.2.3); or
         # - a status code that is defined as heuristically cacheable (see Section 4.2.2).
-        if self._cache_heuristically and response.status in HEURISTICALLY_CACHABLE:
+        if self._allow_heuristics and response.status in HEURISTICALLY_CACHABLE:
             return True
 
         if not any(
@@ -287,7 +287,7 @@ class Controller:
         freshness_lifetime = get_freshness_lifetime(response)
 
         if freshness_lifetime is None:
-            if self._cache_heuristically and response.status in HEURISTICALLY_CACHABLE:
+            if self._allow_heuristics and response.status in HEURISTICALLY_CACHABLE:
                 freshness_lifetime = get_heuristic_freshness(
                     response=response, clock=self._clock
                 )

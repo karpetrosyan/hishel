@@ -35,7 +35,7 @@ def test_is_cachable_for_non_cachables():
 
 
 def test_is_cachable_for_heuristically_cachable():
-    controller = Controller(cache_heuristically=True)
+    controller = Controller(allow_heuristics=True)
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
@@ -75,7 +75,7 @@ def test_is_cachable_for_not_final():
 
 
 def test_is_cachable_for_no_store():
-    controller = Controller(cache_heuristically=True)
+    controller = Controller(allow_heuristics=True)
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
@@ -317,7 +317,7 @@ def test_construct_response_heuristically():
         def now(self) -> int:
             return 1440590400  # Mon, 26 Aug 2015 12:00:00 GMT
 
-    controller = Controller(cache_heuristically=True, clock=MockedClock())
+    controller = Controller(allow_heuristics=True, clock=MockedClock())
 
     # Age less than 7 days
     response = Response(

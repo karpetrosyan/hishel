@@ -3,6 +3,7 @@
 ## development
 
 - Add support for `Heuristic Freshness`. (#11)
+- Change `Controller.cache_heuristically` to `Controller.allow_heuristics`. (#12)
 
 ## 0.0.6 (7/29/2023)
 
