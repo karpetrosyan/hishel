@@ -5,6 +5,16 @@ from hishel import FileStorage, RedisStorage
 from hishel._utils import sleep, generate_key
 
 
+def is_redis_down() -> bool:
+    import redis
+
+    connection = redis.Redis()
+    try:
+        return not connection.ping()
+    except BaseException:  # pragma: no cover
+        return True
+
+
 
 def test_filestorage(use_temp_dir):
     storage = FileStorage()
@@ -28,6 +38,7 @@ def test_filestorage(use_temp_dir):
     assert stored_response.content == b"test"
 
 
+@pytest.mark.skipif(is_redis_down(), reason="Redis server was not found")
 
 def test_redisstorage():
     storage = RedisStorage()
@@ -71,6 +82,7 @@ def test_filestorage_expired():
     assert storage.retreive(first_key) is None
 
 
+@pytest.mark.skipif(is_redis_down(), reason="Redis server was not found")
 
 def test_redisstorage_expired():
     storage = RedisStorage(ttl=1)
