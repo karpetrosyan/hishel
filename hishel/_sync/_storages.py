@@ -3,7 +3,6 @@ import time
 import typing as tp
 from pathlib import Path
 
-import redis
 from httpcore import Request, Response
 
 from hishel._serializers import BaseSerializer
@@ -15,6 +14,11 @@ from .._synchronization import Lock
 logger = logging.getLogger("hishel.storages")
 
 __all__ = ("FileStorage", "RedisStorage")
+
+try:
+    import redis
+except ImportError:  # pragma: no cover
+    redis = None  # type: ignore
 
 
 class BaseStorage:
@@ -94,9 +98,17 @@ class RedisStorage(BaseStorage):
     def __init__(
         self,
         serializer: tp.Optional[BaseSerializer] = None,
-        client: tp.Optional[redis.Redis] = None,  # type: ignore
+        client: tp.Optional["redis.Redis"] = None,  # type: ignore
         ttl: tp.Optional[int] = None,
     ) -> None:
+        if redis is None:  # pragma: no cover
+            raise RuntimeError(
+                (
+                    f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                    "Check that you have `Hishel` installed with the `redis` extension as shown.\n"
+                    "```pip install hishel[redis]```"
+                )
+            )
         super().__init__(serializer)
 
         if client is None:

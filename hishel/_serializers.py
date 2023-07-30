@@ -3,10 +3,14 @@ import json
 import pickle
 import typing as tp
 
-import yaml
 from httpcore import Request, Response
 
 from hishel._utils import normalized_url
+
+try:
+    import yaml
+except ImportError:  # pragma: no cover
+    yaml = None  # type: ignore
 
 HEADERS_ENCODING = "iso-8859-1"
 KNOWN_RESPONSE_EXTENSIONS = ("http_version", "reason_phrase")
@@ -137,6 +141,14 @@ class JSONSerializer(BaseSerializer):
 
 class YAMLSerializer(BaseSerializer):
     def dumps(self, response: Response, request: Request) -> tp.Union[str, bytes]:
+        if yaml is None:  # pragma: no cover
+            raise RuntimeError(
+                (
+                    f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                    "Check that you have `Hishel` installed with the `yaml` extension as shown.\n"
+                    "```pip install hishel[yaml]```"
+                )
+            )
         response_dict = {
             "status": response.status,
             "headers": [
@@ -170,6 +182,15 @@ class YAMLSerializer(BaseSerializer):
         return yaml.safe_dump(full_json, sort_keys=False)
 
     def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request]:
+        if yaml is None:  # pragma: no cover
+            raise RuntimeError(
+                (
+                    f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                    "Check that you have `Hishel` installed with the `yaml` extension as shown.\n"
+                    "```pip install hishel[yaml]```"
+                )
+            )
+
         full_json = yaml.safe_load(data)
 
         response_dict = full_json["response"]
