@@ -11,7 +11,7 @@ def is_redis_down() -> bool:
     connection = redis.Redis()
     try:
         return not connection.ping()
-    except BaseException:
+    except BaseException:  # pragma: no cover
         return True
 
 
