@@ -76,7 +76,7 @@ async def test_filestorage_expired():
 
     await storage.store(first_key, response=response, request=first_request)
 
-    await asleep(2)
+    await asleep(1)
     await storage.store(second_key, response=response, request=second_request)
 
     assert await storage.retreive(first_key) is None
@@ -97,7 +97,7 @@ async def test_redisstorage_expired():
 
     await storage.store(first_key, response=response, request=first_request)
 
-    await asleep(2)
+    await asleep(1)
     await storage.store(second_key, response=response, request=second_request)
 
     assert await storage.retreive(first_key) is None
