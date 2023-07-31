@@ -76,7 +76,7 @@ def test_filestorage_expired():
 
     storage.store(first_key, response=response, request=first_request)
 
-    sleep(2)
+    sleep(1)
     storage.store(second_key, response=response, request=second_request)
 
     assert storage.retreive(first_key) is None
@@ -97,7 +97,7 @@ def test_redisstorage_expired():
 
     storage.store(first_key, response=response, request=first_request)
 
-    sleep(2)
+    sleep(1)
     storage.store(second_key, response=response, request=second_request)
 
     assert storage.retreive(first_key) is None
