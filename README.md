@@ -5,11 +5,21 @@
 
 <p align="center"><strong>Hishel</strong> <em>- An elegant HTTP Cache implementation for httpx and httpcore.</em></p>
 
+<p align="center">
 
-[![PyPI - Version](https://img.shields.io/pypi/v/hishel.svg)](https://pypi.org/project/hishel)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/hishel.svg)](https://pypi.org/project/hishel)
-![PyPI - License](https://img.shields.io/pypi/l/hishel)
-![Codecov](https://img.shields.io/codecov/c/github/karosis88/hishel)
+  <a href="https://pypi.org/project/hishel">
+      <img src="https://img.shields.io/pypi/v/hishel.svg" alt="pypi">
+  </a>
+
+  <a href="https://img.shields.io/pypi/l/hishel">
+      <img src="https://img.shields.io/pypi/l/hishel" alt="license">
+  </a>
+
+  <a href="https://img.shields.io/codecov/c/github/karosis88/hishel">
+      <img src="https://img.shields.io/codecov/c/github/karosis88/hishel" alt="license">
+  </a>
+
+</p>
 
 -----
 
