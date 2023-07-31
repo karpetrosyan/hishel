@@ -1,6 +1,6 @@
 # Changelog
 
-## development
+## 0.0.8 (7/31/2023)
 
 - Skip redis tests if the server was not found. (#16)
 - Decrease sleep time for the storage ttl tests. (#18)
