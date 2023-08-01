@@ -1,5 +1,9 @@
 # Changelog
 
+## devlopment
+
+- Expose Controller API. (#23)
+
 ## 0.0.8 (7/31/2023)
 
 - Skip redis tests if the server was not found. (#16)
