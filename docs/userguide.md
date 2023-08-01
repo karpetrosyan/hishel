@@ -442,7 +442,7 @@ serializer = hishel.JSONSerializer()
 storage = hishel.RedisStorage(serializer=serializer)
 ```
 
-#### Using the YAMLSerizlier
+### Using the YAMLSerizlier
 
 Example:
 ```python
@@ -458,7 +458,7 @@ storage = hishel.FileStorage(serializer=serializer)
     $ pip install hishel[yaml]
     ```
 
-#### Using the PickleSerializer
+### Using the PickleSerializer
 
 Example:
 ```python
