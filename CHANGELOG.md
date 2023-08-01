@@ -1,6 +1,6 @@
 # Changelog
 
-## devlopment
+## 0.0.9 (8/1/2023) 
 
 - Expose Controller API. (#23)
 
