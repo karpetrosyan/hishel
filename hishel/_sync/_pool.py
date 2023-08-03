@@ -2,9 +2,10 @@ import types
 import typing as tp
 
 from httpcore._sync.interfaces import RequestInterface
+from httpcore._exceptions import ConnectError
 from httpcore._models import Request, Response
 
-from .._controller import Controller
+from .._controller import Controller, allowed_stale
 from .._serializers import JSONSerializer
 from .._utils import generate_key
 from ._storages import BaseStorage, FileStorage
@@ -52,8 +53,15 @@ class CacheConnectionPool(RequestInterface):
             if isinstance(res, Request):
                 # Re-validating the response.
 
-                response = self._pool.handle_request(res)
-
+                try:
+                    response = self._pool.handle_request(res)
+                except ConnectError:
+                    if self._controller._allow_stale and allowed_stale(
+                        response=stored_resposne
+                    ):
+                        stored_resposne.extensions["from_cache"] = True  # type: ignore[index]
+                        return stored_resposne
+                    raise
                 # Merge headers with the stale response.
                 full_response = self._controller.handle_validation_response(
                     old_response=stored_resposne, new_response=response

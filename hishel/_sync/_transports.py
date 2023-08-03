@@ -4,11 +4,12 @@ import typing as tp
 import httpcore
 import httpx
 from httpx import Request, Response
+from httpx._exceptions import ConnectError
 from httpx._transports.default import ResponseStream
 
 from hishel._utils import generate_key, normalized_url
 
-from .._controller import Controller
+from .._controller import Controller, allowed_stale
 from .._serializers import JSONSerializer
 from ._storages import BaseStorage, FileStorage
 
@@ -84,9 +85,25 @@ class CacheTransport(httpx.BaseTransport):
                     headers=res.headers,
                     stream=ResponseStream(res.stream),
                 )
-                response = self._transport.handle_request(
-                    revalidation_request
-                )
+                try:
+                    response = self._transport.handle_request(
+                        revalidation_request
+                    )
+                except ConnectError:
+                    if self._controller._allow_stale and allowed_stale(
+                        response=stored_resposne
+                    ):
+                        stored_resposne.read()
+                        stored_resposne.extensions["from_cache"] = True  # type: ignore[index]
+                        return Response(
+                            status_code=stored_resposne.status,
+                            headers=stored_resposne.headers,
+                            stream=ResponseStream(
+                                fake_stream(stored_resposne.content)
+                            ),
+                            extensions=stored_resposne.extensions,
+                        )
+                    raise
                 assert isinstance(response.stream, tp.Iterable)
                 httpcore_response = httpcore.Response(
                     status=response.status_code,

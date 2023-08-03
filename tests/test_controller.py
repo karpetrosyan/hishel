@@ -275,26 +275,6 @@ def test_construct_response_from_cache_stale():
     assert isinstance(conditional_request, Request)
 
 
-def test_construct_response_from_cache_stale_with_allowed_stale():
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440504002
-
-    controller = Controller(clock=MockedClock(), allow_stale=True)
-    response = Response(
-        status=200,
-        headers=[
-            (b"Cache-Control", b"max-age=1"),
-            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
-        ],
-    )
-    original_request = Request("GET", "https://example.com")
-    request = Request("GET", "https://example.com")
-    assert response is controller.construct_response_from_cache(
-        request=request, response=response, original_request=original_request
-    )
-
-
 def test_construct_response_from_cache_with_no_cache():
     controller = Controller(allow_stale=True)
     response = Response(
