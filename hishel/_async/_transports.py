@@ -4,11 +4,12 @@ import typing as tp
 import httpcore
 import httpx
 from httpx import Request, Response
+from httpx._exceptions import ConnectError
 from httpx._transports.default import AsyncResponseStream
 
 from hishel._utils import generate_key, normalized_url
 
-from .._controller import Controller
+from .._controller import Controller, allowed_stale
 from .._serializers import JSONSerializer
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
@@ -84,9 +85,25 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                     headers=res.headers,
                     stream=AsyncResponseStream(res.stream),
                 )
-                response = await self._transport.handle_async_request(
-                    revalidation_request
-                )
+                try:
+                    response = await self._transport.handle_async_request(
+                        revalidation_request
+                    )
+                except ConnectError:
+                    if self._controller._allow_stale and allowed_stale(
+                        response=stored_resposne
+                    ):
+                        await stored_resposne.aread()
+                        stored_resposne.extensions["from_cache"] = True  # type: ignore[index]
+                        return Response(
+                            status_code=stored_resposne.status,
+                            headers=stored_resposne.headers,
+                            stream=AsyncResponseStream(
+                                fake_stream(stored_resposne.content)
+                            ),
+                            extensions=stored_resposne.extensions,
+                        )
+                    raise  # pragma: no cover
                 assert isinstance(response.stream, tp.AsyncIterable)
                 httpcore_response = httpcore.Response(
                     status=response.status_code,

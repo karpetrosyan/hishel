@@ -537,6 +537,9 @@ controller = hishel.Controller(allow_stale=True)
 client = hishel.CacheClient(controller=controller)
 ```
 
+!!! tip
+    `Hishel` will attempt to use stale response only if the client is unable to connect to the server to make a request. You can enable stale responses to receive responses even if your internet connection is lost.
+
 ### Specifying revalidation behavior.
 
 Responses are revalidated by default when they become stale; however, you can always revalidate the responses if you wish.

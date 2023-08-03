@@ -302,7 +302,7 @@ class Controller:
         #   fresh (see Section 4.2), or
         #   allowed to be served stale (see Section 4.2.4), or
         #   successfully validated (see Section 4.3).
-        if is_fresh or (self._allow_stale and allowed_stale(response)):
+        if is_fresh:
             return response
         else:
             # Otherwise, make a conditional request
