@@ -1,5 +1,9 @@
 # Changelog
 
+## devlopment
+
+- Use stale responses only if the client is disconnected. (#28)
+
 ## 0.0.9 (8/1/2023) 
 
 - Expose Controller API. (#23)
