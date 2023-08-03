@@ -61,7 +61,7 @@ class CacheConnectionPool(RequestInterface):
                     ):
                         stored_resposne.extensions["from_cache"] = True  # type: ignore[index]
                         return stored_resposne
-                    raise
+                    raise  # pragma: no cover
                 # Merge headers with the stale response.
                 full_response = self._controller.handle_validation_response(
                     old_response=stored_resposne, new_response=response

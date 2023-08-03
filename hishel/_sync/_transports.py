@@ -103,7 +103,7 @@ class CacheTransport(httpx.BaseTransport):
                             ),
                             extensions=stored_resposne.extensions,
                         )
-                    raise
+                    raise  # pragma: no cover
                 assert isinstance(response.stream, tp.Iterable)
                 httpcore_response = httpcore.Response(
                     status=response.status_code,

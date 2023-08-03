@@ -103,7 +103,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                             ),
                             extensions=stored_resposne.extensions,
                         )
-                    raise
+                    raise  # pragma: no cover
                 assert isinstance(response.stream, tp.AsyncIterable)
                 httpcore_response = httpcore.Response(
                     status=response.status_code,

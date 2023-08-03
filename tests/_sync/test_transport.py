@@ -89,7 +89,7 @@ def test_transport_stale_response(use_temp_dir):
 def test_transport_stale_response_with_connecterror(use_temp_dir):
     controller = hishel.Controller(allow_stale=True)
 
-    class ConnectErrorTransport(hishel.MockConnectionPool):
+    class ConnectErrorTransport(hishel.MockTransport):
         def handle_request(self, request: httpx.Request) -> httpx.Response:
             if not hasattr(self, "not_first_request"):
                 setattr(self, "not_first_request", object())
