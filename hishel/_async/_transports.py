@@ -93,12 +93,13 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                     if self._controller._allow_stale and allowed_stale(
                         response=stored_resposne
                     ):
+                        await stored_resposne.aread()
                         stored_resposne.extensions["from_cache"] = True  # type: ignore[index]
                         return Response(
                             status_code=stored_resposne.status,
                             headers=stored_resposne.headers,
                             stream=AsyncResponseStream(
-                                fake_stream(stored_resposne.stream)
+                                fake_stream(stored_resposne.content)
                             ),
                             extensions=stored_resposne.extensions,
                         )
