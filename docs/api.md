@@ -11,3 +11,9 @@
 
 ::: hishel.FileStorage
 ::: hishel.RedisStorage
+
+## Serializers
+
+::: hishel.PickleSerializer
+::: hishel.JSONSerializer
+::: hishel.YAMLSerializer

@@ -181,7 +181,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
 
         :param key: Hashed value of concatenated HTTP method and URI
         :type key: str
-        :return: An HTTP response and his HTTP request.
+        :return: An HTTP response and its HTTP request.
         :rtype: tp.Optional[tp.Tuple[Response, Request]]
         """
 

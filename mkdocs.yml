@@ -41,6 +41,7 @@ plugins:
       python:
         options:
           docstring_style: sphinx
+          docstring_section_style: table
 nav:
   - Introduction: index.md
   - User Guide: userguide.md
