@@ -24,6 +24,17 @@ def fake_stream(content: bytes) -> tp.Iterable[bytes]:
 
 
 class CacheTransport(httpx.BaseTransport):
+    """
+    An HTTPX Transport that supports HTTP caching.
+
+    :param transport: `Transport` that our class wraps in order to add an HTTP Cache layer on top of
+    :type transport: httpx.BaseTransport
+    :param storage: Storage that handles how the responses should be saved., defaults to None
+    :type storage: tp.Optional[BaseStorage], optional
+    :param controller: Controller that manages the cache behavior at the specification level, defaults to None
+    :type controller: tp.Optional[Controller], optional
+    """
+
     def __init__(
         self,
         transport: httpx.BaseTransport,
@@ -39,6 +50,14 @@ class CacheTransport(httpx.BaseTransport):
         self._controller = controller if controller is not None else Controller()
 
     def handle_request(self, request: Request) -> Response:
+        """
+        Handles HTTP requests while also implementing HTTP caching.
+
+        :param request: An HTTP request
+        :type request: httpx.Request
+        :return: An HTTP response
+        :rtype: httpx.Response
+        """
         httpcore_request = httpcore.Request(
             method=request.method,
             url=httpcore.URL(

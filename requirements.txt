@@ -8,6 +8,7 @@ black==23.3.0
 # docs
 mkdocs==1.4.3
 mkdocs-material==9.1.19
+mkdocstrings[python]==0.22.0
 
 # tests
 pytest==7.3.1
