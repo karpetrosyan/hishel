@@ -38,7 +38,7 @@ class PickleSerializer(BaseSerializer):
 
     def dumps(self, response: Response, request: Request) -> tp.Union[str, bytes]:
         """
-        Dumps the HTTP response and its HTTP request. 
+        Dumps the HTTP response and its HTTP request.
 
         :param response: An HTTP response
         :type response: Response
@@ -88,11 +88,10 @@ class PickleSerializer(BaseSerializer):
 
 class JSONSerializer(BaseSerializer):
     """A simple json-based serializer."""
-    
 
     def dumps(self, response: Response, request: Request) -> tp.Union[str, bytes]:
         """
-        Dumps the HTTP response and its HTTP request. 
+        Dumps the HTTP response and its HTTP request.
 
         :param response: An HTTP response
         :type response: Response
@@ -187,7 +186,7 @@ class YAMLSerializer(BaseSerializer):
 
     def dumps(self, response: Response, request: Request) -> tp.Union[str, bytes]:
         """
-        Dumps the HTTP response and its HTTP request. 
+        Dumps the HTTP response and its HTTP request.
 
         :param response: An HTTP response
         :type response: Response
