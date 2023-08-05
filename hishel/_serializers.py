@@ -134,7 +134,6 @@ class JSONSerializer(BaseSerializer):
         response_dict = full_json["response"]
         request_dict = full_json["request"]
         metadata_dict = full_json["metadata"]
-        breakpoint()
         metadata_dict["created_at"] = datetime.strptime(
             metadata_dict["created_at"], "%a, %d %b %Y %H:%M:%S GMT"
         )
@@ -167,7 +166,13 @@ class JSONSerializer(BaseSerializer):
             },
         )
 
-        return response, request, metadata_dict
+        metadata = Metadata(
+            cache_key=metadata_dict["cache_key"],
+            created_at=metadata_dict["created_at"],
+            number_of_uses=metadata_dict["number_of_uses"],
+        )
+
+        return response, request, metadata
 
     @property
     def is_binary(self) -> bool:
@@ -239,7 +244,9 @@ class YAMLSerializer(BaseSerializer):
         response_dict = full_json["response"]
         request_dict = full_json["request"]
         metadata_dict = full_json["metadata"]
-        metadata_dict["created_at"] = datetime.strptime("%a, %d %b %Y %H:%M:%S GMT")
+        metadata_dict["created_at"] = datetime.strptime(
+            metadata_dict["created_at"], "%a, %d %b %Y %H:%M:%S GMT"
+        )
 
         response = Response(
             status=response_dict["status"],
@@ -269,7 +276,13 @@ class YAMLSerializer(BaseSerializer):
             },
         )
 
-        return response, request
+        metadata = Metadata(
+            cache_key=metadata_dict["cache_key"],
+            created_at=metadata_dict["created_at"],
+            number_of_uses=metadata_dict["number_of_uses"],
+        )
+
+        return response, request, metadata
 
     @property
     def is_binary(self) -> bool:  # pragma: no cover
