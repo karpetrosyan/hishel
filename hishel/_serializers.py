@@ -2,6 +2,7 @@ import base64
 import json
 import pickle
 import typing as tp
+from datetime import datetime
 
 from httpcore import Request, Response
 
@@ -19,11 +20,28 @@ KNOWN_REQUEST_EXTENSIONS = ("timeout", "sni_hostname")
 __all__ = ("PickleSerializer", "JSONSerializer", "YAMLSerializer", "BaseSerializer")
 
 
+class Metadata(tp.TypedDict):
+    number_of_uses: int
+    created_at: datetime
+    cache_key: str
+
+
+class JSONEncoder(json.JSONEncoder):
+    def default(self, o: tp.Any) -> tp.Any:
+        if isinstance(o, datetime):
+            return o.strftime("%a, %d %b %Y %H:%M:%S GMT")
+        return super().default(o)
+
+
 class BaseSerializer:
-    def dumps(self, response: Response, request: Request) -> tp.Union[str, bytes]:
+    def dumps(
+        self, response: Response, request: Request, metadata: Metadata
+    ) -> tp.Union[str, bytes]:
         raise NotImplementedError()
 
-    def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request]:
+    def loads(
+        self, data: tp.Union[str, bytes]
+    ) -> tp.Tuple[Response, Request, Metadata]:
         raise NotImplementedError()
 
     @property
@@ -32,7 +50,9 @@ class BaseSerializer:
 
 
 class PickleSerializer(BaseSerializer):
-    def dumps(self, response: Response, request: Request) -> tp.Union[str, bytes]:
+    def dumps(
+        self, response: Response, request: Request, metadata: Metadata
+    ) -> tp.Union[str, bytes]:
         clone_response = Response(
             status=response.status,
             headers=response.headers,
@@ -53,11 +73,13 @@ class PickleSerializer(BaseSerializer):
                 if key in KNOWN_REQUEST_EXTENSIONS
             },
         )
-        return pickle.dumps((clone_response, clone_request))
+        return pickle.dumps((clone_response, clone_request, metadata))
 
-    def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request]:
+    def loads(
+        self, data: tp.Union[str, bytes]
+    ) -> tp.Tuple[Response, Request, Metadata]:
         assert isinstance(data, bytes)
-        return tp.cast(tp.Tuple[Response, Request], pickle.loads(data))
+        return tp.cast(tp.Tuple[Response, Request, Metadata], pickle.loads(data))
 
     @property
     def is_binary(self) -> bool:  # pragma: no cover
@@ -65,7 +87,9 @@ class PickleSerializer(BaseSerializer):
 
 
 class JSONSerializer(BaseSerializer):
-    def dumps(self, response: Response, request: Request) -> tp.Union[str, bytes]:
+    def dumps(
+        self, response: Response, request: Request, metadata: Metadata
+    ) -> tp.Union[str, bytes]:
         response_dict = {
             "status": response.status,
             "headers": [
@@ -94,15 +118,26 @@ class JSONSerializer(BaseSerializer):
             },
         }
 
-        full_json = {"response": response_dict, "request": request_dict}
+        full_json = {
+            "response": response_dict,
+            "request": request_dict,
+            "metadata": metadata,
+        }
 
-        return json.dumps(full_json, indent=4)
+        return json.dumps(full_json, indent=4, cls=JSONEncoder)
 
-    def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request]:
+    def loads(
+        self, data: tp.Union[str, bytes]
+    ) -> tp.Tuple[Response, Request, Metadata]:
         full_json = json.loads(data)
 
         response_dict = full_json["response"]
         request_dict = full_json["request"]
+        metadata_dict = full_json["metadata"]
+        breakpoint()
+        metadata_dict["created_at"] = datetime.strptime(
+            metadata_dict["created_at"], "%a, %d %b %Y %H:%M:%S GMT"
+        )
 
         response = Response(
             status=response_dict["status"],
@@ -132,7 +167,7 @@ class JSONSerializer(BaseSerializer):
             },
         )
 
-        return response, request
+        return response, request, metadata_dict
 
     @property
     def is_binary(self) -> bool:
@@ -140,7 +175,9 @@ class JSONSerializer(BaseSerializer):
 
 
 class YAMLSerializer(BaseSerializer):
-    def dumps(self, response: Response, request: Request) -> tp.Union[str, bytes]:
+    def dumps(
+        self, response: Response, request: Request, metadata: Metadata
+    ) -> tp.Union[str, bytes]:
         if yaml is None:  # pragma: no cover
             raise RuntimeError(
                 (
@@ -177,11 +214,17 @@ class YAMLSerializer(BaseSerializer):
             },
         }
 
-        full_json = {"response": response_dict, "request": request_dict}
+        full_json = {
+            "response": response_dict,
+            "request": request_dict,
+            "metadata": metadata,
+        }
 
         return yaml.safe_dump(full_json, sort_keys=False)
 
-    def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request]:
+    def loads(
+        self, data: tp.Union[str, bytes]
+    ) -> tp.Tuple[Response, Request, Metadata]:
         if yaml is None:  # pragma: no cover
             raise RuntimeError(
                 (
@@ -195,6 +238,8 @@ class YAMLSerializer(BaseSerializer):
 
         response_dict = full_json["response"]
         request_dict = full_json["request"]
+        metadata_dict = full_json["metadata"]
+        metadata_dict["created_at"] = datetime.strptime("%a, %d %b %Y %H:%M:%S GMT")
 
         response = Response(
             status=response_dict["status"],
