@@ -72,7 +72,7 @@ class CacheTransport(httpx.BaseTransport):
                 stored_resposne.read()
                 self._storage.store(
                     key=key,
-                    request=request,
+                    request=stored_request,
                     response=stored_resposne,
                     metadata=metadata,
                 )
@@ -126,10 +126,15 @@ class CacheTransport(httpx.BaseTransport):
                 )
 
                 full_response.read()
-                metadata["number_of_uses"] += httpcore_response.status == 200
+                metadata["number_of_uses"] += response.status_code == 304
+
                 self._storage.store(
-                    key, response=full_response, request=request, metadata=metadata
+                    key,
+                    response=full_response,
+                    request=httpcore_request,
+                    metadata=metadata,
                 )
+
                 assert isinstance(full_response.stream, tp.Iterable)
                 full_response.extensions["from_cache"] = (  # type: ignore[index]
                     httpcore_response.status == 304
@@ -154,9 +159,8 @@ class CacheTransport(httpx.BaseTransport):
         if self._controller.is_cachable(
             request=httpcore_request, response=httpcore_response
         ):
-            httpcore_response.read()
             metadata = Metadata(
-                cache_key=key, created_at=datetime.datetime.utcnow(), number_of_uses=0
+                key=key, created_at=datetime.datetime.utcnow(), number_of_uses=0
             )
             self._storage.store(
                 key,
