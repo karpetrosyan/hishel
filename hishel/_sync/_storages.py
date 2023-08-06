@@ -39,6 +39,17 @@ class BaseStorage:
 
 
 class FileStorage(BaseStorage):
+    """
+    A simple file storage.
+
+    :param serializer: Serializer capable of serializing and de-serializing http responses, defaults to None
+    :type serializer: tp.Optional[BaseSerializer], optional
+    :param base_path: A storage base path where the responses should be saved, defaults to None
+    :type base_path: tp.Optional[Path], optional
+    :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
+    :type ttl: tp.Optional[int], optional
+    """
+
     def __init__(
         self,
         serializer: tp.Optional[BaseSerializer] = None,
@@ -59,6 +70,16 @@ class FileStorage(BaseStorage):
         self._lock = Lock()
 
     def store(self, key: str, response: Response, request: Request) -> None:
+        """
+        Stores the response in the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :param response: An HTTP response
+        :type response: httpcore.Response
+        :param request: An HTTP request
+        :type request: httpcore.Request
+        """
         response_path = self._base_path / key
 
         with self._lock:
@@ -69,6 +90,15 @@ class FileStorage(BaseStorage):
         self._remove_expired_caches()
 
     def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request]]:
+        """
+        Retreives the response from the cache using his key.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :return: An HTTP response and his HTTP request.
+        :rtype: tp.Optional[tp.Tuple[Response, Request]]
+        """
+
         response_path = self._base_path / key
 
         with self._lock:
@@ -95,6 +125,17 @@ class FileStorage(BaseStorage):
 
 
 class RedisStorage(BaseStorage):
+    """
+    A simple redis storage.
+
+    :param serializer: Serializer capable of serializing and de-serializing http responses, defaults to None
+    :type serializer: tp.Optional[BaseSerializer], optional
+    :param client: A client for redis, defaults to None
+    :type client: tp.Optional["redis.Redis"], optional
+    :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
+    :type ttl: tp.Optional[int], optional
+    """
+
     def __init__(
         self,
         serializer: tp.Optional[BaseSerializer] = None,
@@ -118,6 +159,16 @@ class RedisStorage(BaseStorage):
         self._ttl = ttl
 
     def store(self, key: str, response: Response, request: Request) -> None:
+        """
+        Stores the response in the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :param response: An HTTP response
+        :type response: httpcore.Response
+        :param request: An HTTP request
+        :type request: httpcore.Request
+        """
         self._client.set(
             key,
             self._serializer.dumps(response=response, request=request),
@@ -125,6 +176,15 @@ class RedisStorage(BaseStorage):
         )
 
     def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request]]:
+        """
+        Retreives the response from the cache using his key.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :return: An HTTP response and its HTTP request.
+        :rtype: tp.Optional[tp.Tuple[Response, Request]]
+        """
+
         cached_response = self._client.get(key)
         if cached_response is None:
             return None

@@ -16,6 +16,16 @@ __all__ = ("CacheConnectionPool",)
 
 
 class CacheConnectionPool(RequestInterface):
+    """An HTTP Core Connection Pool that supports HTTP caching.
+
+    :param pool: `Connection Pool` that our class wraps in order to add an HTTP Cache layer on top of
+    :type pool: RequestInterface
+    :param storage: Storage that handles how the responses should be saved., defaults to None
+    :type storage: tp.Optional[BaseStorage], optional
+    :param controller: Controller that manages the cache behavior at the specification level, defaults to None
+    :type controller: tp.Optional[Controller], optional
+    """
+
     def __init__(
         self,
         pool: RequestInterface,
@@ -31,6 +41,15 @@ class CacheConnectionPool(RequestInterface):
         self._controller = controller if controller is not None else Controller()
 
     def handle_request(self, request: Request) -> Response:
+        """
+        Handles HTTP requests while also implementing HTTP caching.
+
+        :param request: An HTTP request
+        :type request: httpcore.Request
+        :return: An HTTP response
+        :rtype: httpcore.Response
+        """
+
         key = generate_key(request)
         stored_data = self._storage.retreive(key)
 

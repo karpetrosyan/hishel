@@ -32,7 +32,21 @@ class BaseSerializer:
 
 
 class PickleSerializer(BaseSerializer):
+    """
+    A simple pickle-based serializer.
+    """
+
     def dumps(self, response: Response, request: Request) -> tp.Union[str, bytes]:
+        """
+        Dumps the HTTP response and its HTTP request.
+
+        :param response: An HTTP response
+        :type response: Response
+        :param request: An HTTP request
+        :type request: Request
+        :return: Serialized response
+        :rtype: tp.Union[str, bytes]
+        """
         clone_response = Response(
             status=response.status,
             headers=response.headers,
@@ -56,6 +70,14 @@ class PickleSerializer(BaseSerializer):
         return pickle.dumps((clone_response, clone_request))
 
     def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request]:
+        """
+        Loads the HTTP response and its HTTP request from serialized data.
+
+        :param data: Serialized data
+        :type data: tp.Union[str, bytes]
+        :return: HTTP response and its HTTP request
+        :rtype: tp.Tuple[Response, Request]
+        """
         assert isinstance(data, bytes)
         return tp.cast(tp.Tuple[Response, Request], pickle.loads(data))
 
@@ -65,7 +87,19 @@ class PickleSerializer(BaseSerializer):
 
 
 class JSONSerializer(BaseSerializer):
+    """A simple json-based serializer."""
+
     def dumps(self, response: Response, request: Request) -> tp.Union[str, bytes]:
+        """
+        Dumps the HTTP response and its HTTP request.
+
+        :param response: An HTTP response
+        :type response: Response
+        :param request: An HTTP request
+        :type request: Request
+        :return: Serialized response
+        :rtype: tp.Union[str, bytes]
+        """
         response_dict = {
             "status": response.status,
             "headers": [
@@ -99,6 +133,14 @@ class JSONSerializer(BaseSerializer):
         return json.dumps(full_json, indent=4)
 
     def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request]:
+        """
+        Loads the HTTP response and its HTTP request from serialized data.
+
+        :param data: Serialized data
+        :type data: tp.Union[str, bytes]
+        :return: HTTP response and its HTTP request
+        :rtype: tp.Tuple[Response, Request]
+        """
         full_json = json.loads(data)
 
         response_dict = full_json["response"]
@@ -140,7 +182,19 @@ class JSONSerializer(BaseSerializer):
 
 
 class YAMLSerializer(BaseSerializer):
+    """A simple yaml-based serializer."""
+
     def dumps(self, response: Response, request: Request) -> tp.Union[str, bytes]:
+        """
+        Dumps the HTTP response and its HTTP request.
+
+        :param response: An HTTP response
+        :type response: Response
+        :param request: An HTTP request
+        :type request: Request
+        :return: Serialized response
+        :rtype: tp.Union[str, bytes]
+        """
         if yaml is None:  # pragma: no cover
             raise RuntimeError(
                 (
@@ -182,6 +236,15 @@ class YAMLSerializer(BaseSerializer):
         return yaml.safe_dump(full_json, sort_keys=False)
 
     def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request]:
+        """
+        Loads the HTTP response and its HTTP request from serialized data.
+
+        :param data: Serialized data
+        :type data: tp.Union[str, bytes]
+        :raises RuntimeError: When used without the `yaml` extension installed
+        :return: HTTP response and its HTTP request
+        :rtype: tp.Tuple[Response, Request]
+        """
         if yaml is None:  # pragma: no cover
             raise RuntimeError(
                 (
