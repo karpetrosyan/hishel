@@ -1,6 +1,13 @@
+import datetime
+
 from httpcore import Request, Response
 
-from hishel._serializers import JSONSerializer, PickleSerializer, YAMLSerializer
+from hishel._serializers import (
+    JSONSerializer,
+    Metadata,
+    PickleSerializer,
+    YAMLSerializer,
+)
 from hishel._utils import normalized_url
 
 
@@ -21,9 +28,18 @@ def test_pickle_serializer_dumps_and_loads():
         extensions={"reason_phrase": b"OK", "http_version": b"HTTP/1.1"},
     )
     response.read()
-    raw_response = PickleSerializer().dumps(response=response, request=request)
 
-    response, request = PickleSerializer().loads(raw_response)
+    metadata = Metadata(
+        cache_key="test",
+        number_of_uses=0,
+        created_at=datetime.datetime(year=2003, month=8, day=25, hour=12),
+    )
+
+    raw_response = PickleSerializer().dumps(
+        response=response, request=request, metadata=metadata
+    )
+
+    response, request, metadata = PickleSerializer().loads(raw_response)
     response.read()
     assert response.status == 200
     assert response.headers == [
@@ -37,6 +53,12 @@ def test_pickle_serializer_dumps_and_loads():
     assert normalized_url(request.url) == "https://example.com/"
     assert request.headers == [(b"Accept-Encoding", b"gzip")]
     assert request.extensions == {"sni_hostname": "example.com"}
+
+    assert metadata["cache_key"] == "test"
+    assert metadata["number_of_uses"] == 0
+    assert metadata["created_at"] == datetime.datetime(
+        year=2003, month=8, day=25, hour=12
+    )
 
 
 def test_dict_serializer_dumps():
@@ -56,7 +78,16 @@ def test_dict_serializer_dumps():
         extensions={"reason_phrase": b"OK", "http_version": b"HTTP/1.1"},
     )
     response.read()
-    full_json = JSONSerializer().dumps(response=response, request=request)
+
+    metadata = Metadata(
+        cache_key="test",
+        number_of_uses=0,
+        created_at=datetime.datetime(year=2003, month=8, day=25, hour=12),
+    )
+
+    full_json = JSONSerializer().dumps(
+        response=response, request=request, metadata=metadata
+    )
 
     assert full_json == "\n".join(
         [
@@ -91,6 +122,11 @@ def test_dict_serializer_dumps():
             '        "extensions": {',
             '            "sni_hostname": "example.com"',
             "        }",
+            "    },",
+            '    "metadata": {',
+            '        "cache_key": "test",',
+            '        "number_of_uses": 0,',
+            '        "created_at": "Mon, 25 Aug 2003 12:00:00 GMT"',
             "    }",
             "}",
         ]
@@ -131,12 +167,17 @@ def test_dict_serializer_loads():
             '        "extensions": {',
             '            "sni_hostname": "example.com"',
             "        }",
+            "    },",
+            '    "metadata": {',
+            '        "cache_key": "test",',
+            '        "number_of_uses": 0,',
+            '        "created_at": "Mon, 25 Aug 2003 12:00:00 GMT"',
             "    }",
             "}",
         ]
     )
 
-    response, request = JSONSerializer().loads(raw_response)
+    response, request, metadata = JSONSerializer().loads(raw_response)
     response.read()
     assert response.status == 200
     assert response.headers == [
@@ -150,6 +191,12 @@ def test_dict_serializer_loads():
     assert normalized_url(request.url) == "https://example.com/"
     assert request.headers == [(b"Accept-Encoding", b"gzip")]
     assert request.extensions == {"sni_hostname": "example.com"}
+
+    assert metadata["cache_key"] == "test"
+    assert metadata["number_of_uses"] == 0
+    assert metadata["created_at"] == datetime.datetime(
+        year=2003, month=8, day=25, hour=12
+    )
 
 
 def test_yaml_serializer_dumps():
@@ -169,7 +216,16 @@ def test_yaml_serializer_dumps():
         extensions={"reason_phrase": b"OK", "http_version": b"HTTP/1.1"},
     )
     response.read()
-    full_json = YAMLSerializer().dumps(response=response, request=request)
+
+    metadata = Metadata(
+        cache_key="test",
+        number_of_uses=0,
+        created_at=datetime.datetime(year=2003, month=8, day=25, hour=12),
+    )
+
+    full_json = YAMLSerializer().dumps(
+        response=response, request=request, metadata=metadata
+    )
 
     assert full_json == "\n".join(
         [
@@ -192,6 +248,10 @@ def test_yaml_serializer_dumps():
             "    - gzip",
             "  extensions:",
             "    sni_hostname: example.com",
+            "metadata:",
+            "  cache_key: test",
+            "  number_of_uses: 0",
+            "  created_at: Mon, 25 Aug 2003 12:00:00 GMT",
             "",
         ]
     )
@@ -219,11 +279,15 @@ def test_yaml_serializer_loads():
             "    - gzip",
             "  extensions:",
             "    sni_hostname: example.com",
+            "metadata:",
+            "  cache_key: test",
+            "  number_of_uses: 0",
+            "  created_at: Mon, 25 Aug 2003 12:00:00 GMT",
             "",
         ]
     )
 
-    response, request = YAMLSerializer().loads(raw_response)
+    response, request, metadata = YAMLSerializer().loads(raw_response)
     response.read()
     assert response.status == 200
     assert response.headers == [
@@ -237,3 +301,9 @@ def test_yaml_serializer_loads():
     assert normalized_url(request.url) == "https://example.com/"
     assert request.headers == [(b"Accept-Encoding", b"gzip")]
     assert request.extensions == {"sni_hostname": "example.com"}
+
+    assert metadata["cache_key"] == "test"
+    assert metadata["number_of_uses"] == 0
+    assert metadata["created_at"] == datetime.datetime(
+        year=2003, month=8, day=25, hour=12
+    )

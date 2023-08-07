@@ -1,8 +1,15 @@
+import datetime
+
 import pytest
 from httpcore import Request, Response
 
 from hishel import FileStorage, RedisStorage
+from hishel._serializers import Metadata
 from hishel._utils import sleep, generate_key
+
+dummy_metadata = Metadata(
+    cache_key="test", number_of_uses=0, created_at=datetime.datetime.utcnow()
+)
 
 
 def is_redis_down() -> bool:
@@ -26,11 +33,13 @@ def test_filestorage(use_temp_dir):
     response = Response(200, headers=[], content=b"test")
     response.read()
 
-    storage.store(key, response=response, request=request)
+    storage.store(
+        key, response=response, request=request, metadata=dummy_metadata
+    )
 
     stored_data = storage.retreive(key)
     assert stored_data is not None
-    stored_response, stored_request = stored_data
+    stored_response, stored_request, metadata = stored_data
     stored_response.read()
     assert isinstance(stored_response, Response)
     assert stored_response.status == 200
@@ -50,11 +59,13 @@ def test_redisstorage():
     response = Response(200, headers=[], content=b"test")
     response.read()
 
-    storage.store(key, response=response, request=request)
+    storage.store(
+        key, response=response, request=request, metadata=dummy_metadata
+    )
 
     stored_data = storage.retreive(key)
     assert stored_data is not None
-    stored_response, stored_request = stored_data
+    stored_response, stored_request, metadata = stored_data
     stored_response.read()
     assert isinstance(stored_response, Response)
     assert stored_response.status == 200
@@ -74,10 +85,14 @@ def test_filestorage_expired():
     response = Response(200, headers=[], content=b"test")
     response.read()
 
-    storage.store(first_key, response=response, request=first_request)
+    storage.store(
+        first_key, response=response, request=first_request, metadata=dummy_metadata
+    )
 
     sleep(1)
-    storage.store(second_key, response=response, request=second_request)
+    storage.store(
+        second_key, response=response, request=second_request, metadata=dummy_metadata
+    )
 
     assert storage.retreive(first_key) is None
 
@@ -95,9 +110,13 @@ def test_redisstorage_expired():
     response = Response(200, headers=[], content=b"test")
     response.read()
 
-    storage.store(first_key, response=response, request=first_request)
+    storage.store(
+        first_key, response=response, request=first_request, metadata=dummy_metadata
+    )
 
     sleep(1)
-    storage.store(second_key, response=response, request=second_request)
+    storage.store(
+        second_key, response=response, request=second_request, metadata=dummy_metadata
+    )
 
     assert storage.retreive(first_key) is None

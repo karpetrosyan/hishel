@@ -118,10 +118,16 @@ class JSONSerializer(BaseSerializer):
             },
         }
 
+        metadata_dict = {
+            "cache_key": metadata["cache_key"],
+            "number_of_uses": metadata["number_of_uses"],
+            "created_at": metadata["created_at"].strftime("%a, %d %b %Y %H:%M:%S GMT"),
+        }
+
         full_json = {
             "response": response_dict,
             "request": request_dict,
-            "metadata": metadata,
+            "metadata": metadata_dict,
         }
 
         return json.dumps(full_json, indent=4, cls=JSONEncoder)
@@ -135,7 +141,8 @@ class JSONSerializer(BaseSerializer):
         request_dict = full_json["request"]
         metadata_dict = full_json["metadata"]
         metadata_dict["created_at"] = datetime.strptime(
-            metadata_dict["created_at"], "%a, %d %b %Y %H:%M:%S GMT"
+            metadata_dict["created_at"],
+            "%a, %d %b %Y %H:%M:%S GMT",
         )
 
         response = Response(
@@ -219,10 +226,16 @@ class YAMLSerializer(BaseSerializer):
             },
         }
 
+        metadata_dict = {
+            "cache_key": metadata["cache_key"],
+            "number_of_uses": metadata["number_of_uses"],
+            "created_at": metadata["created_at"].strftime("%a, %d %b %Y %H:%M:%S GMT"),
+        }
+        breakpoint()
         full_json = {
             "response": response_dict,
             "request": request_dict,
-            "metadata": metadata,
+            "metadata": metadata_dict,
         }
 
         return yaml.safe_dump(full_json, sort_keys=False)
@@ -245,7 +258,8 @@ class YAMLSerializer(BaseSerializer):
         request_dict = full_json["request"]
         metadata_dict = full_json["metadata"]
         metadata_dict["created_at"] = datetime.strptime(
-            metadata_dict["created_at"], "%a, %d %b %Y %H:%M:%S GMT"
+            metadata_dict["created_at"],
+            "%a, %d %b %Y %H:%M:%S GMT",
         )
 
         response = Response(
