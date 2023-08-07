@@ -26,13 +26,6 @@ class Metadata(tp.TypedDict):
     cache_key: str
 
 
-class JSONEncoder(json.JSONEncoder):
-    def default(self, o: tp.Any) -> tp.Any:
-        if isinstance(o, datetime):
-            return o.strftime("%a, %d %b %Y %H:%M:%S GMT")
-        return super().default(o)
-
-
 class BaseSerializer:
     def dumps(
         self, response: Response, request: Request, metadata: Metadata
@@ -164,7 +157,7 @@ class JSONSerializer(BaseSerializer):
             "metadata": metadata_dict,
         }
 
-        return json.dumps(full_json, indent=4, cls=JSONEncoder)
+        return json.dumps(full_json, indent=4)
 
     def loads(
         self, data: tp.Union[str, bytes]
