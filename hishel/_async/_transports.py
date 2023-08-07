@@ -160,7 +160,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             request=httpcore_request, response=httpcore_response
         ):
             metadata = Metadata(
-                key=key, created_at=datetime.datetime.utcnow(), number_of_uses=0
+                cache_key=key, created_at=datetime.datetime.utcnow(), number_of_uses=0
             )
             await self._storage.store(
                 key,

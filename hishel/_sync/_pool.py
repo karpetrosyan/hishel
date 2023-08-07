@@ -77,7 +77,7 @@ class CacheConnectionPool(RequestInterface):
                 )
 
                 full_response.read()
-                metadata["number_of_uses"] += response.status == 200
+                metadata["number_of_uses"] += response.status == 304
                 self._storage.store(
                     key, response=full_response, request=request, metadata=metadata
                 )

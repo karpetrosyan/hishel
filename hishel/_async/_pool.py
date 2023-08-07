@@ -77,7 +77,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                 )
 
                 await full_response.aread()
-                metadata["number_of_uses"] += response.status == 200
+                metadata["number_of_uses"] += response.status == 304
                 await self._storage.store(
                     key, response=full_response, request=request, metadata=metadata
                 )
