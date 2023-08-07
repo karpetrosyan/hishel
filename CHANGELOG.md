@@ -1,6 +1,6 @@
 # Changelog
 
-## devlopment
+## 0.0.10 (8/7/2023) 
 
 - Add Response metadata. (#33)
 - Add API Reference documentation. (#30)
