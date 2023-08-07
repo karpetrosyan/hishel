@@ -231,7 +231,7 @@ class YAMLSerializer(BaseSerializer):
             "number_of_uses": metadata["number_of_uses"],
             "created_at": metadata["created_at"].strftime("%a, %d %b %Y %H:%M:%S GMT"),
         }
-        breakpoint()
+
         full_json = {
             "response": response_dict,
             "request": request_dict,
