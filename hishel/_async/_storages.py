@@ -8,7 +8,7 @@ from httpcore import Request, Response
 from hishel._serializers import BaseSerializer
 
 from .._files import AsyncFileManager
-from .._serializers import JSONSerializer
+from .._serializers import JSONSerializer, Metadata
 from .._synchronization import AsyncLock
 
 logger = logging.getLogger("hishel.storages")
@@ -28,10 +28,14 @@ class AsyncBaseStorage:
         else:
             self._serializer = JSONSerializer()
 
-    async def store(self, key: str, response: Response, request: Request) -> None:
+    async def store(
+        self, key: str, response: Response, request: Request, metadata: Metadata
+    ) -> None:
         raise NotImplementedError()
 
-    async def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request]]:
+    async def retreive(
+        self, key: str
+    ) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         raise NotImplementedError()
 
     async def aclose(self) -> None:
@@ -69,7 +73,9 @@ class AsyncFileStorage(AsyncBaseStorage):
         self._ttl = ttl
         self._lock = AsyncLock()
 
-    async def store(self, key: str, response: Response, request: Request) -> None:
+    async def store(
+        self, key: str, response: Response, request: Request, metadata: Metadata
+    ) -> None:
         """
         Stores the response in the cache.
 
@@ -85,11 +91,15 @@ class AsyncFileStorage(AsyncBaseStorage):
         async with self._lock:
             await self._file_manager.write_to(
                 str(response_path),
-                self._serializer.dumps(response=response, request=request),
+                self._serializer.dumps(
+                    response=response, request=request, metadata=metadata
+                ),
             )
         await self._remove_expired_caches()
 
-    async def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request]]:
+    async def retreive(
+        self, key: str
+    ) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         """
         Retreives the response from the cache using his key.
 
@@ -158,7 +168,9 @@ class AsyncRedisStorage(AsyncBaseStorage):
             self._client = client
         self._ttl = ttl
 
-    async def store(self, key: str, response: Response, request: Request) -> None:
+    async def store(
+        self, key: str, response: Response, request: Request, metadata: Metadata
+    ) -> None:
         """
         Stores the response in the cache.
 
@@ -171,11 +183,15 @@ class AsyncRedisStorage(AsyncBaseStorage):
         """
         await self._client.set(
             key,
-            self._serializer.dumps(response=response, request=request),
+            self._serializer.dumps(
+                response=response, request=request, metadata=metadata
+            ),
             ex=self._ttl,
         )
 
-    async def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request]]:
+    async def retreive(
+        self, key: str
+    ) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         """
         Retreives the response from the cache using his key.
 

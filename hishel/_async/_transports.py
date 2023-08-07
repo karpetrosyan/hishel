@@ -1,3 +1,4 @@
+import datetime
 import types
 import typing as tp
 
@@ -10,7 +11,7 @@ from httpx._transports.default import AsyncResponseStream
 from hishel._utils import generate_key, normalized_url
 
 from .._controller import Controller, allowed_stale
-from .._serializers import JSONSerializer
+from .._serializers import JSONSerializer, Metadata
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
 if tp.TYPE_CHECKING:  # pragma: no cover
@@ -76,7 +77,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         if stored_data:
             # Try using the stored response if it was discovered.
 
-            stored_resposne, stored_request = stored_data
+            stored_resposne, stored_request, metadata = stored_data
 
             res = self._controller.construct_response_from_cache(
                 request=httpcore_request,
@@ -86,12 +87,19 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
 
             if isinstance(res, httpcore.Response):
                 # Simply use the response if the controller determines it is ready for use.
-                assert isinstance(res.stream, tp.AsyncIterable)
+                metadata["number_of_uses"] += 1
+                stored_resposne.read()
+                await self._storage.store(
+                    key=key,
+                    request=stored_request,
+                    response=stored_resposne,
+                    metadata=metadata,
+                )
                 res.extensions["from_cache"] = True  # type: ignore[index]
                 return Response(
                     status_code=res.status,
                     headers=res.headers,
-                    stream=AsyncResponseStream(res.stream),
+                    stream=AsyncResponseStream(fake_stream(stored_resposne.content)),
                     extensions=res.extensions,
                 )
 
@@ -137,8 +145,13 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 )
 
                 await full_response.aread()
+                metadata["number_of_uses"] += response.status_code == 304
+
                 await self._storage.store(
-                    key, response=full_response, request=httpcore_request
+                    key,
+                    response=full_response,
+                    request=httpcore_request,
+                    metadata=metadata,
                 )
 
                 assert isinstance(full_response.stream, tp.AsyncIterable)
@@ -165,8 +178,14 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         if self._controller.is_cachable(
             request=httpcore_request, response=httpcore_response
         ):
+            metadata = Metadata(
+                cache_key=key, created_at=datetime.datetime.utcnow(), number_of_uses=0
+            )
             await self._storage.store(
-                key, response=httpcore_response, request=httpcore_request
+                key,
+                response=httpcore_response,
+                request=httpcore_request,
+                metadata=metadata,
             )
 
         response.extensions["from_cache"] = False  # type: ignore[index]

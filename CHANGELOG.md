@@ -2,6 +2,7 @@
 
 ## devlopment
 
+- Add Response metadata. (#33)
 - Add API Reference documentation. (#30)
 - Use stale responses only if the client is disconnected. (#28)
 
