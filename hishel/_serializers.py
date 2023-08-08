@@ -57,6 +57,8 @@ class PickleSerializer(BaseSerializer):
         :type response: Response
         :param request: An HTTP request
         :type request: Request
+        :param metadata: Additional information about the stored response
+        :type metadata: Metadata
         :return: Serialized response
         :rtype: tp.Union[str, bytes]
         """
@@ -91,7 +93,7 @@ class PickleSerializer(BaseSerializer):
         :param data: Serialized data
         :type data: tp.Union[str, bytes]
         :return: HTTP response and its HTTP request
-        :rtype: tp.Tuple[Response, Request]
+        :rtype: tp.Tuple[Response, Request, Metadata]
         """
         assert isinstance(data, bytes)
         return tp.cast(tp.Tuple[Response, Request, Metadata], pickle.loads(data))
@@ -114,6 +116,8 @@ class JSONSerializer(BaseSerializer):
         :type response: Response
         :param request: An HTTP request
         :type request: Request
+        :param metadata: Additional information about the stored response
+        :type metadata: Metadata
         :return: Serialized response
         :rtype: tp.Union[str, bytes]
         """
@@ -168,7 +172,7 @@ class JSONSerializer(BaseSerializer):
         :param data: Serialized data
         :type data: tp.Union[str, bytes]
         :return: HTTP response and its HTTP request
-        :rtype: tp.Tuple[Response, Request]
+        :rtype: tp.Tuple[Response, Request, Metadata]
         """
 
         full_json = json.loads(data)
@@ -235,6 +239,8 @@ class YAMLSerializer(BaseSerializer):
         :type response: Response
         :param request: An HTTP request
         :type request: Request
+        :param metadata: Additional information about the stored response
+        :type metadata: Metadata
         :return: Serialized response
         :rtype: tp.Union[str, bytes]
         """
@@ -298,7 +304,7 @@ class YAMLSerializer(BaseSerializer):
         :type data: tp.Union[str, bytes]
         :raises RuntimeError: When used without the `yaml` extension installed
         :return: HTTP response and its HTTP request
-        :rtype: tp.Tuple[Response, Request]
+        :rtype: tp.Tuple[Response, Request, Metadata]
         """
         if yaml is None:  # pragma: no cover
             raise RuntimeError(
