@@ -118,7 +118,18 @@ class Controller:
         allow_stale: bool = False,
         always_revalidate: bool = False,
     ):
-        self._cacheable_methods = cacheable_methods if cacheable_methods else ["GET"]
+        self._cacheable_methods = []
+
+        if cacheable_methods is None:
+            self._cacheable_methods.append("GET")
+        else:
+            for method in cacheable_methods:
+                if method.upper() not in ["GET", "HEAD"]:
+                    raise RuntimeError(
+                        f"Hishel does not support the HTTP method `{method}`. Please use either `GET` or `HEAD`."
+                    )
+                self._cacheable_methods.append(method.upper())
+
         self._cacheable_status_codes = (
             cacheable_status_codes if cacheable_status_codes else [200, 301, 308]
         )
