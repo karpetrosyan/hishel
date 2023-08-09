@@ -85,6 +85,8 @@ class AsyncFileStorage(AsyncBaseStorage):
         :type response: httpcore.Response
         :param request: An HTTP request
         :type request: httpcore.Request
+        :param metadata: Additional information about the stored response
+        :type metadata: Metadata
         """
         response_path = self._base_path / key
 
@@ -106,7 +108,7 @@ class AsyncFileStorage(AsyncBaseStorage):
         :param key: Hashed value of concatenated HTTP method and URI
         :type key: str
         :return: An HTTP response and his HTTP request.
-        :rtype: tp.Optional[tp.Tuple[Response, Request]]
+        :rtype: tp.Optional[tp.Tuple[Response, Request, Metadata]]
         """
 
         response_path = self._base_path / key
@@ -180,6 +182,8 @@ class AsyncRedisStorage(AsyncBaseStorage):
         :type response: httpcore.Response
         :param request: An HTTP request
         :type request: httpcore.Request
+        :param metadata: Additioal information about the stored response
+        :type metadata: Metadata
         """
         await self._client.set(
             key,
@@ -198,7 +202,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
         :param key: Hashed value of concatenated HTTP method and URI
         :type key: str
         :return: An HTTP response and its HTTP request.
-        :rtype: tp.Optional[tp.Tuple[Response, Request]]
+        :rtype: tp.Optional[tp.Tuple[Response, Request, Metadata]]
         """
 
         cached_response = await self._client.get(key)
