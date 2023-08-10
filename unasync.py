@@ -52,10 +52,15 @@ COMPILED_SUBS = [
     for regex, repl in SUBS
 ]
 
+USED_SUBS = set()
 
 def unasync_line(line):
-    for regex, repl in COMPILED_SUBS:
+    for index, (regex, repl) in enumerate(COMPILED_SUBS):
+        old_line = line
         line = re.sub(regex, repl, line)
+        if index not in USED_SUBS:
+            if line != old_line:
+                USED_SUBS.add(index)
     return line
 
 
@@ -100,6 +105,17 @@ def main():
     unasync_dir("hishel/_async", "hishel/_sync", check_only=check_only)
     unasync_dir("tests/_async", "tests/_sync", check_only=check_only)
 
+    if len(USED_SUBS) != len(SUBS):
+        unused_subs = []
+
+        for i in range(len(SUBS)):
+            if i not in USED_SUBS:
+                unused_subs.append(SUBS[i])
+        
+        from pprint import pprint
+        print("This SUBS was not used")
+        pprint(unused_subs)
+        exit(1)
 
 if __name__ == '__main__':
     main()
