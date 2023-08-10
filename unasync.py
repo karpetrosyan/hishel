@@ -6,23 +6,15 @@ import sys
 SUBS = [
     ('async def', 'def'),
     ('async with', 'with'),
-    ('async for', 'for'),
     ('await ', ''),
     ('AsyncFileStorage', 'FileStorage'),
     ('AsyncBaseStorage', 'BaseStorage'),
     ('AsyncFileManager', 'FileManager'),
     ('MockAsyncConnectionPool', 'MockConnectionPool'),
     ('MockAsyncTransport', 'MockTransport'),
-    ('AsyncConnectionPool', 'ConnectionPool'),
-    ('asynccontextmanager', 'contextmanager'),
-    ('AsyncNetworkBackend', 'NetworkBackend'),
-    ('AsyncByteStream', 'SyncByteStream'),
     ('AsyncRedisStorage', 'RedisStorage'),
     ('import redis.asyncio as redis', 'import redis'),
     ('AsyncCacheTransport', 'CacheTransport'),
-    ('AsyncHTTPTransport', 'HTTPTransport'),
-    ('aiter_raw', 'iter_raw'),
-    ('AsyncIterator', 'Iterator'),
     ('AsyncBaseTransport', 'BaseTransport'),
     ('AsyncCacheClient', 'CacheClient'),
     ('AsyncClient', 'Client'),
@@ -30,7 +22,6 @@ SUBS = [
     ('AsyncResponseStream', 'ResponseStream'),
     ('AsyncCacheConnectionPool', 'CacheConnectionPool'),
     ('handle_async_request', 'handle_request'),
-    ('install_on_async_client', 'install_on_client'),
     ('aread', 'read'),
     ('aclose', 'close'),
     ('asleep', 'sleep'),
@@ -38,13 +29,10 @@ SUBS = [
     ('from httpcore._async.interfaces import AsyncRequestInterface',
      'from httpcore._sync.interfaces import RequestInterface'),
      ("from hishel._async._transports", "from hishel._sync._transports"),
-     ('hishel._async._storages', 'hishel._sync._storages'),
      ('AsyncRequestInterface', 'RequestInterface'),
     ('__aenter__', '__enter__'),
     ('__aexit__', '__exit__'),
-    ('__aiter__', '__iter__'),
     ('*@pytest.mark.anyio', ''),
-    ('*@pytest.mark.trio', ''),
     ('*@pytest.mark.asyncio', ''),
 ]
 COMPILED_SUBS = [
@@ -52,10 +40,15 @@ COMPILED_SUBS = [
     for regex, repl in SUBS
 ]
 
+USED_SUBS = set()
 
 def unasync_line(line):
-    for regex, repl in COMPILED_SUBS:
+    for index, (regex, repl) in enumerate(COMPILED_SUBS):
+        old_line = line
         line = re.sub(regex, repl, line)
+        if index not in USED_SUBS:
+            if line != old_line:
+                USED_SUBS.add(index)
     return line
 
 
@@ -100,6 +93,17 @@ def main():
     unasync_dir("hishel/_async", "hishel/_sync", check_only=check_only)
     unasync_dir("tests/_async", "tests/_sync", check_only=check_only)
 
+    if len(USED_SUBS) != len(SUBS):
+        unused_subs = []
+
+        for i in range(len(SUBS)):
+            if i not in USED_SUBS:
+                unused_subs.append(SUBS[i])
+        
+        from pprint import pprint
+        print("This SUBS was not used")
+        pprint(unused_subs)
+        exit(1)
 
 if __name__ == '__main__':
     main()
