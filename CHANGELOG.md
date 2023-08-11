@@ -2,6 +2,7 @@
 
 ## development
 
+- Drop httpcore dependencie. (#40)
 - Support HTTP methods only if they are defined as cacheable. (#37)
 
 ## 0.0.10 (8/7/2023) 
