@@ -28,8 +28,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
-    "httpcore",
-    "httpx"
+    "httpx>=0.22.0"
 ]
 
 [project.optional-dependencies]
