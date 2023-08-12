@@ -47,9 +47,10 @@ async def test_filestorage(use_temp_dir):
     assert stored_response.content == b"test"
 
 
-@pytest.mark.skipif(is_redis_down(), reason="Redis server was not found")
 @pytest.mark.asyncio
 async def test_redisstorage():
+    if is_redis_down():  # pragma: no cover
+        pytest.fail("Redis server was not found")
     storage = AsyncRedisStorage()
 
     request = Request(b"GET", "https://example.com")
@@ -97,9 +98,10 @@ async def test_filestorage_expired():
     assert await storage.retreive(first_key) is None
 
 
-@pytest.mark.skipif(is_redis_down(), reason="Redis server was not found")
 @pytest.mark.asyncio
 async def test_redisstorage_expired():
+    if is_redis_down():  # pragma: no cover
+        pytest.fail("Redis server was not found")
     storage = AsyncRedisStorage(ttl=1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
