@@ -311,6 +311,15 @@ class Controller:
         age = get_age(response, self._clock)
         is_fresh = freshness_lifetime > age
 
+        # The min-fresh request directive indicates that the client
+        # prefers a response whose freshness lifetime is no less than
+        #  its current age plus the specified time in seconds.
+        # That is, the client wants a response that will still
+        # be fresh for at least the specified number of seconds.
+        if request_cache_control.min_fresh is not None:
+            if freshness_lifetime < (age + request_cache_control.min_fresh):
+                return None
+
         # The max-stale request directive indicates that the
         # client will accept a response that has exceeded its freshness lifetime.
         # If a value is present, then the client is willing to accept a response
