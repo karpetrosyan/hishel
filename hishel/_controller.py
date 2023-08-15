@@ -311,6 +311,18 @@ class Controller:
         age = get_age(response, self._clock)
         is_fresh = freshness_lifetime > age
 
+        # The max-stale request directive indicates that the
+        # client will accept a response that has exceeded its freshness lifetime.
+        # If a value is present, then the client is willing to accept a response
+        # that has exceeded its freshness lifetime by no more than the specified
+        # number of seconds. If no value is assigned to max-stale, then
+        # the client will accept a stale response of any age.
+        if not is_fresh and request_cache_control.max_stale is not None:
+            exceeded_freshness_lifetime = age - freshness_lifetime
+
+            if request_cache_control.max_stale < exceeded_freshness_lifetime:
+                return None
+
         # The max-age request directive indicates that
         # the client prefers a response whose age is
         # less than or equal to the specified number of seconds.
