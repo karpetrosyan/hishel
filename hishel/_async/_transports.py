@@ -8,9 +8,10 @@ from httpx import Request, Response
 from httpx._exceptions import ConnectError
 from httpx._transports.default import AsyncResponseStream
 
-from hishel._utils import generate_key, normalized_url
+from hishel._utils import extract_header_values_decoded, generate_key, normalized_url
 
 from .._controller import Controller, allowed_stale
+from .._headers import parse_cache_control
 from .._serializers import JSONSerializer, Metadata
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
@@ -22,6 +23,10 @@ __all__ = ("AsyncCacheTransport",)
 
 async def fake_stream(content: bytes) -> tp.AsyncIterable[bytes]:
     yield content
+
+
+def generate_504() -> Response:
+    return Response(status_code=504)
 
 
 class AsyncCacheTransport(httpx.AsyncBaseTransport):
@@ -74,6 +79,13 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         key = generate_key(httpcore_request)
         stored_data = await self._storage.retreive(key)
 
+        request_cache_control = parse_cache_control(
+            extract_header_values_decoded(request.headers.raw, b"Cache-Control")
+        )
+
+        if request_cache_control.only_if_cached and not stored_data:
+            return generate_504()
+
         if stored_data:
             # Try using the stored response if it was discovered.
 
@@ -102,6 +114,9 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                     stream=AsyncResponseStream(fake_stream(stored_resposne.content)),
                     extensions=res.extensions,
                 )
+
+            if request_cache_control.only_if_cached:
+                return generate_504()
 
             if isinstance(res, httpcore.Request):
                 # Re-validating the response.

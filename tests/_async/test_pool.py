@@ -115,3 +115,48 @@ async def test_pool_stale_response_with_connecterror(use_temp_dir):
             await cache_pool.request("GET", "https://www.example.com")
             response = await cache_pool.request("GET", "https://www.example.com")
             assert response.extensions["from_cache"]
+
+
+@pytest.mark.anyio
+async def test_pool_with_only_if_cached_directive_without_stored_response(use_temp_dir):
+    controller = hishel.Controller()
+
+    async with hishel.MockAsyncConnectionPool() as pool:
+        async with hishel.AsyncCacheConnectionPool(
+            pool=pool, controller=controller
+        ) as cache_pool:
+            response = await cache_pool.request(
+                "GET",
+                "https://www.example.com",
+                headers=[(b"Cache-Control", b"only-if-cached")],
+            )
+            assert response.status == 504
+
+
+@pytest.mark.anyio
+async def test_pool_with_only_if_cached_directive_with_stored_response(use_temp_dir):
+    controller = hishel.Controller()
+
+    async with hishel.MockAsyncConnectionPool() as pool:
+        pool.add_responses(
+            [
+                httpcore.Response(
+                    200,
+                    headers=[
+                        (b"Cache-Control", b"max-age=3600"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+                    ],
+                    content=b"test",
+                ),
+            ]
+        )
+        async with hishel.AsyncCacheConnectionPool(
+            pool=pool, controller=controller
+        ) as cache_pool:
+            await cache_pool.request("GET", "https://www.example.com")
+            response = await cache_pool.request(
+                "GET",
+                "https://www.example.com",
+                headers=[(b"Cache-Control", b"only-if-cached")],
+            )
+            assert response.status == 504

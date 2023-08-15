@@ -7,13 +7,18 @@ from httpcore._exceptions import ConnectError
 from httpcore._models import Request, Response
 
 from .._controller import Controller, allowed_stale
+from .._headers import parse_cache_control
 from .._serializers import JSONSerializer, Metadata
-from .._utils import generate_key
+from .._utils import extract_header_values_decoded, generate_key
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
 T = tp.TypeVar("T")
 
 __all__ = ("AsyncCacheConnectionPool",)
+
+
+def generate_504() -> Response:
+    return Response(status=504)
 
 
 class AsyncCacheConnectionPool(AsyncRequestInterface):
@@ -54,6 +59,13 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
         key = generate_key(request)
         stored_data = await self._storage.retreive(key)
 
+        request_cache_control = parse_cache_control(
+            extract_header_values_decoded(request.headers, b"Cache-Control")
+        )
+
+        if request_cache_control.only_if_cached and not stored_data:
+            return generate_504()
+
         if stored_data:
             # Try using the stored response if it was discovered.
 
@@ -77,6 +89,9 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                 )
                 res.extensions["from_cache"] = True  # type: ignore[index]
                 return res
+
+            if request_cache_control.only_if_cached:
+                return generate_504()
 
             if isinstance(res, Request):
                 # Re-validating the response.

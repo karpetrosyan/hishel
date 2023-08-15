@@ -122,3 +122,58 @@ def test_transport_stale_response_with_connecterror(use_temp_dir):
             cache_transport.handle_request(request)
             response = cache_transport.handle_request(request)
             assert response.extensions["from_cache"]
+
+
+
+def test_transport_with_only_if_cached_directive_without_stored_response(
+    use_temp_dir,
+):
+    controller = hishel.Controller()
+
+    with hishel.MockTransport() as transport:
+        with hishel.CacheTransport(
+            transport=transport, controller=controller
+        ) as cache_transport:
+            response = cache_transport.handle_request(
+                httpx.Request(
+                    "GET",
+                    "https://www.example.com",
+                    headers=[(b"Cache-Control", b"only-if-cached")],
+                )
+            )
+            assert response.status_code == 504
+
+
+
+def test_transport_with_only_if_cached_directive_with_stored_response(
+    use_temp_dir,
+):
+    controller = hishel.Controller()
+
+    with hishel.MockTransport() as transport:
+        transport.add_responses(
+            [
+                httpx.Response(
+                    200,
+                    headers=[
+                        (b"Cache-Control", b"max-age=3600"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+                    ],
+                    content=b"test",
+                ),
+            ]
+        )
+        with hishel.CacheTransport(
+            transport=transport, controller=controller
+        ) as cache_transport:
+            cache_transport.handle_request(
+                httpx.Request("GET", "https://www.example.com")
+            )
+            response = cache_transport.handle_request(
+                httpx.Request(
+                    "GET",
+                    "https://www.example.com",
+                    headers=[(b"Cache-Control", b"only-if-cached")],
+                )
+            )
+            assert response.status_code == 504
