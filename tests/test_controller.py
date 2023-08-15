@@ -697,3 +697,29 @@ def test_no_cache_request_directive():
         original_request=original_request, request=request, response=response
     )
     assert isinstance(cached_response, Request)
+
+
+def test_no_store_request_directive():
+    request = Request(
+        method="GET",
+        url="https://example.com",
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+            (b"Cache-Control", b"no-store"),
+        ],
+    )
+
+    response = Response(
+        status=200,
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+            (b"Cache-Control", "max-age=4000"),
+            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+        ],
+    )
+
+    controller = Controller()
+
+    assert not controller.is_cachable(request=request, response=response)
