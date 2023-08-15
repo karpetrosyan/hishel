@@ -163,13 +163,16 @@ class Controller:
         response_cache_control = parse_cache_control(
             extract_header_values_decoded(response.headers, b"cache-control")
         )
+        request_cache_control = parse_cache_control(
+            extract_header_values_decoded(request.headers, b"cache-control")
+        )
 
         # the response status code is final
         if response.status // 100 == 1:
             return False
 
         # the no-store cache directive is not present in the response (see Section 5.2.2.5)
-        if response_cache_control.no_store:
+        if response_cache_control.no_store or request_cache_control.no_store:
             return False
 
         expires_presents = header_presents(response.headers, b"expires")
@@ -294,6 +297,7 @@ class Controller:
             self._always_revalidate
             or response_cache_control.no_cache
             or response_cache_control.must_revalidate
+            or request_cache_control.no_cache
         ):
             self._make_request_conditional(request=request, response=response)
             return request

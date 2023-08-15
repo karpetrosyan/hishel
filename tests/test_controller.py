@@ -513,7 +513,7 @@ def test_max_age_request_directive():
         headers=[
             (b"Content-Type", b"application/json"),
             (b"Content-Language", b"en-US"),
-            (b"Cache-Control", "max-age=3599, no-cache"),
+            (b"Cache-Control", "max-age=3599"),
         ],
     )
 
@@ -555,7 +555,7 @@ def test_max_age_request_directive_without_max_stale():
         headers=[
             (b"Content-Type", b"application/json"),
             (b"Content-Language", b"en-US"),
-            (b"Cache-Control", "max-age=3600, no-cache"),
+            (b"Cache-Control", "max-age=3600"),
         ],
     )
 
@@ -659,3 +659,41 @@ def test_min_fresh_request_directive():
         original_request=original_request, request=request, response=response
     )
     assert cached_response is None
+
+
+def test_no_cache_request_directive():
+    original_request = Request(
+        method="GET",
+        url="https://example.com",
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+        ],
+    )
+
+    request = Request(
+        method="GET",
+        url="https://example.com",
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+            (b"Cache-Control", b"no-cache"),
+        ],
+    )
+
+    response = Response(
+        status=200,
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+            (b"Cache-Control", "max-age=4000"),
+            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+        ],
+    )
+
+    controller = Controller()
+
+    cached_response = controller.construct_response_from_cache(
+        original_request=original_request, request=request, response=response
+    )
+    assert isinstance(cached_response, Request)
