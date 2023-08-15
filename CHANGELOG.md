@@ -2,6 +2,7 @@
 
 ## development
 
+- Add support for request `cache-control` directives. (#42)
 - Drop httpcore dependencie. (#40)
 - Support HTTP methods only if they are defined as cacheable. (#37)
 

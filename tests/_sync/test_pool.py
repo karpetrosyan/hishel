@@ -115,3 +115,48 @@ def test_pool_stale_response_with_connecterror(use_temp_dir):
             cache_pool.request("GET", "https://www.example.com")
             response = cache_pool.request("GET", "https://www.example.com")
             assert response.extensions["from_cache"]
+
+
+
+def test_pool_with_only_if_cached_directive_without_stored_response(use_temp_dir):
+    controller = hishel.Controller()
+
+    with hishel.MockConnectionPool() as pool:
+        with hishel.CacheConnectionPool(
+            pool=pool, controller=controller
+        ) as cache_pool:
+            response = cache_pool.request(
+                "GET",
+                "https://www.example.com",
+                headers=[(b"Cache-Control", b"only-if-cached")],
+            )
+            assert response.status == 504
+
+
+
+def test_pool_with_only_if_cached_directive_with_stored_response(use_temp_dir):
+    controller = hishel.Controller()
+
+    with hishel.MockConnectionPool() as pool:
+        pool.add_responses(
+            [
+                httpcore.Response(
+                    200,
+                    headers=[
+                        (b"Cache-Control", b"max-age=3600"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+                    ],
+                    content=b"test",
+                ),
+            ]
+        )
+        with hishel.CacheConnectionPool(
+            pool=pool, controller=controller
+        ) as cache_pool:
+            cache_pool.request("GET", "https://www.example.com")
+            response = cache_pool.request(
+                "GET",
+                "https://www.example.com",
+                headers=[(b"Cache-Control", b"only-if-cached")],
+            )
+            assert response.status == 504

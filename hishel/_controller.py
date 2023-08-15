@@ -163,13 +163,16 @@ class Controller:
         response_cache_control = parse_cache_control(
             extract_header_values_decoded(response.headers, b"cache-control")
         )
+        request_cache_control = parse_cache_control(
+            extract_header_values_decoded(request.headers, b"cache-control")
+        )
 
         # the response status code is final
         if response.status // 100 == 1:
             return False
 
         # the no-store cache directive is not present in the response (see Section 5.2.2.5)
-        if response_cache_control.no_store:
+        if response_cache_control.no_store or request_cache_control.no_store:
             return False
 
         expires_presents = header_presents(response.headers, b"expires")
@@ -275,6 +278,9 @@ class Controller:
         response_cache_control = parse_cache_control(
             extract_header_values_decoded(response.headers, b"Cache-Control")
         )
+        request_cache_control = parse_cache_control(
+            extract_header_values_decoded(request.headers, b"Cache-Control")
+        )
 
         # request header fields nominated by the stored
         # response (if any) match those presented (see Section 4.1)
@@ -291,6 +297,7 @@ class Controller:
             self._always_revalidate
             or response_cache_control.no_cache
             or response_cache_control.must_revalidate
+            or request_cache_control.no_cache
         ):
             self._make_request_conditional(request=request, response=response)
             return request
@@ -306,8 +313,40 @@ class Controller:
                 raise RuntimeError("The lifespan of freshness cannot be calculated.")
 
         age = get_age(response, self._clock)
-
         is_fresh = freshness_lifetime > age
+
+        # The min-fresh request directive indicates that the client
+        # prefers a response whose freshness lifetime is no less than
+        #  its current age plus the specified time in seconds.
+        # That is, the client wants a response that will still
+        # be fresh for at least the specified number of seconds.
+        if request_cache_control.min_fresh is not None:
+            if freshness_lifetime < (age + request_cache_control.min_fresh):
+                return None
+
+        # The max-stale request directive indicates that the
+        # client will accept a response that has exceeded its freshness lifetime.
+        # If a value is present, then the client is willing to accept a response
+        # that has exceeded its freshness lifetime by no more than the specified
+        # number of seconds. If no value is assigned to max-stale, then
+        # the client will accept a stale response of any age.
+        if not is_fresh and request_cache_control.max_stale is not None:
+            exceeded_freshness_lifetime = age - freshness_lifetime
+
+            if request_cache_control.max_stale < exceeded_freshness_lifetime:
+                return None
+
+        # The max-age request directive indicates that
+        # the client prefers a response whose age is
+        # less than or equal to the specified number of seconds.
+        # Unless the max-stale request directive is also present,
+        # the client does not wish to receive a stale response.
+        if request_cache_control.max_age is not None:
+            if request_cache_control.max_age < age:
+                return None
+
+            if request_cache_control.max_stale is None and not is_fresh:
+                return None
 
         # the stored response is one of the following:
         #   fresh (see Section 4.2), or
