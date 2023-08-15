@@ -1,6 +1,6 @@
 # Changelog
 
-## development
+## 0.0.11 (8/15/2023) 
 
 - Add support for request `cache-control` directives. (#42)
 - Drop httpcore dependencie. (#40)
