@@ -275,6 +275,9 @@ class Controller:
         response_cache_control = parse_cache_control(
             extract_header_values_decoded(response.headers, b"Cache-Control")
         )
+        request_cache_control = parse_cache_control(
+            extract_header_values_decoded(request.headers, b"Cache-Control")
+        )
 
         # request header fields nominated by the stored
         # response (if any) match those presented (see Section 4.1)
@@ -306,8 +309,19 @@ class Controller:
                 raise RuntimeError("The lifespan of freshness cannot be calculated.")
 
         age = get_age(response, self._clock)
-
         is_fresh = freshness_lifetime > age
+
+        # The max-age request directive indicates that
+        # the client prefers a response whose age is
+        # less than or equal to the specified number of seconds.
+        # Unless the max-stale request directive is also present,
+        # the client does not wish to receive a stale response.
+        if request_cache_control.max_age is not None:
+            if request_cache_control.max_age < age:
+                return None
+
+            if request_cache_control.max_stale is None and not is_fresh:
+                return None
 
         # the stored response is one of the following:
         #   fresh (see Section 4.2), or
