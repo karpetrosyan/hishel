@@ -401,8 +401,8 @@ Example of the serialized responses:
         - https://github.com/
       content: ''
       extensions:
-          http_version: HTTP/1.1
-          reason_phrase: Moved Permanently
+        http_version: HTTP/1.1
+        reason_phrase: Moved Permanently
     request:
       method: GET
       url: https://www.github.com/
@@ -412,13 +412,13 @@ Example of the serialized responses:
       - - Accept
         - '*/*'
       - - Accept-Encoding
-          - gzip, deflate
+        - gzip, deflate
       - - Connection
         - keep-alive
       - - User-Agent
         - python-httpx/0.24.1
       extensions:
-          timeout:
+        timeout:
           connect: 5.0
           read: 5.0
           write: 5.0
