@@ -396,9 +396,9 @@ Example of the serialized responses:
       status: 301
       headers:
       - - Content-Length
-          - '0'
+        - '0'
       - - Location
-          - https://github.com/
+        - https://github.com/
       content: ''
       extensions:
           http_version: HTTP/1.1
@@ -408,15 +408,15 @@ Example of the serialized responses:
       url: https://www.github.com/
       headers:
       - - Host
-          - www.github.com
+        - www.github.com
       - - Accept
-          - '*/*'
+        - '*/*'
       - - Accept-Encoding
           - gzip, deflate
       - - Connection
-          - keep-alive
+        - keep-alive
       - - User-Agent
-          - python-httpx/0.24.1
+        - python-httpx/0.24.1
       extensions:
           timeout:
           connect: 5.0
