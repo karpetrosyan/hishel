@@ -425,7 +425,7 @@ Example of the serialized responses:
           pool: 5.0
     metadata:
       cache_key: 71b46af84732856e5c16d503b655fcd0
-      number_of_uses: 1
+      number_of_uses: 0
       created_at: Mon, 21 Aug 2023 05:22:20 GMT
 
     ```
