@@ -380,6 +380,11 @@ Example of the serialized responses:
                     "pool": 5.0
                 }
             }
+        },
+        "metadata": {
+            "cache_key": "71b46af84732856e5c16d503b655fcd0",
+            "number_of_uses": 0,
+            "created_at": "Mon, 21 Aug 2023 05:22:20 GMT"
         }
     }
     ```
@@ -388,36 +393,40 @@ Example of the serialized responses:
 
     ``` yaml
     response:
-      status: 301
-      headers:
-      - - Content-Length
+    status: 301
+    headers:
+    - - Content-Length
         - '0'
-      - - Location
+    - - Location
         - https://github.com/
-      content: ''
-      extensions:
+    content: ''
+    extensions:
         http_version: HTTP/1.1
         reason_phrase: Moved Permanently
     request:
-      method: GET
-      url: https://www.github.com/
-      headers:
-      - - Host
+    method: GET
+    url: https://www.github.com/
+    headers:
+    - - Host
         - www.github.com
-      - - Accept
+    - - Accept
         - '*/*'
-      - - Accept-Encoding
+    - - Accept-Encoding
         - gzip, deflate
-      - - Connection
+    - - Connection
         - keep-alive
-      - - User-Agent
+    - - User-Agent
         - python-httpx/0.24.1
-      extensions:
+    extensions:
         timeout:
-          connect: 5.0
-          read: 5.0
-          write: 5.0
-          pool: 5.0
+        connect: 5.0
+        read: 5.0
+        write: 5.0
+        pool: 5.0
+    metadata:
+    cache_key: 71b46af84732856e5c16d503b655fcd0
+    number_of_uses: 1
+    created_at: Mon, 21 Aug 2023 05:22:20 GMT
 
     ```
 
