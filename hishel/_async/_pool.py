@@ -88,6 +88,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                     metadata=metadata,
                 )
                 res.extensions["from_cache"] = True  # type: ignore[index]
+                res.extensions["cache_metadata"] = metadata  # type: ignore[index]
                 return res
 
             if request_cache_control.only_if_cached:
@@ -103,6 +104,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                         response=stored_resposne
                     ):
                         stored_resposne.extensions["from_cache"] = True  # type: ignore[index]
+                        stored_resposne.extensions["cache_metadata"] = metadata  # type: ignore[index]
                         return stored_resposne
                     raise  # pragma: no cover
                 # Merge headers with the stale response.
@@ -116,6 +118,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                     key, response=full_response, request=request, metadata=metadata
                 )
                 full_response.extensions["from_cache"] = response.status == 304  # type: ignore[index]
+                full_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
                 return full_response
 
         response = await self._pool.handle_async_request(request)
