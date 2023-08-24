@@ -1,5 +1,9 @@
 # Changelog
 
+## development
+
+- Add metadata into the response extensions. (#56)
+
 ## 0.0.11 (8/15/2023) 
 
 - Add support for request `cache-control` directives. (#42)

@@ -108,6 +108,7 @@ class CacheTransport(httpx.BaseTransport):
                     metadata=metadata,
                 )
                 res.extensions["from_cache"] = True  # type: ignore[index]
+                res.extensions["cache_metadata"] = metadata  # type: ignore[index]
                 return Response(
                     status_code=res.status,
                     headers=res.headers,
@@ -137,6 +138,7 @@ class CacheTransport(httpx.BaseTransport):
                     ):
                         stored_resposne.read()
                         stored_resposne.extensions["from_cache"] = True  # type: ignore[index]
+                        stored_resposne.extensions["cache_metadata"] = metadata  # type: ignore[index]
                         return Response(
                             status_code=stored_resposne.status,
                             headers=stored_resposne.headers,
@@ -173,6 +175,8 @@ class CacheTransport(httpx.BaseTransport):
                 full_response.extensions["from_cache"] = (  # type: ignore[index]
                     httpcore_response.status == 304
                 )
+                if full_response.extensions["from_cache"]:
+                    full_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
                 return Response(
                     status_code=full_response.status,
                     headers=full_response.headers,
