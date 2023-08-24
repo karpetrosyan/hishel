@@ -175,7 +175,8 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 full_response.extensions["from_cache"] = (  # type: ignore[index]
                     httpcore_response.status == 304
                 )
-                full_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
+                if full_response.extensions["from_cache"]:
+                    full_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
                 return Response(
                     status_code=full_response.status,
                     headers=full_response.headers,

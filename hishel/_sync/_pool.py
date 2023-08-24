@@ -118,7 +118,8 @@ class CacheConnectionPool(RequestInterface):
                     key, response=full_response, request=request, metadata=metadata
                 )
                 full_response.extensions["from_cache"] = response.status == 304  # type: ignore[index]
-                full_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
+                if full_response.extensions["from_cache"]:
+                    full_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
                 return full_response
 
         response = self._pool.handle_request(request)
