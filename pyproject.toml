@@ -42,7 +42,7 @@ redis = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/karosis88/hishel"
+Homepage = "https://karosis88.github.io/hishel/"
 Source = "https://github.com/karosis88/hishel"
 
 [tool.hatch.version]
