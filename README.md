@@ -108,8 +108,6 @@ You have complete control over them; you can change storage or even write your o
 
 ## Contributing
 
-`Hishel` is a powerful tool, but it is also a new project with potential flaws, so we welcome contributions!
-
 You can open the pull request by following these instructions if you want to improve `Hishel`. 💓
 
 - Fork the project.
