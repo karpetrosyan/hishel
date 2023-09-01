@@ -13,7 +13,7 @@ mkdocstrings[python]==0.22.0
 # tests
 pytest==7.4.0
 pytest-asyncio==0.21.1
-types-redis==4.6.0.4
+types-redis==4.6.0.5
 trio==0.21.0
 coverage==7.2.7
 types-PyYAML==6.0.12.10
