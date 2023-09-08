@@ -5,6 +5,8 @@ theme:
   name: material
   features:
     - content.code.copy
+    - navigation.expand
+
   palette:
     - scheme: default
       primary: "amber"
@@ -22,7 +24,6 @@ markdown_extensions:
       line_spans: __span
       pygments_lang_class: true
   - attr_list
-  - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true 
   - pymdownx.emoji:
@@ -30,10 +31,11 @@ markdown_extensions:
       emoji_generator: !!python/name:materialx.emoji.to_svg
   - pymdownx.inlinehilite
   - pymdownx.snippets
-  - pymdownx.superfences
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences 
 
 plugins:
 - mkdocstrings:
@@ -45,4 +47,7 @@ plugins:
 nav:
   - Introduction: index.md
   - User Guide: userguide.md
+  - Examples:
+    - FastAPI: examples/fastapi.md
+    - Flask: examples/flask.md
   - API Reference: api.md
