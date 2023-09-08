@@ -20,7 +20,7 @@ Now let's do some load testing using the popular load testing tool [Locust](http
 
 [Here are](https://raw.githubusercontent.com/karosis88/hishel/master/docs/static/flask_without_cache.png) the test results:
 
-<a href="">
+<a href="https://raw.githubusercontent.com/karosis88/hishel/master/docs/static/flask_without_cache.png">
     <img src="https://raw.githubusercontent.com/karosis88/hishel/master/docs/static/flask_without_cache.png" alt="pypi">
 </a>
 
@@ -44,7 +44,7 @@ def main():
 
 [Here are](https://raw.githubusercontent.com/karosis88/hishel/master/docs/static/flask_with_cache.png) the test results:
 
-<a href="">
+<a href="https://raw.githubusercontent.com/karosis88/hishel/master/docs/static/flask_with_cache.png">
     <img src="https://raw.githubusercontent.com/karosis88/hishel/master/docs/static/flask_with_cache.png" alt="pypi">
 </a>
 
