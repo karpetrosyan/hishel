@@ -19,6 +19,9 @@
       <img src="https://img.shields.io/codecov/c/github/karosis88/hishel" alt="license">
   </a>
 
+  <a href="https://www.pepy.tech/projects/hishel">
+      <img src="https://static.pepy.tech/badge/hishel" alt="Downloads">
+  </a>
 </p>
 
 -----
@@ -107,8 +110,6 @@ You have complete control over them; you can change storage or even write your o
 
 
 ## Contributings
-
-`Hishel` is a powerful tool, but it is also a new project with potential flaws, so we welcome contributions!
 
 You can open the pull request by following these instructions if you want to improve `Hishel`. 💓
 
