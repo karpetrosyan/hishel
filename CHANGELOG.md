@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add support for Python 3.12. (#71)
+
 ## 0.0.12 (8/9/2023)
 
 - Add metadata into the response extensions. (#56)
