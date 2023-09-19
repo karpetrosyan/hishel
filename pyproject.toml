@@ -25,6 +25,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
@@ -42,7 +43,7 @@ redis = [
 ]
 
 [project.urls]
-Homepage = "https://karosis88.github.io/hishel/"
+Homepage = "https://hishel.com"
 Source = "https://github.com/karosis88/hishel"
 
 [tool.hatch.version]
