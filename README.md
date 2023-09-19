@@ -20,7 +20,7 @@
   </a>
 
   <a href="https://www.pepy.tech/projects/hishel">
-      <img src="https://static.pepy.tech/badge/hishe" alt="Downloads">
+      <img src="https://static.pepy.tech/badge/hishel" alt="Downloads">
   </a>
 </p>
 
