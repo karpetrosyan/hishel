@@ -19,15 +19,15 @@ export default function Header() {
         <a href="" className="leading-10">
           Hishel
         </a>
-        <div className="flex">
+        <div className="flex relative">
           <a
             className="flex text-xs items-center hover:opacity-75"
             href="https://github.com/karosis88/hishel"
           >
-            <img className="h-6" src={githubLogo} alt="github" />
-            <div className="ml-2">
+            <img className="h-5" src={githubLogo} alt="github" />
+            <div className="ml-2 relative">
               <div
-                className={`flex text-center duration-500 ${
+                className={`flex text-center duration-500 h-6 items-center ${
                   version === null ? zeroOpacity : ""
                 } `}
               >
