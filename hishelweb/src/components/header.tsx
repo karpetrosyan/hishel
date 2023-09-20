@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import githubLogo from "../assets/github-mark.svg"
-import versionTagLogo from "../assets/tag-svgrepo-com.svg"
+import githubLogo from "../assets/github-mark.svg";
+import versionTagLogo from "../assets/tag-svgrepo-com.svg";
 
 export default function Header() {
   const [version, setVersion] = useState<string | null>(null);
