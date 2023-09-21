@@ -1,4 +1,3 @@
-
 export default function ResponseInfo() {
-    return <>ResponseInfo</>
+  return <>ResponseInfo</>;
 }

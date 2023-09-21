@@ -1,5 +1,3 @@
-
-
 export default function MetadataInfo() {
-    return <>MetadataInfo</>
+  return <>MetadataInfo</>;
 }
