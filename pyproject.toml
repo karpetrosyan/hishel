@@ -46,6 +46,9 @@ redis = [
 Homepage = "https://hishel.com"
 Source = "https://github.com/karosis88/hishel"
 
+[project.scripts]
+hishelweb = "hishelweb.cli:main"
+
 [tool.hatch.version]
 path = "hishel/__init__.py"
 
