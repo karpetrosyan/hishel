@@ -9,7 +9,7 @@ export default function Header() {
     fetch("https://api.github.com/repos/karosis88/hishel/releases/latest")
       .then((response) => response.json())
       .then((data) => setVersion(data["tag_name"]));
-  }, []); 
+  }, []);
 
   return (
     <header className="bg-yellow-400 h-10">
