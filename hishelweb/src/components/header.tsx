@@ -9,9 +9,7 @@ export default function Header() {
     fetch("https://api.github.com/repos/karosis88/hishel/releases/latest")
       .then((response) => response.json())
       .then((data) => setVersion(data["tag_name"]));
-  }, []);
-
-  const zeroOpacity = "opacity-0";
+  }, []); 
 
   return (
     <header className="bg-yellow-400 h-10">
@@ -26,13 +24,9 @@ export default function Header() {
           >
             <img className="h-5" src={githubLogo} alt="github" />
             <div className="ml-2 relative">
-              <div
-                className={`flex text-center duration-500 h-6 items-center ${
-                  version === null ? zeroOpacity : ""
-                } `}
-              >
+              <div className={`flex text-center duration-500 h-6 items-center`}>
                 <img className="h-3" src={versionTagLogo} alt="versionTag" />
-                <h3 className="leading-3">{version || "0.0.12"}</h3>
+                <h3 className="leading-3">{version || "0.0.0"}</h3>
               </div>
             </div>
           </a>
