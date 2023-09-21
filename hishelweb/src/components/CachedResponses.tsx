@@ -67,9 +67,10 @@ export default function CachedResponses() {
       created_at: "Wed, 20 Sep 2023 08:44:19 GMT",
     },
   };
+
   return (
     <section className="">
-      <table className="w-7/12 text-gray-800">
+      {/* <table className="w-7/12 text-gray-800">
         <thead className="bg-gray-100">
           <tr>
             <th className="w-12"></th>
@@ -92,9 +93,9 @@ export default function CachedResponses() {
             <td className="text-center">200</td>
           </tr>
         </tbody>
-      </table>
+      </table> */}
 
-      {/* <Response response={fakeResponse}></Response> */}
+      <Response response={fakeResponse}></Response>
     </section>
   );
 }

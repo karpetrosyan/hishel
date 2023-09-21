@@ -3,10 +3,15 @@ import RequestInfo from "./RequestInfo";
 import MetadataInfo from "./MetadataInfo";
 import ResponseInfo from "./ResponseInfo";
 
-type Menu = "Request" | "Response" | "Metadata";
 import { CachedResponse } from "../types";
 
-export default function Response(response: CachedResponse) {
+type Menu = "Request" | "Response" | "Metadata";
+
+type ResponseProps = {
+  response: CachedResponse;
+};
+
+export default function Response({ response }: ResponseProps) {
   const [selectedMenu, setSelectedMenu] = useState<Menu>("Response");
 
   return (
@@ -24,9 +29,14 @@ export default function Response(response: CachedResponse) {
         ))}
       </nav>
 
-      {selectedMenu === "Request" && <RequestInfo></RequestInfo>}
-      {selectedMenu === "Response" && <ResponseInfo></ResponseInfo>}
-      {selectedMenu === "Metadata" && <MetadataInfo></MetadataInfo>}
+      <div className="p-2 text-gray-700">
+        {selectedMenu === "Request" && (
+          <RequestInfo response={response}></RequestInfo>
+        )}
+        {selectedMenu === "Response" && <ResponseInfo response={response}></ResponseInfo>}
+        {selectedMenu === "Metadata" && <MetadataInfo response={response}></MetadataInfo>}
+      </div>
+
     </>
   );
 }
