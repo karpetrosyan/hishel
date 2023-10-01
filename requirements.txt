@@ -1,7 +1,7 @@
 -e .[yaml,redis]
 
 # linting
-ruff==0.0.270
+ruff==0.0.291
 mypy==1.5.1
 black==23.7.0
 
