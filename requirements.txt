@@ -6,7 +6,7 @@ mypy==1.5.1
 black==23.7.0
 
 # docs
-mkdocs==1.5.2
+mkdocs==1.5.3
 mkdocs-material==9.1.21
 mkdocstrings[python]==0.23.0
 
