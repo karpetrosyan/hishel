@@ -1,19 +1,19 @@
 -e .[yaml,redis]
 
 # linting
-ruff==0.0.270
+ruff==0.0.291
 mypy==1.5.1
 black==23.7.0
 
 # docs
-mkdocs==1.5.2
+mkdocs==1.5.3
 mkdocs-material==9.1.21
-mkdocstrings[python]==0.22.0
+mkdocstrings[python]==0.23.0
 
 # tests
-pytest==7.4.0
+pytest==7.4.2
 pytest-asyncio==0.21.1
-types-redis==4.6.0.5
+types-redis==4.6.0.7
 trio==0.22.2
 coverage==7.3.0
 types-PyYAML==6.0.12.11
