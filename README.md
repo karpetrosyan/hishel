@@ -19,7 +19,7 @@
       <img src="https://img.shields.io/codecov/c/github/karosis88/hishel" alt="license">
   </a>
 
-  <a href="https://static.pepy.tech/badge/hishel/month">
+  <a href="https://www.pepy.tech/projects/hishel">
       <img src="https://static.pepy.tech/badge/hishel/month" alt="Downloads">
   </a>
 </p>
