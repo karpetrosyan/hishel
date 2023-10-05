@@ -162,6 +162,8 @@ class CacheTransport(httpx.BaseTransport):
                 )
 
                 full_response.read()
+                response.close()
+
                 metadata["number_of_uses"] += response.status_code == 304
 
                 self._storage.store(
@@ -193,6 +195,7 @@ class CacheTransport(httpx.BaseTransport):
             extensions=response.extensions,
         )
         httpcore_response.read()
+        httpcore_response.close()
 
         if self._controller.is_cachable(
             request=httpcore_request, response=httpcore_response
