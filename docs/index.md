@@ -26,7 +26,7 @@
 
 -----
 
-**Hishel (հիշել, remember)** is a library that implements HTTP Caching for [HTTPX](https://github.com/encode/httpx) and [HTTP Core](https://github.com/encode/httpcore) libraries in accordance with **RFC 9111**, the most recent caching specification.
+**Hishel (հիշել, remember)** is a library that implements HTTP Caching for [HTTPX](https://github.com/encode/httpx) and [HTTP Core](https://github.com/encode/httpcore) libraries in accordance with [**RFC 9111**](https://www.rfc-editor.org/rfc/rfc9111.html), the most recent caching specification.
 
 ## Features
 
