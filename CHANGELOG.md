@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Add support for Python 3.12. (#71)
+- Fix connections releasing from the connection pool. (#83)
 
 ## 0.0.12 (8/9/2023)
 

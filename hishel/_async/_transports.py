@@ -162,6 +162,8 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 )
 
                 await full_response.aread()
+                await response.aclose()
+
                 metadata["number_of_uses"] += response.status_code == 304
 
                 await self._storage.store(
@@ -193,6 +195,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             extensions=response.extensions,
         )
         await httpcore_response.aread()
+        await httpcore_response.aclose()
 
         if self._controller.is_cachable(
             request=httpcore_request, response=httpcore_response
