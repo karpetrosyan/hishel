@@ -12,7 +12,7 @@
 ## 0.0.11 (15/8/2023) 
 
 - Add support for request `cache-control` directives. (#42)
-- Drop httpcore dependencie. (#40)
+- Drop httpcore dependency. (#40)
 - Support HTTP methods only if they are defined as cacheable. (#37)
 
 ## 0.0.10 (7/8/2023) 
