@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.13 (10/5/2023)
 
 - Add support for Python 3.12. (#71)
 - Fix connections releasing from the connection pool. (#83)
