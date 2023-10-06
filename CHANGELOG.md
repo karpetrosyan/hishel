@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Replace `AsyncResponseStream` with `AsyncCacheStream`. (#86)
+
 ## 0.0.13 (10/5/2023)
 
 - Add support for Python 3.12. (#71)

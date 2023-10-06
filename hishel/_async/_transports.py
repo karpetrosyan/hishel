@@ -4,9 +4,8 @@ import typing as tp
 
 import httpcore
 import httpx
-from httpx import Request, Response
+from httpx import AsyncByteStream, Request, Response
 from httpx._exceptions import ConnectError
-from httpx._transports.default import AsyncResponseStream
 
 from hishel._utils import extract_header_values_decoded, generate_key, normalized_url
 
@@ -27,6 +26,19 @@ async def fake_stream(content: bytes) -> tp.AsyncIterable[bytes]:
 
 def generate_504() -> Response:
     return Response(status_code=504)
+
+
+class AsyncCacheStream(AsyncByteStream):
+    def __init__(self, httpcore_stream: tp.AsyncIterable[bytes]):
+        self._httpcore_stream = httpcore_stream
+
+    async def __aiter__(self) -> tp.AsyncIterator[bytes]:
+        async for part in self._httpcore_stream:
+            yield part
+
+    async def aclose(self) -> None:
+        if hasattr(self._httpcore_stream, "aclose"):
+            await self._httpcore_stream.aclose()
 
 
 class AsyncCacheTransport(httpx.AsyncBaseTransport):
@@ -112,7 +124,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 return Response(
                     status_code=res.status,
                     headers=res.headers,
-                    stream=AsyncResponseStream(fake_stream(stored_resposne.content)),
+                    stream=AsyncCacheStream(fake_stream(stored_resposne.content)),
                     extensions=res.extensions,
                 )
 
@@ -126,7 +138,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                     method=res.method,
                     url=normalized_url(res.url),
                     headers=res.headers,
-                    stream=AsyncResponseStream(res.stream),
+                    stream=AsyncCacheStream(res.stream),
                 )
                 try:
                     response = await self._transport.handle_async_request(
@@ -142,7 +154,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                         return Response(
                             status_code=stored_resposne.status,
                             headers=stored_resposne.headers,
-                            stream=AsyncResponseStream(
+                            stream=AsyncCacheStream(
                                 fake_stream(stored_resposne.content)
                             ),
                             extensions=stored_resposne.extensions,
@@ -152,7 +164,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 httpcore_response = httpcore.Response(
                     status=response.status_code,
                     headers=response.headers.raw,
-                    content=AsyncResponseStream(response.stream),
+                    content=AsyncCacheStream(response.stream),
                     extensions=response.extensions,
                 )
 
@@ -182,7 +194,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 return Response(
                     status_code=full_response.status,
                     headers=full_response.headers,
-                    stream=AsyncResponseStream(fake_stream(full_response.content)),
+                    stream=AsyncCacheStream(fake_stream(full_response.content)),
                     extensions=full_response.extensions,
                 )
 
@@ -191,7 +203,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         httpcore_response = httpcore.Response(
             status=response.status_code,
             headers=response.headers.raw,
-            content=AsyncResponseStream(response.stream),
+            content=AsyncCacheStream(response.stream),
             extensions=response.extensions,
         )
         await httpcore_response.aread()
@@ -214,7 +226,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         return Response(
             status_code=httpcore_response.status,
             headers=httpcore_response.headers,
-            stream=AsyncResponseStream(fake_stream(httpcore_response.content)),
+            stream=AsyncCacheStream(fake_stream(httpcore_response.content)),
             extensions=httpcore_response.extensions,
         )
 

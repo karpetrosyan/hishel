@@ -4,9 +4,8 @@ import typing as tp
 
 import httpcore
 import httpx
-from httpx import Request, Response
+from httpx import ByteStream, Request, Response
 from httpx._exceptions import ConnectError
-from httpx._transports.default import ResponseStream
 
 from hishel._utils import extract_header_values_decoded, generate_key, normalized_url
 
@@ -27,6 +26,19 @@ def fake_stream(content: bytes) -> tp.Iterable[bytes]:
 
 def generate_504() -> Response:
     return Response(status_code=504)
+
+
+class CacheStream(ByteStream):
+    def __init__(self, httpcore_stream: tp.Iterable[bytes]):
+        self._httpcore_stream = httpcore_stream
+
+    def __iter__(self) -> tp.Iterator[bytes]:
+        for part in self._httpcore_stream:
+            yield part
+
+    def close(self) -> None:
+        if hasattr(self._httpcore_stream, "close"):
+            self._httpcore_stream.close()
 
 
 class CacheTransport(httpx.BaseTransport):
@@ -112,7 +124,7 @@ class CacheTransport(httpx.BaseTransport):
                 return Response(
                     status_code=res.status,
                     headers=res.headers,
-                    stream=ResponseStream(fake_stream(stored_resposne.content)),
+                    stream=CacheStream(fake_stream(stored_resposne.content)),
                     extensions=res.extensions,
                 )
 
@@ -126,7 +138,7 @@ class CacheTransport(httpx.BaseTransport):
                     method=res.method,
                     url=normalized_url(res.url),
                     headers=res.headers,
-                    stream=ResponseStream(res.stream),
+                    stream=CacheStream(res.stream),
                 )
                 try:
                     response = self._transport.handle_request(
@@ -142,7 +154,7 @@ class CacheTransport(httpx.BaseTransport):
                         return Response(
                             status_code=stored_resposne.status,
                             headers=stored_resposne.headers,
-                            stream=ResponseStream(
+                            stream=CacheStream(
                                 fake_stream(stored_resposne.content)
                             ),
                             extensions=stored_resposne.extensions,
@@ -152,7 +164,7 @@ class CacheTransport(httpx.BaseTransport):
                 httpcore_response = httpcore.Response(
                     status=response.status_code,
                     headers=response.headers.raw,
-                    content=ResponseStream(response.stream),
+                    content=CacheStream(response.stream),
                     extensions=response.extensions,
                 )
 
@@ -182,7 +194,7 @@ class CacheTransport(httpx.BaseTransport):
                 return Response(
                     status_code=full_response.status,
                     headers=full_response.headers,
-                    stream=ResponseStream(fake_stream(full_response.content)),
+                    stream=CacheStream(fake_stream(full_response.content)),
                     extensions=full_response.extensions,
                 )
 
@@ -191,7 +203,7 @@ class CacheTransport(httpx.BaseTransport):
         httpcore_response = httpcore.Response(
             status=response.status_code,
             headers=response.headers.raw,
-            content=ResponseStream(response.stream),
+            content=CacheStream(response.stream),
             extensions=response.extensions,
         )
         httpcore_response.read()
@@ -214,7 +226,7 @@ class CacheTransport(httpx.BaseTransport):
         return Response(
             status_code=httpcore_response.status,
             headers=httpcore_response.headers,
-            stream=ResponseStream(fake_stream(httpcore_response.content)),
+            stream=CacheStream(fake_stream(httpcore_response.content)),
             extensions=httpcore_response.extensions,
         )
 
