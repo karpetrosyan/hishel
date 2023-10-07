@@ -38,7 +38,7 @@
 - 🚀 Very fast: Your requests will be even faster if there are **no IO operations**.
 
 ## Documentation
-Go through the [Hishel documentation](https://karpetrosyan.github.io/hishel/).
+Go through the [Hishel documentation](https://hishel.com).
 
 ## QuickStart
 
