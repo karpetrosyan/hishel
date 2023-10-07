@@ -53,8 +53,8 @@ Let's begin with an example of a httpx client.
 import hishel
 
 with hishel.CacheClient() as client:
-    client.get("https://www.github.com")
-    client.get("https://www.github.com")  # takes from the cache (very fast!)
+    client.get("https://hishel.com")  # 0.4749558370003797s
+    client.get("https://hishel.com")  # 0.002873589000046195s (~250x faster!)
 ```
 
 or in asynchronous context
@@ -63,8 +63,8 @@ or in asynchronous context
 import hishel
 
 async with hishel.AsyncCacheClient() as client:
-    await client.get("https://www.github.com")
-    await client.get("https://www.github.com")  # takes from the cache
+    await client.get("https://hishel.com")
+    await client.get("https://hishel.com")  # takes from the cache
 ```
 
 ## HTTPX and HTTP Core
@@ -83,7 +83,7 @@ import hishel
 transport = httpx.HTTPTransport()
 cache_transport = hishel.CacheTransport(transport=transport)
 
-req = httpx.Request("GET", "https://www.github.com")
+req = httpx.Request("GET", "https://hishel.com")
 
 cache_transport.handle_request(req)
 cache_transport.handle_request(req)  # takes from the cache
@@ -98,8 +98,8 @@ import hishel
 
 pool = hishel.CacheConnectionPool(pool=httpcore.ConnectionPool())
 
-pool.request("GET", "https://www.github.com")
-pool.request("GET", "https://www.github.com")  # takes from the cache
+pool.request("GET", "https://hishel.com")
+pool.request("GET", "https://hishel.com")  # takes from the cache
 
 ```
 
