@@ -18,10 +18,10 @@ async def main():
 
 Now let's do some load testing using the popular load testing tool [Locust](https://locust.io/).
 
-[Here are](https://raw.githubusercontent.com/karosis88/hishel/master/docs/static/fastapi_without_cache.png) the test results:
+[Here are](https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/fastapi_without_cache.png) the test results:
 
-<a href="https://raw.githubusercontent.com/karosis88/hishel/master/docs/static/fastapi_without_cache.png">
-    <img src="https://raw.githubusercontent.com/karosis88/hishel/master/docs/static/fastapi_without_cache.png" alt="pypi">
+<a href="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/fastapi_without_cache.png">
+    <img src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/fastapi_without_cache.png" alt="pypi">
 </a>
 
 Despite the fact that we use **async/await**, we got only **±70 RPS**.
@@ -42,10 +42,10 @@ async def main():
     return response.status_code
 ```
 
-[Here are](https://raw.githubusercontent.com/karosis88/hishel/master/docs/static/fastapi_with_cache.png) the test results:
+[Here are](https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/fastapi_with_cache.png) the test results:
 
-<a href="https://raw.githubusercontent.com/karosis88/hishel/master/docs/static/fastapi_with_cache.png">
-    <img src="https://raw.githubusercontent.com/karosis88/hishel/master/docs/static/fastapi_with_cache.png" alt="pypi">
+<a href="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/fastapi_with_cache.png">
+    <img src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/fastapi_with_cache.png" alt="pypi">
 </a>
 
 Now we have more than **365+ RPS** using the power of HTTP caching.
