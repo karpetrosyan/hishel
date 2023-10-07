@@ -44,7 +44,7 @@ redis = [
 
 [project.urls]
 Homepage = "https://hishel.com"
-Source = "https://github.com/karosis88/hishel"
+Source = "https://github.com/karpetrosyan/hishel"
 
 [tool.hatch.version]
 path = "hishel/__init__.py"

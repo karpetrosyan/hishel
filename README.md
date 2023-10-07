@@ -1,5 +1,5 @@
 <p align="center">
-  <a href=""><img width="350" height="250" src="https://raw.githubusercontent.com/karosis88/hishel/master/.github/logo.jpg" alt='HTTPX'></a>
+  <a href=""><img width="350" height="250" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/.github/logo.jpg" alt='HTTPX'></a>
 </p>
 
 
@@ -15,8 +15,8 @@
       <img src="https://img.shields.io/pypi/l/hishel" alt="license">
   </a>
 
-  <a href="https://img.shields.io/codecov/c/github/karosis88/hishel">
-      <img src="https://img.shields.io/codecov/c/github/karosis88/hishel" alt="license">
+  <a href="https://img.shields.io/codecov/c/github/karpetrosyan/hishel">
+      <img src="https://img.shields.io/codecov/c/github/karpetrosyan/hishel" alt="license">
   </a>
 
   <a href="https://www.pepy.tech/projects/hishel">
@@ -38,7 +38,7 @@
 - 🚀 Very fast: Your requests will be even faster if there are **no IO operations**.
 
 ## Documentation
-Go through the [Hishel documentation](https://karosis88.github.io/hishel/).
+Go through the [Hishel documentation](https://hishel.com).
 
 ## QuickStart
 
@@ -105,7 +105,7 @@ pool.request("GET", "https://www.github.com")  # takes from the cache
 
 ## How and where are the responses saved?
 
-The responses are stored by `Hishel` in [storages](https://karosis88.github.io/hishel/userguide/#storages).
+The responses are stored by `Hishel` in [storages](https://karpetrosyan.github.io/hishel/userguide/#storages).
 You have complete control over them; you can change storage or even write your own if necessary.
 
 
