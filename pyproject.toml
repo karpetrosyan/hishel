@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "hishel"
 dynamic = ["readme", "version"]
-description = "Persistant cache implementation for httpx and httpcore"
+description = "Persistent cache implementation for httpx and httpcore"
 license = "BSD-3-Clause"
 requires-python = ">=3.8"
 authors = [
