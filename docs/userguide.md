@@ -19,7 +19,7 @@ It is always advised to use the second option because it is more reliable and ad
 `Hishel` offers two classes for the first choice.
 
 - `hishel.AsyncCacheClient` for `httpx.AsyncClient`
-- `hishel.CacheClient` `for httpx.Client`
+- `hishel.CacheClient` for `httpx.Client`
 
 This implies that you can enable HTTP caching in your existing application by simply switching to the proper Client.
 
