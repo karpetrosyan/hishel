@@ -5,7 +5,8 @@ theme:
   name: material
   features:
     - content.code.copy
-    - navigation.expand
+    - toc.integrate
+    - toc.follow
 
   palette:
     - scheme: default
@@ -44,9 +45,11 @@ plugins:
         options:
           docstring_style: sphinx
           docstring_section_style: table
+
 nav:
   - Introduction: index.md
   - User Guide: userguide.md
+  - Advanced Usage: advanced.md
   - Examples:
     - FastAPI: examples/fastapi.md
     - Flask: examples/flask.md

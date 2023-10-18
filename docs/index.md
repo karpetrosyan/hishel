@@ -37,9 +37,6 @@
 - ⚙️ Configurable: You have complete control over how the responses are stored and serialized, and there is built-in support for filesystem and redis backends.
 - 🚀 Very fast: Your requests will be even faster if there are **no IO operations**.
 
-## Documentation
-Go through the [Hishel documentation](https://hishel.com).
-
 ## QuickStart
 
 Install `Hishel` using pip:
@@ -102,12 +99,6 @@ pool.request("GET", "https://hishel.com")
 pool.request("GET", "https://hishel.com")  # takes from the cache
 
 ```
-
-## How and where are the responses saved?
-
-The responses are stored by `Hishel` in [storages](https://karpetrosyan.github.io/hishel/userguide/#storages).
-You have complete control over them; you can change storage or even write your own if necessary.
-
 
 ## Contributings
 
