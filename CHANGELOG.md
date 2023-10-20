@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Replace `AsyncResponseStream` with `AsyncCacheStream`. (#86)
+- Add `must-understand` response directive support. (#90)
 
 ## 0.0.13 (10/5/2023)
 
