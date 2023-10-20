@@ -174,6 +174,8 @@ class Controller:
         if request_cache_control.no_store:
             return False
 
+        # note that the must-understand cache directive overrides
+        # no-store in certain circumstances; see Section 5.2.2.3.
         if (
             response_cache_control.no_store
             and not response_cache_control.must_understand
