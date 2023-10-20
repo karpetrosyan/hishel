@@ -147,7 +147,6 @@ class Controller:
         `https://www.rfc-editor.org/rfc/rfc9111.html#name-storing-responses-in-caches`
         lists the steps that this method simply follows.
         """
-
         method = request.method.decode("ascii")
 
         if response.status not in self._cacheable_status_codes:
@@ -171,8 +170,14 @@ class Controller:
         if response.status // 100 == 1:
             return False
 
-        # the no-store cache directive is not present in the response (see Section 5.2.2.5)
-        if response_cache_control.no_store or request_cache_control.no_store:
+        # the no-store cache directive is not present (see Section 5.2.2.5)
+        if request_cache_control.no_store:
+            return False
+
+        if (
+            response_cache_control.no_store
+            and not response_cache_control.must_understand
+        ):
             return False
 
         expires_presents = header_presents(response.headers, b"expires")
