@@ -723,3 +723,53 @@ def test_no_store_request_directive():
     controller = Controller()
 
     assert not controller.is_cachable(request=request, response=response)
+
+
+def test_no_store_response_directive():
+    request = Request(
+        method="GET",
+        url="https://example.com",
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+        ],
+    )
+
+    response = Response(
+        status=200,
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+            (b"Cache-Control", b"no-store, max-age=4000"),
+            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+        ],
+    )
+
+    controller = Controller()
+
+    assert not controller.is_cachable(request=request, response=response)
+
+
+def test_must_understand_response_directive():
+    request = Request(
+        method="GET",
+        url="https://example.com",
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+        ],
+    )
+
+    response = Response(
+        status=200,
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+            (b"Cache-Control", b"no-store, must-understand, max-age=4000"),
+            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+        ],
+    )
+
+    controller = Controller()
+
+    assert controller.is_cachable(request=request, response=response)
