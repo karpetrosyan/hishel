@@ -1,11 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.0.14 (23/10/2023)
 
 - Replace `AsyncResponseStream` with `AsyncCacheStream`. (#86)
 - Add `must-understand` response directive support. (#90)
 
-## 0.0.13 (10/5/2023)
+## 0.0.13 (5/10/2023)
 
 - Add support for Python 3.12. (#71)
 - Fix connections releasing from the connection pool. (#83)
