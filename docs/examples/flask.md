@@ -1,3 +1,7 @@
+---
+icon: simple/flask
+---
+
 As a `Flask` user, you can use the power of `HTTPX` using its synchronous interface.
 
 Here is a simple example:

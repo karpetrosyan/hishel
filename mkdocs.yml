@@ -7,6 +7,7 @@ theme:
     - content.code.copy
     - toc.integrate
     - toc.follow
+    - navigation.expand
 
   palette:
     - scheme: default
@@ -50,7 +51,11 @@ plugins:
 nav:
   - Introduction: index.md
   - User Guide: userguide.md
-  - Advanced Usage: advanced.md
+  - Advanced Usage:
+    - "Storages": advanced/storages.md
+    - Serializers: advanced/serializers.md
+    - Controllers: advanced/controllers.md
+    - HTTP Headers: advanced/http_headers.md
   - Examples:
     - FastAPI: examples/fastapi.md
     - Flask: examples/flask.md
