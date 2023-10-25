@@ -1,3 +1,7 @@
+---
+icon: simple/fastapi
+---
+
 Many `FastAPI` users use `HTTPX` as a modern and very fast HTTP client, which also supports **async/await** syntax like FastAPI does.
 
 Here is an example of how `HTTPX` can be used in `FastAPI`.
