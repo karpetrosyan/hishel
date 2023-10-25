@@ -32,13 +32,12 @@
 
 - :floppy_disk: **Persistence**: Responses are cached in the [**persistent memory**](https://en.m.wikipedia.org/wiki/Persistent_memory) for later use.
 - :handshake: **Compatibility**: It is completely compatible with your existing transports or connection pools, *whether they are default, custom, or provided by third-party libraries.*
-- :hugging: **Easy to use**: You continue to use httpx while also enabling [web cache](https://en.wikipedia.org/wiki/Web_cache). 
+- :hugging: **Easy to use**: You continue to use httpx while also enabling [web cache](https://en.wikipedia.org/wiki/Web_cache).
 - :brain: **Smart**: Attempts to clearly implement RFC 9111, understands `Vary`, `Etag`, `Last-Modified`,  `Cache-Control`, and `Expires` headers, and *handles response re-validation automatically*.
 - :gear: **Configurable**: You have complete control over how the responses are stored and serialized.
 - :package: **From the package**:
     - Built-in support for [File system](https://en.wikipedia.org/wiki/File_system) :file_folder: , [Redis](https://en.wikipedia.org/wiki/Redis) :simple-redis:, and [SQLite](https://en.wikipedia.org/wiki/SQLite) :simple-sqlite: backends.
     - Built-in support for [JSON](https://en.wikipedia.org/wiki/JSON) :simple-json: , [YAML](https://en.wikipedia.org/wiki/YAML) :simple-yaml:, and [pickle](https://docs.python.org/3/library/pickle.html) serializers.
-
 - :rocket: **Very fast**: Your requests will be even faster if there are *no IO operations*.
 
 ## QuickStart

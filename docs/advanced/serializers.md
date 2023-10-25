@@ -144,7 +144,7 @@ storage = hishel.FileStorage(serializer=serializer)
 ```
 
 !!! note
-    Make sure `Hishel` has the yaml extension installed if you want to use the YAMLSerializer.
+    Make sure `Hishel` has the yaml extension installed if you want to use the `YAMLSerializer`.
     ``` shell
     $ pip install hishel[yaml]
     ```
