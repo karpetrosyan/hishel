@@ -7,7 +7,7 @@ When using `Hishel`, you have complete control over the configuration of how the
 
 This section contains examples of how to use the storages.
 
-### Using the Filesystem storage
+### :file_folder: Filesystem storage
 
 To explicitly specify the storage, we should create it first and pass it to the HTTP caching class.
 
@@ -29,7 +29,7 @@ storage = hishel.FileStorage()
 transport = hishel.CacheTransport(transport=httpx.HTTPTransport())
 ```
 
-#### Specifying the storage directory
+#### Storage directory
 
 If the responses are saved in the filesystem, there should be a directory that contains our responses.
 
@@ -43,7 +43,7 @@ import hishel
 storage = hishel.FileStorage(base_path="/home/test/my_cache_dir")
 ```
 
-#### Specifying the responses ttl in FileStorage
+#### Responses ttl in FileStorage
 
 You can explicitly specify the ttl for stored responses in this manner.
 
@@ -56,7 +56,7 @@ storage = hishel.FileStorage(ttl=3600)
 If you do this, `Hishel` will delete any stored responses whose ttl has expired.
 In this example, the stored responses were limited to 1 hour.
 
-### Using the Redis storage
+### :simple-redis: Redis storage
 
 `Hishel` includes built-in redis support, allowing you to store your responses in redis.
 
@@ -79,7 +79,7 @@ storage = hishel.RedisStorage()
 client = hishel.CacheTransport(transport=httpx.HTTPTransport())
 ```
 
-#### Specifying the host and port for redis.
+#### Custom redis client
 
 If you need to connect somewhere other than localhost, this is how you can do it.
 
@@ -96,7 +96,7 @@ storage = hishel.RedisStorage(
 ```
 
 
-#### Specifying the responses ttl in RedisStorage
+#### Responses ttl in RedisStorage
 
 You can explicitly specify the ttl for stored responses in this manner.
 
@@ -109,7 +109,7 @@ storage = hishel.RedisStorage(ttl=3600)
 If you do this, `Hishel` will delete any stored responses whose ttl has expired.
 In this example, the stored responses were limited to 1 hour.
 
-### Using the SQLite storage
+### :simple-sqlite: SQLite storage
 
 `Hishel` includes built-in [sqlite](https://www.sqlite.org/index.html) support, allowing you to store your responses in sqlite database.
 
@@ -138,7 +138,7 @@ client = hishel.CacheTransport(transport=httpx.HTTPTransport())
     $ pip install hishel[sqlite]
     ```
 
-#### Specifying the sqlite connection to use.
+#### Sqlite custom connection
 
 If you want more control over the underlying sqlite connection, you can explicitly pass it.
 
@@ -151,7 +151,7 @@ client = hishel.CacheClient(
 )
 ```
 
-#### Specifying the responses ttl in SQLiteStorage.
+#### Responses ttl in SQLiteStorage
 
 You can explicitly specify the ttl for stored responses in this manner.
 

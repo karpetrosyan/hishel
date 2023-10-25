@@ -2,7 +2,35 @@
 icon: material/web
 ---
 
-In addition, you can use the request `Cache-Control` directives defined in [RFC 9111](https://www.rfc-editor.org/rfc/rfc9111#name-request-directives) to make the cache behavior more explicit in some situations.
+You can use the request `Cache-Control` directives defined in [RFC 9111](https://www.rfc-editor.org/rfc/rfc9111#name-request-directives) to make the cache behavior more explicit in some situations.
+
+### only-if-cached
+
+If this directive is present in the request headers, the cache should either use the cached response or return the 504 status code.
+
+!!! note
+    It is guaranteed that the client will not make any requests; instead, it will try to find a response from the cache that can be used for this request.
+
+```python
+>>> import hishel
+>>> 
+>>> client = hishel.CacheClient()
+>>> response = client.get("https://example.com", headers=[("Cache-Control", "only-if-cached")])
+>>> response
+<Response [504 Gateway Timeout]>
+```
+
+or
+
+```python
+>>> import hishel
+>>> 
+>>> client = hishel.CacheClient()
+>>> client.get("https://google.com")  # will cache
+>>> response = client.get("https://google.com", headers=[("Cache-Control", "only-if-cached")])
+>>> response
+<Response [301 Moved Permanently]>
+```
 
 ### max-age
 
@@ -61,30 +89,3 @@ client = hishel.CacheClient()
 client.get("https://example.com", headers=[("Cache-Control", "no-store")])
 ```
 
-### only-if-cached
-
-If this directive is present in the request headers, the cache should either use the cached response or return the 504 status code.
-
-!!! note
-    It is guaranteed that the client will not make any requests; instead, it will try to find a response from the cache that can be used for this request.
-
-```python
->>> import hishel
->>> 
->>> client = hishel.CacheClient()
->>> response = client.get("https://example.com", headers=[("Cache-Control", "only-if-cached")])
->>> response
-<Response [504 Gateway Timeout]>
-```
-
-or
-
-```python
->>> import hishel
->>> 
->>> client = hishel.CacheClient()
->>> client.get("https://google.com")  # will cache
->>> response = client.get("https://google.com", headers=[("Cache-Control", "only-if-cached")])
->>> response
-<Response [301 Moved Permanently]>
-```

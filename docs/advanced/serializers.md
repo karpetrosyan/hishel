@@ -113,7 +113,7 @@ Example of the serialized responses:
     ```
 
 
-### Using the JSONSerializer
+### :simple-json: JSONSerializer
 
 Example:
 ```python
@@ -133,7 +133,7 @@ serializer = hishel.JSONSerializer()
 storage = hishel.RedisStorage(serializer=serializer)
 ```
 
-### Using the YAMLSerizlier
+### :simple-yaml: YAMLSerizlier
 
 Example:
 ```python
@@ -149,7 +149,7 @@ storage = hishel.FileStorage(serializer=serializer)
     $ pip install hishel[yaml]
     ```
 
-### Using the PickleSerializer
+### PickleSerializer
 
 Example:
 ```python
@@ -158,5 +158,4 @@ import hishel
 serializer = hishel.PickleSerializer()
 storage = hishel.FileStorage(serializer=serializer)
 ```
-
 
