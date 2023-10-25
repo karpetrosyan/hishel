@@ -156,7 +156,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
     def __init__(
         self,
         serializer: tp.Optional[BaseSerializer] = None,
-        connection: tp.Optional["anysqlite.Connection"] = None,  # type: ignore
+        connection: tp.Optional["anysqlite.Connection"] = None,
         ttl: tp.Optional[int] = None,
     ) -> None:
         if anysqlite is None:  # pragma: no cover

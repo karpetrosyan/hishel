@@ -156,7 +156,7 @@ class SQLiteStorage(BaseStorage):
     def __init__(
         self,
         serializer: tp.Optional[BaseSerializer] = None,
-        connection: tp.Optional["sqlite3.Connection"] = None,  # type: ignore
+        connection: tp.Optional["sqlite3.Connection"] = None,
         ttl: tp.Optional[int] = None,
     ) -> None:
         if sqlite3 is None:  # pragma: no cover
