@@ -5,8 +5,8 @@ from pathlib import Path
 
 try:
     import anysqlite
-except ImportError:
-    anysqlite = None
+except ImportError:  # pragma: no cover
+    anysqlite = None  # type: ignore
 
 from httpcore import Request, Response
 

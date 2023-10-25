@@ -5,8 +5,8 @@ from pathlib import Path
 
 try:
     import sqlite3
-except ImportError:
-    sqlite3 = None
+except ImportError:  # pragma: no cover
+    sqlite3 = None  # type: ignore
 
 from httpcore import Request, Response
 
