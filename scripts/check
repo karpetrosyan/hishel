@@ -1,6 +1,5 @@
 #! /bin/bash -ex
 
-
 black --check --diff --exclude '/(_sync)/' tests hishel
 ruff tests hishel
 mypy tests hishel

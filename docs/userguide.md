@@ -6,13 +6,16 @@ It is very simple to integrate with your existing application; simply change the
 
 ## Clients and Transports
 
-There are two ways to make the httpx library cacheable when working with it.
+There are three ways to make the httpx library cacheable when working with it.
 
 - Use the class provided by `Hishel` to completely replace `HTTPX's Client`.
 - Simply use your existing httpx client along with `Hishel's transports`.
+- Mock the httpx classes using the `hishel.install_cache` function.
 
 It is always advised to use the second option because it is more reliable and adaptable.
 
+!!! warning
+    Use the `hishel.install_cache` function only for experiments, and do not rely on the functionality provided by `hishel.install_cache`.
 
 ### Using the Clients
 

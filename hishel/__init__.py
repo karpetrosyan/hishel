@@ -1,8 +1,16 @@
-from ._async import *  # noqa: F403
-from ._controller import *  # noqa: F403
-from ._exceptions import *  # noqa: F403
-from ._headers import *  # noqa: F403
-from ._serializers import *  # noqa: F403
-from ._sync import *  # noqa: F403
+import httpx
+
+from ._async import *
+from ._controller import *
+from ._exceptions import *
+from ._headers import *
+from ._serializers import *
+from ._sync import *
+
+
+def install_cache() -> None:  # pragma: no cover
+    httpx.AsyncClient = AsyncCacheClient  # type: ignore
+    httpx.Client = CacheClient  # type: ignore
+
 
 __version__ = "0.0.14"
