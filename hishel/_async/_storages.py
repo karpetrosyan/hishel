@@ -3,7 +3,11 @@ import time
 import typing as tp
 from pathlib import Path
 
-import anysqlite
+try:
+    import anysqlite
+except ImportError:
+    anysqlite = None
+
 from httpcore import Request, Response
 
 from hishel._serializers import BaseSerializer
@@ -152,7 +156,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
     def __init__(
         self,
         serializer: tp.Optional[BaseSerializer] = None,
-        connection: tp.Optional[anysqlite.Connection] = None,  # type: ignore
+        connection: tp.Optional["anysqlite.Connection"] = None,  # type: ignore
         ttl: tp.Optional[int] = None,
     ) -> None:
         if anysqlite is None:  # pragma: no cover

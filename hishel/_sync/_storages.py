@@ -3,7 +3,11 @@ import time
 import typing as tp
 from pathlib import Path
 
-import sqlite3
+try:
+    import sqlite3
+except ImportError:
+    sqlite3 = None
+
 from httpcore import Request, Response
 
 from hishel._serializers import BaseSerializer
@@ -152,7 +156,7 @@ class SQLiteStorage(BaseStorage):
     def __init__(
         self,
         serializer: tp.Optional[BaseSerializer] = None,
-        connection: tp.Optional[sqlite3.Connection] = None,  # type: ignore
+        connection: tp.Optional["sqlite3.Connection"] = None,  # type: ignore
         ttl: tp.Optional[int] = None,
     ) -> None:
         if sqlite3 is None:  # pragma: no cover
