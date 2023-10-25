@@ -114,12 +114,12 @@ class FileStorage(BaseStorage):
 
         response_path = self._base_path / key
 
+        self._remove_expired_caches()
         with self._lock:
             if response_path.exists():
                 return self._serializer.loads(
                     self._file_manager.read_from(str(response_path))
                 )
-        self._remove_expired_caches()
         return None
 
     def close(self) -> None:
@@ -174,7 +174,9 @@ class SQLiteStorage(BaseStorage):
     def _setup(self) -> None:
         with self._setup_lock:
             if not self._setup_completed:
-                self._connection = sqlite3.connect(".hishel.sqlite")
+                self._connection = sqlite3.connect(
+                    ".hishel.sqlite", check_same_thread=False
+                )
                 self._connection.execute(
                     (
                         "CREATE TABLE IF NOT EXISTS cache(key TEXT, data BLOB, "
@@ -229,6 +231,7 @@ class SQLiteStorage(BaseStorage):
         self._setup()
         assert self._connection
 
+        self._remove_expired_caches()
         with self._lock:
             cursor = self._connection.execute(
                 "SELECT data FROM cache WHERE key = ?", [key]
@@ -239,7 +242,6 @@ class SQLiteStorage(BaseStorage):
 
             cached_response = row[0]
             return self._serializer.loads(cached_response)
-        self._remove_expired_caches()
 
     def close(self) -> None:  # pragma: no cover
         assert self._connection

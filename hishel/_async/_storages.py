@@ -114,12 +114,12 @@ class AsyncFileStorage(AsyncBaseStorage):
 
         response_path = self._base_path / key
 
+        await self._remove_expired_caches()
         async with self._lock:
             if response_path.exists():
                 return self._serializer.loads(
                     await self._file_manager.read_from(str(response_path))
                 )
-        await self._remove_expired_caches()
         return None
 
     async def aclose(self) -> None:
@@ -174,7 +174,9 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
     async def _setup(self) -> None:
         async with self._setup_lock:
             if not self._setup_completed:
-                self._connection = await anysqlite.connect(".hishel.sqlite")
+                self._connection = await anysqlite.connect(
+                    ".hishel.sqlite", check_same_thread=False
+                )
                 await self._connection.execute(
                     (
                         "CREATE TABLE IF NOT EXISTS cache(key TEXT, data BLOB, "
@@ -229,6 +231,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
         await self._setup()
         assert self._connection
 
+        await self._remove_expired_caches()
         async with self._lock:
             cursor = await self._connection.execute(
                 "SELECT data FROM cache WHERE key = ?", [key]
@@ -239,7 +242,6 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
 
             cached_response = row[0]
             return self._serializer.loads(cached_response)
-        await self._remove_expired_caches()
 
     async def aclose(self) -> None:  # pragma: no cover
         assert self._connection
