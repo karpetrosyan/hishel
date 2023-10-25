@@ -42,6 +42,10 @@ redis = [
     "redis==5.0.0"
 ]
 
+sqlite = [
+    "anysqlite>=0.0.5"
+]
+
 [project.urls]
 Homepage = "https://hishel.com"
 Source = "https://github.com/karpetrosyan/hishel"

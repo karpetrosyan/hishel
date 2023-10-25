@@ -10,6 +10,7 @@
 ## Storages
 
 ::: hishel.FileStorage
+::: hishel.SQLiteStorage
 ::: hishel.RedisStorage
 
 ## Serializers

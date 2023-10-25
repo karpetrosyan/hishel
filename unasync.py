@@ -16,6 +16,7 @@ SUBS = [
     ('MockAsyncConnectionPool', 'MockConnectionPool'),
     ('MockAsyncTransport', 'MockTransport'),
     ('AsyncRedisStorage', 'RedisStorage'),
+    ('AsyncSQLiteStorage', 'SQLiteStorage'),
     ('import redis.asyncio as redis', 'import redis'),
     ('AsyncCacheTransport', 'CacheTransport'),
     ('AsyncBaseTransport', 'BaseTransport'),
@@ -38,6 +39,7 @@ SUBS = [
     ('__aexit__', '__exit__'),
     ('*@pytest.mark.anyio', ''),
     ('*@pytest.mark.asyncio', ''),
+    ('anysqlite', 'sqlite3'),
 ]
 COMPILED_SUBS = [
     (re.compile(r'(^|\b)' + regex + r'($|\b)'), repl)

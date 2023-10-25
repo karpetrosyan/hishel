@@ -1,5 +1,9 @@
 # Changelog
 
+## unreleased
+
+- Add sqlite support. (#92)
+
 ## 0.0.14 (23/10/2023)
 
 - Replace `AsyncResponseStream` with `AsyncCacheStream`. (#86)
