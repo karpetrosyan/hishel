@@ -296,7 +296,6 @@ class AsyncRedisStorage(AsyncBaseStorage):
             self._client = redis.Redis()  # type: ignore
         else:  # pragma: no cover
             self._client = client
-        self._ttl = ttl
 
     async def store(
         self, key: str, response: Response, request: Request, metadata: Metadata

@@ -296,7 +296,6 @@ class RedisStorage(BaseStorage):
             self._client = redis.Redis()  # type: ignore
         else:  # pragma: no cover
             self._client = client
-        self._ttl = ttl
 
     def store(
         self, key: str, response: Response, request: Request, metadata: Metadata
