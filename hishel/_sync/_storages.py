@@ -174,7 +174,7 @@ class SQLiteStorage(BaseStorage):
     def _setup(self) -> None:
         with self._setup_lock:
             if not self._setup_completed:
-                if not self._connection:
+                if not self._connection:  # pragma: no cover
                     self._connection = sqlite3.connect(
                         ".hishel.sqlite", check_same_thread=False
                     )
