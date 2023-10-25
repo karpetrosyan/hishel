@@ -174,9 +174,10 @@ class SQLiteStorage(BaseStorage):
     def _setup(self) -> None:
         with self._setup_lock:
             if not self._setup_completed:
-                self._connection = sqlite3.connect(
-                    ".hishel.sqlite", check_same_thread=False
-                )
+                if not self._connection:
+                    self._connection = sqlite3.connect(
+                        ".hishel.sqlite", check_same_thread=False
+                    )
                 self._connection.execute(
                     (
                         "CREATE TABLE IF NOT EXISTS cache(key TEXT, data BLOB, "
