@@ -27,11 +27,13 @@ except ImportError:  # pragma: no cover
 
 
 class AsyncBaseStorage:
-    def __init__(self, serializer: tp.Optional[BaseSerializer] = None) -> None:
-        if serializer:  # pragma: no cover
-            self._serializer = serializer
-        else:
-            self._serializer = JSONSerializer()
+    def __init__(
+        self,
+        serializer: tp.Optional[BaseSerializer] = None,
+        ttl: tp.Optional[int] = None,
+    ) -> None:
+        self._serializer = serializer or JSONSerializer()
+        self._ttl = ttl
 
     async def store(
         self, key: str, response: Response, request: Request, metadata: Metadata
@@ -65,7 +67,7 @@ class AsyncFileStorage(AsyncBaseStorage):
         base_path: tp.Optional[Path] = None,
         ttl: tp.Optional[int] = None,
     ) -> None:
-        super().__init__(serializer)
+        super().__init__(serializer, ttl)
 
         self._base_path = (
             Path(base_path) if base_path is not None else Path(".cache/hishel")
@@ -75,7 +77,6 @@ class AsyncFileStorage(AsyncBaseStorage):
             self._base_path.mkdir(parents=True)
 
         self._file_manager = AsyncFileManager(is_binary=self._serializer.is_binary)
-        self._ttl = ttl
         self._lock = AsyncLock()
 
     async def store(
@@ -167,13 +168,12 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
                     "```pip install hishel[sqlite]```"
                 )
             )
-        super().__init__(serializer)
+        super().__init__(serializer, ttl)
 
         self._connection: tp.Optional[anysqlite.Connection] = connection or None
         self._setup_lock = AsyncLock()
         self._setup_completed: bool = False
         self._lock = AsyncLock()
-        self._ttl = ttl
 
     async def _setup(self) -> None:
         async with self._setup_lock:
@@ -290,7 +290,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
                     "```pip install hishel[redis]```"
                 )
             )
-        super().__init__(serializer)
+        super().__init__(serializer, ttl)
 
         if client is None:
             self._client = redis.Redis()  # type: ignore
