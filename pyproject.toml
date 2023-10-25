@@ -101,6 +101,7 @@ exclude_also = [
 [tool.ruff]
 exclude = [
     "hishel/_sync",
+    "hishel/__init__.py",
     "tests/_sync",
 ]
 line-length = 120

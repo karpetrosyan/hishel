@@ -1,5 +1,5 @@
 #! /bin/bash -ex
 
-black hishel tests
+black --exclude '/(_sync)/' hishel tests
 ruff --fix hishel tests
 python unasync.py
