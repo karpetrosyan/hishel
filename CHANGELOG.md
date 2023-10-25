@@ -2,6 +2,7 @@
 
 ## unreleased
 
+- Add `install_cache` function. (#95)
 - Add sqlite support. (#92)
 
 ## 0.0.14 (23/10/2023)
