@@ -2,7 +2,7 @@
 icon: simple/yaml
 ---
 
-Serializers are a component of [storages](#storages) that simply serialize and de-serialize responses.
+Serializers are a component of [storages](storages.md) that simply serialize and de-serialize responses.
 Hishel will use JSONSerializer by default, but you can explicitly specify a serializer or even write your own.
 
 Example of the serialized responses:
@@ -123,7 +123,7 @@ serializer = hishel.JSONSerializer()
 storage = hishel.FileStorage(serializer=serializer)
 ```
 
-Because serializers are supported by all of the built-in `hishel` [storages](#storages), you can pass serializers to any of them.
+Because serializers are supported by all of the built-in `hishel` [storages](storages.md), you can pass serializers to any of them.
 
 Example:
 ```python

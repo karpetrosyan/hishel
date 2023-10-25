@@ -3,7 +3,7 @@ icon: material/database
 ---
 
 
-When using `Hishel`, you have complete control over the configuration of how the responses should be stored. You can select the [serializer](#serializers) and storage on your own.
+When using `Hishel`, you have complete control over the configuration of how the responses should be stored. You can select the [serializer](serializers.md) and storage on your own.
 
 This section contains examples of how to use the storages.
 
@@ -203,5 +203,5 @@ SQLiteStorage
 2. **sqlite features**
 
 !!! tip
-    Any [serializer](#serializers) can be used with any storage because they are all fully compatible.
+    Any [serializer](serializers.md) can be used with any storage because they are all fully compatible.
 
