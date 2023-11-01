@@ -116,7 +116,7 @@ def test_filestorage_expired():
         first_key, response=response, request=first_request, metadata=dummy_metadata
     )
 
-    sleep(1)
+    sleep(2)
     storage.store(
         second_key, response=response, request=second_request, metadata=dummy_metadata
     )
@@ -142,7 +142,7 @@ def test_redisstorage_expired():
         first_key, response=response, request=first_request, metadata=dummy_metadata
     )
 
-    sleep(1)
+    sleep(2)
     storage.store(
         second_key, response=response, request=second_request, metadata=dummy_metadata
     )
@@ -166,7 +166,7 @@ def test_sqlite_expired():
         first_key, response=response, request=first_request, metadata=dummy_metadata
     )
 
-    sleep(1)
+    sleep(2)
     storage.store(
         second_key, response=response, request=second_request, metadata=dummy_metadata
     )
