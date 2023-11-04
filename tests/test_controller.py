@@ -229,7 +229,7 @@ def test_make_conditional_request_with_last_modified():
 
     assert request.headers == [
         (b"Content-Type", b"application/json"),
-        (b"If-Unmodified-Since", b"Wed, 21 Oct 2015 07:28:00 GMT"),
+        (b"If-Modified-Since", b"Wed, 21 Oct 2015 07:28:00 GMT"),
     ]
 
 

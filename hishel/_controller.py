@@ -231,7 +231,7 @@ class Controller:
 
         precondition_headers: tp.List[tp.Tuple[bytes, bytes]] = []
         if last_modified:
-            precondition_headers.append((b"If-Unmodified-Since", last_modified))
+            precondition_headers.append((b"If-Modified-Since", last_modified))
         if etag:
             precondition_headers.append((b"If-None-Match", etag))
 
