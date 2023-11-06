@@ -13,4 +13,4 @@ def install_cache() -> None:  # pragma: no cover
     httpx.Client = CacheClient  # type: ignore
 
 
-__version__ = "0.0.16"
+__version__ = "0.0.17"

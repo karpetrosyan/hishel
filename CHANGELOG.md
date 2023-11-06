@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.17 (6/11/2023) 
 
 - Fix `Last-Modified` validation.
 
