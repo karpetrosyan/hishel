@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.17 (6/11/2023) 
+
+- Fix `Last-Modified` validation.
+
 ## 0.0.16 (25/10/2023) 
 
 - Add `install_cache` function. (#95)
