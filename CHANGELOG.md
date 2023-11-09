@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.18 (9/11/2023)
+## Unreleased
 
 - Fix issue where freshness cannot be calculated to re-send request. (#104)
 
