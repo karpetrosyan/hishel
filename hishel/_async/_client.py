@@ -12,6 +12,7 @@ class AsyncCacheClient(httpx.AsyncClient):
     def __init__(self, *args: tp.Any, **kwargs: tp.Any):
         self._storage = kwargs.pop("storage") if "storage" in kwargs else None
         self._controller = kwargs.pop("controller") if "controller" in kwargs else None
+        self.disabled = False
         super().__init__(*args, **kwargs)
 
     def _init_transport(self, *args, **kwargs) -> AsyncCacheTransport:  # type: ignore
@@ -33,11 +34,16 @@ class AsyncCacheClient(httpx.AsyncClient):
     @contextmanager
     def cache_disabled(self) -> "AsyncCacheClient":
         """Temporarily disable cache for this client."""
+        if self.disabled:
+            yield
+            return
         cached_transport = self._transport
         cached_mounts = self._mounts
         self._transport = self._transport._transport
         self._mounts = {k: v._transport for k, v in self._mounts.items()}
+        self.disabled = True
         yield
         self._transport = cached_transport
         self._mounts = cached_mounts
+        self.disabled = False
         
