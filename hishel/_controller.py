@@ -316,7 +316,7 @@ class Controller:
                 freshness_lifetime = get_heuristic_freshness(
                     response=response, clock=self._clock
                 )
-            else:  # pragma: no cover
+            else:
                 # If Freshness cannot be calculated, then send the request
                 self._make_request_conditional(request=request, response=response)
                 return request

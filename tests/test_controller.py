@@ -773,3 +773,15 @@ def test_must_understand_response_directive():
     controller = Controller()
 
     assert controller.is_cachable(request=request, response=response)
+
+def test_freshness_lifetime_invalid_information():
+    controller = Controller()
+    response = Response(
+        status=400,
+    )
+    original_request = Request("GET", "https://example.com")
+    request = Request("GET", "https://example.com")
+    conditional_request = controller.construct_response_from_cache(
+        request=request, response=response, original_request=original_request
+    )
+    assert isinstance(conditional_request, Request)
