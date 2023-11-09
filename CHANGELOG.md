@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix issue where freshness cannot be calculated to re-send request. (#104)
+
 ## 0.0.17 (6/11/2023) 
 
 - Fix `Last-Modified` validation.

@@ -316,8 +316,10 @@ class Controller:
                 freshness_lifetime = get_heuristic_freshness(
                     response=response, clock=self._clock
                 )
-            else:  # pragma: no cover
-                raise RuntimeError("The lifespan of freshness cannot be calculated.")
+            else:
+                # If Freshness cannot be calculated, then send the request
+                self._make_request_conditional(request=request, response=response)
+                return request
 
         age = get_age(response, self._clock)
         is_fresh = freshness_lifetime > age
