@@ -1,4 +1,5 @@
 import typing as tp
+from contextlib import contextmanager
 
 import httpx
 
@@ -28,3 +29,15 @@ class AsyncCacheClient(httpx.AsyncClient):
             storage=self._storage,
             controller=self._controller,
         )
+        
+    @contextmanager
+    def cache_disabled(self) -> "AsyncCacheClient":
+        """Temporarily disable cache for this client."""
+        cached_transport = self._transport
+        cached_mounts = self._mounts
+        self._transport = self._transport._transport
+        self._mounts = {k: v._transport for k, v in self._mounts.items()}
+        yield
+        self._transport = cached_transport
+        self._mounts = cached_mounts
+        

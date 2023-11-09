@@ -65,6 +65,30 @@ client = hishel.CacheClient(
 client.get("https://example.com")
 ```
 
+### Temporarily Disabling the Cache
+
+Sometimes you may wish to temporarily disable a cache for a request or two. Rather than creating a separate `httpx.Client` or `httpx.AsyncClient` 
+for that purpose, you can simply disable the cache using the `.cache_disabled` context manager. Any requests sent inside that context manager will be handled
+just like a simple `httpx.Client`. New responses will not be added to the cache, and old responses will not be retrieved from the cache.
+
+Examples:
+
+```python
+>>> import hishel
+>>> 
+>>> with hishel.CacheClient() as client:
+>>>     client.get("https://example.com/cachable-endpoint")
+>>>     with client.cache_disabled():
+>>>         response = client.get("https://example.com/cachable-endpoint") # NOT from the cache!
+```
+
+```python
+>>> with hishel.AsyncCacheClient() as client:
+>>>     await client.get("https://example.com/cachable-endpoint")
+>>>     with client.cache_disabled():
+>>>         response = await client.get("https://example.com/cachable-endpoint") # NOT from the cache!
+```
+
 ### Specifying the Client storage
 
 Sometimes you may need to select storage rather than filesystem, and this is how you do it.
