@@ -4,7 +4,6 @@ import pytest
 import hishel
 
 
-
 def test_client_301():
     with hishel.MockTransport() as transport:
         transport.add_responses(
@@ -20,6 +19,7 @@ def test_client_301():
                 "https://www.example.com",
             )
             assert response.extensions["from_cache"]
+
 
 def test_disable_cache():
     with hishel.MockTransport() as transport:
@@ -44,7 +44,8 @@ def test_disable_cache():
                 "https://www.example.com",
             )
             assert response.extensions["from_cache"]
-            
+
+
 def test_nested_disable_cache():
     with hishel.MockTransport() as transport:
         transport.add_responses(

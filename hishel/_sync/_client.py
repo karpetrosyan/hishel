@@ -30,7 +30,7 @@ class CacheClient(httpx.Client):
             storage=self._storage,
             controller=self._controller,
         )
-    
+
     @contextmanager
     def cache_disabled(self) -> "CacheClient":
         """Temporarily disable cache for this client."""

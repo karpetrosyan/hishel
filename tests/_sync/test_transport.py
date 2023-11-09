@@ -4,7 +4,6 @@ import pytest
 import hishel
 
 
-
 def test_transport_301(use_temp_dir):
     with hishel.MockTransport() as transport:
         transport.add_responses(
@@ -16,7 +15,6 @@ def test_transport_301(use_temp_dir):
             cache_transport.handle_request(request)
             response = cache_transport.handle_request(request)
             assert response.extensions["from_cache"]
-
 
 
 def test_transport_response_validation(use_temp_dir):
@@ -53,7 +51,6 @@ def test_transport_response_validation(use_temp_dir):
         assert response.read() == b"test"
 
 
-
 def test_transport_stale_response(use_temp_dir):
     controller = hishel.Controller(allow_stale=True)
 
@@ -83,7 +80,6 @@ def test_transport_stale_response(use_temp_dir):
             cache_transport.handle_request(request)
             response = cache_transport.handle_request(request)
             assert not response.extensions["from_cache"]
-
 
 
 def test_transport_stale_response_with_connecterror(use_temp_dir):
@@ -124,7 +120,6 @@ def test_transport_stale_response_with_connecterror(use_temp_dir):
             assert response.extensions["from_cache"]
 
 
-
 def test_transport_with_only_if_cached_directive_without_stored_response(
     use_temp_dir,
 ):
@@ -142,7 +137,6 @@ def test_transport_with_only_if_cached_directive_without_stored_response(
                 )
             )
             assert response.status_code == 504
-
 
 
 def test_transport_with_only_if_cached_directive_with_stored_response(

@@ -61,9 +61,7 @@ class CacheTransport(httpx.BaseTransport):
     ) -> None:
         self._transport = transport
         self._storage = (
-            storage
-            if storage is not None
-            else FileStorage(serializer=JSONSerializer())
+            storage if storage is not None else FileStorage(serializer=JSONSerializer())
         )
         self._controller = controller if controller is not None else Controller()
 
@@ -141,9 +139,7 @@ class CacheTransport(httpx.BaseTransport):
                     stream=CacheStream(res.stream),
                 )
                 try:
-                    response = self._transport.handle_request(
-                        revalidation_request
-                    )
+                    response = self._transport.handle_request(revalidation_request)
                 except ConnectError:
                     if self._controller._allow_stale and allowed_stale(
                         response=stored_resposne
@@ -154,9 +150,7 @@ class CacheTransport(httpx.BaseTransport):
                         return Response(
                             status_code=stored_resposne.status,
                             headers=stored_resposne.headers,
-                            stream=CacheStream(
-                                fake_stream(stored_resposne.content)
-                            ),
+                            stream=CacheStream(fake_stream(stored_resposne.content)),
                             extensions=stored_resposne.extensions,
                         )
                     raise  # pragma: no cover

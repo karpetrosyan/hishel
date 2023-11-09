@@ -21,6 +21,7 @@ async def test_client_301():
             )
             assert response.extensions["from_cache"]
 
+
 @pytest.mark.anyio
 async def test_disable_cache():
     async with hishel.MockAsyncTransport() as transport:
@@ -45,7 +46,8 @@ async def test_disable_cache():
                 "https://www.example.com",
             )
             assert response.extensions["from_cache"]
-            
+
+
 @pytest.mark.anyio
 async def test_nested_disable_cache():
     async with hishel.MockAsyncTransport() as transport:
@@ -60,7 +62,7 @@ async def test_nested_disable_cache():
             # Disable cache and confirm that the response is not cached
             with client.cache_disabled():
                 with client.cache_disabled():
-                    with client.cache_disabled():   
+                    with client.cache_disabled():
                         response = await client.request(
                             "GET",
                             "https://www.example.com",

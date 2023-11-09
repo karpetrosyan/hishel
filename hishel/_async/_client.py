@@ -30,7 +30,7 @@ class AsyncCacheClient(httpx.AsyncClient):
             storage=self._storage,
             controller=self._controller,
         )
-        
+
     @contextmanager
     def cache_disabled(self) -> "AsyncCacheClient":
         """Temporarily disable cache for this client."""
@@ -46,4 +46,3 @@ class AsyncCacheClient(httpx.AsyncClient):
         self._transport = cached_transport
         self._mounts = cached_mounts
         self.disabled = False
-        

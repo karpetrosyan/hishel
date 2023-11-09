@@ -23,7 +23,6 @@ def is_redis_down() -> bool:
         return True
 
 
-
 def test_filestorage(use_temp_dir):
     storage = FileStorage()
 
@@ -34,9 +33,7 @@ def test_filestorage(use_temp_dir):
     response = Response(200, headers=[], content=b"test")
     response.read()
 
-    storage.store(
-        key, response=response, request=request, metadata=dummy_metadata
-    )
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
 
     stored_data = storage.retreive(key)
     assert stored_data is not None
@@ -46,7 +43,6 @@ def test_filestorage(use_temp_dir):
     assert stored_response.status == 200
     assert stored_response.headers == []
     assert stored_response.content == b"test"
-
 
 
 def test_redisstorage():
@@ -61,9 +57,7 @@ def test_redisstorage():
     response = Response(200, headers=[], content=b"test")
     response.read()
 
-    storage.store(
-        key, response=response, request=request, metadata=dummy_metadata
-    )
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
 
     stored_data = storage.retreive(key)
     assert stored_data is not None
@@ -73,7 +67,6 @@ def test_redisstorage():
     assert stored_response.status == 200
     assert stored_response.headers == []
     assert stored_response.content == b"test"
-
 
 
 def test_sqlitestorage():
@@ -86,9 +79,7 @@ def test_sqlitestorage():
     response = Response(200, headers=[], content=b"test")
     response.read()
 
-    storage.store(
-        key, response=response, request=request, metadata=dummy_metadata
-    )
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
 
     stored_data = storage.retreive(key)
     assert stored_data is not None
@@ -98,7 +89,6 @@ def test_sqlitestorage():
     assert stored_response.status == 200
     assert stored_response.headers == []
     assert stored_response.content == b"test"
-
 
 
 def test_filestorage_expired():
@@ -124,7 +114,6 @@ def test_filestorage_expired():
     assert storage.retreive(first_key) is None
 
 
-
 def test_redisstorage_expired():
     if is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
@@ -148,7 +137,6 @@ def test_redisstorage_expired():
     )
 
     assert storage.retreive(first_key) is None
-
 
 
 def test_sqlite_expired():

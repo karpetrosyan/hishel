@@ -774,6 +774,7 @@ def test_must_understand_response_directive():
 
     assert controller.is_cachable(request=request, response=response)
 
+
 def test_freshness_lifetime_invalid_information():
     controller = Controller()
     response = Response(

@@ -40,9 +40,7 @@ class CacheConnectionPool(RequestInterface):
     ) -> None:
         self._pool = pool
         self._storage = (
-            storage
-            if storage is not None
-            else FileStorage(serializer=JSONSerializer())
+            storage if storage is not None else FileStorage(serializer=JSONSerializer())
         )
         self._controller = controller if controller is not None else Controller()
 
