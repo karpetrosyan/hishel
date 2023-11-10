@@ -1,8 +1,7 @@
 # Changelog
 
-## 0.0.18 (9/11/2023)
+## Unreleased
 
-- Fix issue where freshness cannot be calculated to re-send request (#104)
 - Add `.cache_disabled` context manager 
 
 ## 0.0.17 (6/11/2023) 
