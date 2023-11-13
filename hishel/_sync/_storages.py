@@ -35,14 +35,10 @@ class BaseStorage:
         self._serializer = serializer or JSONSerializer()
         self._ttl = ttl
 
-    def store(
-        self, key: str, response: Response, request: Request, metadata: Metadata
-    ) -> None:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         raise NotImplementedError()
 
-    def retreive(
-        self, key: str
-    ) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         raise NotImplementedError()
 
     def close(self) -> None:
@@ -69,9 +65,7 @@ class FileStorage(BaseStorage):
     ) -> None:
         super().__init__(serializer, ttl)
 
-        self._base_path = (
-            Path(base_path) if base_path is not None else Path(".cache/hishel")
-        )
+        self._base_path = Path(base_path) if base_path is not None else Path(".cache/hishel")
 
         if not self._base_path.is_dir():
             self._base_path.mkdir(parents=True)
@@ -79,9 +73,7 @@ class FileStorage(BaseStorage):
         self._file_manager = FileManager(is_binary=self._serializer.is_binary)
         self._lock = Lock()
 
-    def store(
-        self, key: str, response: Response, request: Request, metadata: Metadata
-    ) -> None:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
         Stores the response in the cache.
 
@@ -99,15 +91,11 @@ class FileStorage(BaseStorage):
         with self._lock:
             self._file_manager.write_to(
                 str(response_path),
-                self._serializer.dumps(
-                    response=response, request=request, metadata=metadata
-                ),
+                self._serializer.dumps(response=response, request=request, metadata=metadata),
             )
         self._remove_expired_caches()
 
-    def retreive(
-        self, key: str
-    ) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         """
         Retreives the response from the cache using his key.
 
@@ -122,9 +110,7 @@ class FileStorage(BaseStorage):
         self._remove_expired_caches()
         with self._lock:
             if response_path.exists():
-                return self._serializer.loads(
-                    self._file_manager.read_from(str(response_path))
-                )
+                return self._serializer.loads(self._file_manager.read_from(str(response_path)))
         return None
 
     def close(self) -> None:
@@ -179,9 +165,7 @@ class SQLiteStorage(BaseStorage):
         with self._setup_lock:
             if not self._setup_completed:
                 if not self._connection:  # pragma: no cover
-                    self._connection = sqlite3.connect(
-                        ".hishel.sqlite", check_same_thread=False
-                    )
+                    self._connection = sqlite3.connect(".hishel.sqlite", check_same_thread=False)
                 self._connection.execute(
                     (
                         "CREATE TABLE IF NOT EXISTS cache(key TEXT, data BLOB, "
@@ -191,9 +175,7 @@ class SQLiteStorage(BaseStorage):
                 self._connection.commit()
                 self._setup_completed = True
 
-    def store(
-        self, key: str, response: Response, request: Request, metadata: Metadata
-    ) -> None:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
         Stores the response in the cache.
 
@@ -212,18 +194,12 @@ class SQLiteStorage(BaseStorage):
 
         with self._lock:
             self._connection.execute("DELETE FROM cache WHERE key = ?", [key])
-            serialized_response = self._serializer.dumps(
-                response=response, request=request, metadata=metadata
-            )
-            self._connection.execute(
-                "INSERT INTO cache(key, data) VALUES(?, ?)", [key, serialized_response]
-            )
+            serialized_response = self._serializer.dumps(response=response, request=request, metadata=metadata)
+            self._connection.execute("INSERT INTO cache(key, data) VALUES(?, ?)", [key, serialized_response])
             self._connection.commit()
         self._remove_expired_caches()
 
-    def retreive(
-        self, key: str
-    ) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         """
         Retreives the response from the cache using his key.
 
@@ -238,9 +214,7 @@ class SQLiteStorage(BaseStorage):
 
         self._remove_expired_caches()
         with self._lock:
-            cursor = self._connection.execute(
-                "SELECT data FROM cache WHERE key = ?", [key]
-            )
+            cursor = self._connection.execute("SELECT data FROM cache WHERE key = ?", [key])
             row = cursor.fetchone()
             if row is None:
                 return None
@@ -297,9 +271,7 @@ class RedisStorage(BaseStorage):
         else:  # pragma: no cover
             self._client = client
 
-    def store(
-        self, key: str, response: Response, request: Request, metadata: Metadata
-    ) -> None:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
         Stores the response in the cache.
 
@@ -314,15 +286,11 @@ class RedisStorage(BaseStorage):
         """
         self._client.set(
             key,
-            self._serializer.dumps(
-                response=response, request=request, metadata=metadata
-            ),
+            self._serializer.dumps(response=response, request=request, metadata=metadata),
             ex=self._ttl,
         )
 
-    def retreive(
-        self, key: str
-    ) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         """
         Retreives the response from the cache using his key.
 

@@ -96,22 +96,18 @@ def parse_cache_control(cache_control_values: List[str]) -> "CacheControl":
                         for value_char in value:
                             if value_char not in tchar:
                                 raise ParseError(
-                                    f"The character '{value_char!r}' "
-                                    "is not permitted for the unquoted values."
+                                    f"The character '{value_char!r}' " "is not permitted for the unquoted values."
                                 )
                     else:
                         for value_char in value[1:-1]:
                             if value_char not in qdtext:
                                 raise ParseError(
-                                    f"The character '{value_char!r}' "
-                                    "is not permitted for the quoted values."
+                                    f"The character '{value_char!r}' " "is not permitted for the quoted values."
                                 )
                     break
 
                 if key_char not in tchar:
-                    raise ParseError(
-                        f"The character '{key_char!r}' is not permitted in the directive name."
-                    )
+                    raise ParseError(f"The character '{key_char!r}' is not permitted in the directive name.")
                 key += key_char
             directives[key] = value
     validated_data = CacheControl.validate(directives)
@@ -178,26 +174,18 @@ class CacheControl:
             key = normalize_directive(key)
             if key in TIME_FIELDS:
                 if value is None:
-                    raise ValidationError(
-                        f"The directive '{key}' necessitates a value."
-                    )
+                    raise ValidationError(f"The directive '{key}' necessitates a value.")
 
                 if value[0] == '"' or value[-1] == '"':
-                    raise ValidationError(
-                        f"The argument '{key}' should be an integer, but a quote was found."
-                    )
+                    raise ValidationError(f"The argument '{key}' should be an integer, but a quote was found.")
 
                 try:
                     validated_data[key] = int(value)
                 except Exception:
-                    raise ValidationError(
-                        f"The argument '{key}' should be an integer, but got '{value!r}'."
-                    )
+                    raise ValidationError(f"The argument '{key}' should be an integer, but got '{value!r}'.")
             elif key in BOOLEAN_FIELDS:
                 if value is not None:
-                    raise ValidationError(
-                        f"The directive '{key}' should have no value, but it does."
-                    )
+                    raise ValidationError(f"The directive '{key}' should have no value, but it does.")
                 validated_data[key] = True
             elif key in LIST_FIELDS:
                 if value is None:

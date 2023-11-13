@@ -60,11 +60,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         controller: tp.Optional[Controller] = None,
     ) -> None:
         self._transport = transport
-        self._storage = (
-            storage
-            if storage is not None
-            else AsyncFileStorage(serializer=JSONSerializer())
-        )
+        self._storage = storage if storage is not None else AsyncFileStorage(serializer=JSONSerializer())
         self._controller = controller if controller is not None else Controller()
 
     async def handle_async_request(self, request: Request) -> Response:
@@ -141,22 +137,16 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                     stream=AsyncCacheStream(res.stream),
                 )
                 try:
-                    response = await self._transport.handle_async_request(
-                        revalidation_request
-                    )
+                    response = await self._transport.handle_async_request(revalidation_request)
                 except ConnectError:
-                    if self._controller._allow_stale and allowed_stale(
-                        response=stored_resposne
-                    ):
+                    if self._controller._allow_stale and allowed_stale(response=stored_resposne):
                         await stored_resposne.aread()
                         stored_resposne.extensions["from_cache"] = True  # type: ignore[index]
                         stored_resposne.extensions["cache_metadata"] = metadata  # type: ignore[index]
                         return Response(
                             status_code=stored_resposne.status,
                             headers=stored_resposne.headers,
-                            stream=AsyncCacheStream(
-                                fake_stream(stored_resposne.content)
-                            ),
+                            stream=AsyncCacheStream(fake_stream(stored_resposne.content)),
                             extensions=stored_resposne.extensions,
                         )
                     raise  # pragma: no cover
@@ -209,12 +199,8 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         await httpcore_response.aread()
         await httpcore_response.aclose()
 
-        if self._controller.is_cachable(
-            request=httpcore_request, response=httpcore_response
-        ):
-            metadata = Metadata(
-                cache_key=key, created_at=datetime.datetime.utcnow(), number_of_uses=0
-            )
+        if self._controller.is_cachable(request=httpcore_request, response=httpcore_response):
+            metadata = Metadata(cache_key=key, created_at=datetime.datetime.utcnow(), number_of_uses=0)
             await self._storage.store(
                 key,
                 response=httpcore_response,

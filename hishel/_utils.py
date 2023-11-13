@@ -66,15 +66,11 @@ def extract_header_values(
 def extract_header_values_decoded(
     headers: tp.List[tp.Tuple[bytes, bytes]], header_key: bytes, single: bool = False
 ) -> tp.List[str]:
-    values = extract_header_values(
-        headers=headers, header_key=header_key, single=single
-    )
+    values = extract_header_values(headers=headers, header_key=header_key, single=single)
     return [value.decode(HEADERS_ENCODING) for value in values]
 
 
-def header_presents(
-    headers: tp.List[tp.Tuple[bytes, bytes]], header_key: bytes
-) -> bool:
+def header_presents(headers: tp.List[tp.Tuple[bytes, bytes]], header_key: bytes) -> bool:
     return bool(extract_header_values(headers, header_key, single=True))
 
 

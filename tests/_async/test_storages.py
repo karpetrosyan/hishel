@@ -8,9 +8,7 @@ from hishel import AsyncFileStorage, AsyncRedisStorage, AsyncSQLiteStorage
 from hishel._serializers import Metadata
 from hishel._utils import asleep, generate_key
 
-dummy_metadata = Metadata(
-    cache_key="test", number_of_uses=0, created_at=datetime.datetime.utcnow()
-)
+dummy_metadata = Metadata(cache_key="test", number_of_uses=0, created_at=datetime.datetime.utcnow())
 
 
 def is_redis_down() -> bool:
@@ -34,9 +32,7 @@ async def test_filestorage(use_temp_dir):
     response = Response(200, headers=[], content=b"test")
     await response.aread()
 
-    await storage.store(
-        key, response=response, request=request, metadata=dummy_metadata
-    )
+    await storage.store(key, response=response, request=request, metadata=dummy_metadata)
 
     stored_data = await storage.retreive(key)
     assert stored_data is not None
@@ -61,9 +57,7 @@ async def test_redisstorage():
     response = Response(200, headers=[], content=b"test")
     await response.aread()
 
-    await storage.store(
-        key, response=response, request=request, metadata=dummy_metadata
-    )
+    await storage.store(key, response=response, request=request, metadata=dummy_metadata)
 
     stored_data = await storage.retreive(key)
     assert stored_data is not None
@@ -86,9 +80,7 @@ async def test_sqlitestorage():
     response = Response(200, headers=[], content=b"test")
     await response.aread()
 
-    await storage.store(
-        key, response=response, request=request, metadata=dummy_metadata
-    )
+    await storage.store(key, response=response, request=request, metadata=dummy_metadata)
 
     stored_data = await storage.retreive(key)
     assert stored_data is not None
@@ -112,14 +104,10 @@ async def test_filestorage_expired():
     response = Response(200, headers=[], content=b"test")
     await response.aread()
 
-    await storage.store(
-        first_key, response=response, request=first_request, metadata=dummy_metadata
-    )
+    await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
 
     await asleep(2)
-    await storage.store(
-        second_key, response=response, request=second_request, metadata=dummy_metadata
-    )
+    await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert await storage.retreive(first_key) is None
 
@@ -138,14 +126,10 @@ async def test_redisstorage_expired():
     response = Response(200, headers=[], content=b"test")
     await response.aread()
 
-    await storage.store(
-        first_key, response=response, request=first_request, metadata=dummy_metadata
-    )
+    await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
 
     await asleep(2)
-    await storage.store(
-        second_key, response=response, request=second_request, metadata=dummy_metadata
-    )
+    await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert await storage.retreive(first_key) is None
 
@@ -162,13 +146,9 @@ async def test_sqlite_expired():
     response = Response(200, headers=[], content=b"test")
     await response.aread()
 
-    await storage.store(
-        first_key, response=response, request=first_request, metadata=dummy_metadata
-    )
+    await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
 
     await asleep(2)
-    await storage.store(
-        second_key, response=response, request=second_request, metadata=dummy_metadata
-    )
+    await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert await storage.retreive(first_key) is None

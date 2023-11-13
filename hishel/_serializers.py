@@ -27,14 +27,10 @@ class Metadata(tp.TypedDict):
 
 
 class BaseSerializer:
-    def dumps(
-        self, response: Response, request: Request, metadata: Metadata
-    ) -> tp.Union[str, bytes]:
+    def dumps(self, response: Response, request: Request, metadata: Metadata) -> tp.Union[str, bytes]:
         raise NotImplementedError()
 
-    def loads(
-        self, data: tp.Union[str, bytes]
-    ) -> tp.Tuple[Response, Request, Metadata]:
+    def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request, Metadata]:
         raise NotImplementedError()
 
     @property
@@ -47,9 +43,7 @@ class PickleSerializer(BaseSerializer):
     A simple pickle-based serializer.
     """
 
-    def dumps(
-        self, response: Response, request: Request, metadata: Metadata
-    ) -> tp.Union[str, bytes]:
+    def dumps(self, response: Response, request: Request, metadata: Metadata) -> tp.Union[str, bytes]:
         """
         Dumps the HTTP response and its HTTP request.
 
@@ -66,27 +60,17 @@ class PickleSerializer(BaseSerializer):
             status=response.status,
             headers=response.headers,
             content=response.content,
-            extensions={
-                key: value
-                for key, value in response.extensions.items()
-                if key in KNOWN_RESPONSE_EXTENSIONS
-            },
+            extensions={key: value for key, value in response.extensions.items() if key in KNOWN_RESPONSE_EXTENSIONS},
         )
         clone_request = Request(
             method=request.method,
             url=normalized_url(request.url),
             headers=request.headers,
-            extensions={
-                key: value
-                for key, value in request.extensions.items()
-                if key in KNOWN_REQUEST_EXTENSIONS
-            },
+            extensions={key: value for key, value in request.extensions.items() if key in KNOWN_REQUEST_EXTENSIONS},
         )
         return pickle.dumps((clone_response, clone_request, metadata))
 
-    def loads(
-        self, data: tp.Union[str, bytes]
-    ) -> tp.Tuple[Response, Request, Metadata]:
+    def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request, Metadata]:
         """
         Loads the HTTP response and its HTTP request from serialized data.
 
@@ -106,9 +90,7 @@ class PickleSerializer(BaseSerializer):
 class JSONSerializer(BaseSerializer):
     """A simple json-based serializer."""
 
-    def dumps(
-        self, response: Response, request: Request, metadata: Metadata
-    ) -> tp.Union[str, bytes]:
+    def dumps(self, response: Response, request: Request, metadata: Metadata) -> tp.Union[str, bytes]:
         """
         Dumps the HTTP response and its HTTP request.
 
@@ -124,8 +106,7 @@ class JSONSerializer(BaseSerializer):
         response_dict = {
             "status": response.status,
             "headers": [
-                (key.decode(HEADERS_ENCODING), value.decode(HEADERS_ENCODING))
-                for key, value in response.headers
+                (key.decode(HEADERS_ENCODING), value.decode(HEADERS_ENCODING)) for key, value in response.headers
             ],
             "content": base64.b64encode(response.content).decode("ascii"),
             "extensions": {
@@ -139,14 +120,9 @@ class JSONSerializer(BaseSerializer):
             "method": request.method.decode("ascii"),
             "url": normalized_url(request.url),
             "headers": [
-                (key.decode(HEADERS_ENCODING), value.decode(HEADERS_ENCODING))
-                for key, value in request.headers
+                (key.decode(HEADERS_ENCODING), value.decode(HEADERS_ENCODING)) for key, value in request.headers
             ],
-            "extensions": {
-                key: value
-                for key, value in request.extensions.items()
-                if key in KNOWN_REQUEST_EXTENSIONS
-            },
+            "extensions": {key: value for key, value in request.extensions.items() if key in KNOWN_REQUEST_EXTENSIONS},
         }
 
         metadata_dict = {
@@ -163,9 +139,7 @@ class JSONSerializer(BaseSerializer):
 
         return json.dumps(full_json, indent=4)
 
-    def loads(
-        self, data: tp.Union[str, bytes]
-    ) -> tp.Tuple[Response, Request, Metadata]:
+    def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request, Metadata]:
         """
         Loads the HTTP response and its HTTP request from serialized data.
 
@@ -203,13 +177,10 @@ class JSONSerializer(BaseSerializer):
             method=request_dict["method"],
             url=request_dict["url"],
             headers=[
-                (key.encode(HEADERS_ENCODING), value.encode(HEADERS_ENCODING))
-                for key, value in request_dict["headers"]
+                (key.encode(HEADERS_ENCODING), value.encode(HEADERS_ENCODING)) for key, value in request_dict["headers"]
             ],
             extensions={
-                key: value
-                for key, value in request_dict["extensions"].items()
-                if key in KNOWN_REQUEST_EXTENSIONS
+                key: value for key, value in request_dict["extensions"].items() if key in KNOWN_REQUEST_EXTENSIONS
             },
         )
 
@@ -229,9 +200,7 @@ class JSONSerializer(BaseSerializer):
 class YAMLSerializer(BaseSerializer):
     """A simple yaml-based serializer."""
 
-    def dumps(
-        self, response: Response, request: Request, metadata: Metadata
-    ) -> tp.Union[str, bytes]:
+    def dumps(self, response: Response, request: Request, metadata: Metadata) -> tp.Union[str, bytes]:
         """
         Dumps the HTTP response and its HTTP request.
 
@@ -255,8 +224,7 @@ class YAMLSerializer(BaseSerializer):
         response_dict = {
             "status": response.status,
             "headers": [
-                (key.decode(HEADERS_ENCODING), value.decode(HEADERS_ENCODING))
-                for key, value in response.headers
+                (key.decode(HEADERS_ENCODING), value.decode(HEADERS_ENCODING)) for key, value in response.headers
             ],
             "content": base64.b64encode(response.content).decode("ascii"),
             "extensions": {
@@ -270,14 +238,9 @@ class YAMLSerializer(BaseSerializer):
             "method": request.method.decode("ascii"),
             "url": normalized_url(request.url),
             "headers": [
-                (key.decode(HEADERS_ENCODING), value.decode(HEADERS_ENCODING))
-                for key, value in request.headers
+                (key.decode(HEADERS_ENCODING), value.decode(HEADERS_ENCODING)) for key, value in request.headers
             ],
-            "extensions": {
-                key: value
-                for key, value in request.extensions.items()
-                if key in KNOWN_REQUEST_EXTENSIONS
-            },
+            "extensions": {key: value for key, value in request.extensions.items() if key in KNOWN_REQUEST_EXTENSIONS},
         }
 
         metadata_dict = {
@@ -294,9 +257,7 @@ class YAMLSerializer(BaseSerializer):
 
         return yaml.safe_dump(full_json, sort_keys=False)
 
-    def loads(
-        self, data: tp.Union[str, bytes]
-    ) -> tp.Tuple[Response, Request, Metadata]:
+    def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request, Metadata]:
         """
         Loads the HTTP response and its HTTP request from serialized data.
 
@@ -343,13 +304,10 @@ class YAMLSerializer(BaseSerializer):
             method=request_dict["method"],
             url=request_dict["url"],
             headers=[
-                (key.encode(HEADERS_ENCODING), value.encode(HEADERS_ENCODING))
-                for key, value in request_dict["headers"]
+                (key.encode(HEADERS_ENCODING), value.encode(HEADERS_ENCODING)) for key, value in request_dict["headers"]
             ],
             extensions={
-                key: value
-                for key, value in request_dict["extensions"].items()
-                if key in KNOWN_REQUEST_EXTENSIONS
+                key: value for key, value in request_dict["extensions"].items() if key in KNOWN_REQUEST_EXTENSIONS
             },
         )
 

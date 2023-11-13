@@ -12,9 +12,7 @@ __all__ = ("MockAsyncConnectionPool", "MockAsyncTransport")
 
 
 class MockAsyncConnectionPool(AsyncRequestInterface):
-    async def handle_async_request(
-        self, request: httpcore.Request
-    ) -> httpcore.Response:
+    async def handle_async_request(self, request: httpcore.Request) -> httpcore.Response:
         return self.mocked_responses.pop(0)
 
     def add_responses(self, responses: tp.List[httpcore.Response]) -> None:

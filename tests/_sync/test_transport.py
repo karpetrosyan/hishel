@@ -7,9 +7,7 @@ import hishel
 
 def test_transport_301(use_temp_dir):
     with hishel.MockTransport() as transport:
-        transport.add_responses(
-            [httpx.Response(301, headers=[(b"Location", b"https://example.com")])]
-        )
+        transport.add_responses([httpx.Response(301, headers=[(b"Location", b"https://example.com")])])
         with hishel.CacheTransport(transport=transport) as cache_transport:
             request = httpx.Request("GET", "https://www.example.com")
 
@@ -76,9 +74,7 @@ def test_transport_stale_response(use_temp_dir):
                 ),
             ]
         )
-        with hishel.CacheTransport(
-            transport=transport, controller=controller
-        ) as cache_transport:
+        with hishel.CacheTransport(transport=transport, controller=controller) as cache_transport:
             request = httpx.Request("GET", "https://www.example.com")
             cache_transport.handle_request(request)
             response = cache_transport.handle_request(request)
@@ -115,9 +111,7 @@ def test_transport_stale_response_with_connecterror(use_temp_dir):
                 ),
             ]
         )
-        with hishel.CacheTransport(
-            transport=transport, controller=controller
-        ) as cache_transport:
+        with hishel.CacheTransport(transport=transport, controller=controller) as cache_transport:
             request = httpx.Request("GET", "https://www.example.com")
             cache_transport.handle_request(request)
             response = cache_transport.handle_request(request)
@@ -131,9 +125,7 @@ def test_transport_with_only_if_cached_directive_without_stored_response(
     controller = hishel.Controller()
 
     with hishel.MockTransport() as transport:
-        with hishel.CacheTransport(
-            transport=transport, controller=controller
-        ) as cache_transport:
+        with hishel.CacheTransport(transport=transport, controller=controller) as cache_transport:
             response = cache_transport.handle_request(
                 httpx.Request(
                     "GET",
@@ -163,12 +155,8 @@ def test_transport_with_only_if_cached_directive_with_stored_response(
                 ),
             ]
         )
-        with hishel.CacheTransport(
-            transport=transport, controller=controller
-        ) as cache_transport:
-            cache_transport.handle_request(
-                httpx.Request("GET", "https://www.example.com")
-            )
+        with hishel.CacheTransport(transport=transport, controller=controller) as cache_transport:
+            cache_transport.handle_request(httpx.Request("GET", "https://www.example.com"))
             response = cache_transport.handle_request(
                 httpx.Request(
                     "GET",
