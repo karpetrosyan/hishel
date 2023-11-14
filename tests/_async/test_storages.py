@@ -11,12 +11,12 @@ from hishel._utils import asleep, generate_key
 dummy_metadata = Metadata(cache_key="test", number_of_uses=0, created_at=datetime.datetime.utcnow())
 
 
-def is_redis_down() -> bool:
-    import redis
+async def is_redis_down() -> bool:
+    import redis.asyncio as redis
 
     connection = redis.Redis()
     try:
-        return not connection.ping()
+        return not await connection.ping()
     except BaseException:  # pragma: no cover
         return True
 
@@ -46,7 +46,7 @@ async def test_filestorage(use_temp_dir):
 
 @pytest.mark.asyncio
 async def test_redisstorage():
-    if is_redis_down():  # pragma: no cover
+    if await is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
     storage = AsyncRedisStorage()
 
@@ -114,7 +114,7 @@ async def test_filestorage_expired():
 
 @pytest.mark.asyncio
 async def test_redisstorage_expired():
-    if is_redis_down():  # pragma: no cover
+    if await is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
     storage = AsyncRedisStorage(ttl=1)
     first_request = Request(b"GET", "https://example.com")
