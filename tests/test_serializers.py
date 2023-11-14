@@ -35,9 +35,7 @@ def test_pickle_serializer_dumps_and_loads():
         created_at=datetime.datetime(year=2003, month=8, day=25, hour=12),
     )
 
-    raw_response = PickleSerializer().dumps(
-        response=response, request=request, metadata=metadata
-    )
+    raw_response = PickleSerializer().dumps(response=response, request=request, metadata=metadata)
 
     response, request, metadata = PickleSerializer().loads(raw_response)
     response.read()
@@ -56,9 +54,7 @@ def test_pickle_serializer_dumps_and_loads():
 
     assert metadata["cache_key"] == "test"
     assert metadata["number_of_uses"] == 0
-    assert metadata["created_at"] == datetime.datetime(
-        year=2003, month=8, day=25, hour=12
-    )
+    assert metadata["created_at"] == datetime.datetime(year=2003, month=8, day=25, hour=12)
 
 
 def test_dict_serializer_dumps():
@@ -85,9 +81,7 @@ def test_dict_serializer_dumps():
         created_at=datetime.datetime(year=2003, month=8, day=25, hour=12),
     )
 
-    full_json = JSONSerializer().dumps(
-        response=response, request=request, metadata=metadata
-    )
+    full_json = JSONSerializer().dumps(response=response, request=request, metadata=metadata)
 
     assert full_json == "\n".join(
         [
@@ -194,9 +188,7 @@ def test_dict_serializer_loads():
 
     assert metadata["cache_key"] == "test"
     assert metadata["number_of_uses"] == 0
-    assert metadata["created_at"] == datetime.datetime(
-        year=2003, month=8, day=25, hour=12
-    )
+    assert metadata["created_at"] == datetime.datetime(year=2003, month=8, day=25, hour=12)
 
 
 def test_yaml_serializer_dumps():
@@ -223,9 +215,7 @@ def test_yaml_serializer_dumps():
         created_at=datetime.datetime(year=2003, month=8, day=25, hour=12),
     )
 
-    full_json = YAMLSerializer().dumps(
-        response=response, request=request, metadata=metadata
-    )
+    full_json = YAMLSerializer().dumps(response=response, request=request, metadata=metadata)
 
     assert full_json == "\n".join(
         [
@@ -304,6 +294,4 @@ def test_yaml_serializer_loads():
 
     assert metadata["cache_key"] == "test"
     assert metadata["number_of_uses"] == 0
-    assert metadata["created_at"] == datetime.datetime(
-        year=2003, month=8, day=25, hour=12
-    )
+    assert metadata["created_at"] == datetime.datetime(year=2003, month=8, day=25, hour=12)

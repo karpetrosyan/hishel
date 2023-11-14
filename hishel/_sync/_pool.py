@@ -39,11 +39,7 @@ class CacheConnectionPool(RequestInterface):
         controller: tp.Optional[Controller] = None,
     ) -> None:
         self._pool = pool
-        self._storage = (
-            storage
-            if storage is not None
-            else FileStorage(serializer=JSONSerializer())
-        )
+        self._storage = storage if storage is not None else FileStorage(serializer=JSONSerializer())
         self._controller = controller if controller is not None else Controller()
 
     def handle_request(self, request: Request) -> Response:
@@ -59,9 +55,7 @@ class CacheConnectionPool(RequestInterface):
         key = generate_key(request)
         stored_data = self._storage.retreive(key)
 
-        request_cache_control = parse_cache_control(
-            extract_header_values_decoded(request.headers, b"Cache-Control")
-        )
+        request_cache_control = parse_cache_control(extract_header_values_decoded(request.headers, b"Cache-Control"))
 
         if request_cache_control.only_if_cached and not stored_data:
             return generate_504()
@@ -100,9 +94,7 @@ class CacheConnectionPool(RequestInterface):
                 try:
                     response = self._pool.handle_request(res)
                 except ConnectError:
-                    if self._controller._allow_stale and allowed_stale(
-                        response=stored_resposne
-                    ):
+                    if self._controller._allow_stale and allowed_stale(response=stored_resposne):
                         stored_resposne.extensions["from_cache"] = True  # type: ignore[index]
                         stored_resposne.extensions["cache_metadata"] = metadata  # type: ignore[index]
                         return stored_resposne
@@ -114,9 +106,7 @@ class CacheConnectionPool(RequestInterface):
 
                 full_response.read()
                 metadata["number_of_uses"] += response.status == 304
-                self._storage.store(
-                    key, response=full_response, request=request, metadata=metadata
-                )
+                self._storage.store(key, response=full_response, request=request, metadata=metadata)
                 full_response.extensions["from_cache"] = response.status == 304  # type: ignore[index]
                 if full_response.extensions["from_cache"]:
                     full_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
@@ -126,12 +116,8 @@ class CacheConnectionPool(RequestInterface):
 
         if self._controller.is_cachable(request=request, response=response):
             response.read()
-            metadata = Metadata(
-                cache_key=key, created_at=datetime.datetime.utcnow(), number_of_uses=0
-            )
-            self._storage.store(
-                key, response=response, request=request, metadata=metadata
-            )
+            metadata = Metadata(cache_key=key, created_at=datetime.datetime.utcnow(), number_of_uses=0)
+            self._storage.store(key, response=response, request=request, metadata=metadata)
 
         response.extensions["from_cache"] = False  # type: ignore[index]
         return response

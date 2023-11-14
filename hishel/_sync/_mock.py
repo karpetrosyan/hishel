@@ -12,9 +12,7 @@ __all__ = ("MockConnectionPool", "MockTransport")
 
 
 class MockConnectionPool(RequestInterface):
-    def handle_request(
-        self, request: httpcore.Request
-    ) -> httpcore.Response:
+    def handle_request(self, request: httpcore.Request) -> httpcore.Response:
         return self.mocked_responses.pop(0)
 
     def add_responses(self, responses: tp.List[httpcore.Response]) -> None:

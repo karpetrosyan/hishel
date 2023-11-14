@@ -12,9 +12,7 @@ def test_blank_directive():
 
 def test_blank_directive_after_ows_stripping():
     header = [" ,"]
-    with pytest.raises(
-        ParseError, match="The directive should not contain only whitespaces."
-    ):
+    with pytest.raises(ParseError, match="The directive should not contain only whitespaces."):
         parse_cache_control(header)
 
 
@@ -59,9 +57,7 @@ def test_invalid_symbol_in_quoted():
 
 def test_time_field_without_value():
     header = ["max-age"]
-    with pytest.raises(
-        ValidationError, match="The directive 'max_age' necessitates a value."
-    ):
+    with pytest.raises(ValidationError, match="The directive 'max_age' necessitates a value."):
         parse_cache_control(header)
 
 

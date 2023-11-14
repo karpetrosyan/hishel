@@ -7,9 +7,7 @@ import hishel
 @pytest.mark.anyio
 async def test_transport_301(use_temp_dir):
     async with hishel.MockAsyncTransport() as transport:
-        transport.add_responses(
-            [httpx.Response(301, headers=[(b"Location", b"https://example.com")])]
-        )
+        transport.add_responses([httpx.Response(301, headers=[(b"Location", b"https://example.com")])])
         async with hishel.AsyncCacheTransport(transport=transport) as cache_transport:
             request = httpx.Request("GET", "https://www.example.com")
 
@@ -76,9 +74,7 @@ async def test_transport_stale_response(use_temp_dir):
                 ),
             ]
         )
-        async with hishel.AsyncCacheTransport(
-            transport=transport, controller=controller
-        ) as cache_transport:
+        async with hishel.AsyncCacheTransport(transport=transport, controller=controller) as cache_transport:
             request = httpx.Request("GET", "https://www.example.com")
             await cache_transport.handle_async_request(request)
             response = await cache_transport.handle_async_request(request)
@@ -115,9 +111,7 @@ async def test_transport_stale_response_with_connecterror(use_temp_dir):
                 ),
             ]
         )
-        async with hishel.AsyncCacheTransport(
-            transport=transport, controller=controller
-        ) as cache_transport:
+        async with hishel.AsyncCacheTransport(transport=transport, controller=controller) as cache_transport:
             request = httpx.Request("GET", "https://www.example.com")
             await cache_transport.handle_async_request(request)
             response = await cache_transport.handle_async_request(request)
@@ -131,9 +125,7 @@ async def test_transport_with_only_if_cached_directive_without_stored_response(
     controller = hishel.Controller()
 
     async with hishel.MockAsyncTransport() as transport:
-        async with hishel.AsyncCacheTransport(
-            transport=transport, controller=controller
-        ) as cache_transport:
+        async with hishel.AsyncCacheTransport(transport=transport, controller=controller) as cache_transport:
             response = await cache_transport.handle_async_request(
                 httpx.Request(
                     "GET",
@@ -163,12 +155,8 @@ async def test_transport_with_only_if_cached_directive_with_stored_response(
                 ),
             ]
         )
-        async with hishel.AsyncCacheTransport(
-            transport=transport, controller=controller
-        ) as cache_transport:
-            await cache_transport.handle_async_request(
-                httpx.Request("GET", "https://www.example.com")
-            )
+        async with hishel.AsyncCacheTransport(transport=transport, controller=controller) as cache_transport:
+            await cache_transport.handle_async_request(httpx.Request("GET", "https://www.example.com"))
             response = await cache_transport.handle_async_request(
                 httpx.Request(
                     "GET",

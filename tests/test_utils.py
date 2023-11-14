@@ -71,15 +71,11 @@ def test_get_updated_headers():
         (b"Authorization", b"secret-key"),
     ]
 
-    update_headers = get_updated_headers(
-        stored_response_headers=old_headers, new_response_headers=new_headers
-    )
+    update_headers = get_updated_headers(stored_response_headers=old_headers, new_response_headers=new_headers)
 
     assert len(update_headers) == 3
     assert extract_header_values(update_headers, b"Language")[0] == b"am"
-    assert (
-        extract_header_values(update_headers, b"Content-Type")[0] == b"application/json"
-    )
+    assert extract_header_values(update_headers, b"Content-Type")[0] == b"application/json"
     assert extract_header_values(update_headers, b"Authorization")[0] == b"secret-key"
 
 
