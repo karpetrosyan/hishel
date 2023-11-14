@@ -1,6 +1,7 @@
 import logging
 import time
 import typing as tp
+from datetime import timedelta
 from pathlib import Path
 
 try:
@@ -30,7 +31,7 @@ class BaseStorage:
     def __init__(
         self,
         serializer: tp.Optional[BaseSerializer] = None,
-        ttl: tp.Optional[int] = None,
+        ttl: tp.Optional[tp.Union[int, float]] = None,
     ) -> None:
         self._serializer = serializer or JSONSerializer()
         self._ttl = ttl
@@ -54,14 +55,14 @@ class FileStorage(BaseStorage):
     :param base_path: A storage base path where the responses should be saved, defaults to None
     :type base_path: tp.Optional[Path], optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
-    :type ttl: tp.Optional[int], optional
+    :type ttl: tp.Optional[tp.Union[int, float]]
     """
 
     def __init__(
         self,
         serializer: tp.Optional[BaseSerializer] = None,
         base_path: tp.Optional[Path] = None,
-        ttl: tp.Optional[int] = None,
+        ttl: tp.Optional[tp.Union[int, float]] = None,
     ) -> None:
         super().__init__(serializer, ttl)
 
@@ -137,14 +138,14 @@ class SQLiteStorage(BaseStorage):
     :param connection: A connection for sqlite, defaults to None
     :type connection: tp.Optional[sqlite3.Connection], optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
-    :type ttl: tp.Optional[int], optional
+    :type ttl: tp.Optional[tp.Union[int, float]]
     """
 
     def __init__(
         self,
         serializer: tp.Optional[BaseSerializer] = None,
         connection: tp.Optional["sqlite3.Connection"] = None,
-        ttl: tp.Optional[int] = None,
+        ttl: tp.Optional[tp.Union[int, float]] = None,
     ) -> None:
         if sqlite3 is None:  # pragma: no cover
             raise RuntimeError(
@@ -167,10 +168,7 @@ class SQLiteStorage(BaseStorage):
                 if not self._connection:  # pragma: no cover
                     self._connection = sqlite3.connect(".hishel.sqlite", check_same_thread=False)
                 self._connection.execute(
-                    (
-                        "CREATE TABLE IF NOT EXISTS cache(key TEXT, data BLOB, "
-                        "date_created datetime DEFAULT CURRENT_TIMESTAMP)"
-                    )
+                    ("CREATE TABLE IF NOT EXISTS cache(key TEXT, data BLOB, date_created REAL)")
                 )
                 self._connection.commit()
                 self._setup_completed = True
@@ -195,7 +193,9 @@ class SQLiteStorage(BaseStorage):
         with self._lock:
             self._connection.execute("DELETE FROM cache WHERE key = ?", [key])
             serialized_response = self._serializer.dumps(response=response, request=request, metadata=metadata)
-            self._connection.execute("INSERT INTO cache(key, data) VALUES(?, ?)", [key, serialized_response])
+            self._connection.execute(
+                "INSERT INTO cache(key, data, date_created) VALUES(?, ?, ?)", [key, serialized_response, time.time()]
+            )
             self._connection.commit()
         self._remove_expired_caches()
 
@@ -232,9 +232,7 @@ class SQLiteStorage(BaseStorage):
             return
 
         with self._lock:
-            self._connection.execute(
-                f"DELETE FROM cache WHERE datetime(date_created, '+{self._ttl} seconds') > datetime()"
-            )
+            self._connection.execute("DELETE FROM cache WHERE ? - date_created > ?", [time.time(), self._ttl])
             self._connection.commit()
 
 
@@ -247,14 +245,14 @@ class RedisStorage(BaseStorage):
     :param client: A client for redis, defaults to None
     :type client: tp.Optional["redis.Redis"], optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
-    :type ttl: tp.Optional[int], optional
+    :type ttl: tp.Optional[tp.Union[int, float]]
     """
 
     def __init__(
         self,
         serializer: tp.Optional[BaseSerializer] = None,
         client: tp.Optional["redis.Redis"] = None,  # type: ignore
-        ttl: tp.Optional[int] = None,
+        ttl: tp.Optional[tp.Union[int, float]] = None,
     ) -> None:
         if redis is None:  # pragma: no cover
             raise RuntimeError(
@@ -284,10 +282,11 @@ class RedisStorage(BaseStorage):
         :param metadata: Additioal information about the stored response
         :type metadata: Metadata
         """
+
+        px = int(timedelta(seconds=self._ttl).total_seconds() * 1000) if self._ttl is not None else None
+
         self._client.set(
-            key,
-            self._serializer.dumps(response=response, request=request, metadata=metadata),
-            ex=self._ttl,
+            key, self._serializer.dumps(response=response, request=request, metadata=metadata), px=px
         )
 
     def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:

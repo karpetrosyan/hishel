@@ -94,7 +94,7 @@ async def test_sqlitestorage():
 
 @pytest.mark.asyncio
 async def test_filestorage_expired():
-    storage = AsyncFileStorage(ttl=1)
+    storage = AsyncFileStorage(ttl=0.1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
@@ -106,7 +106,7 @@ async def test_filestorage_expired():
 
     await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
 
-    await asleep(2)
+    await asleep(0.3)
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert await storage.retreive(first_key) is None
@@ -116,7 +116,7 @@ async def test_filestorage_expired():
 async def test_redisstorage_expired():
     if await is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
-    storage = AsyncRedisStorage(ttl=1)
+    storage = AsyncRedisStorage(ttl=0.1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
@@ -128,7 +128,7 @@ async def test_redisstorage_expired():
 
     await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
 
-    await asleep(2)
+    await asleep(0.3)
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert await storage.retreive(first_key) is None
@@ -136,7 +136,7 @@ async def test_redisstorage_expired():
 
 @pytest.mark.asyncio
 async def test_sqlite_expired():
-    storage = AsyncSQLiteStorage(ttl=1, connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSQLiteStorage(ttl=0.1, connection=await anysqlite.connect(":memory:"))
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
@@ -148,7 +148,7 @@ async def test_sqlite_expired():
 
     await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
 
-    await asleep(2)
+    await asleep(0.3)
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert await storage.retreive(first_key) is None
