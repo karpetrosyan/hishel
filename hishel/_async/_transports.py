@@ -72,6 +72,10 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         :return: An HTTP response
         :rtype: httpx.Response
         """
+
+        if "cache_disabled" in request.extensions and request.extensions["cache_disabled"]:
+            request.headers.update([("Cache-Control", "no-store"), ("Cache-Control", "max-age=0")])
+
         httpcore_request = httpcore.Request(
             method=request.method,
             url=httpcore.URL(
