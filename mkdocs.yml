@@ -56,6 +56,7 @@ nav:
     - Serializers: advanced/serializers.md
     - Controllers: advanced/controllers.md
     - HTTP Headers: advanced/http_headers.md
+    - Extensions: advanced/extensions.md
   - Examples:
     - FastAPI: examples/fastapi.md
     - Flask: examples/flask.md
