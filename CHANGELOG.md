@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fix issue where freshness cannot be calculated to re-send request. (#104)
+- Add documentation for heuristic caching noting heuristically cacheable status codes, and made `HEURISTICALLY_CACHEABLE_STATUS_CODES` importable from `hishel` (#110)
 
 ## 0.0.17 (6/11/2023) 
 
