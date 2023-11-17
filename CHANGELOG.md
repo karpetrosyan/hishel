@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Fix issue where freshness cannot be calculated to re-send request. (#104)
+- Add `cache_disabled` extension to temporarily disable the cache (#109)
+- Document response and requests extensions (#109)
 
 ## 0.0.17 (6/11/2023) 
 
