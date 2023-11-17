@@ -200,7 +200,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         await httpcore_response.aclose()
 
         if self._controller.is_cachable(request=httpcore_request, response=httpcore_response):
-            metadata = Metadata(cache_key=key, created_at=datetime.datetime.utcnow(), number_of_uses=0)
+            metadata = Metadata(cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0)
             await self._storage.store(
                 key,
                 response=httpcore_response,
