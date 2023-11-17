@@ -53,6 +53,24 @@ client = hishel.CacheClient(controller=controller)
 
 ```
 
+
+
+`Hishel` is very conservative about what status codes are permitted
+to be heuristically cacheable. When `allow_heuristics` is enabled,
+`Hishel` will only cache responses having status codes 200, 301, and 308. In contrast, RFC 9111 specifies that many more responses can be heuristically cacheable, specifically 200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, and 501. If you would prefer heuristic caching to the fullest extent permitted by 
+RFC 9111, then pass `HEURISTICALLY_CACHEABLE_STATUS_CODES` to `cacheable_status_codes`:
+
+```python
+import hishel
+
+controller = hishel.Controller(
+    allow_heuristics=True, 
+    cacheable_status_codes=hishel.HEURISTICALLY_CACHEABLE_STATUS_CODES
+    )
+client = hishel.CacheClient(controller=controller)
+
+```
+
 !!! tip
     If you're not familiar with `Heuristics Caching`, you can [read about it in the specification](https://www.rfc-editor.org/rfc/rfc9111.html#name-calculating-heuristic-fresh).
 

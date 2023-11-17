@@ -13,7 +13,7 @@ from ._utils import (
     parse_date,
 )
 
-HEURISTICALLY_CACHABLE = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
+HEURISTICALLY_CACHEABLE_STATUS_CODES = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
 
 __all__ = ("Controller",)
 
@@ -174,7 +174,7 @@ class Controller:
         # - if the cache is shared: an s-maxage response directive (see Section 5.2.2.10);
         # - a cache extension that allows it to be cached (see Section 5.2.3); or
         # - a status code that is defined as heuristically cacheable (see Section 4.2.2).
-        if self._allow_heuristics and response.status in HEURISTICALLY_CACHABLE:
+        if self._allow_heuristics and response.status in HEURISTICALLY_CACHEABLE_STATUS_CODES:
             return True
 
         if not any(
@@ -285,7 +285,7 @@ class Controller:
         freshness_lifetime = get_freshness_lifetime(response)
 
         if freshness_lifetime is None:
-            if self._allow_heuristics and response.status in HEURISTICALLY_CACHABLE:
+            if self._allow_heuristics and response.status in HEURISTICALLY_CACHEABLE_STATUS_CODES:
                 freshness_lifetime = get_heuristic_freshness(response=response, clock=self._clock)
             else:
                 # If Freshness cannot be calculated, then send the request
