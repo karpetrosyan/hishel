@@ -8,7 +8,7 @@ from hishel import FileStorage, RedisStorage, SQLiteStorage
 from hishel._serializers import Metadata
 from hishel._utils import sleep, generate_key
 
-dummy_metadata = Metadata(cache_key="test", number_of_uses=0, created_at=datetime.datetime.utcnow())
+dummy_metadata = Metadata(cache_key="test", number_of_uses=0, created_at=datetime.datetime.now(datetime.timezone.utc))
 
 
 def is_redis_down() -> bool:

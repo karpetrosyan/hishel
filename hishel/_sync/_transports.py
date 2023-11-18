@@ -200,7 +200,7 @@ class CacheTransport(httpx.BaseTransport):
         httpcore_response.close()
 
         if self._controller.is_cachable(request=httpcore_request, response=httpcore_response):
-            metadata = Metadata(cache_key=key, created_at=datetime.datetime.utcnow(), number_of_uses=0)
+            metadata = Metadata(cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0)
             self._storage.store(
                 key,
                 response=httpcore_response,
