@@ -2,6 +2,8 @@
 icon: material/apps
 ---
 
+# Extensions
+
 `HTTPX` provides an extension mechanism to allow additional information 
 to be added to requests and to be returned in responses. `hishel` makes use
 of these extensions to expose some additional cache-related options and metadata.
@@ -11,8 +13,9 @@ using a `hishel` transport.
 
 ## Request extensions
 
-`hishel` currently provides only one extension on requests - `cache_disabled`. This
-extension temporarily disables the cache by passing appropriate RFC911 headers to
+### cache_disabled 
+
+This extension temporarily disables the cache by passing appropriate RFC9111 headers to
 ignore cached responses and to not store incoming responses. For example:
 
 ```python
@@ -25,17 +28,27 @@ This feature is more fully documented in the [User Guide](/userguide/#temporaril
 
 ## Response extensions
 
-`hishel` provides two extensions on responses that provide additional information regarding whether a response was returned from the cache, and additional metadata about the cached response when a response is returned from the cache. 
+### from_cache 
 
-Every response from a `hishel.CacheClient` / `hishel.AsyncCacheClient` will have
-a `from_cache` extension value that will be `True` when the response was retrieved
+Every response from  will have a `from_cache` extension value that will be `True` when the response was retrieved
 from the cache, and `False` when the response was received over the network.
 
-If `from_cache` is `True`, the extensions will also have a dictionary called
-`cache_metadata` with three keys:
- - `cache_key` - The key used in the cache for the response
- - `created_at` - A `datetime.datetime` object indicating when the cached response was created
- - `number_of_uses` - a counter that indicates how many times this response was retrieved from the cache.
+```python
+>>> import hishel
+>>> client = hishel.CacheClient()
+>>> response = client.get("https://www.example.com")
+>>> response.extensions["from_cache"]
+False
+>>> response = client.get("https://www.example.com")
+>>> response.extensions["from_cache"]
+True
+```
+
+### cache_metadata
+
+If `from_cache` is `True`, the response will also include a `cache_metadata` extension with additional information about 
+the response retrieved from the cache. If `from_cache` is `False`, then `cache_metadata` will not
+be present in the response extensions.
 
 Example:
 
