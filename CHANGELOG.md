@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fix issue where freshness cannot be calculated to re-send request. (#104)
+- Update `datetime.datetime.utcnow()` to `datetime.datetime.now(datetime.timezone.utc)` since `datetime.datetime.utcnow()` has been deprecated. (#111)
 
 ## 0.0.17 (6/11/2023) 
 
