@@ -6,7 +6,6 @@ from ._exceptions import *
 from ._headers import *
 from ._serializers import *
 from ._sync import *
-from ._controller import HEURISTICALLY_CACHEABLE_STATUS_CODES
 
 def install_cache() -> None:  # pragma: no cover
     httpx.AsyncClient = AsyncCacheClient  # type: ignore
