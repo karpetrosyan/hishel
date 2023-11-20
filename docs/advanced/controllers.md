@@ -53,8 +53,6 @@ client = hishel.CacheClient(controller=controller)
 
 ```
 
-
-
 `Hishel` is very conservative about what status codes are permitted
 to be heuristically cacheable. When `allow_heuristics` is enabled,
 `Hishel` will only cache responses having status codes 200, 301, and 308. In contrast, RFC 9111 specifies that many more responses can be heuristically cacheable, specifically 200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, and 501. 
