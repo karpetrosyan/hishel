@@ -15,7 +15,7 @@ from ._utils import (
 
 HEURISTICALLY_CACHEABLE_STATUS_CODES = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
 
-__all__ = ("Controller",)
+__all__ = ("Controller", "HEURISTICALLY_CACHEABLE_STATUS_CODES")
 
 
 def get_updated_headers(
