@@ -211,3 +211,49 @@ with httpcore.ConnectionPool() as pool:
         cache_pool.get("https://example.com/cachable-endpoint")
         response = cache_pool.get("https://example.com/cachable-endpoint") # from the cache
 ```
+
+### Temporarily Disabling the Cache
+
+`Hishel` allows you to temporarily disable the cache for specific requests using the `cache_disabled` extension.
+Per RFC9111, the cache can effectively be disabled using the `Cache-Control` headers `no-store` (which requests that the response not be added to the cache),
+and `max-age=0` (which demands that any response in the cache must have 0 age - i.e. be a new request). `Hishel` respects this behavior, which can be
+used in two ways. First, you can specify the headers directly:
+
+```python
+import hishel
+import httpx
+
+# With the clients
+client = hishel.CacheClient()
+client.get(
+    "https://example.com/cacheable-endpoint",
+    headers=[("Cache-Control", "no-store"), ("Cache-Control", "max-age=0")]
+    ) # Ignores the cache
+
+# With the transport
+cache_transport = hishel.CacheTransport(transport=httpx.HTTPTransport())
+client = httpx.Client(transport=cache_transport)
+client.get(
+    "https://example.com/cacheable-endpoint",
+    headers=[("Cache-Control", "no-store"), ("Cache-Control", "max-age=0")]
+    ) # Ignores the cache
+
+```
+
+Since this can be cumbersome, `Hishel` also provides some "syntactic sugar" to accomplish the same result using `HTTPX` extensions:
+
+```python
+import hishel
+import httpx
+
+# With the clients
+client = hishel.CacheClient()
+client.get("https://example.com/cacheable-endpoint", extensions={"cache_disabled": True}) # Ignores the cache
+
+# With the transport
+cache_transport = hishel.CacheTransport(transport=httpx.HTTPTransport())
+client = httpx.Client(transport=cache_transport)
+client.get("https://example.com/cacheable-endpoint", extensions={"cache_disabled": True}) # Ignores the cache
+
+```
+Both of these are entirely equivalent to specifying the headers directly.

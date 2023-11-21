@@ -52,6 +52,9 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
         :rtype: httpcore.Response
         """
 
+        if request.extensions.get("cache_disabled", False):
+            request.headers.extend([(b"cache-control", b"no-cache"), (b"cache-control", b"max-age=0")])
+
         key = generate_key(request)
         stored_data = await self._storage.retreive(key)
 
