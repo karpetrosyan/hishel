@@ -3,4 +3,4 @@
 ruff format tests hishel --diff
 ruff tests hishel
 mypy tests hishel
-python unasync.py check
+python unasync.py --check
