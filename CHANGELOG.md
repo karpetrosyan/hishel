@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.18 (23/11/2023)
 
 - Fix issue where freshness cannot be calculated to re-send request. (#104)
 - Add `cache_disabled` extension to temporarily disable the cache (#109)
