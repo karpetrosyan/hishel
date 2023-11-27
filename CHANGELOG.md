@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.18 (23/11/2023)
 
 - Support float numbers for storage ttl. (#107)
 - Fix issue where freshness cannot be calculated to re-send request. (#104)

@@ -119,7 +119,9 @@ class CacheConnectionPool(RequestInterface):
 
         if self._controller.is_cachable(request=request, response=response):
             response.read()
-            metadata = Metadata(cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0)
+            metadata = Metadata(
+                cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0
+            )
             self._storage.store(key, response=response, request=request, metadata=metadata)
 
         response.extensions["from_cache"] = False  # type: ignore[index]
