@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add `ignore_rules` extension to enforce the request to be cached, ignoring the HTTP headers. (#117)
+
 ## 0.0.18 (23/11/2023)
 
 - Fix issue where freshness cannot be calculated to re-send request. (#104)
