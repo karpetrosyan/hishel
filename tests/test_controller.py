@@ -764,19 +764,19 @@ def test_freshness_lifetime_invalid_information():
     assert isinstance(conditional_request, Request)
 
 
-def test_ignore_rules_extension_for_is_cachable():
+def test_force_cache_extension_for_is_cachable():
     controller = Controller()
     request = Request("GET", "https://example.com")
     uncachable_response = Response(status=400)
 
     assert controller.is_cachable(request=request, response=uncachable_response) is False
 
-    request = Request("GET", "https://example.com", extensions={"ignore_rules": True})
+    request = Request("GET", "https://example.com", extensions={"force_cache": True})
 
     assert controller.is_cachable(request=request, response=uncachable_response) is True
 
 
-def test_ignore_rules_extension_for_construct_response_from_cache():
+def test_force_cache_extension_for_construct_response_from_cache():
     class MockedClock(BaseClock):
         def now(self) -> int:
             return 1440504001  # Mon, 25 Aug 2015 12:00:01 GMT
@@ -799,7 +799,7 @@ def test_ignore_rules_extension_for_construct_response_from_cache():
         Request,
     )
 
-    request = Request("Get", "https://example.com", extensions={"ignore_rules": True})
+    request = Request("Get", "https://example.com", extensions={"force_cache": True})
 
     assert isinstance(
         controller.construct_response_from_cache(

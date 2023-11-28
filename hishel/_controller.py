@@ -139,7 +139,7 @@ class Controller:
         """
         method = request.method.decode("ascii")
 
-        if request.extensions.get("ignore_rules", False):
+        if request.extensions.get("force_cache", False):
             return True
 
         if response.status not in self._cacheable_status_codes:
@@ -274,7 +274,7 @@ class Controller:
             return None  # pragma: no cover
 
         # !!! this should be after the "vary" header validation.
-        if request.extensions.get("ignore_rules", False):
+        if request.extensions.get("force_cache", False):
             return response
 
         # the stored response does not contain the
