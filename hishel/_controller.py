@@ -139,6 +139,9 @@ class Controller:
         """
         method = request.method.decode("ascii")
 
+        if request.extensions.get("ignore_rules", False):
+            return True
+
         if response.status not in self._cacheable_status_codes:
             return False
 
@@ -269,6 +272,10 @@ class Controller:
         if not self._validate_vary(request=request, response=response, original_request=original_request):
             # If the vary headers does not match, then do not use the response
             return None  # pragma: no cover
+
+        # !!! this should be after the "vary" header validation.
+        if request.extensions.get("ignore_rules", False):
+            return response
 
         # the stored response does not contain the
         # no-cache directive (Section 5.2.2.4), unless

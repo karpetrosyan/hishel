@@ -13,6 +13,18 @@ using a `hishel` transport.
 
 ## Request extensions
 
+### ignore_rules
+
+If this extension is set to true, `Hishel` will ignore any caching rules that are defined in RFC9111.
+
+For example, if the response has a `Cache-Control` header that contains a `no-store` directive, it will not cache the response unless the `ignore_rules` extension is set to true.
+
+```python
+>>> import hishel
+>>> client = hishel.CacheClient()
+>>> response = client.get("https://www.example.com/uncachable-endpoint", extensions={"ignore_rules": True})
+```
+
 ### cache_disabled 
 
 This extension temporarily disables the cache by passing appropriate RFC9111 headers to

@@ -762,3 +762,48 @@ def test_freshness_lifetime_invalid_information():
         request=request, response=response, original_request=original_request
     )
     assert isinstance(conditional_request, Request)
+
+
+def test_ignore_rules_extension_for_is_cachable():
+    controller = Controller()
+    request = Request("GET", "https://example.com")
+    uncachable_response = Response(status=400)
+
+    assert controller.is_cachable(request=request, response=uncachable_response) is False
+
+    request = Request("GET", "https://example.com", extensions={"ignore_rules": True})
+
+    assert controller.is_cachable(request=request, response=uncachable_response) is True
+
+
+def test_ignore_rules_extension_for_construct_response_from_cache():
+    class MockedClock(BaseClock):
+        def now(self) -> int:
+            return 1440504001  # Mon, 25 Aug 2015 12:00:01 GMT
+
+    controller = Controller(clock=MockedClock())
+    original_request = Request("GET", "https://example.com")
+    request = Request("GET", "https://example.com")
+    cachable_response = Response(
+        200,
+        headers=[
+            (b"Cache-Control", b"max-age=0"),
+            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),  # 1 second before the clock
+        ],
+    )
+
+    assert isinstance(
+        controller.construct_response_from_cache(
+            request=request, response=cachable_response, original_request=original_request
+        ),
+        Request,
+    )
+
+    request = Request("Get", "https://example.com", extensions={"ignore_rules": True})
+
+    assert isinstance(
+        controller.construct_response_from_cache(
+            request=request, response=cachable_response, original_request=original_request
+        ),
+        Response,
+    )
