@@ -233,7 +233,7 @@ class SQLiteStorage(BaseStorage):
 
         with self._lock:
             self._connection.execute(
-                f"DELETE FROM cache WHERE datetime(date_created, '+{self._ttl} seconds') > datetime()"
+                f"DELETE FROM cache WHERE datetime(date_created, '+{self._ttl} seconds') < datetime()"
             )
             self._connection.commit()
 

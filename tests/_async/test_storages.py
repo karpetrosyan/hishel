@@ -105,6 +105,7 @@ async def test_filestorage_expired():
     await response.aread()
 
     await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
+    assert await storage.retreive(first_key) is not None
 
     await asleep(2)
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
@@ -127,6 +128,7 @@ async def test_redisstorage_expired():
     await response.aread()
 
     await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
+    assert await storage.retreive(first_key) is not None
 
     await asleep(2)
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
@@ -147,6 +149,7 @@ async def test_sqlite_expired():
     await response.aread()
 
     await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
+    assert await storage.retreive(first_key) is not None
 
     await asleep(2)
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
