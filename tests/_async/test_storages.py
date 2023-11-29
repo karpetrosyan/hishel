@@ -154,7 +154,6 @@ async def test_sqlite_expired():
     assert await storage.retreive(first_key) is None
 
 
-
 @pytest.mark.asyncio
 async def test_sqlite_cache_lifecycle():
     storage = AsyncSQLiteStorage(ttl=5, connection=await anysqlite.connect(":memory:"))
