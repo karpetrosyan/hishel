@@ -86,3 +86,7 @@ async def asleep(seconds: tp.Union[int, float]) -> None:
 
 def sleep(seconds: tp.Union[int, float]) -> None:
     time.sleep(seconds)
+
+
+def float_seconds_to_int_milliseconds(seconds: float) -> int:
+    return int(seconds * 1000)

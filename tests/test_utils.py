@@ -4,6 +4,7 @@ from hishel._controller import get_updated_headers
 from hishel._utils import (
     extract_header_values,
     extract_header_values_decoded,
+    float_seconds_to_int_milliseconds,
     generate_key,
     header_presents,
     parse_date,
@@ -83,3 +84,9 @@ def test_parse_date():
     date = "Mon, 25 Aug 2015 12:00:00 GMT"
     timestamp = parse_date(date)
     assert timestamp == 1440504000
+
+
+def test_float_seconds_to_milliseconds():
+    seconds = 1.234
+    milliseconds = float_seconds_to_int_milliseconds(seconds)
+    assert milliseconds == 1234

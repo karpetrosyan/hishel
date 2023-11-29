@@ -1,7 +1,6 @@
 import logging
 import time
 import typing as tp
-from datetime import timedelta
 from pathlib import Path
 
 try:
@@ -16,6 +15,7 @@ from hishel._serializers import BaseSerializer
 from .._files import AsyncFileManager
 from .._serializers import JSONSerializer, Metadata
 from .._synchronization import AsyncLock
+from .._utils import float_seconds_to_int_milliseconds
 
 logger = logging.getLogger("hishel.storages")
 
@@ -283,7 +283,10 @@ class AsyncRedisStorage(AsyncBaseStorage):
         :type metadata: Metadata
         """
 
-        px = int(timedelta(seconds=self._ttl).total_seconds() * 1000) if self._ttl is not None else None
+        if self._ttl is not None:
+            px = float_seconds_to_int_milliseconds(self._ttl)
+        else:
+            px = None
 
         await self._client.set(
             key, self._serializer.dumps(response=response, request=request, metadata=metadata), px=px
