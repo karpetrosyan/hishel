@@ -4,10 +4,10 @@
 
 - Add `force_cache` extension to enforce the request to be cached, ignoring the HTTP headers. (#117)
 - Fix issue where sqlite storage cache get deleted immediately. (#119)
+- Support float numbers for storage ttl. (#107)
 
 ## 0.0.18 (23/11/2023)
 
-- Support float numbers for storage ttl. (#107)
 - Fix issue where freshness cannot be calculated to re-send request. (#104)
 - Add `cache_disabled` extension to temporarily disable the cache (#109)
 - Update `datetime.datetime.utcnow()` to `datetime.datetime.now(datetime.timezone.utc)` since `datetime.datetime.utcnow()` has been deprecated. (#111)

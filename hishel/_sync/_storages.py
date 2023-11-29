@@ -55,7 +55,7 @@ class FileStorage(BaseStorage):
     :param base_path: A storage base path where the responses should be saved, defaults to None
     :type base_path: tp.Optional[Path], optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
-    :type ttl: tp.Optional[tp.Union[int, float]]
+    :type ttl: tp.Optional[tp.Union[int, float]], optional
     """
 
     def __init__(
@@ -138,7 +138,7 @@ class SQLiteStorage(BaseStorage):
     :param connection: A connection for sqlite, defaults to None
     :type connection: tp.Optional[sqlite3.Connection], optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
-    :type ttl: tp.Optional[tp.Union[int, float]]
+    :type ttl: tp.Optional[tp.Union[int, float]], optional
     """
 
     def __init__(
@@ -247,7 +247,7 @@ class RedisStorage(BaseStorage):
     :param client: A client for redis, defaults to None
     :type client: tp.Optional["redis.Redis"], optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
-    :type ttl: tp.Optional[tp.Union[int, float]]
+    :type ttl: tp.Optional[tp.Union[int, float]], optional
     """
 
     def __init__(
