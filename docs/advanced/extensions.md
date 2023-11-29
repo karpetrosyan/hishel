@@ -13,6 +13,19 @@ using a `hishel` transport.
 
 ## Request extensions
 
+### force_cache
+
+If this extension is set to true, `Hishel` will cache the response even if response headers
+would otherwise prevent caching the response.
+
+For example, if the response has a `Cache-Control` header that contains a `no-store` directive, it will not cache the response unless the `force_cache` extension is set to true.
+
+```python
+>>> import hishel
+>>> client = hishel.CacheClient()
+>>> response = client.get("https://www.example.com/uncachable-endpoint", extensions={"force_cache": True})
+```
+
 ### cache_disabled 
 
 This extension temporarily disables the cache by passing appropriate RFC9111 headers to
