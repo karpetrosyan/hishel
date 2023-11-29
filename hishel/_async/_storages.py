@@ -232,7 +232,9 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
             return
 
         async with self._lock:
-            await self._connection.execute("DELETE FROM cache WHERE ? - date_created > ?", [time.time(), self._ttl])
+            await self._connection.execute(
+                f"DELETE FROM cache WHERE datetime(date_created, '+{self._ttl} seconds') < datetime()"
+            )
             await self._connection.commit()
 
 
