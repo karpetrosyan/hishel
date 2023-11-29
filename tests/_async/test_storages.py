@@ -152,3 +152,32 @@ async def test_sqlite_expired():
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert await storage.retreive(first_key) is None
+
+
+
+@pytest.mark.asyncio
+async def test_sqlite_cache_lifecycle():
+    storage = AsyncSQLiteStorage(ttl=5, connection=await anysqlite.connect(":memory:"))
+    req = Request(b"GET", "https://example.com")
+
+    key = generate_key(req)
+
+    response = Response(200, headers=[], content=b"test")
+    await response.aread()
+
+    await storage.store(key, response=response, request=req, metadata=dummy_metadata)
+
+    await asleep(2)
+
+    stored_data = await storage.retreive(key)
+    assert stored_data is not None
+    stored_response, stored_request, metadata = stored_data
+    stored_response.read()
+    assert isinstance(stored_response, Response)
+    assert stored_response.status == 200
+    assert stored_response.headers == []
+    assert stored_response.content == b"test"
+
+    await asleep(4)
+
+    assert await storage.retreive(key) is None
