@@ -3,11 +3,7 @@
 ## Unreleased
 
 - Add `force_cache` extension to enforce the request to be cached, ignoring the HTTP headers. (#117)
-
-## 0.0.19 (29/11/2023)
 - Fix issue where sqlite storage cache get deleted immediately. (#118)
-- Update `DELETE FROM cache WHERE datetime(date_created, '+{self._ttl} seconds') > datetime()` to `DELETE FROM cache WHERE datetime(date_created, '+{self._ttl} seconds') < datetime()`
-- Add test case for testing sqlite storage cache lifecycle.
 
 ## 0.0.18 (23/11/2023)
 
