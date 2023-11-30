@@ -94,7 +94,7 @@ def test_sqlitestorage():
 
 
 def test_filestorage_expired():
-    storage = FileStorage(ttl=1)
+    storage = FileStorage(ttl=0.1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
@@ -107,7 +107,7 @@ def test_filestorage_expired():
     storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
     assert storage.retreive(first_key) is not None
 
-    sleep(2)
+    sleep(0.3)
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert storage.retreive(first_key) is None
@@ -117,7 +117,7 @@ def test_filestorage_expired():
 def test_redisstorage_expired():
     if is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
-    storage = RedisStorage(ttl=1)
+    storage = RedisStorage(ttl=0.1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
@@ -130,7 +130,7 @@ def test_redisstorage_expired():
     storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
     assert storage.retreive(first_key) is not None
 
-    sleep(2)
+    sleep(0.3)
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert storage.retreive(first_key) is None
@@ -138,7 +138,7 @@ def test_redisstorage_expired():
 
 
 def test_sqlite_expired():
-    storage = SQLiteStorage(ttl=1, connection=sqlite3.connect(":memory:"))
+    storage = SQLiteStorage(ttl=0.1, connection=sqlite3.connect(":memory:"))
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
@@ -151,7 +151,7 @@ def test_sqlite_expired():
     storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
     assert storage.retreive(first_key) is not None
 
-    sleep(2)
+    sleep(0.3)
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert storage.retreive(first_key) is None

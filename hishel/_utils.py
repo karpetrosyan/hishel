@@ -80,9 +80,13 @@ def parse_date(date: str) -> int:
     return timestamp
 
 
-async def asleep(seconds: int) -> None:
+async def asleep(seconds: tp.Union[int, float]) -> None:
     await anyio.sleep(seconds)
 
 
-def sleep(seconds: int) -> None:
+def sleep(seconds: tp.Union[int, float]) -> None:
     time.sleep(seconds)
+
+
+def float_seconds_to_int_milliseconds(seconds: float) -> int:
+    return int(seconds * 1000)
