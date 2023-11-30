@@ -5,7 +5,7 @@ icon: simple/github
 
 On this page, we'll look at why HTTP caching is important when using [GitHub APIs](https://docs.github.com/en/rest?apiVersion=2022-11-28).
 
-Let's create a simple program that takes the name of the github repository and displays the stars in real time.
+Let's create a simple program that takes the name of a `GitHub` repository and displays the stars in real time.
 
 To use **GitHub APIs**, we first need an access token. [See how to create a github token here](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic).
 
