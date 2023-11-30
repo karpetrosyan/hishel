@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.19 (30/11/2023)
 
 - Add `force_cache` extension to enforce the request to be cached, ignoring the HTTP headers. (#117)
 - Fix issue where sqlite storage cache get deleted immediately. (#119)
