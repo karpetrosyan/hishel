@@ -1,3 +1,10 @@
 #! /bin/bash -ex
 
-hatch publish -u __token__ -a $HISHEL_PYPI
+value=$(hatch publish -u __token__ -a $HISHEL_PYPI | grep already -c)
+
+if [ $value -eq 0 ]; then
+    exit 0
+else
+    exit 1
+fi
+
