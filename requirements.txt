@@ -3,7 +3,6 @@
 # linting
 ruff==0.1.6
 mypy==1.5.1
-black==23.7.0
 
 # docs
 mkdocs==1.5.3
