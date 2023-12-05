@@ -58,6 +58,7 @@ nav:
     - HTTP Headers: advanced/http_headers.md
     - Extensions: advanced/extensions.md
   - Examples:
+    - GitHub: examples/github.md
     - FastAPI: examples/fastapi.md
     - Flask: examples/flask.md
   - API Reference: api.md
