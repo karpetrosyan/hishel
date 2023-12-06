@@ -37,7 +37,6 @@ ignore cached responses and to not store incoming responses. For example:
 >>> response = client.get("https://www.example.com/cacheable-endpoint", extensions={"cache_disabled": True})
 
 ```
-
 This feature is more fully documented in the [User Guide](../userguide.md#temporarily-disabling-the-cache)
 
 ## Response extensions
