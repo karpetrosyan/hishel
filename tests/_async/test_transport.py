@@ -200,7 +200,8 @@ async def test_transport_with_cache_disabled_extension(use_temp_dir):
             response = await cache_transport.handle_async_request(caching_disabled_request)
             assert not response.extensions["from_cache"]
             assert response.status_code == 201
-            
+
+
 @pytest.mark.anyio
 async def test_transport_with_custom_key_generator():
     class MockedClock(BaseClock):
@@ -218,8 +219,9 @@ async def test_transport_with_custom_key_generator():
     async with hishel.MockAsyncTransport() as transport:
         transport.add_responses([cachable_response, httpx.Response(201)])
         async with hishel.AsyncCacheTransport(
-            transport=transport, controller=hishel.Controller(clock=MockedClock()),
-            key_generator=lambda request: request.url.host.decode()
+            transport=transport,
+            controller=hishel.Controller(clock=MockedClock()),
+            key_generator=lambda request: request.url.host.decode(),
         ) as cache_transport:
             request = httpx.Request("GET", "https://www.example.com")
             # This should create a cache entry
