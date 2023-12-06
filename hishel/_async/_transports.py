@@ -58,10 +58,12 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         transport: httpx.AsyncBaseTransport,
         storage: tp.Optional[AsyncBaseStorage] = None,
         controller: tp.Optional[Controller] = None,
+        key_generator: tp.Optional[tp.Callable[[Request], str]] = None,
     ) -> None:
         self._transport = transport
         self._storage = storage if storage is not None else AsyncFileStorage(serializer=JSONSerializer())
         self._controller = controller if controller is not None else Controller()
+        self._key_generator = key_generator if key_generator is not None else generate_key
 
     async def handle_async_request(self, request: Request) -> Response:
         """
@@ -94,7 +96,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             content=request.stream,
             extensions=request.extensions,
         )
-        key = generate_key(httpcore_request)
+        key = self._key_generator(httpcore_request)
         stored_data = await self._storage.retreive(key)
 
         request_cache_control = parse_cache_control(

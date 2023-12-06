@@ -200,3 +200,31 @@ async def test_transport_with_cache_disabled_extension(use_temp_dir):
             response = await cache_transport.handle_async_request(caching_disabled_request)
             assert not response.extensions["from_cache"]
             assert response.status_code == 201
+            
+@pytest.mark.anyio
+async def test_transport_with_custom_key_generator():
+    class MockedClock(BaseClock):
+        def now(self) -> int:
+            return 1440504001  # Mon, 25 Aug 2015 12:00:01 GMT
+
+    cachable_response = httpx.Response(
+        200,
+        headers=[
+            (b"Cache-Control", b"max-age=3600"),
+            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),  # 1 second before the clock
+        ],
+    )
+
+    async with hishel.MockAsyncTransport() as transport:
+        transport.add_responses([cachable_response, httpx.Response(201)])
+        async with hishel.AsyncCacheTransport(
+            transport=transport, controller=hishel.Controller(clock=MockedClock()),
+            key_generator=lambda request: request.url.host.decode()
+        ) as cache_transport:
+            request = httpx.Request("GET", "https://www.example.com")
+            # This should create a cache entry
+            await cache_transport.handle_async_request(request)
+            # This should return from cache
+            response = await cache_transport.handle_async_request(request)
+            assert response.extensions["from_cache"]
+            assert response.extensions["cache_metadata"]["cache_key"] == "www.example.com"
