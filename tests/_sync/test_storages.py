@@ -34,7 +34,7 @@ def test_filestorage(use_temp_dir):
 
     storage.store(key, response=response, request=request, metadata=dummy_metadata)
 
-    stored_data = storage.retreive(key)
+    stored_data = storage.retrieve(key)
     assert stored_data is not None
     stored_response, stored_request, metadata = stored_data
     stored_response.read()
@@ -59,7 +59,7 @@ def test_redisstorage():
 
     storage.store(key, response=response, request=request, metadata=dummy_metadata)
 
-    stored_data = storage.retreive(key)
+    stored_data = storage.retrieve(key)
     assert stored_data is not None
     stored_response, stored_request, metadata = stored_data
     stored_response.read()
@@ -82,7 +82,7 @@ def test_sqlitestorage():
 
     storage.store(key, response=response, request=request, metadata=dummy_metadata)
 
-    stored_data = storage.retreive(key)
+    stored_data = storage.retrieve(key)
     assert stored_data is not None
     stored_response, stored_request, metadata = stored_data
     stored_response.read()
@@ -105,12 +105,12 @@ def test_filestorage_expired():
     response.read()
 
     storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
-    assert storage.retreive(first_key) is not None
+    assert storage.retrieve(first_key) is not None
 
     sleep(0.3)
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
-    assert storage.retreive(first_key) is None
+    assert storage.retrieve(first_key) is None
 
 
 
@@ -128,12 +128,12 @@ def test_redisstorage_expired():
     response.read()
 
     storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
-    assert storage.retreive(first_key) is not None
+    assert storage.retrieve(first_key) is not None
 
     sleep(0.3)
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
-    assert storage.retreive(first_key) is None
+    assert storage.retrieve(first_key) is None
 
 
 
@@ -149,9 +149,9 @@ def test_sqlite_expired():
     response.read()
 
     storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
-    assert storage.retreive(first_key) is not None
+    assert storage.retrieve(first_key) is not None
 
     sleep(0.3)
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
-    assert storage.retreive(first_key) is None
+    assert storage.retrieve(first_key) is None

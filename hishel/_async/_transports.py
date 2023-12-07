@@ -95,7 +95,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             extensions=request.extensions,
         )
         key = generate_key(httpcore_request)
-        stored_data = await self._storage.retreive(key)
+        stored_data = await self._storage.retrieve(key)
 
         request_cache_control = parse_cache_control(
             extract_header_values_decoded(request.headers.raw, b"Cache-Control")
@@ -107,22 +107,22 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         if stored_data:
             # Try using the stored response if it was discovered.
 
-            stored_resposne, stored_request, metadata = stored_data
+            stored_response, stored_request, metadata = stored_data
 
             res = self._controller.construct_response_from_cache(
                 request=httpcore_request,
-                response=stored_resposne,
+                response=stored_response,
                 original_request=stored_request,
             )
 
             if isinstance(res, httpcore.Response):
                 # Simply use the response if the controller determines it is ready for use.
                 metadata["number_of_uses"] += 1
-                stored_resposne.read()
+                stored_response.read()
                 await self._storage.store(
                     key=key,
                     request=stored_request,
-                    response=stored_resposne,
+                    response=stored_response,
                     metadata=metadata,
                 )
                 res.extensions["from_cache"] = True  # type: ignore[index]
@@ -130,7 +130,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 return Response(
                     status_code=res.status,
                     headers=res.headers,
-                    stream=AsyncCacheStream(fake_stream(stored_resposne.content)),
+                    stream=AsyncCacheStream(fake_stream(stored_response.content)),
                     extensions=res.extensions,
                 )
 
@@ -149,15 +149,15 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 try:
                     response = await self._transport.handle_async_request(revalidation_request)
                 except ConnectError:
-                    if self._controller._allow_stale and allowed_stale(response=stored_resposne):
-                        await stored_resposne.aread()
-                        stored_resposne.extensions["from_cache"] = True  # type: ignore[index]
-                        stored_resposne.extensions["cache_metadata"] = metadata  # type: ignore[index]
+                    if self._controller._allow_stale and allowed_stale(response=stored_response):
+                        await stored_response.aread()
+                        stored_response.extensions["from_cache"] = True  # type: ignore[index]
+                        stored_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
                         return Response(
-                            status_code=stored_resposne.status,
-                            headers=stored_resposne.headers,
-                            stream=AsyncCacheStream(fake_stream(stored_resposne.content)),
-                            extensions=stored_resposne.extensions,
+                            status_code=stored_response.status,
+                            headers=stored_response.headers,
+                            stream=AsyncCacheStream(fake_stream(stored_response.content)),
+                            extensions=stored_response.extensions,
                         )
                     raise  # pragma: no cover
                 assert isinstance(response.stream, tp.AsyncIterable)
@@ -170,7 +170,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
 
                 # Merge headers with the stale response.
                 full_response = self._controller.handle_validation_response(
-                    old_response=stored_resposne, new_response=httpcore_response
+                    old_response=stored_response, new_response=httpcore_response
                 )
 
                 await full_response.aread()
