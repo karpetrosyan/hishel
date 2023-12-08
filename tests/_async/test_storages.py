@@ -34,7 +34,7 @@ async def test_filestorage(use_temp_dir):
 
     await storage.store(key, response=response, request=request, metadata=dummy_metadata)
 
-    stored_data = await storage.retreive(key)
+    stored_data = await storage.retrieve(key)
     assert stored_data is not None
     stored_response, stored_request, metadata = stored_data
     stored_response.read()
@@ -59,7 +59,7 @@ async def test_redisstorage():
 
     await storage.store(key, response=response, request=request, metadata=dummy_metadata)
 
-    stored_data = await storage.retreive(key)
+    stored_data = await storage.retrieve(key)
     assert stored_data is not None
     stored_response, stored_request, metadata = stored_data
     stored_response.read()
@@ -82,7 +82,7 @@ async def test_sqlitestorage():
 
     await storage.store(key, response=response, request=request, metadata=dummy_metadata)
 
-    stored_data = await storage.retreive(key)
+    stored_data = await storage.retrieve(key)
     assert stored_data is not None
     stored_response, stored_request, metadata = stored_data
     stored_response.read()
@@ -105,12 +105,12 @@ async def test_filestorage_expired():
     await response.aread()
 
     await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
-    assert await storage.retreive(first_key) is not None
+    assert await storage.retrieve(first_key) is not None
 
     await asleep(0.3)
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
-    assert await storage.retreive(first_key) is None
+    assert await storage.retrieve(first_key) is None
 
 
 @pytest.mark.asyncio
@@ -128,12 +128,12 @@ async def test_redisstorage_expired():
     await response.aread()
 
     await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
-    assert await storage.retreive(first_key) is not None
+    assert await storage.retrieve(first_key) is not None
 
     await asleep(0.3)
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
-    assert await storage.retreive(first_key) is None
+    assert await storage.retrieve(first_key) is None
 
 
 @pytest.mark.asyncio
@@ -149,9 +149,9 @@ async def test_sqlite_expired():
     await response.aread()
 
     await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
-    assert await storage.retreive(first_key) is not None
+    assert await storage.retrieve(first_key) is not None
 
     await asleep(0.3)
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
-    assert await storage.retreive(first_key) is None
+    assert await storage.retrieve(first_key) is None
