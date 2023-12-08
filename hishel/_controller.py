@@ -11,6 +11,7 @@ from ._utils import (
     extract_header_values_decoded,
     header_presents,
     parse_date,
+    generate_key
 )
 
 HEURISTICALLY_CACHEABLE_STATUS_CODES = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
@@ -109,6 +110,7 @@ class Controller:
         clock: tp.Optional[BaseClock] = None,
         allow_stale: bool = False,
         always_revalidate: bool = False,
+        key_generator: tp.Optional[tp.Callable[[Request], str]] = None,
     ):
         self._cacheable_methods = []
 
@@ -127,6 +129,7 @@ class Controller:
         self._allow_heuristics = allow_heuristics
         self._allow_stale = allow_stale
         self._always_revalidate = always_revalidate
+        self._key_generator = key_generator if key_generator else generate_key
 
     def is_cachable(self, request: Request, response: Response) -> bool:
         """

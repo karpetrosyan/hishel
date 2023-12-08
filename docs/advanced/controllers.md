@@ -106,3 +106,22 @@ client = hishel.CacheClient(controller=controller)
 !!! note
     Because we already have the response body in our cache, revalidation is very quick.
 
+### Customizing Cache Key Creation
+
+By default, Hishel generates cache keys as a hash of the request method and url (`hishel._utils.generate_key`). However, you can customize
+cache key creation by writing a function with the signature `Callable[[httpcore.Request], str]` and passing it to the controller
+
+```python
+import hishel
+import httpcore
+
+def custom_key_generator(request: httpcore.Request) -> str:
+    return (request.url.host + request.url.target).decode()
+
+controller = hishel.Controller(key_generator=custom_key_generator)
+client = httpx.Client(controller=controller)
+client.get("https://example.com/cacheable-endpoint")
+response = client.get("https://example.com/cacheable-endpoint") # from the cache
+response.extensions["cache_metadata"]["cache_key"] == "example.com/cacheable-endpoint"  # True
+
+```

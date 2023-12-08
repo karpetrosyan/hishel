@@ -217,8 +217,10 @@ def test_transport_with_custom_key_generator():
     with hishel.MockTransport() as transport:
         transport.add_responses([cachable_response, httpx.Response(201)])
         with hishel.CacheTransport(
-            transport=transport, controller=hishel.Controller(clock=MockedClock()),
-            key_generator=lambda request: request.url.host.decode()
+            transport=transport, controller=hishel.Controller(
+                clock=MockedClock(),
+                key_generator=lambda request: request.url.host.decode()
+            )
         ) as cache_transport:
             request = httpx.Request("GET", "https://www.example.com")
             # This should create a cache entry

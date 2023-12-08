@@ -7,7 +7,7 @@ import httpx
 from httpx import ByteStream, Request, Response
 from httpx._exceptions import ConnectError
 
-from hishel._utils import extract_header_values_decoded, generate_key, normalized_url
+from hishel._utils import extract_header_values_decoded, normalized_url
 
 from .._controller import Controller, allowed_stale
 from .._headers import parse_cache_control
@@ -58,12 +58,10 @@ class CacheTransport(httpx.BaseTransport):
         transport: httpx.BaseTransport,
         storage: tp.Optional[BaseStorage] = None,
         controller: tp.Optional[Controller] = None,
-        key_generator: tp.Optional[tp.Callable[[httpcore.Request], str]] = None,
     ) -> None:
         self._transport = transport
         self._storage = storage if storage is not None else FileStorage(serializer=JSONSerializer())
         self._controller = controller if controller is not None else Controller()
-        self._key_generator = key_generator if key_generator is not None else generate_key
 
     def handle_request(self, request: Request) -> Response:
         """
@@ -96,7 +94,7 @@ class CacheTransport(httpx.BaseTransport):
             content=request.stream,
             extensions=request.extensions,
         )
-        key = self._key_generator(httpcore_request)
+        key = self._controller._key_generator(httpcore_request)
         stored_data = self._storage.retreive(key)
 
         request_cache_control = parse_cache_control(

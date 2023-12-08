@@ -179,27 +179,6 @@ with httpx.Client(transport=cache_transport) as client:
     response = client.get("https://example.com/cachable-endpoint")  # from the cache
 ```
 
-#### Customizing Cache Key Creation
-
-By default, Hishel generates cache keys as a hash of the request method and url (`hishel._utils.generate_key`). However, you can customize
-cache key creation by writing a function with the signature `Callable[[httpcore.Request], str]` and passing it to the transport (or client):
-
-```python
-import hishel
-import httpcore
-
-def custom_key_generator(request: httpcore.Request) -> str:
-    return (request.url.host + request.url.target).decode()
-
-transport = hishel.CacheTransport(key_generator=custom_key_generator)
-client = httpx.Client(transport=transport)
-client.get("https://example.com/cacheable-endpoint")
-response = client.get("https://example.com/cacheable-endpoint") # from the cache
-response.extensions["cache_metadata"]["cache_key"] == "example.com/cacheable-endpoint"  # True
-
-```
-
-
 ### Using the Connection Pool
 
 `Hishel` also provides caching support for the httpcore library, which handles all of the low-level network staff for httpx.
