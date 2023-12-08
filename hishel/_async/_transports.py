@@ -58,7 +58,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         transport: httpx.AsyncBaseTransport,
         storage: tp.Optional[AsyncBaseStorage] = None,
         controller: tp.Optional[Controller] = None,
-        key_generator: tp.Optional[tp.Callable[[Request], str]] = None,
+        key_generator: tp.Optional[tp.Callable[[httpcore.Request], str]] = None,
     ) -> None:
         self._transport = transport
         self._storage = storage if storage is not None else AsyncFileStorage(serializer=JSONSerializer())

@@ -58,7 +58,7 @@ class CacheTransport(httpx.BaseTransport):
         transport: httpx.BaseTransport,
         storage: tp.Optional[BaseStorage] = None,
         controller: tp.Optional[Controller] = None,
-        key_generator: tp.Optional[tp.Callable[[Request], str]] = None,
+        key_generator: tp.Optional[tp.Callable[[httpcore.Request], str]] = None,
     ) -> None:
         self._transport = transport
         self._storage = storage if storage is not None else FileStorage(serializer=JSONSerializer())

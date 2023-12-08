@@ -221,7 +221,7 @@ async def test_transport_with_custom_key_generator():
         async with hishel.AsyncCacheTransport(
             transport=transport,
             controller=hishel.Controller(clock=MockedClock()),
-            key_generator=lambda request: request.url.host.decode(),
+            key_generator=lambda request: request.url.host,
         ) as cache_transport:
             request = httpx.Request("GET", "https://www.example.com")
             # This should create a cache entry
