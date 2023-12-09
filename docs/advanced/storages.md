@@ -29,6 +29,21 @@ storage = hishel.FileStorage()
 transport = hishel.CacheTransport(transport=httpx.HTTPTransport())
 ```
 
+Here's how the filesystem storage looks:
+
+```
+📁 root
+└─╴📁 .cache
+   └─╴📁 hishel
+      ├─╴📄 GET|github.com|a9022e44881123781045f6fadf37a8b1
+      ├─╴📄 GET|www.google.com|8bfc7fffcfd5f2b8e3485d0cc7450c98
+      ├─╴📄 GET|www.python-httpx.org|5f004f4f08bd774c4bc4b270a0ca542e
+      └─╴📄 GET|hishel.com|41ebb4dd16761e94e2ee36b71e0d916e
+```
+
+!!! note
+    Note that by default, file names are just the hashed value, without the http method or hostname; to have meaningful names, see [custom cache keys](controllers.md#custom-cache-keys).
+
 #### Storage directory
 
 If the responses are saved in the filesystem, there should be a directory that contains our responses.

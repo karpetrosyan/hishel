@@ -136,3 +136,22 @@ Instead of just the `hashed_value`, the key now has the format `method|host|hash
     Cache keys are used to store responses in storages, such as filesystem storage, which will use the cache key to create a file with that value.
     You can write your own cache key implementation to have more meaningful file names and simplify cache monitoring.
 
+=== "Before"
+
+    ```
+    📁 root
+    └─╴📁 .cache
+       └─╴📁 hishel
+          └─╴📄 41ebb4dd16761e94e2ee36b71e0d916e
+    ```
+
+=== "After"
+
+    ```
+    📁 root
+    └─╴📁 .cache
+       └─╴📁 hishel
+          └─╴📄 GET|hishel.com|41ebb4dd16761e94e2ee36b71e0d916e
+    ```
+
+   
