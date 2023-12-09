@@ -1,7 +1,8 @@
 # Changelog
 
 ## Unreleased
-- Add `key_generator` parameters to transports and clients to facilitate custom key creation (#130)
+
+- Allow customization of cache key generation. (#130)
 
 ## 0.0.19 (30/11/2023)
 
