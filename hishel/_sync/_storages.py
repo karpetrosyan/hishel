@@ -39,7 +39,7 @@ class BaseStorage:
     def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         raise NotImplementedError()
 
-    def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    def retrieve(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         raise NotImplementedError()
 
     def close(self) -> None:
@@ -96,7 +96,7 @@ class FileStorage(BaseStorage):
             )
         self._remove_expired_caches()
 
-    def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    def retrieve(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         """
         Retreives the response from the cache using his key.
 
@@ -199,7 +199,7 @@ class SQLiteStorage(BaseStorage):
             self._connection.commit()
         self._remove_expired_caches()
 
-    def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    def retrieve(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         """
         Retreives the response from the cache using his key.
 
@@ -292,7 +292,7 @@ class RedisStorage(BaseStorage):
             key, self._serializer.dumps(response=response, request=request, metadata=metadata), px=px
         )
 
-    def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    def retrieve(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         """
         Retreives the response from the cache using his key.
 

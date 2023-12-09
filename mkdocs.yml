@@ -13,13 +13,14 @@ theme:
     - scheme: default
       primary: "amber"
       toggle:
-        icon: material/weather-night
+        icon: material/lightbulb
         name: Switch to dark mode
     - scheme: slate
       primary: "amber"
       toggle:
-        icon: material/weather-night
-        name: Switch to dark mode
+        icon: material/lightbulb-outline
+        name: Switch to light mode
+
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
@@ -27,38 +28,29 @@ markdown_extensions:
       pygments_lang_class: true
   - attr_list
   - pymdownx.tabbed:
-      alternate_style: true 
+      alternate_style: true
   - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
-      emoji_generator: !!python/name:materialx.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - admonition
   - pymdownx.details
   - pymdownx.highlight:
       anchor_linenums: true
-  - pymdownx.superfences 
+  - pymdownx.superfences
   - tables
-
-plugins:
-- mkdocstrings:
-    handlers:
-      python:
-        options:
-          docstring_style: sphinx
-          docstring_section_style: table
 
 nav:
   - Introduction: index.md
   - User Guide: userguide.md
   - Advanced Usage:
-    - "Storages": advanced/storages.md
-    - Serializers: advanced/serializers.md
-    - Controllers: advanced/controllers.md
-    - HTTP Headers: advanced/http_headers.md
-    - Extensions: advanced/extensions.md
+      - "Storages": advanced/storages.md
+      - Serializers: advanced/serializers.md
+      - Controllers: advanced/controllers.md
+      - HTTP Headers: advanced/http_headers.md
+      - Extensions: advanced/extensions.md
   - Examples:
-    - GitHub: examples/github.md
-    - FastAPI: examples/fastapi.md
-    - Flask: examples/flask.md
-  - API Reference: api.md
+      - GitHub: examples/github.md
+      - FastAPI: examples/fastapi.md
+      - Flask: examples/flask.md

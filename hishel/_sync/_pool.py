@@ -9,7 +9,7 @@ from httpcore._models import Request, Response
 from .._controller import Controller, allowed_stale
 from .._headers import parse_cache_control
 from .._serializers import JSONSerializer, Metadata
-from .._utils import extract_header_values_decoded, generate_key
+from .._utils import extract_header_values_decoded
 from ._storages import BaseStorage, FileStorage
 
 T = tp.TypeVar("T")
@@ -55,8 +55,8 @@ class CacheConnectionPool(RequestInterface):
         if request.extensions.get("cache_disabled", False):
             request.headers.extend([(b"cache-control", b"no-cache"), (b"cache-control", b"max-age=0")])
 
-        key = generate_key(request)
-        stored_data = self._storage.retreive(key)
+        key = self._controller._key_generator(request)
+        stored_data = self._storage.retrieve(key)
 
         request_cache_control = parse_cache_control(extract_header_values_decoded(request.headers, b"Cache-Control"))
 
@@ -66,22 +66,22 @@ class CacheConnectionPool(RequestInterface):
         if stored_data:
             # Try using the stored response if it was discovered.
 
-            stored_resposne, stored_request, metadata = stored_data
+            stored_response, stored_request, metadata = stored_data
 
             res = self._controller.construct_response_from_cache(
                 request=request,
-                response=stored_resposne,
+                response=stored_response,
                 original_request=stored_request,
             )
 
             if isinstance(res, Response):
                 # Simply use the response if the controller determines it is ready for use.
                 metadata["number_of_uses"] += 1
-                stored_resposne.read()
+                stored_response.read()
                 self._storage.store(
                     key=key,
                     request=request,
-                    response=stored_resposne,
+                    response=stored_response,
                     metadata=metadata,
                 )
                 res.extensions["from_cache"] = True  # type: ignore[index]
@@ -97,14 +97,14 @@ class CacheConnectionPool(RequestInterface):
                 try:
                     response = self._pool.handle_request(res)
                 except ConnectError:
-                    if self._controller._allow_stale and allowed_stale(response=stored_resposne):
-                        stored_resposne.extensions["from_cache"] = True  # type: ignore[index]
-                        stored_resposne.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                        return stored_resposne
+                    if self._controller._allow_stale and allowed_stale(response=stored_response):
+                        stored_response.extensions["from_cache"] = True  # type: ignore[index]
+                        stored_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
+                        return stored_response
                     raise  # pragma: no cover
                 # Merge headers with the stale response.
                 full_response = self._controller.handle_validation_response(
-                    old_response=stored_resposne, new_response=response
+                    old_response=stored_response, new_response=response
                 )
 
                 full_response.read()

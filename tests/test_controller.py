@@ -16,13 +16,13 @@ def test_is_cachable_for_cachables():
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
-    resposne = Response(200, headers=[(b"Expires", b"some-date")])
+    response = Response(200, headers=[(b"Expires", b"some-date")])
 
-    assert controller.is_cachable(request=request, response=resposne)
+    assert controller.is_cachable(request=request, response=response)
 
-    resposne = Response(200, headers=[(b"Cache-Control", b"max-age=10000")])
+    response = Response(200, headers=[(b"Cache-Control", b"max-age=10000")])
 
-    assert controller.is_cachable(request=request, response=resposne)
+    assert controller.is_cachable(request=request, response=response)
 
 
 def test_is_cachable_for_non_cachables():
@@ -30,9 +30,9 @@ def test_is_cachable_for_non_cachables():
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
-    resposne = Response(200, headers=[])
+    response = Response(200, headers=[])
 
-    assert not controller.is_cachable(request=request, response=resposne)
+    assert not controller.is_cachable(request=request, response=response)
 
 
 def test_is_cachable_for_heuristically_cachable():
@@ -40,9 +40,9 @@ def test_is_cachable_for_heuristically_cachable():
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
-    resposne = Response(200, headers=[])
+    response = Response(200, headers=[])
 
-    assert controller.is_cachable(request=request, response=resposne)
+    assert controller.is_cachable(request=request, response=response)
 
 
 def test_is_cachable_for_unsupported_method():
@@ -50,9 +50,9 @@ def test_is_cachable_for_unsupported_method():
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
-    resposne = Response(200, headers=[(b"Expires", b"some-date")])
+    response = Response(200, headers=[(b"Expires", b"some-date")])
 
-    assert not controller.is_cachable(request=request, response=resposne)
+    assert not controller.is_cachable(request=request, response=response)
 
 
 def test_controller_with_unsupported_method():
@@ -68,9 +68,9 @@ def test_is_cachable_for_unsupported_status():
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
-    resposne = Response(200, headers=[(b"Expires", b"some-date")])
+    response = Response(200, headers=[(b"Expires", b"some-date")])
 
-    assert not controller.is_cachable(request=request, response=resposne)
+    assert not controller.is_cachable(request=request, response=response)
 
 
 def test_is_cachable_for_not_final():
@@ -78,9 +78,9 @@ def test_is_cachable_for_not_final():
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
-    resposne = Response(100, headers=[(b"Expires", b"some-date")])
+    response = Response(100, headers=[(b"Expires", b"some-date")])
 
-    assert not controller.is_cachable(request=request, response=resposne)
+    assert not controller.is_cachable(request=request, response=response)
 
 
 def test_is_cachable_for_no_store():
@@ -88,9 +88,9 @@ def test_is_cachable_for_no_store():
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
-    resposne = Response(200, headers=[(b"Cache-Control", b"no-store")])
+    response = Response(200, headers=[(b"Cache-Control", b"no-store")])
 
-    assert not controller.is_cachable(request=request, response=resposne)
+    assert not controller.is_cachable(request=request, response=response)
 
 
 def test_get_freshness_lifetime():
