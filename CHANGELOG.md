@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Allow customization of cache key generation. (#130)
+
 ## 0.0.19 (30/11/2023)
 
 - Add `force_cache` extension to enforce the request to be cached, ignoring the HTTP headers. (#117)

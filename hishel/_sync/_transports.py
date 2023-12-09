@@ -7,7 +7,7 @@ import httpx
 from httpx import ByteStream, Request, Response
 from httpx._exceptions import ConnectError
 
-from hishel._utils import extract_header_values_decoded, generate_key, normalized_url
+from hishel._utils import extract_header_values_decoded, normalized_url
 
 from .._controller import Controller, allowed_stale
 from .._headers import parse_cache_control
@@ -94,7 +94,7 @@ class CacheTransport(httpx.BaseTransport):
             content=request.stream,
             extensions=request.extensions,
         )
-        key = generate_key(httpcore_request)
+        key = self._controller._key_generator(httpcore_request)
         stored_data = self._storage.retrieve(key)
 
         request_cache_control = parse_cache_control(
