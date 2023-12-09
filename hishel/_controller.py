@@ -9,9 +9,9 @@ from ._utils import (
     Clock,
     extract_header_values,
     extract_header_values_decoded,
+    generate_key,
     header_presents,
     parse_date,
-    generate_key
 )
 
 HEURISTICALLY_CACHEABLE_STATUS_CODES = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
