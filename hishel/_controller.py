@@ -129,7 +129,7 @@ class Controller:
         self._allow_heuristics = allow_heuristics
         self._allow_stale = allow_stale
         self._always_revalidate = always_revalidate
-        self._key_generator = key_generator if key_generator else generate_key
+        self._key_generator = key_generator or generate_key
 
     def is_cachable(self, request: Request, response: Response) -> bool:
         """
