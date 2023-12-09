@@ -106,22 +106,33 @@ client = hishel.CacheClient(controller=controller)
 !!! note
     Because we already have the response body in our cache, revalidation is very quick.
 
-### Customizing Cache Key Creation
+### Custom cache keys
 
-By default, Hishel generates cache keys as a hash of the request method and url (`hishel._utils.generate_key`). However, you can customize
-cache key creation by writing a function with the signature `Callable[[httpcore.Request], str]` and passing it to the controller
+By default, `Hishel` generates cache keys as a hash of the request method and url.
+However, you can customize cache key creation by writing a function with the signature `Callable[[httpcore.Request], str]` and passing it to the controller.
+
+Example:
 
 ```python
 import hishel
 import httpcore
+from hishel._utils import generate_key
 
-def custom_key_generator(request: httpcore.Request) -> str:
-    return (request.url.host + request.url.target).decode()
+def custom_key_generator(request: httpcore.Request):
+    key = generate_key(request)
+    method = request.method.decode()
+    host = request.url.host.decode()
+    return f"{method}|{host}|{key}"
 
 controller = hishel.Controller(key_generator=custom_key_generator)
-client = httpx.Client(controller=controller)
-client.get("https://example.com/cacheable-endpoint")
-response = client.get("https://example.com/cacheable-endpoint") # from the cache
-response.extensions["cache_metadata"]["cache_key"] == "example.com/cacheable-endpoint"  # True
+client = hishel.CacheClient(controller=controller)
 
+client.get("https://hishel.com")
 ```
+
+Instead of just the `hashed_value`, the key now has the format `method|host|hashed_value`.
+
+!!! note
+    Cache keys are used to store responses in storages, such as filesystem storage, which will use the cache key to create a file with that value.
+    You can write your own cache key implementation to have more meaningful file names and simplify cache monitoring.
+
