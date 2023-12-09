@@ -6,7 +6,7 @@ mypy==1.5.1
 
 # docs
 mkdocs==1.5.3
-mkdocs-material==9.4.14
+mkdocs-material==9.5.1
 
 # tests
 pytest==7.4.3

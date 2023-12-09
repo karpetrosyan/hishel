@@ -13,13 +13,14 @@ theme:
     - scheme: default
       primary: "amber"
       toggle:
-        icon: material/weather-night
+        icon: material/lightbulb
         name: Switch to dark mode
     - scheme: slate
       primary: "amber"
       toggle:
-        icon: material/weather-night
-        name: Switch to dark mode
+        icon: material/lightbulb-outline
+        name: Switch to light mode
+
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
@@ -53,4 +54,3 @@ nav:
       - GitHub: examples/github.md
       - FastAPI: examples/fastapi.md
       - Flask: examples/flask.md
-
