@@ -39,7 +39,7 @@ class AsyncBaseStorage:
     async def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         raise NotImplementedError()
 
-    async def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    async def retrieve(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         raise NotImplementedError()
 
     async def aclose(self) -> None:
@@ -96,7 +96,7 @@ class AsyncFileStorage(AsyncBaseStorage):
             )
         await self._remove_expired_caches()
 
-    async def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    async def retrieve(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         """
         Retreives the response from the cache using his key.
 
@@ -199,7 +199,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
             await self._connection.commit()
         await self._remove_expired_caches()
 
-    async def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    async def retrieve(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         """
         Retreives the response from the cache using his key.
 
@@ -292,7 +292,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
             key, self._serializer.dumps(response=response, request=request, metadata=metadata), px=px
         )
 
-    async def retreive(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    async def retrieve(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
         """
         Retreives the response from the cache using his key.
 

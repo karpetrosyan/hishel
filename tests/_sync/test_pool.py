@@ -181,3 +181,22 @@ def test_pool_with_cache_disabled_extension(use_temp_dir):
             response = cache_transport.handle_request(caching_disabled_request)
             assert not response.extensions["from_cache"]
             assert response.status == 201
+
+
+
+def test_transport_with_custom_key_generator():
+    controller = hishel.Controller(key_generator=lambda request: request.url.host.decode())
+
+    with hishel.MockConnectionPool() as pool:
+        pool.add_responses([httpcore.Response(301)])
+        with hishel.CacheConnectionPool(
+            pool=pool,
+            controller=controller,
+        ) as cache_transport:
+            request = httpcore.Request("GET", "https://www.example.com")
+            # This should create a cache entry
+            cache_transport.handle_request(request)
+            # This should return from cache
+            response = cache_transport.handle_request(request)
+            assert response.extensions["from_cache"]
+            assert response.extensions["cache_metadata"]["cache_key"] == "www.example.com"
