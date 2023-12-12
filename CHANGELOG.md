@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.20 (12/12/2023)
 
 - Add in-memory storage. (#133)
 - Allow customization of cache key generation. (#130)
