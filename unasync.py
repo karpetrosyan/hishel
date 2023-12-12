@@ -17,6 +17,7 @@ SUBS = [
     ("MockAsyncTransport", "MockTransport"),
     ("AsyncRedisStorage", "RedisStorage"),
     ("AsyncSQLiteStorage", "SQLiteStorage"),
+    ("AsyncInMemoryStorage", "InMemoryStorage"),
     ("import redis.asyncio as redis", "import redis"),
     ("AsyncCacheTransport", "CacheTransport"),
     ("AsyncBaseTransport", "BaseTransport"),

@@ -4,7 +4,7 @@ import sqlite3
 import pytest
 from httpcore import Request, Response
 
-from hishel import FileStorage, RedisStorage, SQLiteStorage
+from hishel import FileStorage, InMemoryStorage, RedisStorage, SQLiteStorage
 from hishel._serializers import Metadata
 from hishel._utils import sleep, generate_key
 
@@ -93,6 +93,29 @@ def test_sqlitestorage():
 
 
 
+def test_inmemorystorage():
+    storage = InMemoryStorage()
+
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+
+    stored_data = storage.retrieve(key)
+    assert stored_data is not None
+    stored_response, stored_request, metadata = stored_data
+    stored_response.read()
+    assert isinstance(stored_response, Response)
+    assert stored_response.status == 200
+    assert stored_response.headers == []
+    assert stored_response.content == b"test"
+
+
+
 def test_filestorage_expired():
     storage = FileStorage(ttl=0.1)
     first_request = Request(b"GET", "https://example.com")
@@ -139,6 +162,27 @@ def test_redisstorage_expired():
 
 def test_sqlite_expired():
     storage = SQLiteStorage(ttl=0.1, connection=sqlite3.connect(":memory:"))
+    first_request = Request(b"GET", "https://example.com")
+    second_request = Request(b"GET", "https://anotherexample.com")
+
+    first_key = generate_key(first_request)
+    second_key = generate_key(second_request)
+
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+
+    storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
+    assert storage.retrieve(first_key) is not None
+
+    sleep(0.3)
+    storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
+
+    assert storage.retrieve(first_key) is None
+
+
+
+def test_inmemory_expired():
+    storage = InMemoryStorage(ttl=0.1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 

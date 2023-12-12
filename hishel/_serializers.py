@@ -17,7 +17,26 @@ HEADERS_ENCODING = "iso-8859-1"
 KNOWN_RESPONSE_EXTENSIONS = ("http_version", "reason_phrase")
 KNOWN_REQUEST_EXTENSIONS = ("timeout", "sni_hostname")
 
-__all__ = ("PickleSerializer", "JSONSerializer", "YAMLSerializer", "BaseSerializer")
+__all__ = ("PickleSerializer", "JSONSerializer", "YAMLSerializer", "BaseSerializer", "clone_model")
+
+T = tp.TypeVar("T", Request, Response)
+
+
+def clone_model(model: T) -> T:
+    if isinstance(model, Response):
+        return Response(
+            status=model.status,
+            headers=model.headers,
+            content=model.content,
+            extensions={key: value for key, value in model.extensions.items() if key in KNOWN_RESPONSE_EXTENSIONS},
+        )  # type: ignore
+    else:
+        return Request(
+            method=model.method,
+            url=normalized_url(model.url),
+            headers=model.headers,
+            extensions={key: value for key, value in model.extensions.items() if key in KNOWN_REQUEST_EXTENSIONS},
+        )  # type: ignore
 
 
 class Metadata(tp.TypedDict):
@@ -56,18 +75,8 @@ class PickleSerializer(BaseSerializer):
         :return: Serialized response
         :rtype: tp.Union[str, bytes]
         """
-        clone_response = Response(
-            status=response.status,
-            headers=response.headers,
-            content=response.content,
-            extensions={key: value for key, value in response.extensions.items() if key in KNOWN_RESPONSE_EXTENSIONS},
-        )
-        clone_request = Request(
-            method=request.method,
-            url=normalized_url(request.url),
-            headers=request.headers,
-            extensions={key: value for key, value in request.extensions.items() if key in KNOWN_REQUEST_EXTENSIONS},
-        )
+        clone_response = clone_model(response)
+        clone_request = clone_model(request)
         return pickle.dumps((clone_response, clone_request, metadata))
 
     def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request, Metadata]:
