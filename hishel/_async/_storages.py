@@ -325,6 +325,8 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
     :type serializer: tp.Optional[BaseSerializer], optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
     :type ttl: tp.Optional[tp.Union[int, float]], optional
+    :param capacity: The maximum number of responses that can be cached, defaults to 128
+    :type capacity: int, optional
     """
 
     def __init__(
