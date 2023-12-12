@@ -1,5 +1,5 @@
-from collections import OrderedDict, defaultdict
-from typing import Dict, Generic, Iterator, Tuple, TypeVar
+from collections import OrderedDict
+from typing import DefaultDict, Dict, Generic, Iterator, Tuple, TypeVar
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -14,7 +14,7 @@ class LFUCache(Generic[K, V]):
 
         self.capacity = capacity
         self.cache: Dict[K, Tuple[V, int]] = {}  # To store key-value pairs
-        self.freq_count: defaultdict[int, OrderedDict[K, V]] = defaultdict(
+        self.freq_count: DefaultDict[int, OrderedDict[K, V]] = DefaultDict(
             OrderedDict
         )  # To store frequency of each key
         self.min_freq = 0  # To keep track of the minimum frequency

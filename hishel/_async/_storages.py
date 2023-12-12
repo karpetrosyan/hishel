@@ -11,6 +11,7 @@ except ImportError:  # pragma: no cover
     anysqlite = None  # type: ignore
 
 from httpcore import Request, Response
+from typing_extensions import TypeAlias
 
 from hishel._serializers import BaseSerializer, clone_model
 
@@ -23,7 +24,7 @@ logger = logging.getLogger("hishel.storages")
 
 __all__ = ("AsyncFileStorage", "AsyncRedisStorage", "AsyncSQLiteStorage", "AsyncInMemoryStorage")
 
-StoredResponse: tp.TypeAlias = tp.Tuple[Response, Request, Metadata]
+StoredResponse: TypeAlias = tp.Tuple[Response, Request, Metadata]
 
 try:
     import redis.asyncio as redis

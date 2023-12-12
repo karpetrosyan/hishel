@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add in-memory storage. (#133)
 - Allow customization of cache key generation. (#130)
 
 ## 0.0.19 (30/11/2023)
