@@ -26,7 +26,7 @@ import hishel
 import httpx
 
 storage = hishel.FileStorage()
-transport = hishel.CacheTransport(transport=httpx.HTTPTransport())
+transport = hishel.CacheTransport(transport=httpx.HTTPTransport(), storage=storage)
 ```
 
 Here's how the filesystem storage looks:
@@ -71,6 +71,48 @@ storage = hishel.FileStorage(ttl=3600)
 If you do this, `Hishel` will delete any stored responses whose ttl has expired.
 In this example, the stored responses were limited to 1 hour.
 
+
+### :material-memory: In-memory storage
+
+`Hishel` has an in-memory cache that can be used when you don't need the cache to be persistent.
+
+You should understand that in memory cache means that **all cached responses are stored in RAM**, so you should be cautious and possibly **configure the cache's maximum size** to avoid wasting RAM.
+
+Example:
+
+```python
+import hishel
+
+storage = hishel.InMemoryStorage()
+client = hishel.CacheClient(storage=storage)
+```
+
+Or if you are using Transports:
+
+```python
+import hishel
+import httpx
+
+storage = hishel.InMemoryStorage()
+client = hishel.CacheTransport(transport=httpx.HTTPTransport(), storage=storage)
+```
+
+#### Set the maximum capacity
+
+You can also specify the maximum number of requests that the storage can cache. 
+
+Example:
+
+```python
+import hishel
+
+storage = hishel.InMemoryStorage(capacity=64)
+client = hishel.CacheClient(storage=storage)
+```
+
+!!! note
+    When the number of responses exceeds the cache's capacity, Hishel employs the [LFU algorithm](https://en.wikipedia.org/wiki/Least_frequently_used) to remove some of the responses. 
+
 ### :simple-redis: Redis storage
 
 `Hishel` includes built-in redis support, allowing you to store your responses in redis.
@@ -91,7 +133,7 @@ import hishel
 import httpx
 
 storage = hishel.RedisStorage()
-client = hishel.CacheTransport(transport=httpx.HTTPTransport())
+client = hishel.CacheTransport(transport=httpx.HTTPTransport(), storage=storage)
 ```
 
 #### Custom redis client
@@ -191,12 +233,13 @@ So there are the results of the benchmarks, where we simply sent 1000 synchronou
 | `FileStorage`     | 0.4s |
 | `SQLiteStorage`   | 2s   |
 | `RedisStorage`    | 0.5s |
+| `InMemoryStorage` | 0.2s |
 
 
 !!! note
     It is important to note that the results may differ for your environment due to a variety of factors that we ignore.
 
-In most cases, `FileStorage` and `RedisStorage` are significantly faster than `SQLiteStorage`, but `SQLiteStorage` can be used if you already have a well-configured sqlite database and want to keep cached responses close to your application data.
+In most cases, `FileStorage`, `RedisStorage` and `InMemoryStorage` are significantly faster than `SQLiteStorage`, but `SQLiteStorage` can be used if you already have a well-configured sqlite database and want to keep cached responses close to your application data.
 
 For each storage option, there are some benefits.
 
@@ -211,6 +254,11 @@ RedisStorage
 1. **can be shared**
 2. **very fast**
 3. **redis features**
+
+InMemoryStorage
+
+1. **temporary cache**
+2. **very fast**
 
 SQLiteStorage
 

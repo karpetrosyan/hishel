@@ -6,6 +6,7 @@ from ._exceptions import *
 from ._headers import *
 from ._serializers import *
 from ._sync import *
+from ._lfu_cache import *
 
 
 def install_cache() -> None:  # pragma: no cover

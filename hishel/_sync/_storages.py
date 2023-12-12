@@ -1,6 +1,8 @@
 import logging
 import time
 import typing as tp
+import warnings
+from copy import deepcopy
 from pathlib import Path
 
 try:
@@ -9,8 +11,9 @@ except ImportError:  # pragma: no cover
     sqlite3 = None  # type: ignore
 
 from httpcore import Request, Response
+from typing_extensions import TypeAlias
 
-from hishel._serializers import BaseSerializer
+from hishel._serializers import BaseSerializer, clone_model
 
 from .._files import FileManager
 from .._serializers import JSONSerializer, Metadata
@@ -19,7 +22,9 @@ from .._utils import float_seconds_to_int_milliseconds
 
 logger = logging.getLogger("hishel.storages")
 
-__all__ = ("FileStorage", "RedisStorage", "SQLiteStorage")
+__all__ = ("FileStorage", "RedisStorage", "SQLiteStorage", "InMemoryStorage")
+
+StoredResponse: TypeAlias = tp.Tuple[Response, Request, Metadata]
 
 try:
     import redis
@@ -39,7 +44,7 @@ class BaseStorage:
     def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         raise NotImplementedError()
 
-    def retrieve(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         raise NotImplementedError()
 
     def close(self) -> None:
@@ -96,14 +101,14 @@ class FileStorage(BaseStorage):
             )
         self._remove_expired_caches()
 
-    def retrieve(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
         Retreives the response from the cache using his key.
 
         :param key: Hashed value of concatenated HTTP method and URI
         :type key: str
         :return: An HTTP response and his HTTP request.
-        :rtype: tp.Optional[tp.Tuple[Response, Request, Metadata]]
+        :rtype: tp.Optional[StoredResponse]
         """
 
         response_path = self._base_path / key
@@ -199,14 +204,14 @@ class SQLiteStorage(BaseStorage):
             self._connection.commit()
         self._remove_expired_caches()
 
-    def retrieve(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
         Retreives the response from the cache using his key.
 
         :param key: Hashed value of concatenated HTTP method and URI
         :type key: str
         :return: An HTTP response and its HTTP request.
-        :rtype: tp.Optional[tp.Tuple[Response, Request, Metadata]]
+        :rtype: tp.Optional[StoredResponse]
         """
 
         self._setup()
@@ -292,14 +297,14 @@ class RedisStorage(BaseStorage):
             key, self._serializer.dumps(response=response, request=request, metadata=metadata), px=px
         )
 
-    def retrieve(self, key: str) -> tp.Optional[tp.Tuple[Response, Request, Metadata]]:
+    def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
         Retreives the response from the cache using his key.
 
         :param key: Hashed value of concatenated HTTP method and URI
         :type key: str
         :return: An HTTP response and its HTTP request.
-        :rtype: tp.Optional[tp.Tuple[Response, Request, Metadata]]
+        :rtype: tp.Optional[StoredResponse]
         """
 
         cached_response = self._client.get(key)
@@ -310,3 +315,87 @@ class RedisStorage(BaseStorage):
 
     def close(self) -> None:  # pragma: no cover
         self._client.close()
+
+
+class InMemoryStorage(BaseStorage):
+    """
+    A simple in-memory storage.
+
+    :param serializer: Serializer capable of serializing and de-serializing http responses, defaults to None
+    :type serializer: tp.Optional[BaseSerializer], optional
+    :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
+    :type ttl: tp.Optional[tp.Union[int, float]], optional
+    """
+
+    def __init__(
+        self,
+        serializer: tp.Optional[BaseSerializer] = None,
+        ttl: tp.Optional[tp.Union[int, float]] = None,
+        capacity: int = 128,
+    ) -> None:
+        super().__init__(serializer, ttl)
+
+        if serializer is not None:  # pragma: no cover
+            warnings.warn("The serializer is not used in the in-memory storage.", RuntimeWarning)
+
+        from hishel import LFUCache
+
+        self._cache: LFUCache[str, tp.Tuple[StoredResponse, float]] = LFUCache(capacity=capacity)
+        self._lock = Lock()
+
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+        """
+        Stores the response in the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :param response: An HTTP response
+        :type response: httpcore.Response
+        :param request: An HTTP request
+        :type request: httpcore.Request
+        :param metadata: Additioal information about the stored response
+        :type metadata: Metadata
+        """
+
+        with self._lock:
+            response_clone = clone_model(response)
+            request_clone = clone_model(request)
+            stored_response: StoredResponse = (deepcopy(response_clone), deepcopy(request_clone), metadata)
+            self._cache.put(key, (stored_response, time.monotonic()))
+
+    def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
+        """
+        Retreives the response from the cache using his key.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :return: An HTTP response and its HTTP request.
+        :rtype: tp.Optional[StoredResponse]
+        """
+
+        self._remove_expired_caches()
+        with self._lock:
+            try:
+                stored_response, _ = self._cache.get(key)
+            except KeyError:
+                return None
+            return stored_response
+
+    def close(self) -> None:  # pragma: no cover
+        return
+
+    def _remove_expired_caches(self) -> None:
+        if self._ttl is None:
+            return
+
+        with self._lock:
+            keys_to_remove = set()
+
+            for key in self._cache:
+                created_at = self._cache.get(key)[1]
+
+                if time.monotonic() - created_at > self._ttl:
+                    keys_to_remove.add(key)
+
+            for key in keys_to_remove:
+                self._cache.remove_key(key)
