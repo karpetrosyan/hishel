@@ -119,7 +119,7 @@ class FileStorage(BaseStorage):
                 return self._serializer.loads(self._file_manager.read_from(str(response_path)))
         return None
 
-    def close(self) -> None:
+    def close(self) -> None:  # pragma: no cover
         return
 
     def _remove_expired_caches(self) -> None:
@@ -325,6 +325,8 @@ class InMemoryStorage(BaseStorage):
     :type serializer: tp.Optional[BaseSerializer], optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
     :type ttl: tp.Optional[tp.Union[int, float]], optional
+    :param capacity: The maximum number of responses that can be cached, defaults to 128
+    :type capacity: int, optional
     """
 
     def __init__(
@@ -362,6 +364,7 @@ class InMemoryStorage(BaseStorage):
             request_clone = clone_model(request)
             stored_response: StoredResponse = (deepcopy(response_clone), deepcopy(request_clone), metadata)
             self._cache.put(key, (stored_response, time.monotonic()))
+        self._remove_expired_caches()
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """

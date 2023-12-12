@@ -116,7 +116,7 @@ def test_inmemorystorage():
 
 
 
-def test_filestorage_expired():
+def test_filestorage_expired(use_temp_dir):
     storage = FileStorage(ttl=0.1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
