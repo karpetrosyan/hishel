@@ -7,17 +7,17 @@ from hishel._utils import BaseClock, extract_header_values, header_presents
 
 
 
-def test_pool_301(use_temp_dir):
+def test_pool_301():
     with hishel.MockConnectionPool() as pool:
         pool.add_responses([httpcore.Response(301, headers=[(b"Location", b"https://example.com")])])
-        with hishel.CacheConnectionPool(pool=pool) as cache_pool:
+        with hishel.CacheConnectionPool(pool=pool, storage=hishel.InMemoryStorage()) as cache_pool:
             cache_pool.request("GET", "https://www.example.com")
             response = cache_pool.request("GET", "https://www.example.com")
             assert response.extensions["from_cache"]
 
 
 
-def test_pool_response_validation(use_temp_dir):
+def test_pool_response_validation():
     with hishel.MockConnectionPool() as pool:
         pool.add_responses(
             [
@@ -39,7 +39,7 @@ def test_pool_response_validation(use_temp_dir):
                 ),
             ]
         )
-    with hishel.CacheConnectionPool(pool=pool) as cache_pool:
+    with hishel.CacheConnectionPool(pool=pool, storage=hishel.InMemoryStorage()) as cache_pool:
         request = httpcore.Request("GET", "https://www.example.com")
 
         cache_pool.handle_request(request)
@@ -52,7 +52,7 @@ def test_pool_response_validation(use_temp_dir):
 
 
 
-def test_pool_stale_response(use_temp_dir):
+def test_pool_stale_response():
     controller = hishel.Controller(allow_stale=True)
     with hishel.MockConnectionPool() as pool:
         pool.add_responses(
@@ -73,14 +73,16 @@ def test_pool_stale_response(use_temp_dir):
                 ),
             ]
         )
-        with hishel.CacheConnectionPool(pool=pool, controller=controller) as cache_pool:
+        with hishel.CacheConnectionPool(
+            pool=pool, controller=controller, storage=hishel.InMemoryStorage()
+        ) as cache_pool:
             cache_pool.request("GET", "https://www.example.com")
             response = cache_pool.request("GET", "https://www.example.com")
             assert not response.extensions["from_cache"]
 
 
 
-def test_pool_stale_response_with_connecterror(use_temp_dir):
+def test_pool_stale_response_with_connecterror():
     controller = hishel.Controller(allow_stale=True)
 
     class ConnectErrorPool(hishel.MockConnectionPool):
@@ -102,18 +104,22 @@ def test_pool_stale_response_with_connecterror(use_temp_dir):
                 ),
             ]
         )
-        with hishel.CacheConnectionPool(pool=pool, controller=controller) as cache_pool:
+        with hishel.CacheConnectionPool(
+            pool=pool, controller=controller, storage=hishel.InMemoryStorage()
+        ) as cache_pool:
             cache_pool.request("GET", "https://www.example.com")
             response = cache_pool.request("GET", "https://www.example.com")
             assert response.extensions["from_cache"]
 
 
 
-def test_pool_with_only_if_cached_directive_without_stored_response(use_temp_dir):
+def test_pool_with_only_if_cached_directive_without_stored_response():
     controller = hishel.Controller()
 
     with hishel.MockConnectionPool() as pool:
-        with hishel.CacheConnectionPool(pool=pool, controller=controller) as cache_pool:
+        with hishel.CacheConnectionPool(
+            pool=pool, controller=controller, storage=hishel.InMemoryStorage()
+        ) as cache_pool:
             response = cache_pool.request(
                 "GET",
                 "https://www.example.com",
@@ -123,7 +129,7 @@ def test_pool_with_only_if_cached_directive_without_stored_response(use_temp_dir
 
 
 
-def test_pool_with_only_if_cached_directive_with_stored_response(use_temp_dir):
+def test_pool_with_only_if_cached_directive_with_stored_response():
     controller = hishel.Controller()
 
     with hishel.MockConnectionPool() as pool:
@@ -139,7 +145,9 @@ def test_pool_with_only_if_cached_directive_with_stored_response(use_temp_dir):
                 ),
             ]
         )
-        with hishel.CacheConnectionPool(pool=pool, controller=controller) as cache_pool:
+        with hishel.CacheConnectionPool(
+            pool=pool, controller=controller, storage=hishel.InMemoryStorage()
+        ) as cache_pool:
             cache_pool.request("GET", "https://www.example.com")
             response = cache_pool.request(
                 "GET",
@@ -150,7 +158,7 @@ def test_pool_with_only_if_cached_directive_with_stored_response(use_temp_dir):
 
 
 
-def test_pool_with_cache_disabled_extension(use_temp_dir):
+def test_pool_with_cache_disabled_extension():
     class MockedClock(BaseClock):
         def now(self) -> int:
             return 1440504001  # Mon, 25 Aug 2015 12:00:01 GMT
@@ -166,7 +174,7 @@ def test_pool_with_cache_disabled_extension(use_temp_dir):
     with hishel.MockConnectionPool() as pool:
         pool.add_responses([cachable_response, httpcore.Response(201)])
         with hishel.CacheConnectionPool(
-            pool=pool, controller=hishel.Controller(clock=MockedClock())
+            pool=pool, controller=hishel.Controller(clock=MockedClock()), storage=hishel.InMemoryStorage()
         ) as cache_transport:
             request = httpcore.Request("GET", "https://www.example.com")
             # This should create a cache entry
@@ -190,8 +198,7 @@ def test_transport_with_custom_key_generator():
     with hishel.MockConnectionPool() as pool:
         pool.add_responses([httpcore.Response(301)])
         with hishel.CacheConnectionPool(
-            pool=pool,
-            controller=controller,
+            pool=pool, controller=controller, storage=hishel.InMemoryStorage()
         ) as cache_transport:
             request = httpcore.Request("GET", "https://www.example.com")
             # This should create a cache entry

@@ -116,7 +116,7 @@ async def test_inmemorystorage():
 
 
 @pytest.mark.asyncio
-async def test_filestorage_expired():
+async def test_filestorage_expired(use_temp_dir):
     storage = AsyncFileStorage(ttl=0.1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")

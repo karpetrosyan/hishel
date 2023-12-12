@@ -119,7 +119,7 @@ class AsyncFileStorage(AsyncBaseStorage):
                 return self._serializer.loads(await self._file_manager.read_from(str(response_path)))
         return None
 
-    async def aclose(self) -> None:
+    async def aclose(self) -> None:  # pragma: no cover
         return
 
     async def _remove_expired_caches(self) -> None:
@@ -364,6 +364,7 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
             request_clone = clone_model(request)
             stored_response: StoredResponse = (deepcopy(response_clone), deepcopy(request_clone), metadata)
             self._cache.put(key, (stored_response, time.monotonic()))
+        await self._remove_expired_caches()
 
     async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
