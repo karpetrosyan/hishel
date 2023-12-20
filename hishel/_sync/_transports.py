@@ -60,6 +60,10 @@ class CacheTransport(httpx.BaseTransport):
         controller: tp.Optional[Controller] = None,
     ) -> None:
         self._transport = transport
+
+        if not isinstance(storage, BaseStorage):
+            raise TypeError(f"Expected subclass of `BaseStorage` but got `{storage.__class__.__name__}`")
+
         self._storage = storage if storage is not None else FileStorage(serializer=JSONSerializer())
         self._controller = controller if controller is not None else Controller()
 
