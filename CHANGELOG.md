@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Improved error message when the storage type is incorrect. (#138)
+
 ## 0.0.20 (12/12/2023)
 
 - Add in-memory storage. (#133)
