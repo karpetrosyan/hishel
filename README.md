@@ -112,11 +112,8 @@ The responses are stored by `Hishel` in [storages](https://karpetrosyan.github.i
 You have complete control over them; you can change storage or even write your own if necessary.
 
 
-## Contributing
+## Support the project
 
-You can open the pull request by following these instructions if you want to improve `Hishel`. 💓
-
-- Fork the project.
-- Make change.
-- Open the pull request.
+You can support the project by simply leaving a GitHub star ⭐ or by [contributing](http://127.0.0.1:8000/contributing/).
+Help us grow and continue developing good software for you ❤️
 
