@@ -108,12 +108,12 @@ pool.request("GET", "https://hishel.com")  # takes from the cache
 
 ## How and where are the responses saved?
 
-The responses are stored by `Hishel` in [storages](https://karpetrosyan.github.io/hishel/userguide/#storages).
+The responses are stored by `Hishel` in [storages](https://hishel.com/userguide/#storages).
 You have complete control over them; you can change storage or even write your own if necessary.
 
 
 ## Support the project
 
-You can support the project by simply leaving a GitHub star ⭐ or by [contributing](http://127.0.0.1:8000/contributing/).
+You can support the project by simply leaving a GitHub star ⭐ or by [contributing](http://hishel.com/contributing/).
 Help us grow and continue developing good software for you ❤️
 
