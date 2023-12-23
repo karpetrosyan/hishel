@@ -54,3 +54,4 @@ nav:
       - GitHub: examples/github.md
       - FastAPI: examples/fastapi.md
       - Flask: examples/flask.md
+  - Contributing: contributing.md
