@@ -103,11 +103,8 @@ pool.request("GET", "https://hishel.com")  # takes from the cache
 
 ```
 
-## Contributings
+## Support the project
 
-You can open the pull request by following these instructions if you want to improve `Hishel`. 💓
-
-- Fork the project.
-- Make change.
-- Open the pull request.
+You can support the project by simply leaving a GitHub star ⭐ or by [contributing](http://hishel.com/contributing/).
+Help us grow and continue developing good software for you ❤️
 
