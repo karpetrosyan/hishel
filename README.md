@@ -114,6 +114,6 @@ You have complete control over them; you can change storage or even write your o
 
 ## Support the project
 
-You can support the project by simply leaving a GitHub star ⭐ or by [contributing](http://hishel.com/contributing/).
+You can support the project by simply leaving a GitHub star ⭐ or by [contributing](https://hishel.com/contributing/).
 Help us grow and continue developing good software for you ❤️
 

@@ -105,6 +105,6 @@ pool.request("GET", "https://hishel.com")  # takes from the cache
 
 ## Support the project
 
-You can support the project by simply leaving a GitHub star ⭐ or by [contributing](http://hishel.com/contributing/).
+You can support the project by simply leaving a GitHub star ⭐ or by [contributing](https://hishel.com/contributing/).
 Help us grow and continue developing good software for you ❤️
 
