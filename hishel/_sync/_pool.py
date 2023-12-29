@@ -135,6 +135,9 @@ class CacheConnectionPool(RequestInterface):
     def close(self) -> None:
         self._storage.close()
 
+        if hasattr(self._pool, "close"):  # pragma: no cover
+            self._pool.close()
+
     def __enter__(self: T) -> T:
         return self
 

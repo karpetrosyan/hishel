@@ -135,6 +135,9 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
     async def aclose(self) -> None:
         await self._storage.aclose()
 
+        if hasattr(self._pool, "aclose"):  # pragma: no cover
+            await self._pool.aclose()
+
     async def __aenter__(self: T) -> T:
         return self
 
