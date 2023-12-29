@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.21 (20th December, 2023)
+## 0.0.21 (29th December, 2023)
 
 - Fix inner transport and connection pool instances closing. (#147)
 - Improved error message when the storage type is incorrect. (#138)
