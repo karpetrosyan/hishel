@@ -40,10 +40,11 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
     ) -> None:
         self._pool = pool
 
-        if not isinstance(storage, AsyncBaseStorage):
+        self._storage = storage if storage is not None else AsyncFileStorage(serializer=JSONSerializer())
+
+        if not isinstance(self._storage, AsyncBaseStorage):
             raise TypeError(f"Expected subclass of `AsyncBaseStorage` but got `{storage.__class__.__name__}`")
 
-        self._storage = storage if storage is not None else AsyncFileStorage(serializer=JSONSerializer())
         self._controller = controller if controller is not None else Controller()
 
     async def handle_async_request(self, request: Request) -> Response:
