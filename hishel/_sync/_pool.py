@@ -40,10 +40,11 @@ class CacheConnectionPool(RequestInterface):
     ) -> None:
         self._pool = pool
 
-        if not isinstance(storage, BaseStorage):
+        self._storage = storage if storage is not None else FileStorage(serializer=JSONSerializer())
+
+        if not isinstance(self._storage, BaseStorage):
             raise TypeError(f"Expected subclass of `BaseStorage` but got `{storage.__class__.__name__}`")
 
-        self._storage = storage if storage is not None else FileStorage(serializer=JSONSerializer())
         self._controller = controller if controller is not None else Controller()
 
     def handle_request(self, request: Request) -> Response:
