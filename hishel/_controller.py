@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing as tp
 
 from httpcore import Request, Response
@@ -20,9 +22,9 @@ __all__ = ("Controller", "HEURISTICALLY_CACHEABLE_STATUS_CODES")
 
 
 def get_updated_headers(
-    stored_response_headers: tp.List[tp.Tuple[bytes, bytes]],
-    new_response_headers: tp.List[tp.Tuple[bytes, bytes]],
-) -> tp.List[tp.Tuple[bytes, bytes]]:
+    stored_response_headers: list[tuple[bytes, bytes]],
+    new_response_headers: list[tuple[bytes, bytes]],
+) -> list[tuple[bytes, bytes]]:
     updated_headers = []
 
     checked = set()
@@ -46,7 +48,7 @@ def get_updated_headers(
     return updated_headers
 
 
-def get_freshness_lifetime(response: Response) -> tp.Optional[int]:
+def get_freshness_lifetime(response: Response) -> int | None:
     response_cache_control = parse_cache_control(extract_header_values_decoded(response.headers, b"Cache-Control"))
 
     if response_cache_control.max_age is not None:
@@ -62,7 +64,7 @@ def get_freshness_lifetime(response: Response) -> tp.Optional[int]:
     return None
 
 
-def get_heuristic_freshness(response: Response, clock: "BaseClock") -> int:
+def get_heuristic_freshness(response: Response, clock: BaseClock) -> int:
     last_modified = extract_header_values_decoded(response.headers, b"last-modified", single=True)
 
     if last_modified:
@@ -77,7 +79,7 @@ def get_heuristic_freshness(response: Response, clock: "BaseClock") -> int:
     return ONE_DAY
 
 
-def get_age(response: Response, clock: "BaseClock") -> int:
+def get_age(response: Response, clock: BaseClock) -> int:
     if not header_presents(response.headers, b"date"):  # pragma: no cover
         raise RuntimeError("The `Date` header is missing in the response.")
 
@@ -104,13 +106,13 @@ def allowed_stale(response: Response) -> bool:
 class Controller:
     def __init__(
         self,
-        cacheable_methods: tp.Optional[tp.List[str]] = None,
-        cacheable_status_codes: tp.Optional[tp.List[int]] = None,
+        cacheable_methods: list[str] | None = None,
+        cacheable_status_codes: list[int] | None = None,
         allow_heuristics: bool = False,
-        clock: tp.Optional[BaseClock] = None,
+        clock: BaseClock | None = None,
         allow_stale: bool = False,
         always_revalidate: bool = False,
-        key_generator: tp.Optional[tp.Callable[[Request], str]] = None,
+        key_generator: tp.Callable[[Request], str] | None = None,
     ):
         self._cacheable_methods = []
 
@@ -216,7 +218,7 @@ class Controller:
         else:
             etag = None
 
-        precondition_headers: tp.List[tp.Tuple[bytes, bytes]] = []
+        precondition_headers: list[tuple[bytes, bytes]] = []
         if last_modified:
             precondition_headers.append((b"If-Modified-Since", last_modified))
         if etag:
@@ -246,7 +248,7 @@ class Controller:
 
     def construct_response_from_cache(
         self, request: Request, response: Response, original_request: Request
-    ) -> tp.Union[Response, Request, None]:
+    ) -> Response | Request | None:
         """
         Specifies whether the response should be used, skipped, or validated by the cache.
 

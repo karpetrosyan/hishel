@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing as tp
 from types import TracebackType
 
@@ -15,19 +17,19 @@ class MockAsyncConnectionPool(AsyncRequestInterface):
     async def handle_async_request(self, request: httpcore.Request) -> httpcore.Response:
         return self.mocked_responses.pop(0)
 
-    def add_responses(self, responses: tp.List[httpcore.Response]) -> None:
+    def add_responses(self, responses: list[httpcore.Response]) -> None:
         if not hasattr(self, "mocked_responses"):
             self.mocked_responses = []
         self.mocked_responses.extend(responses)
 
-    async def __aenter__(self) -> "Self":
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(
         self,
-        exc_type: tp.Optional[tp.Type[BaseException]] = None,
-        exc_value: tp.Optional[BaseException] = None,
-        traceback: tp.Optional[TracebackType] = None,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
     ) -> None:
         ...
 
@@ -36,7 +38,7 @@ class MockAsyncTransport(httpx.AsyncBaseTransport):
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         return self.mocked_responses.pop(0)
 
-    def add_responses(self, responses: tp.List[httpx.Response]) -> None:
+    def add_responses(self, responses: list[httpx.Response]) -> None:
         if not hasattr(self, "mocked_responses"):
             self.mocked_responses = []
         self.mocked_responses.extend(responses)

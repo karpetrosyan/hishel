@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import types
 import typing as tp
@@ -56,8 +58,8 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
     def __init__(
         self,
         transport: httpx.AsyncBaseTransport,
-        storage: tp.Optional[AsyncBaseStorage] = None,
-        controller: tp.Optional[Controller] = None,
+        storage: AsyncBaseStorage | None = None,
+        controller: Controller | None = None,
     ) -> None:
         self._transport = transport
 
@@ -237,13 +239,13 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         await self._storage.aclose()
         await self._transport.aclose()
 
-    async def __aenter__(self) -> "Self":
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(
         self,
-        exc_type: tp.Optional[tp.Type[BaseException]] = None,
-        exc_value: tp.Optional[BaseException] = None,
-        traceback: tp.Optional[types.TracebackType] = None,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: types.TracebackType | None = None,
     ) -> None:
         await self.aclose()

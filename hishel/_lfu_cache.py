@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from collections import OrderedDict
-from typing import DefaultDict, Dict, Generic, Iterator, Tuple, TypeVar
+from typing import DefaultDict, Generic, Iterator, TypeVar
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -13,7 +15,7 @@ class LFUCache(Generic[K, V]):
             raise ValueError("Capacity must be positive")
 
         self.capacity = capacity
-        self.cache: Dict[K, Tuple[V, int]] = {}  # To store key-value pairs
+        self.cache: dict[K, tuple[V, int]] = {}  # To store key-value pairs
         self.freq_count: DefaultDict[int, OrderedDict[K, V]] = DefaultDict(
             OrderedDict
         )  # To store frequency of each key

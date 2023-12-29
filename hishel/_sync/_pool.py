@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import types
 import typing as tp
@@ -35,8 +37,8 @@ class CacheConnectionPool(RequestInterface):
     def __init__(
         self,
         pool: RequestInterface,
-        storage: tp.Optional[BaseStorage] = None,
-        controller: tp.Optional[Controller] = None,
+        storage: BaseStorage | None = None,
+        controller: Controller | None = None,
     ) -> None:
         self._pool = pool
 
@@ -143,8 +145,8 @@ class CacheConnectionPool(RequestInterface):
 
     def __exit__(
         self,
-        exc_type: tp.Optional[tp.Type[BaseException]] = None,
-        exc_value: tp.Optional[BaseException] = None,
-        traceback: tp.Optional[types.TracebackType] = None,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: types.TracebackType | None = None,
     ) -> None:
         self.close()

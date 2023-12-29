@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import time
 import typing as tp
@@ -35,8 +37,8 @@ except ImportError:  # pragma: no cover
 class AsyncBaseStorage:
     def __init__(
         self,
-        serializer: tp.Optional[BaseSerializer] = None,
-        ttl: tp.Optional[tp.Union[int, float]] = None,
+        serializer: BaseSerializer | None = None,
+        ttl: int | float | None = None,
     ) -> None:
         self._serializer = serializer or JSONSerializer()
         self._ttl = ttl
@@ -44,7 +46,7 @@ class AsyncBaseStorage:
     async def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         raise NotImplementedError()
 
-    async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
+    async def retrieve(self, key: str) -> StoredResponse | None:
         raise NotImplementedError()
 
     async def aclose(self) -> None:
@@ -65,9 +67,9 @@ class AsyncFileStorage(AsyncBaseStorage):
 
     def __init__(
         self,
-        serializer: tp.Optional[BaseSerializer] = None,
-        base_path: tp.Optional[Path] = None,
-        ttl: tp.Optional[tp.Union[int, float]] = None,
+        serializer: BaseSerializer | None = None,
+        base_path: Path | None = None,
+        ttl: int | float | None = None,
     ) -> None:
         super().__init__(serializer, ttl)
 
@@ -101,7 +103,7 @@ class AsyncFileStorage(AsyncBaseStorage):
             )
         await self._remove_expired_caches()
 
-    async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
+    async def retrieve(self, key: str) -> StoredResponse | None:
         """
         Retreives the response from the cache using his key.
 
@@ -148,9 +150,9 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
 
     def __init__(
         self,
-        serializer: tp.Optional[BaseSerializer] = None,
-        connection: tp.Optional["anysqlite.Connection"] = None,
-        ttl: tp.Optional[tp.Union[int, float]] = None,
+        serializer: BaseSerializer | None = None,
+        connection: anysqlite.Connection | None = None,
+        ttl: int | float | None = None,
     ) -> None:
         if anysqlite is None:  # pragma: no cover
             raise RuntimeError(
@@ -162,7 +164,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
             )
         super().__init__(serializer, ttl)
 
-        self._connection: tp.Optional[anysqlite.Connection] = connection or None
+        self._connection: anysqlite.Connection | None = connection or None
         self._setup_lock = AsyncLock()
         self._setup_completed: bool = False
         self._lock = AsyncLock()
@@ -204,7 +206,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
             await self._connection.commit()
         await self._remove_expired_caches()
 
-    async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
+    async def retrieve(self, key: str) -> StoredResponse | None:
         """
         Retreives the response from the cache using his key.
 
@@ -255,9 +257,9 @@ class AsyncRedisStorage(AsyncBaseStorage):
 
     def __init__(
         self,
-        serializer: tp.Optional[BaseSerializer] = None,
-        client: tp.Optional["redis.Redis"] = None,  # type: ignore
-        ttl: tp.Optional[tp.Union[int, float]] = None,
+        serializer: BaseSerializer | None = None,
+        client: redis.Redis | None = None,  # type: ignore
+        ttl: int | float | None = None,
     ) -> None:
         if redis is None:  # pragma: no cover
             raise RuntimeError(
@@ -297,7 +299,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
             key, self._serializer.dumps(response=response, request=request, metadata=metadata), px=px
         )
 
-    async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
+    async def retrieve(self, key: str) -> StoredResponse | None:
         """
         Retreives the response from the cache using his key.
 
@@ -331,8 +333,8 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
 
     def __init__(
         self,
-        serializer: tp.Optional[BaseSerializer] = None,
-        ttl: tp.Optional[tp.Union[int, float]] = None,
+        serializer: BaseSerializer | None = None,
+        ttl: int | float | None = None,
         capacity: int = 128,
     ) -> None:
         super().__init__(serializer, ttl)
@@ -342,7 +344,7 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
 
         from hishel import LFUCache
 
-        self._cache: LFUCache[str, tp.Tuple[StoredResponse, float]] = LFUCache(capacity=capacity)
+        self._cache: LFUCache[str, tuple[StoredResponse, float]] = LFUCache(capacity=capacity)
         self._lock = AsyncLock()
 
     async def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
@@ -366,7 +368,7 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
             self._cache.put(key, (stored_response, time.monotonic()))
         await self._remove_expired_caches()
 
-    async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
+    async def retrieve(self, key: str) -> StoredResponse | None:
         """
         Retreives the response from the cache using his key.
 
