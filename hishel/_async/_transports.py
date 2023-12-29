@@ -235,6 +235,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
 
     async def aclose(self) -> None:
         await self._storage.aclose()
+        await self._transport.aclose()
 
     async def __aenter__(self) -> "Self":
         return self
