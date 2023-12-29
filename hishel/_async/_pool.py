@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import types
 import typing as tp
@@ -35,8 +37,8 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
     def __init__(
         self,
         pool: AsyncRequestInterface,
-        storage: tp.Optional[AsyncBaseStorage] = None,
-        controller: tp.Optional[Controller] = None,
+        storage: AsyncBaseStorage | None = None,
+        controller: Controller | None = None,
     ) -> None:
         self._pool = pool
 
@@ -143,8 +145,8 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
 
     async def __aexit__(
         self,
-        exc_type: tp.Optional[tp.Type[BaseException]] = None,
-        exc_value: tp.Optional[BaseException] = None,
-        traceback: tp.Optional[types.TracebackType] = None,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: types.TracebackType | None = None,
     ) -> None:
         await self.aclose()
