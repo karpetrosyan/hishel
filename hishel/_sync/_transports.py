@@ -235,6 +235,7 @@ class CacheTransport(httpx.BaseTransport):
 
     def close(self) -> None:
         self._storage.close()
+        self._transport.close()
 
     def __enter__(self) -> "Self":
         return self

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix inner transport and connection pool instances closing. (#147)
 - Improved error message when the storage type is incorrect. (#138)
 
 ## 0.0.20 (12/12/2023)
