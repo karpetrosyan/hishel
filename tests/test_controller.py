@@ -1,5 +1,6 @@
-import pytest
 import re
+
+import pytest
 from httpcore import Request, Response
 
 from hishel._controller import (
@@ -62,23 +63,23 @@ def test_controller_with_unsupported_method():
         match="RFC9111 considers DELETE methods to be unsafe for caching.",
     ):
         Controller(cacheable_methods=["DELETE"])
-        
+
 def test_controller_with_invalid_method():
     with pytest.raises(
         RuntimeError,
         match=re.escape("FISH is/are not valid HTTP method(s)."),
     ):
         Controller(cacheable_methods=["FISH",], allow_unsafe_methods=True)
-        
+
 def test_controller_with_allow_unsafe_methods():
     controller = Controller(cacheable_methods=["DELETE"], allow_unsafe_methods=True)
-    
+
     request = Request(b"DELETE", b"https://example.com", headers=[])
-    
+
     response = Response(200, headers=[(b"Expires", b"some-date")])
-    
+
     assert controller.is_cachable(request=request, response=response)
-    
+
 
 
 def test_is_cachable_for_unsupported_status():
