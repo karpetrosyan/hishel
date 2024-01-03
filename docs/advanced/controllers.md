@@ -15,12 +15,22 @@ Example:
 ```python
 import hishel
 
-controller = hishel.Controller(cacheable_methods=["GET", "PUT"])
+controller = hishel.Controller(cacheable_methods=["GET", "HEAD"])
 client = hishel.CacheClient(controller=controller)
 ```
 
-!!! note
-    `Hishel` will only cache `GET` methods if the cachable methods are not explicitly specified.
+!!! warning
+    [RFC 9111](https://www.rfc-editor.org/rfc/rfc9111.html#section-4.4) considers PUT, POST, and DELETE to be unsafe for caching, and thus the default Controller will raise a `RuntimeError` if you include them in `cacheable_methods`. The only permitted "safe" methods are "GET" and "HEAD". `Hishel` only caches "GET" by default.
+
+If you want to cache methods that are considered unsafe for caching, set `allow_unsafe_methods`:
+
+```python
+import hishel
+
+controller = hishel.Controller(cacheable_methods=["GET", "POST"], allow_unsafe_methods=True)
+client = hishel.CacheClient(controller=controller)
+
+```    
 
 ### Cachable status codes
 
