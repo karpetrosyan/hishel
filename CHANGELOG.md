@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added option to Controller to permit caching unsafe HTTP methods.
+
 ## 0.0.21 (29th December, 2023)
 
 - Fix inner transport and connection pool instances closing. (#147)

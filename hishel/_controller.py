@@ -15,6 +15,8 @@ from ._utils import (
 )
 
 HEURISTICALLY_CACHEABLE_STATUS_CODES = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
+HTTP_METHODS = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]
+SAFE_HTTP_METHODS = ["GET", "HEAD",]
 
 __all__ = ("Controller", "HEURISTICALLY_CACHEABLE_STATUS_CODES")
 
@@ -110,26 +112,45 @@ class Controller:
         clock: tp.Optional[BaseClock] = None,
         allow_stale: bool = False,
         always_revalidate: bool = False,
+        allow_unsafe_methods = False,
         key_generator: tp.Optional[tp.Callable[[Request], str]] = None,
     ):
+        self._allow_unsafe_methods = allow_unsafe_methods
         self._cacheable_methods = []
-
         if cacheable_methods is None:
             self._cacheable_methods.append("GET")
         else:
-            for method in cacheable_methods:
-                if method.upper() not in ["GET", "HEAD"]:
-                    raise RuntimeError(
-                        f"Hishel does not support the HTTP method `{method}`. Please use either `GET` or `HEAD`."
-                    )
-                self._cacheable_methods.append(method.upper())
+            self._cacheable_methods.extend(method.upper() for method in cacheable_methods)
 
+        self._check_cacheable_methods()
         self._cacheable_status_codes = cacheable_status_codes if cacheable_status_codes else [200, 301, 308]
         self._clock = clock if clock else Clock()
         self._allow_heuristics = allow_heuristics
         self._allow_stale = allow_stale
         self._always_revalidate = always_revalidate
         self._key_generator = key_generator or generate_key
+
+    def _check_cacheable_methods(self) -> None:
+        allowed_methods = HTTP_METHODS if self._allow_unsafe_methods else SAFE_HTTP_METHODS
+        disallowed_methods = set(self._cacheable_methods) - set(allowed_methods)
+        if not disallowed_methods:
+            return
+        method_string = ", ".join(disallowed_methods)
+        if self._allow_unsafe_methods:
+            raise RuntimeError(
+                f"{method_string} is/are not valid HTTP method(s).\n"
+                "See https://www.rfc-editor.org/rfc/rfc9110.html#name-methods for more information.\n"
+                f"This error can be resolved by removing {method_string} from `cacheable_methods`."
+            )
+        else:
+            raise RuntimeError(
+                f"RFC9111 considers {method_string} methods to be unsafe for caching. "
+                f"Only `HEAD` and `GET` methods are considered safe.\n"
+                "See https://www.rfc-editor.org/rfc/rfc9111.html#section-4.4 for more information\n"
+                f"This error can be resolved either by setting `allow_unsafe_methods` on the controller to `True` "
+                "or by removing {method_string} from `cacheable_methods`."
+            )
+
 
     def is_cachable(self, request: Request, response: Response) -> bool:
         """
