@@ -38,6 +38,7 @@ SUBS = [
     ),
     ("from hishel._async._transports", "from hishel._sync._transports"),
     ("AsyncRequestInterface", "RequestInterface"),
+    ("async_generate_body_hash", "sync_generate_body_hash"),
     ("__aenter__", "__enter__"),
     ("__aexit__", "__exit__"),
     ("*@pytest.mark.anyio", ""),

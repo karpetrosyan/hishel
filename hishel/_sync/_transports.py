@@ -1,7 +1,6 @@
-import datetime
+import datetime  # noqa: I001
 import types
 import typing as tp
-from hashlib import blake2b
 
 import httpcore
 import httpx
@@ -100,7 +99,7 @@ class CacheTransport(httpx.BaseTransport):
             content=request.stream,
             extensions=request.extensions,
         )
-        
+
         key = self._controller._key_generator(httpcore_request, sync_generate_body_hash(httpcore_request))
         stored_data = self._storage.retrieve(key)
 
