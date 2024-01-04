@@ -196,7 +196,9 @@ def test_pool_with_cache_disabled_extension():
 
 
 def test_pool_with_custom_key_generator():
-    controller = hishel.Controller(key_generator=lambda request: request.url.host.decode())
+    def key_generator(request: httpcore.Request, body_hash: tp.Optional[str]=None) -> str:
+        return request.url.host.decode()
+    controller = hishel.Controller(key_generator=key_generator)
 
     with hishel.MockConnectionPool() as pool:
         pool.add_responses([httpcore.Response(301)])

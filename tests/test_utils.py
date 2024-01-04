@@ -1,4 +1,5 @@
 from httpcore import Request
+from httpcore._models import ByteStream
 
 from hishel._controller import get_updated_headers
 from hishel._utils import (
@@ -16,7 +17,25 @@ def test_generate_key():
 
     key = generate_key(request)
 
-    assert key == "bd152069787aaad359c85af6f2edbb25"
+    assert key == "a7adb5b2ce6743dee8eb1af8e605b3fa"
+
+
+def test_generate_key_with_body():
+    get_request = Request(b"POST", "https://example.com", content=b"1")
+    post_request = Request(b"POST", "https://example.com", content=b"2")
+    get_key = generate_key(get_request)
+    post_key = generate_key(post_request)
+    assert get_key != post_key
+
+
+def test_generate_key_with_iterable_body():
+    byte_stream = ByteStream(b"1234567890")
+    request = Request(b"POST", "https://example.com", content=byte_stream)
+    key = generate_key(request)
+    assert key == "ac9bc139d1f08fca6849de9e0db2a843"
+    request2 = Request(b"POST", "https://example.com")
+    key2 = generate_key(request2)
+    assert key != key2
 
 
 def test_extract_header_values():

@@ -1,6 +1,7 @@
 import typing as tp
 
 import httpx
+import httpcore
 import pytest
 import sniffio
 
@@ -217,7 +218,10 @@ async def test_transport_with_cache_disabled_extension():
 
 @pytest.mark.anyio
 async def test_transport_with_custom_key_generator():
-    controller = hishel.Controller(key_generator=lambda request: request.url.host.decode())
+    def key_generator(request: httpcore.Request, body_hash: tp.Optional[str] = None) -> str:
+        return request.url.host.decode()
+
+    controller = hishel.Controller(key_generator=key_generator)
 
     async with hishel.MockAsyncTransport() as transport:
         transport.add_responses([httpx.Response(301)])

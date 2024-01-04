@@ -9,7 +9,7 @@ from httpcore._models import Request, Response
 from .._controller import Controller, allowed_stale
 from .._headers import parse_cache_control
 from .._serializers import JSONSerializer, Metadata
-from .._utils import extract_header_values_decoded
+from .._utils import extract_header_values_decoded, sync_generate_body_hash
 from ._storages import BaseStorage, FileStorage
 
 T = tp.TypeVar("T")
@@ -60,7 +60,7 @@ class CacheConnectionPool(RequestInterface):
         if request.extensions.get("cache_disabled", False):
             request.headers.extend([(b"cache-control", b"no-cache"), (b"cache-control", b"max-age=0")])
 
-        key = self._controller._key_generator(request)
+        key = self._controller._key_generator(request, sync_generate_body_hash(request))
         stored_data = self._storage.retrieve(key)
 
         request_cache_control = parse_cache_control(extract_header_values_decoded(request.headers, b"Cache-Control"))

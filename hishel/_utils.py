@@ -3,8 +3,10 @@ import time
 import typing as tp
 from email.utils import parsedate_tz
 from hashlib import blake2b
+import tempfile
 
 import anyio
+import httpx
 import httpcore
 
 HEADERS_ENCODING = "iso-8859-1"
@@ -33,17 +35,42 @@ def normalized_url(url: tp.Union[httpcore.URL, str, bytes]) -> str:
     assert False, "Invalid type for `normalized_url`"  # pragma: no cover
 
 
-def generate_key(request: httpcore.Request) -> str:
+def sync_generate_body_hash(request: httpcore.Request) -> str:
+    if isinstance(request.stream, tp.Iterable):
+        body_hash = blake2b(digest_size=16)
+        for chunk in request.stream:
+            body_hash.update(chunk)
+    elif isinstance(request.stream, tp.AsyncIterable):
+        raise TypeError("AsyncIterable streams are not supported for request bodies in the sync client.")
+    elif request.stream is not None:
+        body_hash = blake2b(digest_size=16)
+        body_hash.update(request.stream)
+    return body_hash.hexdigest()
+
+
+async def async_generate_body_hash(request: httpcore.Request) -> str:
+    if isinstance(request.stream, tp.AsyncIterable):
+        body_hash = blake2b(digest_size=16)
+        async for chunk in request.stream:
+            body_hash.update(chunk)
+    elif isinstance(request.stream, tp.Iterable):
+        body_hash = blake2b(digest_size=16)
+        for chunk in request.stream:
+            body_hash.update(chunk)
+    elif request.stream is not None:
+        body_hash = blake2b(digest_size=16)
+        body_hash.update(request.stream)
+    return body_hash.hexdigest()
+
+
+def generate_key(request: httpcore.Request, body_hash: tp.Optional[str] = None) -> str:
     encoded_url = normalized_url(request.url).encode("ascii")
-
-    key_parts = [
-        request.method,
-        encoded_url,
-    ]
-
     key = blake2b(digest_size=16)
-    for part in key_parts:
-        key.update(part)
+    key.update(request.method)
+    key.update(encoded_url)
+    if body_hash is None and isinstance(request.stream, (tp.Iterable, bytes)):
+        body_hash = sync_generate_body_hash(request)
+        key.update(body_hash.encode("ascii"))
     return key.hexdigest()
 
 

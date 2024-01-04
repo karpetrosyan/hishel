@@ -6,8 +6,9 @@ import httpcore
 import httpx
 from httpx import AsyncByteStream, Request, Response
 from httpx._exceptions import ConnectError
+from hashlib import blake2b
 
-from hishel._utils import extract_header_values_decoded, normalized_url
+from hishel._utils import extract_header_values_decoded, normalized_url, async_generate_body_hash
 
 from .._controller import Controller, allowed_stale
 from .._headers import parse_cache_control
@@ -99,7 +100,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             content=request.stream,
             extensions=request.extensions,
         )
-        key = self._controller._key_generator(httpcore_request)
+        key = self._controller._key_generator(httpcore_request, await async_generate_body_hash(httpcore_request))
         stored_data = await self._storage.retrieve(key)
 
         request_cache_control = parse_cache_control(
