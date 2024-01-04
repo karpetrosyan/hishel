@@ -16,7 +16,10 @@ from ._utils import (
 
 HEURISTICALLY_CACHEABLE_STATUS_CODES = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
 HTTP_METHODS = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]
-SAFE_HTTP_METHODS = ["GET", "HEAD",]
+SAFE_HTTP_METHODS = [
+    "GET",
+    "HEAD",
+]
 
 __all__ = ("Controller", "HEURISTICALLY_CACHEABLE_STATUS_CODES")
 
@@ -112,7 +115,7 @@ class Controller:
         clock: tp.Optional[BaseClock] = None,
         allow_stale: bool = False,
         always_revalidate: bool = False,
-        allow_unsafe_methods = False,
+        allow_unsafe_methods=False,
         key_generator: tp.Optional[tp.Callable[[Request], str]] = None,
     ):
         self._allow_unsafe_methods = allow_unsafe_methods
@@ -150,7 +153,6 @@ class Controller:
                 f"This error can be resolved either by setting `allow_unsafe_methods` on the controller to `True` "
                 "or by removing {method_string} from `cacheable_methods`."
             )
-
 
     def is_cachable(self, request: Request, response: Response) -> bool:
         """
