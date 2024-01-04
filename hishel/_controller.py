@@ -115,7 +115,7 @@ class Controller:
         clock: tp.Optional[BaseClock] = None,
         allow_stale: bool = False,
         always_revalidate: bool = False,
-        allow_unsafe_methods=False,
+        allow_unsafe_methods: bool = False,
         key_generator: tp.Optional[tp.Callable[[Request], str]] = None,
     ):
         self._allow_unsafe_methods = allow_unsafe_methods
