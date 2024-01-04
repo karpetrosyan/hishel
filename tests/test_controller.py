@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from httpcore import Request, Response
 
@@ -58,9 +60,50 @@ def test_is_cachable_for_unsupported_method():
 def test_controller_with_unsupported_method():
     with pytest.raises(
         RuntimeError,
-        match="Hishel does not support the HTTP method `DELETE`. Please use either `GET` or `HEAD`.",
+        match=re.escape(
+            "\n".join(
+                [
+                    "RFC9111 considers DELETE method(s) to be unsafe for "
+                    "caching. Only `HEAD` and `GET` methods are considered safe.",
+                    "See https://www.rfc-editor.org/rfc/rfc9111.html#section-4.4 for more information",
+                    "This error can be resolved either by setting `allow_unsafe_methods` on "
+                    "the controller to `True` or by removing DELETE from `cacheable_methods`.",
+                ]
+            )
+        ),
     ):
         Controller(cacheable_methods=["DELETE"])
+
+
+def test_controller_with_invalid_method():
+    with pytest.raises(
+        RuntimeError,
+        match=re.escape(
+            "\n".join(
+                [
+                    "FISH is/are not valid HTTP method(s).",
+                    "See https://www.rfc-editor.org/rfc/rfc9110.html#name-methods for more information.",
+                    "This error can be resolved by removing FISH from `cacheable_methods`.",
+                ]
+            )
+        ),
+    ):
+        Controller(
+            cacheable_methods=[
+                "FISH",
+            ],
+            allow_unsafe_methods=True,
+        )
+
+
+def test_controller_with_allow_unsafe_methods():
+    controller = Controller(cacheable_methods=["DELETE"], allow_unsafe_methods=True)
+
+    request = Request(b"DELETE", b"https://example.com", headers=[])
+
+    response = Response(200, headers=[(b"Expires", b"some-date")])
+
+    assert controller.is_cachable(request=request, response=response)
 
 
 def test_is_cachable_for_unsupported_status():
