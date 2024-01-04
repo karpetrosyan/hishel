@@ -3,10 +3,8 @@ import time
 import typing as tp
 from email.utils import parsedate_tz
 from hashlib import blake2b
-import tempfile
 
 import anyio
-import httpx
 import httpcore
 
 HEADERS_ENCODING = "iso-8859-1"

@@ -1,7 +1,7 @@
 import typing as tp
 
-import httpx
 import httpcore
+import httpx
 import pytest
 import sniffio
 

@@ -6,9 +6,8 @@ import httpcore
 import httpx
 from httpx import AsyncByteStream, Request, Response
 from httpx._exceptions import ConnectError
-from hashlib import blake2b
 
-from hishel._utils import extract_header_values_decoded, normalized_url, async_generate_body_hash
+from hishel._utils import async_generate_body_hash, extract_header_values_decoded, normalized_url
 
 from .._controller import Controller, allowed_stale
 from .._headers import parse_cache_control

@@ -9,7 +9,7 @@ from httpcore._models import Request, Response
 from .._controller import Controller, allowed_stale
 from .._headers import parse_cache_control
 from .._serializers import JSONSerializer, Metadata
-from .._utils import extract_header_values_decoded, async_generate_body_hash
+from .._utils import async_generate_body_hash, extract_header_values_decoded
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
 T = tp.TypeVar("T")
