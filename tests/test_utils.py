@@ -1,15 +1,61 @@
+import typing as tp
+
+import pytest
 from httpcore import Request
 from httpcore._models import ByteStream
 
 from hishel._controller import get_updated_headers
 from hishel._utils import (
+    async_generate_body_hash,
     extract_header_values,
     extract_header_values_decoded,
     float_seconds_to_int_milliseconds,
     generate_key,
     header_presents,
     parse_date,
+    sync_generate_body_hash,
 )
+
+
+def sync_byte_iterator(content: bytes) -> tp.Iterable[bytes]:
+    yield content
+
+
+async def async_byte_iterator(content: bytes) -> tp.AsyncIterable[bytes]:
+    yield content
+
+
+def test_sync_generate_body_hash():
+    request = Request(b"GET", "https://example.com")
+    hash_value = sync_generate_body_hash(request)
+    assert hash_value == "cae66941d9efbd404e4d88758ea67670"
+    request2 = Request(b"GET", "https://example.com", content=b"Some binary Content")
+    hash_value2 = sync_generate_body_hash(request2)
+    assert hash_value2 == "44e35a74667d1a0c52ab12a7c538b28c"
+    request3 = Request(b"GET", "https://example.com", content=sync_byte_iterator(b"12345678"))
+    hash_value3 = sync_generate_body_hash(request3)
+    assert hash_value3 == "1c34024f7cac54b10a43b8b3430e4143"
+    request4 = Request(b"GET", "https://example.com", content=async_byte_iterator(b"12345678"))
+    with pytest.raises(
+        TypeError, match="AsyncIterable streams are not supported for request bodies in the sync client."
+    ):
+        sync_generate_body_hash(request4)
+
+
+@pytest.mark.anyio
+async def test_async_generate_body_hash():
+    request = Request(b"GET", "https://example.com")
+    hash_value = await async_generate_body_hash(request)
+    assert hash_value == "cae66941d9efbd404e4d88758ea67670"
+    request2 = Request(b"GET", "https://example.com", content=b"Some binary Content")
+    hash_value2 = await async_generate_body_hash(request2)
+    assert hash_value2 == "44e35a74667d1a0c52ab12a7c538b28c"
+    request3 = Request(b"GET", "https://example.com", content=sync_byte_iterator(b"12345678"))
+    hash_value3 = await async_generate_body_hash(request3)
+    assert hash_value3 == "1c34024f7cac54b10a43b8b3430e4143"
+    request4 = Request(b"GET", "https://example.com", content=async_byte_iterator(b"123456789"))
+    hash_value4 = await async_generate_body_hash(request4)
+    assert hash_value4 == "c1c6ea5f2be436e749f365b450cfb675"
 
 
 def test_generate_key():
