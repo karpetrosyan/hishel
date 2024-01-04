@@ -60,15 +60,49 @@ def test_is_cachable_for_unsupported_method():
 def test_controller_with_unsupported_method():
     with pytest.raises(
         RuntimeError,
-        match="RFC9111 considers DELETE methods to be unsafe for caching.",
+        match=re.escape(
+            "\n".join(
+                [
+                    "RFC9111 considers DELETE method(s) to be unsafe for "
+                    "caching. Only `HEAD` and `GET` methods are considered safe.",
+                    "See https://www.rfc-editor.org/rfc/rfc9111.html#section-4.4 for more information",
+                    "This error can be resolved either by setting `allow_unsafe_methods` on "
+                    "the controller to `True` or by removing DELETE from `cacheable_methods`.",
+                ]
+            )
+        ),
     ):
         Controller(cacheable_methods=["DELETE"])
+
+    with pytest.raises(
+        RuntimeError,
+        match=re.escape(
+            "\n".join(
+                [
+                    "RFC9111 considers PUT, DELETE method(s) to be unsafe for "
+                    "caching. Only `HEAD` and `GET` methods are considered safe.",
+                    "See https://www.rfc-editor.org/rfc/rfc9111.html#section-4.4 for more information",
+                    "This error can be resolved either by setting `allow_unsafe_methods` on "
+                    "the controller to `True` or by removing PUT, DELETE from `cacheable_methods`.",
+                ]
+            )
+        ),
+    ):
+        Controller(cacheable_methods=["DELETE", "PUT"])
 
 
 def test_controller_with_invalid_method():
     with pytest.raises(
         RuntimeError,
-        match=re.escape("FISH is/are not valid HTTP method(s)."),
+        match=re.escape(
+            "\n".join(
+                [
+                    "FISH is/are not valid HTTP method(s).",
+                    "See https://www.rfc-editor.org/rfc/rfc9110.html#name-methods for more information.",
+                    "This error can be resolved by removing FISH from `cacheable_methods`.",
+                ]
+            )
+        ),
     ):
         Controller(
             cacheable_methods=[

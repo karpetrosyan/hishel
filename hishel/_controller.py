@@ -147,11 +147,11 @@ class Controller:
             )
         else:
             raise RuntimeError(
-                f"RFC9111 considers {method_string} methods to be unsafe for caching. "
+                f"RFC9111 considers {method_string} method(s) to be unsafe for caching. "
                 f"Only `HEAD` and `GET` methods are considered safe.\n"
                 "See https://www.rfc-editor.org/rfc/rfc9111.html#section-4.4 for more information\n"
                 f"This error can be resolved either by setting `allow_unsafe_methods` on the controller to `True` "
-                "or by removing {method_string} from `cacheable_methods`."
+                f"or by removing {method_string} from `cacheable_methods`."
             )
 
     def is_cachable(self, request: Request, response: Response) -> bool:
