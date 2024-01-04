@@ -40,9 +40,6 @@ def sync_generate_body_hash(request: httpcore.Request) -> str:
             body_hash.update(chunk)
     elif isinstance(request.stream, tp.AsyncIterable):
         raise TypeError("AsyncIterable streams are not supported for request bodies in the sync client.")
-    elif request.stream is not None:
-        body_hash = blake2b(digest_size=16)
-        body_hash.update(request.stream)
     return body_hash.hexdigest()
 
 
@@ -55,9 +52,6 @@ async def async_generate_body_hash(request: httpcore.Request) -> str:
         body_hash = blake2b(digest_size=16)
         for chunk in request.stream:
             body_hash.update(chunk)
-    elif request.stream is not None:
-        body_hash = blake2b(digest_size=16)
-        body_hash.update(request.stream)
     return body_hash.hexdigest()
 
 

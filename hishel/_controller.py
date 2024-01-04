@@ -14,9 +14,6 @@ from ._utils import (
     parse_date,
 )
 
-if tp.TYPE_CHECKING:
-    pass
-
 HEURISTICALLY_CACHEABLE_STATUS_CODES = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
 HTTP_METHODS = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]
 SAFE_HTTP_METHODS = [
