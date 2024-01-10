@@ -46,6 +46,10 @@ sqlite = [
     "anysqlite>=0.0.5"
 ]
 
+typing_extensions = [
+    "typing_extensions>=4.8.0"
+]
+
 [project.urls]
 Homepage = "https://hishel.com"
 Source = "https://github.com/karpetrosyan/hishel"
