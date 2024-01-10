@@ -62,6 +62,7 @@ def generate_key(request: httpcore.Request, body_hash: tp.Optional[str] = None) 
     key.update(encoded_url)
     if body_hash is None and isinstance(request.stream, (tp.Iterable, bytes)):
         body_hash = sync_generate_body_hash(request)
+    if body_hash is not None:
         key.update(body_hash.encode("ascii"))
     return key.hexdigest()
 
