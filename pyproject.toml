@@ -29,7 +29,8 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
-    "httpx>=0.22.0"
+    "httpx>=0.22.0",
+    "typing_extensions>=4.8.0"
 ]
 
 [project.optional-dependencies]
@@ -44,10 +45,6 @@ redis = [
 
 sqlite = [
     "anysqlite>=0.0.5"
-]
-
-typing_extensions = [
-    "typing_extensions>=4.8.0"
 ]
 
 [project.urls]
