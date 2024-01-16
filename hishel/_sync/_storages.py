@@ -481,7 +481,6 @@ class S3Storage(BaseStorage):
             try:
                 return self._serializer.loads(self._s3_manager.read_from(path=key))
             except Exception:
-                print("exc")
                 return None
 
     def close(self) -> None:  # pragma: no cover

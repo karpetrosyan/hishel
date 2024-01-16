@@ -481,7 +481,6 @@ class AsyncS3Storage(AsyncBaseStorage):
             try:
                 return self._serializer.loads(await self._s3_manager.read_from(path=key))
             except Exception:
-                print("exc")
                 return None
 
     async def aclose(self) -> None:  # pragma: no cover
