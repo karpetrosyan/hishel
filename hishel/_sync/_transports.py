@@ -62,7 +62,6 @@ class CacheTransport(httpx.BaseTransport):
         self._transport = transport
 
         self._storage = storage if storage is not None else FileStorage(serializer=JSONSerializer())
-
         if not isinstance(self._storage, BaseStorage):
             raise TypeError(f"Expected subclass of `BaseStorage` but got `{storage.__class__.__name__}`")
 

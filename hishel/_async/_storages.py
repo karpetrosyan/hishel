@@ -6,6 +6,11 @@ from copy import deepcopy
 from pathlib import Path
 
 try:
+    import boto3
+except ImportError:  # pragma: no cover
+    boto3 = None  # type: ignore
+
+try:
     import anysqlite
 except ImportError:  # pragma: no cover
     anysqlite = None  # type: ignore
@@ -16,13 +21,14 @@ from typing_extensions import TypeAlias
 from hishel._serializers import BaseSerializer, clone_model
 
 from .._files import AsyncFileManager
+from .._s3 import AsyncS3Manager
 from .._serializers import JSONSerializer, Metadata
 from .._synchronization import AsyncLock
 from .._utils import float_seconds_to_int_milliseconds
 
 logger = logging.getLogger("hishel.storages")
 
-__all__ = ("AsyncFileStorage", "AsyncRedisStorage", "AsyncSQLiteStorage", "AsyncInMemoryStorage")
+__all__ = ("AsyncFileStorage", "AsyncRedisStorage", "AsyncSQLiteStorage", "AsyncInMemoryStorage", "AsyncS3Storage")
 
 StoredResponse: TypeAlias = tp.Tuple[Response, Request, Metadata]
 
@@ -402,3 +408,89 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
 
             for key in keys_to_remove:
                 self._cache.remove_key(key)
+
+
+class AsyncS3Storage(AsyncBaseStorage):
+    """
+    AWS S3 storage.
+
+    :param serializer: Serializer capable of serializing and de-serializing http responses, defaults to None
+    :type serializer: tp.Optional[BaseSerializer], optional
+    :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
+    :type ttl: tp.Optional[tp.Union[int, float]], optional
+    :param client: A client for S3, defaults to None
+    :type client: tp.Optional[tp.Any], optional
+    """
+
+    def __init__(
+        self,
+        bucket_name: str,
+        serializer: tp.Optional[BaseSerializer] = None,
+        ttl: tp.Optional[tp.Union[int, float]] = None,
+        client: tp.Optional[tp.Any] = None,
+    ) -> None:
+        super().__init__(serializer, ttl)
+
+        if boto3 is None:
+            raise RuntimeError(
+                (
+                    f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                    "Check that you have `Hishel` installed with the `s3` extension as shown.\n"
+                    "```pip install hishel[s3]```"
+                )
+            )
+
+        self._bucket_name = bucket_name
+        client = client or boto3.client("s3")
+        self._s3_manager = AsyncS3Manager(client=client, bucket_name=bucket_name, is_binary=self._serializer.is_binary)
+        self._lock = AsyncLock()
+
+    async def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+        """
+        Stores the response in the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :param response: An HTTP response
+        :type response: httpcore.Response
+        :param request: An HTTP request
+        :type request: httpcore.Request
+        :param metadata: Additioal information about the stored response
+        :type metadata: Metadata`
+        """
+
+        async with self._lock:
+            serialized = self._serializer.dumps(response=response, request=request, metadata=metadata)
+
+            await self._s3_manager.write_to(path=key, data=serialized)
+
+        await self._remove_expired_caches()
+
+    async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
+        """
+        Retreives the response from the cache using his key.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :return: An HTTP response and its HTTP request.
+        :rtype: tp.Optional[StoredResponse]
+        """
+
+        await self._remove_expired_caches()
+        async with self._lock:
+            try:
+                return self._serializer.loads(await self._s3_manager.read_from(path=key))
+            except Exception:
+                print("exc")
+                return None
+
+    async def aclose(self) -> None:  # pragma: no cover
+        return
+
+    async def _remove_expired_caches(self) -> None:
+        if self._ttl is None:
+            return
+
+        async with self._lock:
+            converted_ttl = float_seconds_to_int_milliseconds(self._ttl)
+            await self._s3_manager.remove_expired(ttl=converted_ttl)
