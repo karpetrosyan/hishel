@@ -34,7 +34,6 @@ jobs:
         uses: LocalStack/setup-localstack@main
         with:
           image-tag: 'latest'
-          install-awslocal: 'true'
       - name: "Run tests"
         run: scripts/test
       - name: Upload coverage reports to Codecov
