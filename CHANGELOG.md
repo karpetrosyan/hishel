@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Move `typing_extensions` from requirements.txt to pyproject.toml. (#161)
+
 ## 0.0.21 (29th December, 2023)
 
 - Fix inner transport and connection pool instances closing. (#147)

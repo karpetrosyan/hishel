@@ -16,7 +16,6 @@ anyio==4.1.0
 trio==0.23.1
 coverage==7.3.2
 types-PyYAML==6.0.12.12
-typing_extensions==4.8.0
 
 # build
 hatch==1.7.0
