@@ -30,10 +30,6 @@ jobs:
         uses: supercharge/redis-github-action@1.7.0
         with:
           redis-version: ${{ matrix.redis-version }}
-      - name: Start LocalStack
-        uses: LocalStack/setup-localstack@main
-        with:
-          image-tag: 'latest'
       - name: "Run tests"
         run: scripts/test
       - name: Upload coverage reports to Codecov
