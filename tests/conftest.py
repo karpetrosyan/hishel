@@ -20,8 +20,6 @@ def client():
 
     yield client
 
-    client.close()
-
 
 @pytest.fixture(scope="session")
 def bucket_name(client):
