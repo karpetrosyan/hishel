@@ -6,3 +6,8 @@ services:
       command: 'redis-server'
       ports:
         - "127.0.0.1:6379:6379"
+  s3:
+      image: localstack/localstack:latest
+      ports:
+        - "127.0.0.1:4566:4566"         
+        - "127.0.0.1:4510-4559:4510-4559"

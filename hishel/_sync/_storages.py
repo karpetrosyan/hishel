@@ -431,7 +431,7 @@ class S3Storage(BaseStorage):
     ) -> None:
         super().__init__(serializer, ttl)
 
-        if boto3 is None:
+        if boto3 is None:  # pragma: no cover
             raise RuntimeError(
                 (
                     f"The `{type(self).__name__}` was used, but the required packages were not found. "
@@ -461,7 +461,6 @@ class S3Storage(BaseStorage):
 
         with self._lock:
             serialized = self._serializer.dumps(response=response, request=request, metadata=metadata)
-
             self._s3_manager.write_to(path=key, data=serialized)
 
         self._remove_expired_caches()

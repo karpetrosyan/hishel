@@ -4,7 +4,7 @@ import sqlite3
 import pytest
 from httpcore import Request, Response
 
-from hishel import FileStorage, InMemoryStorage, RedisStorage, SQLiteStorage
+from hishel import FileStorage, InMemoryStorage, RedisStorage, S3Storage, SQLiteStorage
 from hishel._serializers import Metadata
 from hishel._utils import sleep, generate_key
 
@@ -116,6 +116,29 @@ def test_inmemorystorage():
 
 
 
+def test_s3storage(bucket_name, client):
+    storage = S3Storage(bucket_name=bucket_name, client=client)
+
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+
+    stored_data = storage.retrieve(key)
+    assert stored_data is not None
+    stored_response, stored_request, metadata = stored_data
+    stored_response.read()
+    assert isinstance(stored_response, Response)
+    assert stored_response.status == 200
+    assert stored_response.headers == []
+    assert stored_response.content == b"test"
+
+
+
 def test_filestorage_expired(use_temp_dir):
     storage = FileStorage(ttl=0.1)
     first_request = Request(b"GET", "https://example.com")
@@ -196,6 +219,27 @@ def test_inmemory_expired():
     assert storage.retrieve(first_key) is not None
 
     sleep(0.3)
+    storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
+
+    assert storage.retrieve(first_key) is None
+
+
+
+def test_s3storage_expired(bucket_name, client):
+    storage = S3Storage(ttl=1, bucket_name=bucket_name, client=client)
+    first_request = Request(b"GET", "https://example.com")
+    second_request = Request(b"GET", "https://anotherexample.com")
+
+    first_key = generate_key(first_request)
+    second_key = generate_key(second_request)
+
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+
+    storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
+    assert storage.retrieve(first_key) is not None
+
+    sleep(1.1)
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert storage.retrieve(first_key) is None

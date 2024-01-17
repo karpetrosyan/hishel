@@ -1,5 +1,5 @@
 import typing as tp
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from anyio import to_thread
 
@@ -11,33 +11,32 @@ class S3Manager:
         self._is_binary = is_binary
 
     def write_to(self, path: str, data: tp.Union[bytes, str]) -> None:
+        path = "hishel-" + path
         if isinstance(data, str):
             data = data.encode("utf-8")
 
-        self._client.put_object(Bucket=self._bucket_name, Key=path, Body=data, Metadata={"hishel": "Is the best"})
+        self._client.put_object(Bucket=self._bucket_name, Key=path, Body=data)
 
     def read_from(self, path: str) -> tp.Union[bytes, str]:
+        path = "hishel-" + path
         response = self._client.get_object(
             Bucket=self._bucket_name,
             Key=path,
         )
 
-        if "hishel" not in response["Metadata"]:
-            raise RuntimeError("This object is not created by Hishel")
-
         content = response["Body"].read()
 
-        if self._is_binary:
+        if self._is_binary:  # pragma: no cover
             return tp.cast(bytes, content)
 
         return tp.cast(str, content.decode("utf-8"))
 
     def remove_expired(self, ttl: int) -> None:
-        for obj in self._client.list_objects(Bucket=self._bucket_name)["Contents"]:
-            if "Hishel" not in obj["Metadata"]:
+        for obj in self._client.list_objects(Bucket=self._bucket_name).get("Contents", []):
+            if not obj["Key"].startswith("hishel-"):  # pragma: no cover
                 continue
 
-            if datetime.now() - obj["LastModified"] > timedelta(milliseconds=ttl):
+            if datetime.now(timezone.utc) - obj["LastModified"] > timedelta(milliseconds=ttl):
                 self._client.delete_object(Bucket=self._bucket_name, Key=obj["Key"])
 
 
