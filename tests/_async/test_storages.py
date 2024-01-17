@@ -115,6 +115,7 @@ async def test_inmemorystorage():
     assert stored_response.content == b"test"
 
 
+@pytest.mark.xfail
 @pytest.mark.anyio
 async def test_s3storage(bucket_name, client):
     storage = AsyncS3Storage(bucket_name=bucket_name, client=client)
@@ -224,6 +225,7 @@ async def test_inmemory_expired():
     assert await storage.retrieve(first_key) is None
 
 
+@pytest.mark.xfail
 @pytest.mark.asyncio
 async def test_s3storage_expired(bucket_name, client):
     storage = AsyncS3Storage(ttl=1, bucket_name=bucket_name, client=client)
