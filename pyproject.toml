@@ -93,7 +93,8 @@ filterwarnings = []
 [tool.coverage.run]
 omit = [
     "venv/*", 
-    "hishel/_sync/*"
+    "hishel/_sync/*",
+    "hishel/_s3.py"
 ]
 include = ["hishel/*", "tests/*"]
 
