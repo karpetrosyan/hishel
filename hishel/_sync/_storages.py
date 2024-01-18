@@ -414,6 +414,8 @@ class S3Storage(BaseStorage):  # pragma: no cover
     """
     AWS S3 storage.
 
+    :param bucket_name: The name of the bucket to store the responses in
+    :type bucket_name: str
     :param serializer: Serializer capable of serializing and de-serializing http responses, defaults to None
     :type serializer: tp.Optional[BaseSerializer], optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
