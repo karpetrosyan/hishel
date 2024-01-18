@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Support AWS S3 storages. (#164)
 - Move `typing_extensions` from requirements.txt to pyproject.toml. (#161)
 
 ## 0.0.21 (29th December, 2023)
