@@ -197,3 +197,5 @@ def test_inmemory_expired():
 
     sleep(0.3)
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
+
+    assert storage.retrieve(first_key) is None

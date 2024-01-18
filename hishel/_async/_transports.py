@@ -62,6 +62,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         self._transport = transport
 
         self._storage = storage if storage is not None else AsyncFileStorage(serializer=JSONSerializer())
+
         if not isinstance(self._storage, AsyncBaseStorage):
             raise TypeError(f"Expected subclass of `AsyncBaseStorage` but got `{storage.__class__.__name__}`")
 

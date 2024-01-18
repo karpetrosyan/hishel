@@ -197,3 +197,5 @@ async def test_inmemory_expired():
 
     await asleep(0.3)
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
+
+    assert await storage.retrieve(first_key) is None
