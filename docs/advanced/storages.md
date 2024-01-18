@@ -222,49 +222,55 @@ If you do this, `Hishel` will delete any stored responses whose ttl has expired.
 In this example, the stored responses were limited to 1 hour.
 
 
-## Which storage is the best?
+### :material-aws: AWS S3 storage
 
-Let's start with some basic benchmarks to see which one is the fastest.
+`Hishel` has built-in [AWS S3](https://aws.amazon.com/s3/) support, allowing users to store responses in the cloud.
 
-So there are the results of the benchmarks, where we simply sent 1000 synchronous requests to [hishel.com](https://hishel.com).
+Example:
 
-| Storage           | Time                          |
-| -----------       | ---- |
-| `FileStorage`     | 0.4s |
-| `SQLiteStorage`   | 2s   |
-| `RedisStorage`    | 0.5s |
-| `InMemoryStorage` | 0.2s |
+```python
+import hishel
+
+storage = hishel.S3Storage(bucket_name="cached_responses")
+client = hishel.CacheClient(storage=storage)
+```
+
+Or if you are using Transports
+```python
+
+import httpx
+import hishel
+
+storage = hishel.S3Storage(bucket_name="cached_responses")
+transport = hishel.CacheTransport(httpx.HTTPTransport(), storage=storage)
+```
+
+#### Custom AWS S3 client
+
+If you want to manually configure the client instance, pass it to Hishel.
+
+```python
+import hishel
+import boto3
+
+s3_client = boto3.client('s3')
+
+storage = hishel.S3Storage(bucket_name="cached_responses", client=client)
+client = hishel.CacheClient(storage=storage)
+```
+
+#### Responses ttl in S3Storage
+
+You can explicitly specify the ttl for stored responses in this manner.
+
+```python
+import hishel
+
+storage = hishel.S3Storage(ttl=3600)
+```
+
+If you do this, `Hishel` will delete any stored responses whose ttl has expired.
+In this example, the stored responses were limited to 1 hour.
 
 
-!!! note
-    It is important to note that the results may differ for your environment due to a variety of factors that we ignore.
-
-In most cases, `FileStorage`, `RedisStorage` and `InMemoryStorage` are significantly faster than `SQLiteStorage`, but `SQLiteStorage` can be used if you already have a well-configured sqlite database and want to keep cached responses close to your application data.
-
-For each storage option, there are some benefits.
-
-FileStorage
-
-1. **0 configuration**
-2. **very fast**
-3. **easy access**
-
-RedisStorage
-
-1. **can be shared**
-2. **very fast**
-3. **redis features**
-
-InMemoryStorage
-
-1. **temporary cache**
-2. **very fast**
-
-SQLiteStorage
-
-1. **can be shared**
-2. **sqlite features**
-
-!!! tip
-    Any [serializer](serializers.md) can be used with any storage because they are all fully compatible.
 

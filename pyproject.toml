@@ -47,6 +47,10 @@ sqlite = [
     "anysqlite>=0.0.5"
 ]
 
+s3 = [
+    "boto3>=1.15.0,<=1.15.3"
+]
+
 [project.urls]
 Homepage = "https://hishel.com"
 Source = "https://github.com/karpetrosyan/hishel"
@@ -89,7 +93,8 @@ filterwarnings = []
 [tool.coverage.run]
 omit = [
     "venv/*", 
-    "hishel/_sync/*"
+    "hishel/_sync/*",
+    "hishel/_s3.py"
 ]
 include = ["hishel/*", "tests/*"]
 
