@@ -26,7 +26,7 @@ git switch -c my-feature-name
 - **scripts/install** _Set up the virtual environment and install all the necessary dependencies_
 - **scripts/lint** _Runs linter, formatter, and unasync to enforce code style_
 - **scripts/check** _Runs all the necessary checks, including linter, formatter, static type analyzer, and unasync checks_
-- **scripts/install** _Runs `scripts/check` + `pytest` over the coverage._
+- **scripts/test** _Runs `scripts/check` + `pytest` over the coverage._
 
 Example:
 
