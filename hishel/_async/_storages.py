@@ -89,7 +89,7 @@ class AsyncFileStorage(AsyncBaseStorage):
         self._file_manager = AsyncFileManager(is_binary=self._serializer.is_binary)
         self._lock = AsyncLock()
         self._check_ttl_every = check_ttl_every
-        self._timer = time.time()
+        self._last_cleaned = time.monotonic()
 
     async def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
@@ -138,14 +138,14 @@ class AsyncFileStorage(AsyncBaseStorage):
         if self._ttl is None:
             return
 
-        if time.time() - self._timer < self._check_ttl_every:
+        if time.monotonic() - self._last_cleaned < self._check_ttl_every:
             if response_path.is_file():
                 age = time.time() - response_path.stat().st_mtime
                 if age > self._ttl:
                     response_path.unlink()
             return
 
-        self._timer = time.time()
+        self._last_cleaned = time.monotonic()
         async with self._lock:
             for file in self._base_path.iterdir():
                 if file.is_file():
