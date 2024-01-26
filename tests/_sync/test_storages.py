@@ -117,7 +117,7 @@ def test_inmemorystorage():
 
 
 def test_filestorage_expired(use_temp_dir):
-    storage = FileStorage(ttl=0.1)
+    storage = FileStorage(ttl=0.2, check_ttl_every=0.1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
@@ -133,6 +133,23 @@ def test_filestorage_expired(use_temp_dir):
     sleep(0.3)
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
+    assert storage.retrieve(first_key) is None
+
+
+
+def test_filestorage_timer(use_temp_dir):
+    storage = FileStorage(ttl=0.1, check_ttl_every=0.3)
+
+    request = Request(b"GET", "https://example.com")
+    first_key = generate_key(request)
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+
+    storage.store(first_key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(first_key) is not None
+    sleep(0.2)
+    assert storage.retrieve(first_key) is not None
+    sleep(0.1)
     assert storage.retrieve(first_key) is None
 
 
