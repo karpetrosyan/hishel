@@ -111,7 +111,7 @@ class AsyncFileStorage(AsyncBaseStorage):
                 str(response_path),
                 self._serializer.dumps(response=response, request=request, metadata=metadata),
             )
-        await self._remove_expired_caches()
+        await self._remove_expired_caches(response_path)
 
     async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -125,7 +125,7 @@ class AsyncFileStorage(AsyncBaseStorage):
 
         response_path = self._base_path / key
 
-        await self._remove_expired_caches()
+        await self._remove_expired_caches(response_path)
         async with self._lock:
             if response_path.exists():
                 return self._serializer.loads(await self._file_manager.read_from(str(response_path)))
@@ -134,8 +134,15 @@ class AsyncFileStorage(AsyncBaseStorage):
     async def aclose(self) -> None:  # pragma: no cover
         return
 
-    async def _remove_expired_caches(self) -> None:
-        if self._ttl is None or time.time() - self._timer < self._check_ttl_every:
+    async def _remove_expired_caches(self, response_path: Path) -> None:
+        if self._ttl is None:
+            return
+
+        if self._ttl is not None and time.time() - self._timer < self._check_ttl_every:
+            if response_path.is_file():
+                age = time.time() - response_path.stat().st_mtime
+                if age > self._ttl:
+                    response_path.unlink()
             return
 
         self._timer = time.time()
