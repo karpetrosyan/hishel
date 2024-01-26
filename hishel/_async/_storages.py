@@ -138,7 +138,7 @@ class AsyncFileStorage(AsyncBaseStorage):
         if self._ttl is None:
             return
 
-        if self._ttl is not None and time.time() - self._timer < self._check_ttl_every:
+        if time.time() - self._timer < self._check_ttl_every:
             if response_path.is_file():
                 age = time.time() - response_path.stat().st_mtime
                 if age > self._ttl:
