@@ -267,7 +267,7 @@ import boto3
 
 s3_client = boto3.client('s3')
 
-storage = hishel.S3Storage(bucket_name="cached_responses", client=client)
+storage = hishel.S3Storage(bucket_name="cached_responses", client=s3_client)
 client = hishel.CacheClient(storage=storage)
 ```
 
