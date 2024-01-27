@@ -71,6 +71,18 @@ storage = hishel.FileStorage(ttl=3600)
 If you do this, `Hishel` will delete any stored responses whose ttl has expired.
 In this example, the stored responses were limited to 1 hour.
 
+#### Check ttl every
+
+In order to avoid excessive memory utilization, `Hishel` must periodically clean the old responses, or responses that are not being used and should be deleted from the cache.
+It clears the cache by default every minute, but you may change the interval directly with the `check_ttl_every` argument.
+
+Example:
+
+```python
+import hishel
+
+storage = hishel.FileStorage(check_ttl_every=600) # check every 600s (10m) 
+```
 
 ### :material-memory: In-memory storage
 

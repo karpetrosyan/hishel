@@ -67,6 +67,9 @@ class FileStorage(BaseStorage):
     :type base_path: tp.Optional[Path], optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
     :type ttl: tp.Optional[tp.Union[int, float]], optional
+    :param check_ttl_every: How often in seconds to check staleness of **all** cache files.
+        Makes sense only with set `ttl`, defaults to 60
+    :type check_ttl_every: tp.Union[int, float]
     """
 
     def __init__(
@@ -74,6 +77,7 @@ class FileStorage(BaseStorage):
         serializer: tp.Optional[BaseSerializer] = None,
         base_path: tp.Optional[Path] = None,
         ttl: tp.Optional[tp.Union[int, float]] = None,
+        check_ttl_every: tp.Union[int, float] = 60,
     ) -> None:
         super().__init__(serializer, ttl)
 
@@ -84,6 +88,8 @@ class FileStorage(BaseStorage):
 
         self._file_manager = FileManager(is_binary=self._serializer.is_binary)
         self._lock = Lock()
+        self._check_ttl_every = check_ttl_every
+        self._last_cleaned = time.monotonic()
 
     def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
@@ -105,7 +111,7 @@ class FileStorage(BaseStorage):
                 str(response_path),
                 self._serializer.dumps(response=response, request=request, metadata=metadata),
             )
-        self._remove_expired_caches()
+        self._remove_expired_caches(response_path)
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -119,7 +125,7 @@ class FileStorage(BaseStorage):
 
         response_path = self._base_path / key
 
-        self._remove_expired_caches()
+        self._remove_expired_caches(response_path)
         with self._lock:
             if response_path.exists():
                 return self._serializer.loads(self._file_manager.read_from(str(response_path)))
@@ -128,10 +134,18 @@ class FileStorage(BaseStorage):
     def close(self) -> None:  # pragma: no cover
         return
 
-    def _remove_expired_caches(self) -> None:
+    def _remove_expired_caches(self, response_path: Path) -> None:
         if self._ttl is None:
             return
 
+        if time.monotonic() - self._last_cleaned < self._check_ttl_every:
+            if response_path.is_file():
+                age = time.time() - response_path.stat().st_mtime
+                if age > self._ttl:
+                    response_path.unlink()
+            return
+
+        self._last_cleaned = time.monotonic()
         with self._lock:
             for file in self._base_path.iterdir():
                 if file.is_file():
