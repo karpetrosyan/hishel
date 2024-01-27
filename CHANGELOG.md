@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Make `FileStorage` to check staleness of all cache files with set interval. (#169)
 - Support AWS S3 storages. (#164)
 - Move `typing_extensions` from requirements.txt to pyproject.toml. (#161)
 
