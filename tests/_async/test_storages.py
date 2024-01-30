@@ -117,7 +117,7 @@ async def test_inmemorystorage():
 
 @pytest.mark.asyncio
 async def test_filestorage_expired(use_temp_dir):
-    storage = AsyncFileStorage(ttl=0.1)
+    storage = AsyncFileStorage(ttl=0.2, check_ttl_every=0.1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
@@ -134,6 +134,32 @@ async def test_filestorage_expired(use_temp_dir):
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert await storage.retrieve(first_key) is None
+
+
+@pytest.mark.asyncio
+async def test_filestorage_timer(use_temp_dir):
+    storage = AsyncFileStorage(ttl=0.2, check_ttl_every=0.2)
+
+    first_request = Request(b"GET", "https://example.com")
+    second_request = Request(b"GET", "https://anotherexample.com")
+
+    first_key = generate_key(first_request)
+    second_key = generate_key(second_request)
+
+    response = Response(200, headers=[], content=b"test")
+    await response.aread()
+
+    await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
+    assert await storage.retrieve(first_key) is not None
+    await asleep(0.1)
+    assert await storage.retrieve(first_key) is not None
+    await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
+    assert await storage.retrieve(second_key) is not None
+    await asleep(0.1)
+    assert await storage.retrieve(first_key) is None
+    assert await storage.retrieve(second_key) is not None
+    await asleep(0.1)
+    assert await storage.retrieve(second_key) is None
 
 
 @pytest.mark.asyncio

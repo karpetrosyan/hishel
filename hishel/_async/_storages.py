@@ -6,6 +6,11 @@ from copy import deepcopy
 from pathlib import Path
 
 try:
+    import boto3
+except ImportError:  # pragma: no cover
+    boto3 = None  # type: ignore
+
+try:
     import anysqlite
 except ImportError:  # pragma: no cover
     anysqlite = None  # type: ignore
@@ -16,13 +21,14 @@ from typing_extensions import TypeAlias
 from hishel._serializers import BaseSerializer, clone_model
 
 from .._files import AsyncFileManager
+from .._s3 import AsyncS3Manager
 from .._serializers import JSONSerializer, Metadata
 from .._synchronization import AsyncLock
 from .._utils import float_seconds_to_int_milliseconds
 
 logger = logging.getLogger("hishel.storages")
 
-__all__ = ("AsyncFileStorage", "AsyncRedisStorage", "AsyncSQLiteStorage", "AsyncInMemoryStorage")
+__all__ = ("AsyncFileStorage", "AsyncRedisStorage", "AsyncSQLiteStorage", "AsyncInMemoryStorage", "AsyncS3Storage")
 
 StoredResponse: TypeAlias = tp.Tuple[Response, Request, Metadata]
 
@@ -61,6 +67,9 @@ class AsyncFileStorage(AsyncBaseStorage):
     :type base_path: tp.Optional[Path], optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
     :type ttl: tp.Optional[tp.Union[int, float]], optional
+    :param check_ttl_every: How often in seconds to check staleness of **all** cache files.
+        Makes sense only with set `ttl`, defaults to 60
+    :type check_ttl_every: tp.Union[int, float]
     """
 
     def __init__(
@@ -68,6 +77,7 @@ class AsyncFileStorage(AsyncBaseStorage):
         serializer: tp.Optional[BaseSerializer] = None,
         base_path: tp.Optional[Path] = None,
         ttl: tp.Optional[tp.Union[int, float]] = None,
+        check_ttl_every: tp.Union[int, float] = 60,
     ) -> None:
         super().__init__(serializer, ttl)
 
@@ -78,6 +88,8 @@ class AsyncFileStorage(AsyncBaseStorage):
 
         self._file_manager = AsyncFileManager(is_binary=self._serializer.is_binary)
         self._lock = AsyncLock()
+        self._check_ttl_every = check_ttl_every
+        self._last_cleaned = time.monotonic()
 
     async def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
@@ -99,7 +111,7 @@ class AsyncFileStorage(AsyncBaseStorage):
                 str(response_path),
                 self._serializer.dumps(response=response, request=request, metadata=metadata),
             )
-        await self._remove_expired_caches()
+        await self._remove_expired_caches(response_path)
 
     async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -113,7 +125,7 @@ class AsyncFileStorage(AsyncBaseStorage):
 
         response_path = self._base_path / key
 
-        await self._remove_expired_caches()
+        await self._remove_expired_caches(response_path)
         async with self._lock:
             if response_path.exists():
                 return self._serializer.loads(await self._file_manager.read_from(str(response_path)))
@@ -122,10 +134,18 @@ class AsyncFileStorage(AsyncBaseStorage):
     async def aclose(self) -> None:  # pragma: no cover
         return
 
-    async def _remove_expired_caches(self) -> None:
+    async def _remove_expired_caches(self, response_path: Path) -> None:
         if self._ttl is None:
             return
 
+        if time.monotonic() - self._last_cleaned < self._check_ttl_every:
+            if response_path.is_file():
+                age = time.time() - response_path.stat().st_mtime
+                if age > self._ttl:
+                    response_path.unlink()
+            return
+
+        self._last_cleaned = time.monotonic()
         async with self._lock:
             for file in self._base_path.iterdir():
                 if file.is_file():
@@ -402,3 +422,89 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
 
             for key in keys_to_remove:
                 self._cache.remove_key(key)
+
+
+class AsyncS3Storage(AsyncBaseStorage):  # pragma: no cover
+    """
+    AWS S3 storage.
+
+    :param bucket_name: The name of the bucket to store the responses in
+    :type bucket_name: str
+    :param serializer: Serializer capable of serializing and de-serializing http responses, defaults to None
+    :type serializer: tp.Optional[BaseSerializer], optional
+    :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
+    :type ttl: tp.Optional[tp.Union[int, float]], optional
+    :param client: A client for S3, defaults to None
+    :type client: tp.Optional[tp.Any], optional
+    """
+
+    def __init__(
+        self,
+        bucket_name: str,
+        serializer: tp.Optional[BaseSerializer] = None,
+        ttl: tp.Optional[tp.Union[int, float]] = None,
+        client: tp.Optional[tp.Any] = None,
+    ) -> None:
+        super().__init__(serializer, ttl)
+
+        if boto3 is None:  # pragma: no cover
+            raise RuntimeError(
+                (
+                    f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                    "Check that you have `Hishel` installed with the `s3` extension as shown.\n"
+                    "```pip install hishel[s3]```"
+                )
+            )
+
+        self._bucket_name = bucket_name
+        client = client or boto3.client("s3")
+        self._s3_manager = AsyncS3Manager(client=client, bucket_name=bucket_name, is_binary=self._serializer.is_binary)
+        self._lock = AsyncLock()
+
+    async def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+        """
+        Stores the response in the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :param response: An HTTP response
+        :type response: httpcore.Response
+        :param request: An HTTP request
+        :type request: httpcore.Request
+        :param metadata: Additioal information about the stored response
+        :type metadata: Metadata`
+        """
+
+        async with self._lock:
+            serialized = self._serializer.dumps(response=response, request=request, metadata=metadata)
+            await self._s3_manager.write_to(path=key, data=serialized)
+
+        await self._remove_expired_caches()
+
+    async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
+        """
+        Retreives the response from the cache using his key.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :return: An HTTP response and its HTTP request.
+        :rtype: tp.Optional[StoredResponse]
+        """
+
+        await self._remove_expired_caches()
+        async with self._lock:
+            try:
+                return self._serializer.loads(await self._s3_manager.read_from(path=key))
+            except Exception:
+                return None
+
+    async def aclose(self) -> None:  # pragma: no cover
+        return
+
+    async def _remove_expired_caches(self) -> None:
+        if self._ttl is None:
+            return
+
+        async with self._lock:
+            converted_ttl = float_seconds_to_int_milliseconds(self._ttl)
+            await self._s3_manager.remove_expired(ttl=converted_ttl)

@@ -29,7 +29,8 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
-    "httpx>=0.22.0"
+    "httpx>=0.22.0",
+    "typing_extensions>=4.8.0"
 ]
 
 [project.optional-dependencies]
@@ -44,6 +45,10 @@ redis = [
 
 sqlite = [
     "anysqlite>=0.0.5"
+]
+
+s3 = [
+    "boto3>=1.15.0,<=1.15.3"
 ]
 
 [project.urls]
@@ -88,7 +93,8 @@ filterwarnings = []
 [tool.coverage.run]
 omit = [
     "venv/*", 
-    "hishel/_sync/*"
+    "hishel/_sync/*",
+    "hishel/_s3.py"
 ]
 include = ["hishel/*", "tests/*"]
 
