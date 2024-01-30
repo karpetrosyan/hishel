@@ -18,6 +18,8 @@ SUBS = [
     ("AsyncRedisStorage", "RedisStorage"),
     ("AsyncSQLiteStorage", "SQLiteStorage"),
     ("AsyncInMemoryStorage", "InMemoryStorage"),
+    ("AsyncS3Storage", "S3Storage"),
+    ("AsyncS3Manager", "S3Manager"),
     ("import redis.asyncio as redis", "import redis"),
     ("AsyncCacheTransport", "CacheTransport"),
     ("AsyncBaseTransport", "BaseTransport"),
