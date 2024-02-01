@@ -19,4 +19,4 @@ coverage==7.3.2
 types-PyYAML==6.0.12.12
 
 # build
-hatch==1.7.0
+hatch==1.9.3
