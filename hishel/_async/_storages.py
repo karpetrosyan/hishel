@@ -424,7 +424,7 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
                 self._cache.remove_key(key)
 
 
-class AsyncS3Storage(AsyncBaseStorage):  # pragma: no cover
+class AsyncS3Storage(AsyncBaseStorage):
     """
     AWS S3 storage.
 

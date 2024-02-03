@@ -48,7 +48,8 @@ sqlite = [
 ]
 
 s3 = [
-    "boto3>=1.15.0,<=1.15.3"
+    "boto3>=1.15.0,<=1.15.3; python_version < '3.12'",
+    "boto3>=1.15.3; python_version >= '3.12'"
 ]
 
 [project.urls]
