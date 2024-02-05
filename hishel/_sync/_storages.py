@@ -424,7 +424,7 @@ class InMemoryStorage(BaseStorage):
                 self._cache.remove_key(key)
 
 
-class S3Storage(BaseStorage):  # pragma: no cover
+class S3Storage(BaseStorage):
     """
     AWS S3 storage.
 
