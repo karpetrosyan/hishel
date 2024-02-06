@@ -13,28 +13,6 @@ import hishel
 from hishel._utils import generate_key
 
 
-@pytest.fixture()
-async def hishel_client():
-    storage = hishel.AsyncFileStorage()
-    controller = hishel.Controller()
-    client = hishel.AsyncCacheClient(
-        storage=storage,
-        controller=controller,
-    )
-
-    async with client:
-        yield client
-
-
-@pytest.fixture()
-def clear_cache():
-    yield
-    workdir = Path(os.getcwd() + "/.cache/hishel/")
-    for file in workdir.iterdir():
-        if file.is_file():
-            os.unlink(file)
-
-
 @pytest.mark.anyio
 async def test_client_301():
     async with hishel.MockAsyncTransport() as transport:
@@ -53,7 +31,7 @@ async def test_client_301():
 
 @pytest.mark.anyio
 @respx.mock
-async def test_empty_cachefile_handling(hishel_client: hishel.AsyncCacheClient, clear_cache: None) -> None:
+async def test_empty_cachefile_handling(use_temp_dir: None) -> None:
     respx.get("https://example.com/").respond(
         status_code=200,
         headers=[
@@ -63,12 +41,20 @@ async def test_empty_cachefile_handling(hishel_client: hishel.AsyncCacheClient, 
         text="test",
     )
 
+    storage = hishel.AsyncFileStorage()
+    controller = hishel.Controller()
+    client = hishel.AsyncCacheClient(
+        storage=storage,
+        controller=controller,
+    )
+
     request = Request(b"GET", "https://example.com/")
     key = generate_key(request)
+    print(os.getcwd())
     filedir = Path(os.getcwd() + "/.cache/hishel/" + key)
 
-    await hishel_client.get("https://example.com/")
-    response = await hishel_client.get("https://example.com/")
+    await client.get("https://example.com/")
+    response = await client.get("https://example.com/")
 
     assert response.status_code == 200
     assert response.text == "test"
@@ -78,10 +64,10 @@ async def test_empty_cachefile_handling(hishel_client: hishel.AsyncCacheClient, 
         file.truncate(0)
     assert os.path.getsize(filedir) == 0
 
-    response = await hishel_client.get("https://example.com/")
+    response = await client.get("https://example.com/")
     assert response.status_code == 200
     assert response.text == "test"
     assert response.extensions["from_cache"] is False
 
-    response = await hishel_client.get("https://example.com/")
+    response = await client.get("https://example.com/")
     assert response.extensions["from_cache"]
