@@ -6,33 +6,10 @@ from wsgiref.handlers import format_date_time
 
 import httpx
 import pytest
-import respx
 from httpcore import Request
 
 import hishel
 from hishel._utils import generate_key
-
-
-@pytest.fixture()
-def hishel_client():
-    storage = hishel.FileStorage()
-    controller = hishel.Controller()
-    client = hishel.CacheClient(
-        storage=storage,
-        controller=controller,
-    )
-
-    with client:
-        yield client
-
-
-@pytest.fixture()
-def clear_cache():
-    yield
-    workdir = Path(os.getcwd() + "/.cache/hishel/")
-    for file in workdir.iterdir():
-        if file.is_file():
-            os.unlink(file)
 
 
 
@@ -52,36 +29,42 @@ def test_client_301():
 
 
 
-@respx.mock
-def test_empty_cachefile_handling(hishel_client: hishel.CacheClient, clear_cache: None) -> None:
-    respx.get("https://example.com/").respond(
-        status_code=200,
-        headers=[
-            ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
-            ("Date", format_date_time(mktime((datetime.now() - timedelta(hours=2)).timetuple()))),
-        ],
-        text="test",
-    )
+def test_empty_cachefile_handling(use_temp_dir: None) -> None:
+    with hishel.MockTransport() as transport:
+        transport.add_responses(
+            [
+                httpx.Response(
+                    status_code=200,
+                    headers=[
+                        ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
+                        ("Date", format_date_time(mktime((datetime.now() - timedelta(hours=2)).timetuple()))),
+                    ],
+                    text="test",
+                )
+                for i in range(2)
+            ]
+        )
 
-    request = Request(b"GET", "https://example.com/")
-    key = generate_key(request)
-    filedir = Path(os.getcwd() + "/.cache/hishel/" + key)
+        with hishel.CacheClient(storage=hishel.FileStorage(), transport=transport) as client:
+            request = Request(b"GET", "https://example.com/")
+            key = generate_key(request)
+            filedir = Path(os.getcwd() + "/.cache/hishel/" + key)
 
-    hishel_client.get("https://example.com/")
-    response = hishel_client.get("https://example.com/")
+            client.get("https://example.com/")
+            response = client.get("https://example.com/")
 
-    assert response.status_code == 200
-    assert response.text == "test"
-    assert response.extensions["from_cache"]
+            assert response.status_code == 200
+            assert response.text == "test"
+            assert response.extensions["from_cache"]
 
-    with open(filedir, "w+", encoding="utf-8") as file:
-        file.truncate(0)
-    assert os.path.getsize(filedir) == 0
+            with open(filedir, "w+", encoding="utf-8") as file:
+                file.truncate(0)
+            assert os.path.getsize(filedir) == 0
 
-    response = hishel_client.get("https://example.com/")
-    assert response.status_code == 200
-    assert response.text == "test"
-    assert response.extensions["from_cache"] is False
+            response = client.get("https://example.com/")
+            assert response.status_code == 200
+            assert response.text == "test"
+            assert response.extensions["from_cache"] is False
 
-    response = hishel_client.get("https://example.com/")
-    assert response.extensions["from_cache"]
+            response = client.get("https://example.com/")
+            assert response.extensions["from_cache"]
