@@ -1,5 +1,6 @@
 import datetime
 import os
+from pathlib import Path
 
 import sqlite3
 import boto3
@@ -292,3 +293,26 @@ def test_inmemory_expired():
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert storage.retrieve(first_key) is None
+
+
+
+def test_filestorage_empty_file_exception(use_temp_dir):
+    """When working with concurrency sometimes Hishel
+    may leave a cache file empty. In this case this should not
+    cause a `JSONDecodeError`, but treat this situation as
+    no cache file was created. Issue #180"""
+
+    storage = FileStorage()
+    request = Request(b"GET", "https://example.com")
+    key = generate_key(request)
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    stored_data = storage.retrieve(key)
+
+    assert stored_data is not None
+    filedir = Path(os.getcwd() + "/.cache/hishel/" + key)
+    with open(filedir, "w+", encoding="utf-8") as file:
+        file.truncate(0)
+    assert os.path.getsize(filedir) == 0
+    assert storage.retrieve(key) is None

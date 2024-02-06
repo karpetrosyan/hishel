@@ -18,6 +18,7 @@ trio==0.24.0
 coverage==7.4.1
 types-PyYAML==6.0.12.12
 moto[s3]==4.2.14
+pytest-httpx==0.29.0
 
 # build
 hatch==1.7.0
