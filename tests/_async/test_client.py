@@ -29,7 +29,7 @@ async def test_client_301():
 
 
 @pytest.mark.anyio
-async def test_empty_cachefile_handling(use_temp_dir: None) -> None:
+async def test_empty_cachefile_handling(use_temp_dir):
     async with hishel.MockAsyncTransport() as transport:
         transport.add_responses(
             [

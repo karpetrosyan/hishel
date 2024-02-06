@@ -29,7 +29,7 @@ def test_client_301():
 
 
 
-def test_empty_cachefile_handling(use_temp_dir: None) -> None:
+def test_empty_cachefile_handling(use_temp_dir):
     with hishel.MockTransport() as transport:
         transport.add_responses(
             [
