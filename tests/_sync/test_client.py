@@ -6,8 +6,8 @@ from wsgiref.handlers import format_date_time
 
 import httpx
 import pytest
+import respx
 from httpcore import Request
-from pytest_httpx import HTTPXMock
 
 import hishel
 from hishel._utils import generate_key
@@ -52,10 +52,9 @@ def test_client_301():
 
 
 
-def test_empty_cachefile_handling(
-    hishel_client: hishel.CacheClient, httpx_mock: HTTPXMock, clear_cache: None
-) -> None:
-    httpx_mock.add_response(
+@respx.mock
+def test_empty_cachefile_handling(hishel_client: hishel.CacheClient, clear_cache: None) -> None:
+    respx.get("https://example.com/").respond(
         status_code=200,
         headers=[
             ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
@@ -64,25 +63,25 @@ def test_empty_cachefile_handling(
         text="test",
     )
 
-    request = Request(b"GET", "https://example.com")
+    request = Request(b"GET", "https://example.com/")
     key = generate_key(request)
     filedir = Path(os.getcwd() + "/.cache/hishel/" + key)
 
-    hishel_client.get("https://example.com")
-    response = hishel_client.get("https://example.com")
+    hishel_client.get("https://example.com/")
+    response = hishel_client.get("https://example.com/")
 
     assert response.status_code == 200
     assert response.text == "test"
-    assert response.extensions["from_cache"] is True
+    assert response.extensions["from_cache"]
 
     with open(filedir, "w+", encoding="utf-8") as file:
         file.truncate(0)
     assert os.path.getsize(filedir) == 0
 
-    response = hishel_client.get("https://example.com")
+    response = hishel_client.get("https://example.com/")
     assert response.status_code == 200
     assert response.text == "test"
     assert response.extensions["from_cache"] is False
 
-    response = hishel_client.get("https://example.com")
-    assert response.extensions["from_cache"] is True
+    response = hishel_client.get("https://example.com/")
+    assert response.extensions["from_cache"]
