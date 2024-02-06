@@ -6,7 +6,6 @@ from wsgiref.handlers import format_date_time
 
 import httpx
 import pytest
-import respx
 from httpcore import Request
 
 import hishel
@@ -30,44 +29,42 @@ async def test_client_301():
 
 
 @pytest.mark.anyio
-@respx.mock
 async def test_empty_cachefile_handling(use_temp_dir: None) -> None:
-    respx.get("https://example.com/").respond(
-        status_code=200,
-        headers=[
-            ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
-            ("Date", format_date_time(mktime((datetime.now() - timedelta(hours=2)).timetuple()))),
-        ],
-        text="test",
-    )
+    async with hishel.MockAsyncTransport() as transport:
+        transport.add_responses(
+            [
+                httpx.Response(
+                    status_code=200,
+                    headers=[
+                        ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
+                        ("Date", format_date_time(mktime((datetime.now() - timedelta(hours=2)).timetuple()))),
+                    ],
+                    text="test",
+                )
+                for i in range(2)
+            ]
+        )
 
-    storage = hishel.AsyncFileStorage()
-    controller = hishel.Controller()
-    client = hishel.AsyncCacheClient(
-        storage=storage,
-        controller=controller,
-    )
+        async with hishel.AsyncCacheClient(storage=hishel.AsyncFileStorage(), transport=transport) as client:
+            request = Request(b"GET", "https://example.com/")
+            key = generate_key(request)
+            filedir = Path(os.getcwd() + "/.cache/hishel/" + key)
 
-    request = Request(b"GET", "https://example.com/")
-    key = generate_key(request)
-    print(os.getcwd())
-    filedir = Path(os.getcwd() + "/.cache/hishel/" + key)
+            await client.get("https://example.com/")
+            response = await client.get("https://example.com/")
 
-    await client.get("https://example.com/")
-    response = await client.get("https://example.com/")
+            assert response.status_code == 200
+            assert response.text == "test"
+            assert response.extensions["from_cache"]
 
-    assert response.status_code == 200
-    assert response.text == "test"
-    assert response.extensions["from_cache"]
+            with open(filedir, "w+", encoding="utf-8") as file:
+                file.truncate(0)
+            assert os.path.getsize(filedir) == 0
 
-    with open(filedir, "w+", encoding="utf-8") as file:
-        file.truncate(0)
-    assert os.path.getsize(filedir) == 0
+            response = await client.get("https://example.com/")
+            assert response.status_code == 200
+            assert response.text == "test"
+            assert response.extensions["from_cache"] is False
 
-    response = await client.get("https://example.com/")
-    assert response.status_code == 200
-    assert response.text == "test"
-    assert response.extensions["from_cache"] is False
-
-    response = await client.get("https://example.com/")
-    assert response.extensions["from_cache"]
+            response = await client.get("https://example.com/")
+            assert response.extensions["from_cache"]
