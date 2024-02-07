@@ -36,7 +36,7 @@
 - 🧠 **Smart**: Attempts to clearly implement RFC 9111, understands `Vary`, `Etag`, `Last-Modified`,  `Cache-Control`, and `Expires` headers, and *handles response re-validation automatically*.
 - ⚙️  **Configurable**: You have complete control over how the responses are stored and serialized.
 - 📦 **From the package**:
-    - Built-in support for [File system](https://en.wikipedia.org/wiki/File_system), [Redis](https://en.wikipedia.org/wiki/Redis), and [SQLite](https://en.wikipedia.org/wiki/SQLite) backends.
+    - Built-in support for [File system](https://en.wikipedia.org/wiki/File_system), [Redis](https://en.wikipedia.org/wiki/Redis), [SQLite](https://en.wikipedia.org/wiki/SQLite), and [AWS S3](https://aws.amazon.com/s3/) backends.
     - Built-in support for [JSON](https://en.wikipedia.org/wiki/JSON), [YAML](https://en.wikipedia.org/wiki/YAML), and [pickle](https://docs.python.org/3/library/pickle.html) serializers.
 - 🚀 **Very fast**: Your requests will be even faster if there are *no IO operations*.
 
