@@ -347,7 +347,7 @@ async def test_s3storage_timer(use_temp_dir, s3):
 
 @pytest.mark.anyio
 async def test_s3storage_key_error(use_temp_dir, s3):
-    """Triggers `S3.Client.exceptions.NoSuchKey`"""
+    """Triggers `NoSuchKey` error."""
 
     boto3.client("s3").create_bucket(Bucket="testBucket")
     storage = AsyncS3Storage(bucket_name="testBucket", ttl=60)
