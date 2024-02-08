@@ -436,6 +436,9 @@ class AsyncS3Storage(AsyncBaseStorage):
     :type serializer: tp.Optional[BaseSerializer], optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
     :type ttl: tp.Optional[tp.Union[int, float]], optional
+    :param check_ttl_every: How often in seconds to check staleness of **all** cache files.
+        Makes sense only with set `ttl`, defaults to 60
+    :type check_ttl_every: tp.Union[int, float]
     :param client: A client for S3, defaults to None
     :type client: tp.Optional[tp.Any], optional
     """
@@ -445,6 +448,7 @@ class AsyncS3Storage(AsyncBaseStorage):
         bucket_name: str,
         serializer: tp.Optional[BaseSerializer] = None,
         ttl: tp.Optional[tp.Union[int, float]] = None,
+        check_ttl_every: tp.Union[int, float] = 60,
         client: tp.Optional[tp.Any] = None,
     ) -> None:
         super().__init__(serializer, ttl)
@@ -460,7 +464,12 @@ class AsyncS3Storage(AsyncBaseStorage):
 
         self._bucket_name = bucket_name
         client = client or boto3.client("s3")
-        self._s3_manager = AsyncS3Manager(client=client, bucket_name=bucket_name, is_binary=self._serializer.is_binary)
+        self._s3_manager = AsyncS3Manager(
+            client=client,
+            bucket_name=bucket_name,
+            is_binary=self._serializer.is_binary,
+            check_ttl_every=check_ttl_every,
+        )
         self._lock = AsyncLock()
 
     async def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
@@ -481,7 +490,7 @@ class AsyncS3Storage(AsyncBaseStorage):
             serialized = self._serializer.dumps(response=response, request=request, metadata=metadata)
             await self._s3_manager.write_to(path=key, data=serialized)
 
-        await self._remove_expired_caches()
+        await self._remove_expired_caches(key)
 
     async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -493,7 +502,7 @@ class AsyncS3Storage(AsyncBaseStorage):
         :rtype: tp.Optional[StoredResponse]
         """
 
-        await self._remove_expired_caches()
+        await self._remove_expired_caches(key)
         async with self._lock:
             try:
                 return self._serializer.loads(await self._s3_manager.read_from(path=key))
@@ -503,10 +512,10 @@ class AsyncS3Storage(AsyncBaseStorage):
     async def aclose(self) -> None:  # pragma: no cover
         return
 
-    async def _remove_expired_caches(self) -> None:
+    async def _remove_expired_caches(self, key: str) -> None:
         if self._ttl is None:
             return
 
         async with self._lock:
             converted_ttl = float_seconds_to_int_milliseconds(self._ttl)
-            await self._s3_manager.remove_expired(ttl=converted_ttl)
+            await self._s3_manager.remove_expired(ttl=converted_ttl, key=key)

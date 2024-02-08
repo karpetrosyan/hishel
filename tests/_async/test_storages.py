@@ -316,3 +316,42 @@ async def test_filestorage_empty_file_exception(use_temp_dir):
         file.truncate(0)
     assert os.path.getsize(filedir) == 0
     assert await storage.retrieve(key) is None
+
+
+@pytest.mark.anyio
+async def test_s3storage_timer(use_temp_dir, s3):
+    boto3.client("s3").create_bucket(Bucket="testBucket")
+    storage = AsyncS3Storage(bucket_name="testBucket", ttl=5, check_ttl_every=5)
+
+    first_request = Request(b"GET", "https://example.com")
+    second_request = Request(b"GET", "https://anotherexample.com")
+
+    first_key = generate_key(first_request)
+    second_key = generate_key(second_request)
+
+    response = Response(200, headers=[], content=b"test")
+    await response.aread()
+
+    await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
+    assert await storage.retrieve(first_key) is not None
+    await asleep(3)
+    assert await storage.retrieve(first_key) is not None
+    await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
+    assert await storage.retrieve(second_key) is not None
+    await asleep(2)
+    assert await storage.retrieve(first_key) is None
+    assert await storage.retrieve(second_key) is not None
+    await asleep(3)
+    assert await storage.retrieve(second_key) is None
+
+
+@pytest.mark.anyio
+async def test_s3storage_key_error(use_temp_dir, s3):
+    """Triggers `S3.Client.exceptions.NoSuchKey`"""
+
+    boto3.client("s3").create_bucket(Bucket="testBucket")
+    storage = AsyncS3Storage(bucket_name="testBucket", ttl=60)
+    first_request = Request(b"GET", "https://example.com")
+    first_key = generate_key(first_request)
+
+    assert await storage.retrieve(first_key) is None

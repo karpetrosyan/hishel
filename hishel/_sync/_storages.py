@@ -436,6 +436,9 @@ class S3Storage(BaseStorage):
     :type serializer: tp.Optional[BaseSerializer], optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
     :type ttl: tp.Optional[tp.Union[int, float]], optional
+    :param check_ttl_every: How often in seconds to check staleness of **all** cache files.
+        Makes sense only with set `ttl`, defaults to 60
+    :type check_ttl_every: tp.Union[int, float]
     :param client: A client for S3, defaults to None
     :type client: tp.Optional[tp.Any], optional
     """
@@ -445,6 +448,7 @@ class S3Storage(BaseStorage):
         bucket_name: str,
         serializer: tp.Optional[BaseSerializer] = None,
         ttl: tp.Optional[tp.Union[int, float]] = None,
+        check_ttl_every: tp.Union[int, float] = 60,
         client: tp.Optional[tp.Any] = None,
     ) -> None:
         super().__init__(serializer, ttl)
@@ -460,7 +464,12 @@ class S3Storage(BaseStorage):
 
         self._bucket_name = bucket_name
         client = client or boto3.client("s3")
-        self._s3_manager = S3Manager(client=client, bucket_name=bucket_name, is_binary=self._serializer.is_binary)
+        self._s3_manager = S3Manager(
+            client=client,
+            bucket_name=bucket_name,
+            is_binary=self._serializer.is_binary,
+            check_ttl_every=check_ttl_every,
+        )
         self._lock = Lock()
 
     def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
@@ -481,7 +490,7 @@ class S3Storage(BaseStorage):
             serialized = self._serializer.dumps(response=response, request=request, metadata=metadata)
             self._s3_manager.write_to(path=key, data=serialized)
 
-        self._remove_expired_caches()
+        self._remove_expired_caches(key)
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -493,7 +502,7 @@ class S3Storage(BaseStorage):
         :rtype: tp.Optional[StoredResponse]
         """
 
-        self._remove_expired_caches()
+        self._remove_expired_caches(key)
         with self._lock:
             try:
                 return self._serializer.loads(self._s3_manager.read_from(path=key))
@@ -503,10 +512,10 @@ class S3Storage(BaseStorage):
     def close(self) -> None:  # pragma: no cover
         return
 
-    def _remove_expired_caches(self) -> None:
+    def _remove_expired_caches(self, key: str) -> None:
         if self._ttl is None:
             return
 
         with self._lock:
             converted_ttl = float_seconds_to_int_milliseconds(self._ttl)
-            self._s3_manager.remove_expired(ttl=converted_ttl)
+            self._s3_manager.remove_expired(ttl=converted_ttl, key=key)
