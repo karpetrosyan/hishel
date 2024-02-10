@@ -3,11 +3,7 @@ import typing as tp
 from datetime import datetime, timedelta, timezone
 
 from anyio import to_thread
-
-try:
-    from botocore.exceptions import ClientError
-except ImportError:  # pragma: no cover
-    ClientError = Exception  # type: ignore
+from botocore.exceptions import ClientError
 
 
 class S3Manager:
