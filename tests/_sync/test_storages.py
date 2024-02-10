@@ -184,7 +184,7 @@ def test_filestorage_expired(use_temp_dir):
 
 def test_s3storage_expired(use_temp_dir, s3):
     boto3.client("s3").create_bucket(Bucket="testBucket")
-    storage = S3Storage(bucket_name="testBucket", ttl=1)
+    storage = S3Storage(bucket_name="testBucket", ttl=3)
 
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
@@ -198,7 +198,7 @@ def test_s3storage_expired(use_temp_dir, s3):
     storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
     assert storage.retrieve(first_key) is not None
 
-    sleep(1)
+    sleep(3)
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert storage.retrieve(first_key) is None

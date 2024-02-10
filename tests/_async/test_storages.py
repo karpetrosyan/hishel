@@ -184,7 +184,7 @@ async def test_filestorage_expired(use_temp_dir):
 @pytest.mark.asyncio
 async def test_s3storage_expired(use_temp_dir, s3):
     boto3.client("s3").create_bucket(Bucket="testBucket")
-    storage = AsyncS3Storage(bucket_name="testBucket", ttl=1)
+    storage = AsyncS3Storage(bucket_name="testBucket", ttl=3)
 
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
@@ -198,7 +198,7 @@ async def test_s3storage_expired(use_temp_dir, s3):
     await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
     assert await storage.retrieve(first_key) is not None
 
-    await asleep(1)
+    await asleep(3)
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert await storage.retrieve(first_key) is None
