@@ -17,6 +17,10 @@ T = tp.TypeVar("T")
 __all__ = ("AsyncCacheConnectionPool",)
 
 
+async def fake_stream(content: bytes) -> tp.AsyncIterable[bytes]:
+    yield content
+
+
 def generate_504() -> Response:
     return Response(status=504)
 
@@ -60,7 +64,16 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
         if request.extensions.get("cache_disabled", False):
             request.headers.extend([(b"cache-control", b"no-cache"), (b"cache-control", b"max-age=0")])
 
-        key = self._controller._key_generator(request)
+        if request.method.upper() not in [b"GET", b"HEAD"]:
+            # If the HTTP method is, for example, POST,
+            # we must also use the request data to generate the hash.
+            assert isinstance(request.stream, tp.AsyncIterable)
+            body_for_key = b"".join([chunk async for chunk in request.stream])
+            request.stream = fake_stream(body_for_key)
+        else:
+            body_for_key = b""
+
+        key = self._controller._key_generator(request, body_for_key)
         stored_data = await self._storage.retrieve(key)
 
         request_cache_control = parse_cache_control(extract_header_values_decoded(request.headers, b"Cache-Control"))

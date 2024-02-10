@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from httpcore import Request, Response
 
@@ -58,7 +60,10 @@ def test_is_cachable_for_unsupported_method():
 def test_controller_with_unsupported_method():
     with pytest.raises(
         RuntimeError,
-        match="Hishel does not support the HTTP method `DELETE`. Please use either `GET` or `HEAD`.",
+        match=re.escape(
+            "Hishel does not support the HTTP method `DELETE`.\nPlease use the methods "
+            "from this list: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']"
+        ),
     ):
         Controller(cacheable_methods=["DELETE"])
 

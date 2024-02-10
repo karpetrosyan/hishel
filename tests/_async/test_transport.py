@@ -217,7 +217,7 @@ async def test_transport_with_cache_disabled_extension():
 
 @pytest.mark.anyio
 async def test_transport_with_custom_key_generator():
-    controller = hishel.Controller(key_generator=lambda request: request.url.host.decode())
+    controller = hishel.Controller(key_generator=lambda request, body: request.url.host.decode())
 
     async with hishel.MockAsyncTransport() as transport:
         transport.add_responses([httpx.Response(301)])
