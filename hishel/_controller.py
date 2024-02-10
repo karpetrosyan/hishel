@@ -119,7 +119,7 @@ class Controller:
             self._cacheable_methods.append("GET")
         else:
             for method in cacheable_methods:
-                if method.upper() not in ["GET", "HEAD"]:
+                if method.upper() not in HTTP_METHODS:
                     raise RuntimeError(
                         f"Hishel does not support the HTTP method `{method}`.\n"
                         f"Please use the methods from this list: {HTTP_METHODS}"
