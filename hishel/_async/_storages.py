@@ -128,7 +128,9 @@ class AsyncFileStorage(AsyncBaseStorage):
         await self._remove_expired_caches(response_path)
         async with self._lock:
             if response_path.exists():
-                return self._serializer.loads(await self._file_manager.read_from(str(response_path)))
+                read_data = await self._file_manager.read_from(str(response_path))
+                if len(read_data) != 0:
+                    return self._serializer.loads(read_data)
         return None
 
     async def aclose(self) -> None:  # pragma: no cover
@@ -424,7 +426,7 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
                 self._cache.remove_key(key)
 
 
-class AsyncS3Storage(AsyncBaseStorage):  # pragma: no cover
+class AsyncS3Storage(AsyncBaseStorage):
     """
     AWS S3 storage.
 

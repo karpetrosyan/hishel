@@ -128,7 +128,9 @@ class FileStorage(BaseStorage):
         self._remove_expired_caches(response_path)
         with self._lock:
             if response_path.exists():
-                return self._serializer.loads(self._file_manager.read_from(str(response_path)))
+                read_data = self._file_manager.read_from(str(response_path))
+                if len(read_data) != 0:
+                    return self._serializer.loads(read_data)
         return None
 
     def close(self) -> None:  # pragma: no cover
@@ -424,7 +426,7 @@ class InMemoryStorage(BaseStorage):
                 self._cache.remove_key(key)
 
 
-class S3Storage(BaseStorage):  # pragma: no cover
+class S3Storage(BaseStorage):
     """
     AWS S3 storage.
 
