@@ -15,7 +15,7 @@ Example:
 ```python
 import hishel
 
-controller = hishel.Controller(cacheable_methods=["GET", "PUT"])
+controller = hishel.Controller(cacheable_methods=["GET", "POST"])
 client = hishel.CacheClient(controller=controller)
 ```
 
@@ -118,8 +118,8 @@ import hishel
 import httpcore
 from hishel._utils import generate_key
 
-def custom_key_generator(request: httpcore.Request):
-    key = generate_key(request)
+def custom_key_generator(request: httpcore.Request, body: bytes):
+    key = generate_key(request, body)
     method = request.method.decode()
     host = request.url.host.decode()
     return f"{method}|{host}|{key}"

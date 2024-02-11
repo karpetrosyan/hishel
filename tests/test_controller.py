@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from httpcore import Request, Response
 
@@ -45,22 +47,38 @@ def test_is_cachable_for_heuristically_cachable():
     assert controller.is_cachable(request=request, response=response)
 
 
-def test_is_cachable_for_unsupported_method():
-    controller = Controller(cacheable_methods=["HEAD"])
+def test_is_cachable_for_invalid_method():
+    controller = Controller(cacheable_methods=["GET"])
 
-    request = Request(b"GET", b"https://example.com", headers=[])
+    request = Request(b"POST", b"https://example.com", headers=[])
 
-    response = Response(200, headers=[(b"Expires", b"some-date")])
+    response = Response(200, headers=[])
 
     assert not controller.is_cachable(request=request, response=response)
+
+
+def test_is_cachable_for_post():
+    controller = Controller(cacheable_methods=["POST"])
+
+    request = Request(b"POST", b"https://example.com", headers=[])
+    response = Response(
+        status=200,
+        headers=[
+            (b"Cache-Control", b"max-age=3600"),
+        ],
+    )
+    assert controller.is_cachable(request=request, response=response)
 
 
 def test_controller_with_unsupported_method():
     with pytest.raises(
         RuntimeError,
-        match="Hishel does not support the HTTP method `DELETE`. Please use either `GET` or `HEAD`.",
+        match=re.escape(
+            "Hishel does not support the HTTP method `INVALID_METHOD`.\nPlease use the methods "
+            "from this list: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']"
+        ),
     ):
-        Controller(cacheable_methods=["DELETE"])
+        Controller(cacheable_methods=["INVALID_METHOD"])
 
 
 def test_is_cachable_for_unsupported_status():

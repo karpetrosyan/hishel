@@ -15,6 +15,7 @@ from ._utils import (
 )
 
 HEURISTICALLY_CACHEABLE_STATUS_CODES = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
+HTTP_METHODS = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]
 
 __all__ = ("Controller", "HEURISTICALLY_CACHEABLE_STATUS_CODES")
 
@@ -110,7 +111,7 @@ class Controller:
         clock: tp.Optional[BaseClock] = None,
         allow_stale: bool = False,
         always_revalidate: bool = False,
-        key_generator: tp.Optional[tp.Callable[[Request], str]] = None,
+        key_generator: tp.Optional[tp.Callable[[Request, tp.Optional[bytes]], str]] = None,
     ):
         self._cacheable_methods = []
 
@@ -118,9 +119,10 @@ class Controller:
             self._cacheable_methods.append("GET")
         else:
             for method in cacheable_methods:
-                if method.upper() not in ["GET", "HEAD"]:
+                if method.upper() not in HTTP_METHODS:
                     raise RuntimeError(
-                        f"Hishel does not support the HTTP method `{method}`. Please use either `GET` or `HEAD`."
+                        f"Hishel does not support the HTTP method `{method}`.\n"
+                        f"Please use the methods from this list: {HTTP_METHODS}"
                     )
                 self._cacheable_methods.append(method.upper())
 

@@ -196,7 +196,7 @@ async def test_pool_with_cache_disabled_extension():
 
 @pytest.mark.anyio
 async def test_pool_with_custom_key_generator():
-    controller = hishel.Controller(key_generator=lambda request: request.url.host.decode())
+    controller = hishel.Controller(key_generator=lambda request, body: request.url.host.decode())
 
     async with hishel.MockAsyncConnectionPool() as pool:
         pool.add_responses([httpcore.Response(301)])
@@ -230,3 +230,26 @@ async def test_pool_with_wrong_type_of_storage():
             controller=hishel.Controller(),
             storage=storage,  # type: ignore
         )
+
+
+@pytest.mark.anyio
+async def test_pool_caching_post_method():
+    controller = hishel.Controller(cacheable_methods=["POST"])
+
+    async with hishel.MockAsyncConnectionPool() as pool:
+        pool.add_responses([httpcore.Response(301), httpcore.Response(200)])
+        async with hishel.AsyncCacheConnectionPool(
+            pool=pool,
+            controller=controller,
+            storage=hishel.AsyncInMemoryStorage(),
+        ) as cache_pool:
+            # This should create a cache entry
+            await cache_pool.request("POST", "https://www.example.com", content=b"request-1")
+            # This should return from cache
+            response = await cache_pool.request("POST", "https://www.example.com", content=b"request-1")
+            assert response.extensions["from_cache"]
+
+            # This should create a new cache entry instead of using the previous one
+            response = await cache_pool.request("POST", "https://www.example.com", content=b"request-2")
+            assert response.status == 200
+            assert not response.extensions["from_cache"]
