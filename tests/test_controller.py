@@ -47,25 +47,33 @@ def test_is_cachable_for_heuristically_cachable():
     assert controller.is_cachable(request=request, response=response)
 
 
-def test_is_cachable_for_unsupported_method():
-    controller = Controller(cacheable_methods=["HEAD"])
+def test_is_cachable_for_post():
+    class MockedClock(BaseClock):
+        def now(self) -> int:
+            return 1440504000
+
+    controller = Controller(clock=MockedClock())
 
     request = Request(b"GET", b"https://example.com", headers=[])
-
-    response = Response(200, headers=[(b"Expires", b"some-date")])
-
-    assert not controller.is_cachable(request=request, response=response)
+    response = Response(
+        status=200,
+        headers=[
+            (b"Cache-Control", b"max-age=3600"),
+            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+        ],
+    )
+    assert controller.is_cachable(request=request, response=response)
 
 
 def test_controller_with_unsupported_method():
     with pytest.raises(
         RuntimeError,
         match=re.escape(
-            "Hishel does not support the HTTP method `DELETE`.\nPlease use the methods "
+            "Hishel does not support the HTTP method `INVALID_METHOD`.\nPlease use the methods "
             "from this list: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'CONNECT', 'OPTIONS', 'TRACE', 'PATCH']"
         ),
     ):
-        Controller(cacheable_methods=["DELETE"])
+        Controller(cacheable_methods=["INVALID_METHOD"])
 
 
 def test_is_cachable_for_unsupported_status():
