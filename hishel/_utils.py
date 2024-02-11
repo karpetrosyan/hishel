@@ -33,13 +33,10 @@ def normalized_url(url: tp.Union[httpcore.URL, str, bytes]) -> str:
     assert False, "Invalid type for `normalized_url`"  # pragma: no cover
 
 
-def generate_key(request: httpcore.Request) -> str:
+def generate_key(request: httpcore.Request, body: bytes = b"") -> str:
     encoded_url = normalized_url(request.url).encode("ascii")
 
-    key_parts = [
-        request.method,
-        encoded_url,
-    ]
+    key_parts = [request.method, encoded_url, body]
 
     key = blake2b(digest_size=16)
     for part in key_parts:

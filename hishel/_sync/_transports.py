@@ -87,6 +87,14 @@ class CacheTransport(httpx.BaseTransport):
                 ]
             )
 
+        if request.method not in ["GET", "HEAD"]:
+            # If the HTTP method is, for example, POST,
+            # we must also use the request data to generate the hash.
+            body_for_key = request.read()
+            request.stream = CacheStream(fake_stream(body_for_key))
+        else:
+            body_for_key = b""
+
         httpcore_request = httpcore.Request(
             method=request.method,
             url=httpcore.URL(
@@ -99,7 +107,8 @@ class CacheTransport(httpx.BaseTransport):
             content=request.stream,
             extensions=request.extensions,
         )
-        key = self._controller._key_generator(httpcore_request)
+
+        key = self._controller._key_generator(httpcore_request, body_for_key)
         stored_data = self._storage.retrieve(key)
 
         request_cache_control = parse_cache_control(

@@ -13,6 +13,8 @@ __all__ = ("MockConnectionPool", "MockTransport")
 
 class MockConnectionPool(RequestInterface):
     def handle_request(self, request: httpcore.Request) -> httpcore.Response:
+        assert isinstance(request.stream, tp.Iterable)
+        data = b"".join([chunk for chunk in request.stream])  # noqa: F841
         return self.mocked_responses.pop(0)
 
     def add_responses(self, responses: tp.List[httpcore.Response]) -> None:

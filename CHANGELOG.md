@@ -4,6 +4,7 @@
 
 - Make `S3Storage` to check staleness of all cache files with set interval. (#182)
 - Fix an issue where an empty file in `FileCache` could cause a parsing error. (#181)
+- Support caching for `POST` and other HTTP methods. (#183)
 
 ## 0.0.22 (31th January, 2024)
 
