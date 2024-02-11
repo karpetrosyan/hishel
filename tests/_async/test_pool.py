@@ -250,6 +250,6 @@ async def test_pool_caching_post_method():
             assert response.extensions["from_cache"]
 
             # This should create a new cache entry instead of using the previous one
-            response = await cache_pool.request("POST", "https://anotherexample.com", content=b"request-1")
+            response = await cache_pool.request("POST", "https://www.example.com", content=b"request-2")
             assert response.status == 200
             assert not response.extensions["from_cache"]

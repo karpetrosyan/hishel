@@ -274,7 +274,7 @@ async def test_transport_caching_post_method():
             assert response.extensions["from_cache"]
 
             # Method and URL are the same but the body is different
-            request = httpx.Request("POST", "https://anotherexample.com", json={"request": 2})
+            request = httpx.Request("POST", "https://www.example.com", json={"request": 2})
 
             # This should create a new cache entry instead of using the previous one
             response = await cache_transport.handle_async_request(request)
