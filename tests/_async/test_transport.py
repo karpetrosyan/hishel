@@ -253,3 +253,30 @@ async def test_transport_with_wrong_type_of_storage():
             controller=hishel.Controller(),
             storage=storage,  # type: ignore
         )
+
+
+@pytest.mark.anyio
+async def test_transport_caching_post_method():
+    controller = hishel.Controller(cacheable_methods=["POST"])
+
+    async with hishel.MockAsyncTransport() as transport:
+        transport.add_responses([httpx.Response(301), httpx.Response(200)])
+        async with hishel.AsyncCacheTransport(
+            transport=transport,
+            controller=controller,
+            storage=hishel.AsyncInMemoryStorage(),
+        ) as cache_transport:
+            request = httpx.Request("POST", "https://www.example.com", json={"request": 1})
+            # This should create a cache entry
+            await cache_transport.handle_async_request(request)
+            # This should return from cache
+            response = await cache_transport.handle_async_request(request)
+            assert response.extensions["from_cache"]
+
+            # Method and URL are the same but the body is different
+            request = httpx.Request("POST", "https://anotherexample.com", json={"request": 2})
+
+            # This should create a new cache entry instead of using the previous one
+            response = await cache_transport.handle_async_request(request)
+            assert response.status_code == 200
+            assert not response.extensions["from_cache"]

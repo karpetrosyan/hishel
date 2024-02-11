@@ -47,19 +47,24 @@ def test_is_cachable_for_heuristically_cachable():
     assert controller.is_cachable(request=request, response=response)
 
 
+def test_is_cachable_for_invalid_method():
+    controller = Controller(cacheable_methods=["GET"])
+
+    request = Request(b"POST", b"https://example.com", headers=[])
+
+    response = Response(200, headers=[])
+
+    assert not controller.is_cachable(request=request, response=response)
+
+
 def test_is_cachable_for_post():
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440504000
+    controller = Controller(cacheable_methods=["POST"])
 
-    controller = Controller(clock=MockedClock())
-
-    request = Request(b"GET", b"https://example.com", headers=[])
+    request = Request(b"POST", b"https://example.com", headers=[])
     response = Response(
         status=200,
         headers=[
             (b"Cache-Control", b"max-age=3600"),
-            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
         ],
     )
     assert controller.is_cachable(request=request, response=response)
