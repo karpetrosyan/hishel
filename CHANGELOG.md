@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.23 (12th February, 2024)
 
 - Make `S3Storage` to check staleness of all cache files with set interval. (#182)
 - Fix an issue where an empty file in `FileCache` could cause a parsing error. (#181)
