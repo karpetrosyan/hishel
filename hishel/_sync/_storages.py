@@ -7,6 +7,8 @@ from pathlib import Path
 
 try:
     import boto3
+
+    from .._s3 import S3Manager
 except ImportError:  # pragma: no cover
     boto3 = None  # type: ignore
 
@@ -21,7 +23,6 @@ from typing_extensions import TypeAlias
 from hishel._serializers import BaseSerializer, clone_model
 
 from .._files import FileManager
-from .._s3 import S3Manager
 from .._serializers import JSONSerializer, Metadata
 from .._synchronization import Lock
 from .._utils import float_seconds_to_int_milliseconds

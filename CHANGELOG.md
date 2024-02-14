@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.0.23 (12th February, 2024)
+## 0.0.24 (14th February, 2024)
+
+- Fix `botocore is not installed` exception when using any kind of storage. (#186)
+
+## 0.0.23 (14th February, 2024)
 
 - Make `S3Storage` to check staleness of all cache files with set interval. (#182)
 - Fix an issue where an empty file in `FileCache` could cause a parsing error. (#181)
