@@ -11,6 +11,8 @@ from httpcore import Request
 import hishel
 from hishel._utils import generate_key
 
+date_header = format_date_time(mktime((datetime.now() - timedelta(hours=2)).timetuple()))
+
 
 
 def test_client_301():
@@ -37,7 +39,7 @@ def test_empty_cachefile_handling(use_temp_dir):
                     status_code=200,
                     headers=[
                         ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
-                        ("Date", format_date_time(mktime((datetime.now() - timedelta(hours=2)).timetuple()))),
+                        ("Date", date_header),
                     ],
                     text="test",
                 )
@@ -79,7 +81,7 @@ def test_post_caching():
                     status_code=200,
                     headers=[
                         ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
-                        ("Date", format_date_time(mktime((datetime.now() - timedelta(hours=2)).timetuple()))),
+                        ("Date", date_header),
                     ],
                     text=f"test-{idx}",
                 )
@@ -132,7 +134,7 @@ def test_client_get():
                     status_code=200,
                     headers=[
                         ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
-                        ("Date", format_date_time(mktime((datetime.now() - timedelta(hours=2)).timetuple()))),
+                        ("Date", date_header),
                     ],
                     text="test text",
                 )
@@ -160,7 +162,7 @@ def test_client_head():
                     status_code=200,
                     headers=[
                         ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
-                        ("Date", format_date_time(mktime((datetime.now() - timedelta(hours=2)).timetuple()))),
+                        ("Date", date_header),
                     ],
                 )
                 for _ in range(2)
@@ -186,7 +188,7 @@ def test_force_cache():
                     status_code=200,
                     headers=[
                         ("Cache-Control", "no-store"),
-                        ("Date", format_date_time(mktime((datetime.now() - timedelta(hours=2)).timetuple()))),
+                        ("Date", date_header),
                     ],
                 )
                 for _ in range(3)
@@ -221,7 +223,7 @@ def test_cache_disabled():
                     status_code=200,
                     headers=[
                         ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
-                        ("Date", format_date_time(mktime((datetime.now() - timedelta(hours=2)).timetuple()))),
+                        ("Date", date_header),
                     ],
                 )
                 for _ in range(2)
