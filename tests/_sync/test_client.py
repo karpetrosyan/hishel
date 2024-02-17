@@ -11,6 +11,8 @@ from httpcore import Request
 import hishel
 from hishel._utils import generate_key
 
+date_header = format_date_time(mktime((datetime.now() - timedelta(hours=2)).timetuple()))
+
 
 
 def test_client_301():
@@ -37,11 +39,11 @@ def test_empty_cachefile_handling(use_temp_dir):
                     status_code=200,
                     headers=[
                         ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
-                        ("Date", format_date_time(mktime((datetime.now() - timedelta(hours=2)).timetuple()))),
+                        ("Date", date_header),
                     ],
                     text="test",
                 )
-                for i in range(2)
+                for _ in range(2)
             ]
         )
 
@@ -68,3 +70,175 @@ def test_empty_cachefile_handling(use_temp_dir):
 
             response = client.get("https://example.com/")
             assert response.extensions["from_cache"]
+
+
+
+def test_post_caching():
+    with hishel.MockTransport() as transport:
+        transport.add_responses(
+            [
+                httpx.Response(
+                    status_code=200,
+                    headers=[
+                        ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
+                        ("Date", date_header),
+                    ],
+                    text=f"test-{idx}",
+                )
+                for idx in range(2)
+            ]
+        )
+
+        with hishel.CacheClient(
+            storage=hishel.InMemoryStorage(),
+            transport=transport,
+            controller=hishel.Controller(cacheable_methods=["POST"]),
+        ) as client:
+            # Create cache file.
+            response = client.post("https://example.com", json={"test": 1})
+            assert response.status_code == 200
+            assert not response.extensions["from_cache"]
+            assert response.text == "test-0"
+
+            # Get from cache file.
+            response = client.post("https://example.com", json={"test": 1})
+            assert response.status_code == 200
+            assert response.extensions["from_cache"]
+            assert response.text == "test-0"
+
+            # Create a new cache file
+            response = client.post("https://example.com", json={"test": 2})
+            assert response.status_code == 200
+            assert not response.extensions["from_cache"]
+            assert response.text == "test-1"
+
+            # Take second response from cache
+            response = client.post("https://example.com", json={"test": 2})
+            assert response.status_code == 200
+            assert response.extensions["from_cache"]
+            assert response.text == "test-1"
+
+            # Check on first response
+            response = client.post("https://example.com", json={"test": 1})
+            assert response.status_code == 200
+            assert response.extensions["from_cache"]
+            assert response.text == "test-0"
+
+
+
+def test_client_get():
+    with hishel.MockTransport() as transport:
+        transport.add_responses(
+            [
+                httpx.Response(
+                    status_code=200,
+                    headers=[
+                        ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
+                        ("Date", date_header),
+                    ],
+                    text="test text",
+                )
+            ]
+        )
+
+        with hishel.CacheClient(storage=hishel.InMemoryStorage(), transport=transport) as client:
+            response = client.get("https://example.com")
+            assert response.status_code == 200
+            assert not response.extensions["from_cache"]
+            assert response.text == "test text"
+
+            response = client.get("https://example.com")
+            assert response.status_code == 200
+            assert response.extensions["from_cache"]
+            assert response.text == "test text"
+
+
+
+def test_client_head():
+    with hishel.MockTransport() as transport:
+        transport.add_responses(
+            [
+                httpx.Response(
+                    status_code=200,
+                    headers=[
+                        ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
+                        ("Date", date_header),
+                    ],
+                )
+                for _ in range(2)
+            ]
+        )
+
+        with hishel.CacheClient(storage=hishel.InMemoryStorage(), transport=transport) as client:
+            response = client.head("https://example.com")
+            assert response.status_code == 200
+            assert not response.extensions["from_cache"]
+
+            response = client.head("https://example.com")
+            assert response.status_code == 200
+            assert not response.extensions["from_cache"]
+
+
+
+def test_force_cache():
+    with hishel.MockTransport() as transport:
+        transport.add_responses(
+            [
+                httpx.Response(
+                    status_code=200,
+                    headers=[
+                        ("Cache-Control", "no-store"),
+                        ("Date", date_header),
+                    ],
+                )
+                for _ in range(3)
+            ]
+        )
+
+        with hishel.CacheClient(storage=hishel.InMemoryStorage(), transport=transport) as client:
+            response = client.head("https://example.com")
+            assert response.status_code == 200
+            assert not response.extensions["from_cache"]
+
+            # Check that "no-store" is respected
+            response = client.head("https://example.com")
+            assert response.status_code == 200
+            assert not response.extensions["from_cache"]
+
+            response = client.head("https://example.com", extensions={"force_cache": True})
+            assert response.status_code == 200
+            assert not response.extensions["from_cache"]
+
+            response = client.head("https://example.com", extensions={"force_cache": True})
+            assert response.status_code == 200
+            assert response.extensions["from_cache"]
+
+
+
+def test_cache_disabled():
+    with hishel.MockTransport() as transport:
+        transport.add_responses(
+            [
+                httpx.Response(
+                    status_code=200,
+                    headers=[
+                        ("Cache-Control", "public, max-age=86400, s-maxage=86400"),
+                        ("Date", date_header),
+                    ],
+                )
+                for _ in range(2)
+            ]
+        )
+
+        with hishel.CacheClient(storage=hishel.InMemoryStorage(), transport=transport) as client:
+            response = client.get(
+                "https://www.example.com/cacheable-endpoint", extensions={"cache_disabled": True}
+            )
+            assert response.status_code == 200
+            assert not response.extensions["from_cache"]
+
+            response = client.get(
+                "https://www.example.com/cacheable-endpoint", extensions={"cache_disabled": True}
+            )
+            assert response.status_code == 200
+            assert not response.extensions["from_cache"]
