@@ -83,9 +83,14 @@ class FileStorage(BaseStorage):
         super().__init__(serializer, ttl)
 
         self._base_path = Path(base_path) if base_path is not None else Path(".cache/hishel")
+        self.gitignore_file = self._base_path / ".gitignore"
 
         if not self._base_path.is_dir():
             self._base_path.mkdir(parents=True)
+
+        if not self.gitignore_file.is_file():
+            with open(self.gitignore_file, "w", encoding="utf-8") as f:
+                f.write("# Automatically created by Hishel\n*")
 
         self._file_manager = FileManager(is_binary=self._serializer.is_binary)
         self._lock = Lock()
