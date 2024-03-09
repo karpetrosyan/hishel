@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add `.gitignore` to cache directory created by `FIleStorage`. (#197)
+- Remove `stale_*` headers from the `CacheControl` class. (#199)
+
 ## 0.0.24 (14th February, 2024)
 
 - Fix `botocore is not installed` exception when using any kind of storage. (#186)
