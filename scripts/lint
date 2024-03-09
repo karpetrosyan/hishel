@@ -1,5 +1,5 @@
 #! /bin/bash -ex
 
 ruff format hishel tests
-ruff --fix hishel tests
+ruff check --fix hishel tests
 python unasync.py

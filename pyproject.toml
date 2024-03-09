@@ -112,6 +112,8 @@ exclude = [
     "tests/_sync",
 ]
 line-length = 120
+
+[tool.ruff.lint]
 select = [
     "E",
     "F",
@@ -119,5 +121,5 @@ select = [
     "I"
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 combine-as-imports = true

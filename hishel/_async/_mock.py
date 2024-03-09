@@ -30,8 +30,7 @@ class MockAsyncConnectionPool(AsyncRequestInterface):
         exc_type: tp.Optional[tp.Type[BaseException]] = None,
         exc_value: tp.Optional[BaseException] = None,
         traceback: tp.Optional[TracebackType] = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 class MockAsyncTransport(httpx.AsyncBaseTransport):
