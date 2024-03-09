@@ -89,8 +89,8 @@ def test_s3storage(use_temp_dir, s3):
     assert stored_response.content == b"test"
 
 
-
-def test_redisstorage():
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
+def test_redisstorage(anyio_backend):
     if is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
     storage = RedisStorage()
@@ -160,8 +160,8 @@ def test_inmemorystorage():
     assert stored_response.content == b"test"
 
 
-
-def test_filestorage_expired(use_temp_dir):
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
+def test_filestorage_expired(use_temp_dir, anyio_backend):
     storage = FileStorage(ttl=0.2, check_ttl_every=0.1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
@@ -181,8 +181,8 @@ def test_filestorage_expired(use_temp_dir):
     assert storage.retrieve(first_key) is None
 
 
-
-def test_s3storage_expired(use_temp_dir, s3):
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
+def test_s3storage_expired(use_temp_dir, s3, anyio_backend):
     boto3.client("s3").create_bucket(Bucket="testBucket")
     storage = S3Storage(bucket_name="testBucket", ttl=3)
 
@@ -204,8 +204,8 @@ def test_s3storage_expired(use_temp_dir, s3):
     assert storage.retrieve(first_key) is None
 
 
-
-def test_filestorage_timer(use_temp_dir):
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
+def test_filestorage_timer(use_temp_dir, anyio_backend):
     storage = FileStorage(ttl=0.2, check_ttl_every=0.2)
 
     first_request = Request(b"GET", "https://example.com")
@@ -230,8 +230,8 @@ def test_filestorage_timer(use_temp_dir):
     assert storage.retrieve(second_key) is None
 
 
-
-def test_redisstorage_expired():
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
+def test_redisstorage_expired(anyio_backend):
     if is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
     storage = RedisStorage(ttl=0.1)
@@ -253,8 +253,8 @@ def test_redisstorage_expired():
     assert storage.retrieve(first_key) is None
 
 
-
-def test_sqlite_expired():
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
+def test_sqlite_expired(anyio_backend):
     storage = SQLiteStorage(ttl=0.1, connection=sqlite3.connect(":memory:"))
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
@@ -274,8 +274,8 @@ def test_sqlite_expired():
     assert storage.retrieve(first_key) is None
 
 
-
-def test_inmemory_expired():
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
+def test_inmemory_expired(anyio_backend):
     storage = InMemoryStorage(ttl=0.1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
