@@ -9,7 +9,7 @@ mkdocs==1.5.3
 mkdocs-material==9.5.1
 
 # tests
-pytest==7.4.3
+pytest==8.0.2
 types-boto3==1.0.2
 types-redis==4.6.0.20240106
 anyio==4.3.0
