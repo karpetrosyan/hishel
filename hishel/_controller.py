@@ -135,7 +135,7 @@ class Controller:
         allow_stale: bool = False,
         always_revalidate: bool = False,
         force_cache: bool = False,
-        is_cacheable_hooks: tp.Optional[set[tp.Callable[[Request, Response], bool]]] = None,
+        is_cacheable_hooks: tp.Optional[tp.Set[tp.Callable[[Request, Response], bool]]] = None,
         key_generator: tp.Optional[tp.Callable[[Request, tp.Optional[bytes]], str]] = None,
     ):
         self._cacheable_methods = []
