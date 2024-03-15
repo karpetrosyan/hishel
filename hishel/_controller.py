@@ -111,6 +111,8 @@ class Controller:
         clock: tp.Optional[BaseClock] = None,
         allow_stale: bool = False,
         always_revalidate: bool = False,
+        force_cache: bool = False,
+        is_cacheable_hooks: tp.Optional[set[tp.Callable[[Request, Response], bool]]] = None,
         key_generator: tp.Optional[tp.Callable[[Request, tp.Optional[bytes]], str]] = None,
     ):
         self._cacheable_methods = []
@@ -131,6 +133,8 @@ class Controller:
         self._allow_heuristics = allow_heuristics
         self._allow_stale = allow_stale
         self._always_revalidate = always_revalidate
+        self._force_cache = force_cache
+        self._is_cacheable_hooks = is_cacheable_hooks
         self._key_generator = key_generator or generate_key
 
     def is_cachable(self, request: Request, response: Response) -> bool:
@@ -143,9 +147,20 @@ class Controller:
         lists the steps that this method simply follows.
         """
         method = request.method.decode("ascii")
+        force_cache = request.extensions.get("force_cache", None)
 
-        if request.extensions.get("force_cache", False):
+        # force_cache extension overwrites controller setting
+        if (force_cache if force_cache is not None else self._force_cache):
             return True
+        
+        # Apply hooks to determine, if response should be cached or not
+        if self._is_cacheable_hooks is not None:
+            is_cacheable: bool = False
+            for hook in self._is_cacheable_hooks:
+                is_cacheable = is_cacheable or hook(request, response)
+
+            return is_cacheable
+
 
         if response.status not in self._cacheable_status_codes:
             return False

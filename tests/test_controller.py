@@ -26,6 +26,34 @@ def test_is_cachable_for_cachables():
 
     assert controller.is_cachable(request=request, response=response)
 
+def test_is_cachable_for_force_cache():
+    controller = Controller(force_cache=True)
+
+    request = Request(b"GET", b"https://example.com")
+
+    response = Response(500)
+
+    assert controller.is_cachable(request=request, response=response)
+
+    controller = Controller(force_cache=False)
+
+    assert not controller.is_cachable(request=request, response=response)
+
+def test_is_cachable_for_is_cachable_hooks():
+    is_cacheable_hooks = set()
+    is_cacheable_hooks.add(lambda request, response: False)
+
+    controller = Controller(is_cacheable_hooks=is_cacheable_hooks)
+
+    request = Request(b"GET", b"https://example.com")
+
+    response = Response(500)
+
+    assert not controller.is_cachable(request=request, response=response)
+
+    controller._is_cacheable_hooks.add(lambda request, response: True)
+
+    assert controller.is_cachable(request=request, response=response)
 
 def test_is_cachable_for_non_cachables():
     controller = Controller()
