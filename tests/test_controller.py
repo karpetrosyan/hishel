@@ -26,6 +26,7 @@ def test_is_cachable_for_cachables():
 
     assert controller.is_cachable(request=request, response=response)
 
+
 def test_is_cachable_for_force_cache():
     controller = Controller(force_cache=True)
 
@@ -38,6 +39,7 @@ def test_is_cachable_for_force_cache():
     controller = Controller(force_cache=False)
 
     assert not controller.is_cachable(request=request, response=response)
+
 
 def test_is_cachable_for_is_cachable_hooks():
     is_cacheable_hooks = set()
@@ -54,6 +56,7 @@ def test_is_cachable_for_is_cachable_hooks():
     controller._is_cacheable_hooks.add(lambda request, response: True)
 
     assert controller.is_cachable(request=request, response=response)
+
 
 def test_is_cachable_for_non_cachables():
     controller = Controller()
@@ -173,7 +176,9 @@ def test_get_heuristic_freshness():
         def now(self) -> int:
             return 1093435200  # Mon, 25 Aug 2003 12:00:00 GMT
 
-    response = Response(status=200, headers=[(b"Last-Modified", "Mon, 25 Aug 2003 12:00:00 GMT")])
+    response = Response(
+        status=200, headers=[(b"Last-Modified", "Mon, 25 Aug 2003 12:00:00 GMT")]
+    )
     assert get_heuristic_freshness(response=response, clock=MockedClock()) == ONE_WEEK
 
 
@@ -189,7 +194,9 @@ def test_get_age():
         def now(self) -> int:
             return 1440590400
 
-    response = Response(status=200, headers=[(b"Date", b"Tue, 25 Aug 2015 12:00:00 GMT")])
+    response = Response(
+        status=200, headers=[(b"Date", b"Tue, 25 Aug 2015 12:00:00 GMT")]
+    )
     age = get_age(response=response, clock=MockedClock())
     assert age == 86400  # One day
 
@@ -263,7 +270,9 @@ def test_make_conditional_request_with_last_modified():
         ],
     )
 
-    response = Response(status=200, headers=[(b"Last-Modified", b"Wed, 21 Oct 2015 07:28:00 GMT")])
+    response = Response(
+        status=200, headers=[(b"Last-Modified", b"Wed, 21 Oct 2015 07:28:00 GMT")]
+    )
 
     controller._make_request_conditional(request=request, response=response)
 
@@ -384,11 +393,17 @@ def test_construct_response_heuristically():
 def test_handle_validation_response_changed():
     controller = Controller()
 
-    old_response = Response(status=200, headers=[(b"old-response", b"true")], content=b"old")
+    old_response = Response(
+        status=200, headers=[(b"old-response", b"true")], content=b"old"
+    )
 
-    new_response = Response(status=200, headers=[(b"new-response", b"true")], content=b"new")
+    new_response = Response(
+        status=200, headers=[(b"new-response", b"true")], content=b"new"
+    )
 
-    response = controller.handle_validation_response(old_response=old_response, new_response=new_response)
+    response = controller.handle_validation_response(
+        old_response=old_response, new_response=new_response
+    )
     response.read()
 
     assert response.headers == [(b"new-response", b"true")]
@@ -398,7 +413,9 @@ def test_handle_validation_response_changed():
 def test_handle_validation_response_not_changed():
     controller = Controller()
 
-    old_response = Response(status=200, headers=[(b"old-response", b"true")], content=b"old")
+    old_response = Response(
+        status=200, headers=[(b"old-response", b"true")], content=b"old"
+    )
 
     new_response = Response(
         status=304,
@@ -406,7 +423,9 @@ def test_handle_validation_response_not_changed():
         content=b"new",
     )
 
-    response = controller.handle_validation_response(old_response=old_response, new_response=new_response)
+    response = controller.handle_validation_response(
+        old_response=old_response, new_response=new_response
+    )
     response.read()
 
     assert response.headers == [(b"old-response", b"true"), (b"new-response", b"false")]
@@ -442,11 +461,15 @@ def test_vary_validation():
 
     controller = Controller()
 
-    assert controller._validate_vary(request=request, response=response, original_request=original_request)
+    assert controller._validate_vary(
+        request=request, response=response, original_request=original_request
+    )
 
     original_request.headers.pop(0)
 
-    assert not controller._validate_vary(request=request, response=response, original_request=original_request)
+    assert not controller._validate_vary(
+        request=request, response=response, original_request=original_request
+    )
 
 
 def test_vary_validation_value_mismatch():
@@ -479,7 +502,9 @@ def test_vary_validation_value_mismatch():
 
     controller = Controller()
 
-    assert not controller._validate_vary(request=request, response=response, original_request=original_request)
+    assert not controller._validate_vary(
+        request=request, response=response, original_request=original_request
+    )
 
 
 def test_vary_validation_value_wildcard():
@@ -512,7 +537,9 @@ def test_vary_validation_value_wildcard():
 
     controller = Controller()
 
-    assert not controller._validate_vary(request=request, response=response, original_request=original_request)
+    assert not controller._validate_vary(
+        request=request, response=response, original_request=original_request
+    )
 
 
 def test_max_age_request_directive():
@@ -815,7 +842,9 @@ def test_force_cache_extension_for_is_cachable():
     request = Request("GET", "https://example.com")
     uncachable_response = Response(status=400)
 
-    assert controller.is_cachable(request=request, response=uncachable_response) is False
+    assert (
+        controller.is_cachable(request=request, response=uncachable_response) is False
+    )
 
     request = Request("GET", "https://example.com", extensions={"force_cache": True})
 
@@ -840,7 +869,9 @@ def test_force_cache_extension_for_construct_response_from_cache():
 
     assert isinstance(
         controller.construct_response_from_cache(
-            request=request, response=cachable_response, original_request=original_request
+            request=request,
+            response=cachable_response,
+            original_request=original_request,
         ),
         Request,
     )
@@ -849,7 +880,9 @@ def test_force_cache_extension_for_construct_response_from_cache():
 
     assert isinstance(
         controller.construct_response_from_cache(
-            request=request, response=cachable_response, original_request=original_request
+            request=request,
+            response=cachable_response,
+            original_request=original_request,
         ),
         Response,
     )

@@ -14,8 +14,31 @@ from ._utils import (
     parse_date,
 )
 
-HEURISTICALLY_CACHEABLE_STATUS_CODES = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
-HTTP_METHODS = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]
+HEURISTICALLY_CACHEABLE_STATUS_CODES = (
+    200,
+    203,
+    204,
+    206,
+    300,
+    301,
+    308,
+    404,
+    405,
+    410,
+    414,
+    501,
+)
+HTTP_METHODS = [
+    "GET",
+    "HEAD",
+    "POST",
+    "PUT",
+    "DELETE",
+    "CONNECT",
+    "OPTIONS",
+    "TRACE",
+    "PATCH",
+]
 
 __all__ = ("Controller", "HEURISTICALLY_CACHEABLE_STATUS_CODES")
 
@@ -48,13 +71,17 @@ def get_updated_headers(
 
 
 def get_freshness_lifetime(response: Response) -> tp.Optional[int]:
-    response_cache_control = parse_cache_control(extract_header_values_decoded(response.headers, b"Cache-Control"))
+    response_cache_control = parse_cache_control(
+        extract_header_values_decoded(response.headers, b"Cache-Control")
+    )
 
     if response_cache_control.max_age is not None:
         return response_cache_control.max_age
 
     if header_presents(response.headers, b"expires"):
-        expires = extract_header_values_decoded(response.headers, b"expires", single=True)[0]
+        expires = extract_header_values_decoded(
+            response.headers, b"expires", single=True
+        )[0]
         expires_timestamp = parse_date(expires)
         date = extract_header_values_decoded(response.headers, b"date", single=True)[0]
         date_timestamp = parse_date(date)
@@ -64,7 +91,9 @@ def get_freshness_lifetime(response: Response) -> tp.Optional[int]:
 
 
 def get_heuristic_freshness(response: Response, clock: "BaseClock") -> int:
-    last_modified = extract_header_values_decoded(response.headers, b"last-modified", single=True)
+    last_modified = extract_header_values_decoded(
+        response.headers, b"last-modified", single=True
+    )
 
     if last_modified:
         last_modified_timestamp = parse_date(last_modified[0])
@@ -91,7 +120,9 @@ def get_age(response: Response, clock: "BaseClock") -> int:
 
 
 def allowed_stale(response: Response) -> bool:
-    response_cache_control = parse_cache_control(extract_header_values_decoded(response.headers, b"Cache-Control"))
+    response_cache_control = parse_cache_control(
+        extract_header_values_decoded(response.headers, b"Cache-Control")
+    )
 
     if response_cache_control.no_cache:
         return False
@@ -112,8 +143,12 @@ class Controller:
         allow_stale: bool = False,
         always_revalidate: bool = False,
         force_cache: bool = False,
-        is_cacheable_hooks: tp.Optional[set[tp.Callable[[Request, Response], bool]]] = None,
-        key_generator: tp.Optional[tp.Callable[[Request, tp.Optional[bytes]], str]] = None,
+        is_cacheable_hooks: tp.Optional[
+            set[tp.Callable[[Request, Response], bool]]
+        ] = None,
+        key_generator: tp.Optional[
+            tp.Callable[[Request, tp.Optional[bytes]], str]
+        ] = None,
     ):
         self._cacheable_methods = []
 
@@ -128,7 +163,9 @@ class Controller:
                     )
                 self._cacheable_methods.append(method.upper())
 
-        self._cacheable_status_codes = cacheable_status_codes if cacheable_status_codes else [200, 301, 308]
+        self._cacheable_status_codes = (
+            cacheable_status_codes if cacheable_status_codes else [200, 301, 308]
+        )
         self._clock = clock if clock else Clock()
         self._allow_heuristics = allow_heuristics
         self._allow_stale = allow_stale
@@ -150,9 +187,9 @@ class Controller:
         force_cache = request.extensions.get("force_cache", None)
 
         # force_cache extension overwrites controller setting
-        if (force_cache if force_cache is not None else self._force_cache):
+        if force_cache if force_cache is not None else self._force_cache:
             return True
-        
+
         # Apply hooks to determine, if response should be cached or not
         if self._is_cacheable_hooks is not None:
             is_cacheable: bool = False
@@ -160,7 +197,6 @@ class Controller:
                 is_cacheable = is_cacheable or hook(request, response)
 
             return is_cacheable
-
 
         if response.status not in self._cacheable_status_codes:
             return False
@@ -172,8 +208,12 @@ class Controller:
         if method not in self._cacheable_methods:
             return False
 
-        response_cache_control = parse_cache_control(extract_header_values_decoded(response.headers, b"cache-control"))
-        request_cache_control = parse_cache_control(extract_header_values_decoded(request.headers, b"cache-control"))
+        response_cache_control = parse_cache_control(
+            extract_header_values_decoded(response.headers, b"cache-control")
+        )
+        request_cache_control = parse_cache_control(
+            extract_header_values_decoded(request.headers, b"cache-control")
+        )
 
         # the response status code is final
         if response.status // 100 == 1:
@@ -185,7 +225,10 @@ class Controller:
 
         # note that the must-understand cache directive overrides
         # no-store in certain circumstances; see Section 5.2.2.3.
-        if response_cache_control.no_store and not response_cache_control.must_understand:
+        if (
+            response_cache_control.no_store
+            and not response_cache_control.must_understand
+        ):
             return False
 
         expires_presents = header_presents(response.headers, b"expires")
@@ -197,7 +240,10 @@ class Controller:
         # - if the cache is shared: an s-maxage response directive (see Section 5.2.2.10);
         # - a cache extension that allows it to be cached (see Section 5.2.3); or
         # - a status code that is defined as heuristically cacheable (see Section 4.2.2).
-        if self._allow_heuristics and response.status in HEURISTICALLY_CACHEABLE_STATUS_CODES:
+        if (
+            self._allow_heuristics
+            and response.status in HEURISTICALLY_CACHEABLE_STATUS_CODES
+        ):
             return True
 
         if not any(
@@ -224,7 +270,9 @@ class Controller:
         """
 
         if header_presents(response.headers, b"last-modified"):
-            last_modified = extract_header_values(response.headers, b"last-modified", single=True)[0]
+            last_modified = extract_header_values(
+                response.headers, b"last-modified", single=True
+            )[0]
         else:
             last_modified = None
 
@@ -241,7 +289,9 @@ class Controller:
 
         request.headers.extend(precondition_headers)
 
-    def _validate_vary(self, request: Request, response: Response, original_request: Request) -> bool:
+    def _validate_vary(
+        self, request: Request, response: Response, original_request: Request
+    ) -> bool:
         """
         Determines whether the "vary" headers in the request and response headers are identical.
 
@@ -254,9 +304,9 @@ class Controller:
             if vary_header == "*":
                 return False  # pragma: no cover
 
-            if extract_header_values(request.headers, vary_header) != extract_header_values(
-                original_request.headers, vary_header
-            ):
+            if extract_header_values(
+                request.headers, vary_header
+            ) != extract_header_values(original_request.headers, vary_header):
                 return False
 
         return True
@@ -284,12 +334,18 @@ class Controller:
         if response.status in (301, 308):
             return response
 
-        response_cache_control = parse_cache_control(extract_header_values_decoded(response.headers, b"Cache-Control"))
-        request_cache_control = parse_cache_control(extract_header_values_decoded(request.headers, b"Cache-Control"))
+        response_cache_control = parse_cache_control(
+            extract_header_values_decoded(response.headers, b"Cache-Control")
+        )
+        request_cache_control = parse_cache_control(
+            extract_header_values_decoded(request.headers, b"Cache-Control")
+        )
 
         # request header fields nominated by the stored
         # response (if any) match those presented (see Section 4.1)
-        if not self._validate_vary(request=request, response=response, original_request=original_request):
+        if not self._validate_vary(
+            request=request, response=response, original_request=original_request
+        ):
             # If the vary headers does not match, then do not use the response
             return None  # pragma: no cover
 
@@ -312,8 +368,13 @@ class Controller:
         freshness_lifetime = get_freshness_lifetime(response)
 
         if freshness_lifetime is None:
-            if self._allow_heuristics and response.status in HEURISTICALLY_CACHEABLE_STATUS_CODES:
-                freshness_lifetime = get_heuristic_freshness(response=response, clock=self._clock)
+            if (
+                self._allow_heuristics
+                and response.status in HEURISTICALLY_CACHEABLE_STATUS_CODES
+            ):
+                freshness_lifetime = get_heuristic_freshness(
+                    response=response, clock=self._clock
+                )
             else:
                 # If Freshness cannot be calculated, then send the request
                 self._make_request_conditional(request=request, response=response)
@@ -366,7 +427,9 @@ class Controller:
             self._make_request_conditional(request=request, response=response)
             return request
 
-    def handle_validation_response(self, old_response: Response, new_response: Response) -> Response:
+    def handle_validation_response(
+        self, old_response: Response, new_response: Response
+    ) -> Response:
         """
         Handles incoming validation response.
 
