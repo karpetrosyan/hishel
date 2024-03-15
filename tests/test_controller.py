@@ -40,6 +40,12 @@ def test_is_cachable_for_force_cache():
 
     assert not controller.is_cachable(request=request, response=response)
 
+    request = Request(b"GET", b"https://example.com", extensions={"force_cache": True})
+
+    response = Response(500)
+
+    assert controller.is_cachable(request=request, response=response)
+
 
 def test_is_cachable_for_is_cachable_hooks():
     is_cacheable_hooks = set()
