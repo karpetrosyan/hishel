@@ -51,7 +51,7 @@ def get_updated_headers(
 
     checked = set()
 
-    for key, value in stored_response_headers:
+    for key, _ in stored_response_headers:
         if key not in checked and key.lower() != b"content-length":
             checked.add(key)
             values = extract_header_values(new_response_headers, key)
@@ -62,7 +62,7 @@ def get_updated_headers(
                 values = extract_header_values(stored_response_headers, key)
                 updated_headers.extend([(key, value) for value in values])
 
-    for key, value in new_response_headers:
+    for key, _ in new_response_headers:
         if key not in checked and key.lower() != b"content-length":
             values = extract_header_values(new_response_headers, key)
             updated_headers.extend([(key, value) for value in values])
@@ -135,7 +135,6 @@ class Controller:
         allow_stale: bool = False,
         always_revalidate: bool = False,
         force_cache: bool = False,
-        is_cacheable_hooks: tp.Optional[tp.Set[tp.Callable[[Request, Response], bool]]] = None,
         key_generator: tp.Optional[tp.Callable[[Request, tp.Optional[bytes]], str]] = None,
     ):
         self._cacheable_methods = []
@@ -157,7 +156,6 @@ class Controller:
         self._allow_stale = allow_stale
         self._always_revalidate = always_revalidate
         self._force_cache = force_cache
-        self._is_cacheable_hooks = is_cacheable_hooks
         self._key_generator = key_generator or generate_key
 
     def is_cachable(self, request: Request, response: Response) -> bool:
@@ -175,14 +173,6 @@ class Controller:
         # force_cache extension overwrites controller setting
         if force_cache if force_cache is not None else self._force_cache:
             return True
-
-        # Apply hooks to determine, if response should be cached or not
-        if self._is_cacheable_hooks is not None:
-            is_cacheable: bool = False
-            for hook in self._is_cacheable_hooks:
-                is_cacheable = is_cacheable or hook(request, response)
-
-            return is_cacheable
 
         if response.status not in self._cacheable_status_codes:
             return False
