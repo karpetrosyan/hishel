@@ -6,6 +6,22 @@ icon: material/brain
 
 You can choose which parts of [RFC 9111](https://www.rfc-editor.org/rfc/rfc9111.html) to ignore. For example, this is useful when you want to ensure that your client does **not use stale responses** even if they are **acceptable from the server.**
 
+### Force caching
+
+If you only need to cache responses without validating the headers and following RFC9111 rules, simply set the `force_cache` property to true.
+
+Example:
+
+```python
+import hishel
+
+controller = hishel.Controller(force_cache=True)
+client = hishel.CacheClient(controller=controller)
+```
+
+!!! note
+    [force_cache](extensions.md#force_cache) extension will always overwrite the controller's force_cache property.
+
 ### Cachable HTTP methods
 
 You can specify which HTTP methods `Hishel` should cache.

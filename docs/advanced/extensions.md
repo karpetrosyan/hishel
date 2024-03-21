@@ -26,6 +26,9 @@ For example, if the response has a `Cache-Control` header that contains a `no-st
 >>> response = client.get("https://www.example.com/uncachable-endpoint", extensions={"force_cache": True})
 ```
 
+!!! note
+    You can [configure this extension globally for the controller](controllers.md#force-caching), rather than setting force_cache to True for each request.
+
 ### cache_disabled 
 
 This extension temporarily disables the cache by passing appropriate RFC9111 headers to
