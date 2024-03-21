@@ -147,7 +147,6 @@ class Controller:
         method = request.method.decode("ascii")
         force_cache = request.extensions.get("force_cache", None)
 
-        # force_cache extension overwrites controller setting
         if force_cache if force_cache is not None else self._force_cache:
             return True
 
@@ -283,7 +282,8 @@ class Controller:
             return None  # pragma: no cover
 
         # !!! this should be after the "vary" header validation.
-        if request.extensions.get("force_cache", False):
+        force_cache = request.extensions.get("force_cache", None)
+        if force_cache if force_cache is not None else self._force_cache:
             return response
 
         # the stored response does not contain the
