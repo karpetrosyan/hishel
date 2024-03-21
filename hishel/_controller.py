@@ -14,31 +14,8 @@ from ._utils import (
     parse_date,
 )
 
-HEURISTICALLY_CACHEABLE_STATUS_CODES = (
-    200,
-    203,
-    204,
-    206,
-    300,
-    301,
-    308,
-    404,
-    405,
-    410,
-    414,
-    501,
-)
-HTTP_METHODS = [
-    "GET",
-    "HEAD",
-    "POST",
-    "PUT",
-    "DELETE",
-    "CONNECT",
-    "OPTIONS",
-    "TRACE",
-    "PATCH",
-]
+HEURISTICALLY_CACHEABLE_STATUS_CODES = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
+HTTP_METHODS = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]
 
 __all__ = ("Controller", "HEURISTICALLY_CACHEABLE_STATUS_CODES")
 
@@ -51,7 +28,7 @@ def get_updated_headers(
 
     checked = set()
 
-    for key, _ in stored_response_headers:
+    for key, value in stored_response_headers:
         if key not in checked and key.lower() != b"content-length":
             checked.add(key)
             values = extract_header_values(new_response_headers, key)
@@ -62,7 +39,7 @@ def get_updated_headers(
                 values = extract_header_values(stored_response_headers, key)
                 updated_headers.extend([(key, value) for value in values])
 
-    for key, _ in new_response_headers:
+    for key, value in new_response_headers:
         if key not in checked and key.lower() != b"content-length":
             values = extract_header_values(new_response_headers, key)
             updated_headers.extend([(key, value) for value in values])
