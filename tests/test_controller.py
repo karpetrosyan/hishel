@@ -27,24 +27,53 @@ def test_is_cachable_for_cachables():
     assert controller.is_cachable(request=request, response=response)
 
 
-def test_is_cachable_for_force_cache():
+def test_force_cache_property_for_is_cachable():
     controller = Controller(force_cache=True)
+    request = Request("GET", "https://example.com", extensions={"force_cache": False})
+    uncachable_response = Response(status=400)
 
-    request = Request(b"GET", b"https://example.com")
+    assert controller.is_cachable(request=request, response=uncachable_response) is False
 
-    response = Response(500)
+    request = Request("GET", "https://example.com")
 
-    assert controller.is_cachable(request=request, response=response)
+    assert controller.is_cachable(request=request, response=uncachable_response) is True
 
-    controller = Controller(force_cache=False)
 
-    assert not controller.is_cachable(request=request, response=response)
+def test_force_cache_property_for_construct_response_from_cache():
+    class MockedClock(BaseClock):
+        def now(self) -> int:
+            return 1440504001  # Mon, 25 Aug 2015 12:00:01 GMT
 
-    request = Request(b"GET", b"https://example.com", extensions={"force_cache": True})
+    controller = Controller(clock=MockedClock(), force_cache=True)
+    original_request = Request("GET", "https://example.com")
+    request = Request("GET", "https://example.com", extensions={"force_cache": False})
+    cachable_response = Response(
+        200,
+        headers=[
+            (b"Cache-Control", b"max-age=0"),
+            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),  # 1 second before the clock
+        ],
+    )
 
-    response = Response(500)
+    assert isinstance(
+        controller.construct_response_from_cache(
+            request=request,
+            response=cachable_response,
+            original_request=original_request,
+        ),
+        Request,
+    )
 
-    assert controller.is_cachable(request=request, response=response)
+    request = Request("Get", "https://example.com")
+
+    assert isinstance(
+        controller.construct_response_from_cache(
+            request=request,
+            response=cachable_response,
+            original_request=original_request,
+        ),
+        Response,
+    )
 
 
 def test_is_cachable_for_non_cachables():
