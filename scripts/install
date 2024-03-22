@@ -1,8 +1,9 @@
 #! /bin/bash -x
 
-rm -rf venv
-python3 -m venv venv
+rm -rf .venv
+pip install uv
+uv venv
 
-source venv/bin/activate
+source .venv/bin/activate
 
-pip install -r requirements.txt
+uv pip install -r requirements.txt
