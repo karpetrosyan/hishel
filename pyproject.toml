@@ -79,7 +79,7 @@ path = "CHANGELOG.md"
 strict = true
 show_error_codes = true
 warn_unused_ignores = false
-
+exclude = ['venv', '.venv']
 
 [[tool.mypy.overrides]]
 module = "tests.*"

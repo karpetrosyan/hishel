@@ -1,7 +1,11 @@
-#! /bin/bash -e
-set -x
+#! /bin/bash -ex
+
+export PREFIX=""
+if [ -d 'venv' ] ; then
+    export PREFIX="venv/bin/"
+fi
 
 ./scripts/check
-coverage run -m pytest tests
+${PREFIX}coverage run -m pytest tests
 
-coverage report --show-missing --skip-covered --fail-under=100
+${PREFIX}coverage report --show-missing --skip-covered --fail-under=100
