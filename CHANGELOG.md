@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `force_cache` property to the controller, allowing RFC9111 rules to be completely disabled. (#204)
 - Add `.gitignore` to cache directory created by `FIleStorage`. (#197)
 - Remove `stale_*` headers from the `CacheControl` class. (#199)
 

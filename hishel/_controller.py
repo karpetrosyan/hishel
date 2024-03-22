@@ -111,6 +111,7 @@ class Controller:
         clock: tp.Optional[BaseClock] = None,
         allow_stale: bool = False,
         always_revalidate: bool = False,
+        force_cache: bool = False,
         key_generator: tp.Optional[tp.Callable[[Request, tp.Optional[bytes]], str]] = None,
     ):
         self._cacheable_methods = []
@@ -131,6 +132,7 @@ class Controller:
         self._allow_heuristics = allow_heuristics
         self._allow_stale = allow_stale
         self._always_revalidate = always_revalidate
+        self._force_cache = force_cache
         self._key_generator = key_generator or generate_key
 
     def is_cachable(self, request: Request, response: Response) -> bool:
@@ -143,8 +145,9 @@ class Controller:
         lists the steps that this method simply follows.
         """
         method = request.method.decode("ascii")
+        force_cache = request.extensions.get("force_cache", None)
 
-        if request.extensions.get("force_cache", False):
+        if force_cache if force_cache is not None else self._force_cache:
             return True
 
         if response.status not in self._cacheable_status_codes:
@@ -279,7 +282,8 @@ class Controller:
             return None  # pragma: no cover
 
         # !!! this should be after the "vary" header validation.
-        if request.extensions.get("force_cache", False):
+        force_cache = request.extensions.get("force_cache", None)
+        if force_cache if force_cache is not None else self._force_cache:
             return response
 
         # the stored response does not contain the
