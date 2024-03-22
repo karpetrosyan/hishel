@@ -25,7 +25,7 @@ jobs:
           python-version: "${{ matrix.python-version }}"
           allow-prereleases: true
       - name: "Install dependencies"
-        run: pip install -r requirements.txt
+        run: scripts/install
       - name: Start Redis
         uses: supercharge/redis-github-action@1.7.0
         with:
