@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.25 (23th March, 2024)
 
 - Add `force_cache` property to the controller, allowing RFC9111 rules to be completely disabled. (#204)
 - Add `.gitignore` to cache directory created by `FIleStorage`. (#197)
