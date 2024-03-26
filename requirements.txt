@@ -19,4 +19,4 @@ types-PyYAML==6.0.12.12
 moto[s3]==4.2.14
 
 # build
-hatch==1.7.0
+hatch==1.9.3
