@@ -190,7 +190,7 @@ class SQLiteStorage(BaseStorage):
             )
         super().__init__(serializer, ttl)
 
-        self._connection: tp.Optional[sqlite3.Connection] = connection if connection is not None else None
+        self._connection: tp.Optional[sqlite3.Connection] = connection or None
         self._setup_lock = Lock()
         self._setup_completed: bool = False
         self._lock = Lock()
@@ -256,11 +256,12 @@ class SQLiteStorage(BaseStorage):
             return self._serializer.loads(cached_response)
 
     def close(self) -> None:  # pragma: no cover
-        if self._connection is not None:
-            self._connection.close()
+        assert self._connection
+        self._connection.close()
 
     def _remove_expired_caches(self) -> None:
-        if self._ttl is None or self._connection is None:
+        assert self._connection
+        if self._ttl is None:
             return
 
         with self._lock:
