@@ -256,12 +256,11 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
             return self._serializer.loads(cached_response)
 
     async def aclose(self) -> None:  # pragma: no cover
-        assert self._connection
-        await self._connection.close()
+        if self._connection is not None:
+            await self._connection.close()
 
     async def _remove_expired_caches(self) -> None:
-        assert self._connection
-        if self._ttl is None:
+        if self._ttl is None or self._connection is None:
             return
 
         async with self._lock:
