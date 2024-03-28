@@ -1,3 +1,4 @@
+from hashlib import sha1
 from httpcore import Request
 
 from hishel._controller import get_updated_headers
@@ -18,6 +19,12 @@ def test_generate_key():
 
     assert key == "bd152069787aaad359c85af6f2edbb25"
 
+def test_generate_key_custom_hasher():
+    request = Request(b"GET", "https://example.com", headers=[])
+
+    key = generate_key(request, hasher=sha1)
+
+    assert key == "6d748741a927b10454c83ac285b002cd239964ea"
 
 def test_extract_header_values():
     headers = [
