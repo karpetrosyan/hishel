@@ -190,7 +190,7 @@ class SQLiteStorage(BaseStorage):
             )
         super().__init__(serializer, ttl)
 
-        self._connection: tp.Optional[sqlite3.Connection] = connection or None
+        self._connection: tp.Optional[sqlite3.Connection] = connection if connection is not None else None
         self._setup_lock = Lock()
         self._setup_completed: bool = False
         self._lock = Lock()

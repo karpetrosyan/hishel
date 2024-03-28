@@ -190,7 +190,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
             )
         super().__init__(serializer, ttl)
 
-        self._connection: tp.Optional[anysqlite.Connection] = connection or None
+        self._connection: tp.Optional[anysqlite.Connection] = connection if connection is not None else None
         self._setup_lock = AsyncLock()
         self._setup_completed: bool = False
         self._lock = AsyncLock()
