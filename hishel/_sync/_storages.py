@@ -158,7 +158,7 @@ class FileStorage(BaseStorage):
                 os.utime(response_path, (atime, old_mtime))
                 return
 
-        return self.store(key, response, request, metadata)
+        return self.store(key, response, request, metadata)  # pragma: no cover
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -302,7 +302,7 @@ class SQLiteStorage(BaseStorage):
                 self._connection.execute("UPDATE cache SET data = ? WHERE key = ?", [serialized_response, key])
                 self._connection.commit()
                 return
-        return self.store(key, response, request, metadata)
+        return self.store(key, response, request, metadata)  # pragma: no cover
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -417,7 +417,7 @@ class RedisStorage(BaseStorage):
 
         ttl_in_milliseconds = self._client.pttl(key)
 
-        if ttl_in_milliseconds == -2:
+        if ttl_in_milliseconds == -2:  # pragma: no cover
             self.store(key, response, request, metadata)
         else:
             self._client.set(
@@ -519,7 +519,7 @@ class InMemoryStorage(BaseStorage):
                 stored_response = (stored_response[0], stored_response[1], metadata)
                 self._cache.put(key, (stored_response, created_at))
                 return
-            except KeyError:
+            except KeyError:  # pragma: no cover
                 pass
         self.store(key, response, request, metadata)
 

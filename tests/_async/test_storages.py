@@ -165,6 +165,36 @@ async def test_filestorage_timer(use_temp_dir, anyio_backend):
 
 
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
+async def test_filestorage_ttl_after_hits(use_temp_dir, anyio_backend):
+    storage = AsyncFileStorage(ttl=0.2, check_ttl_every=0.2)
+
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+
+    response = Response(200, headers=[], content=b"test")
+    await response.aread()
+
+    # Storing
+    await storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+
+    # Retrieving after 0.08 second
+    await asleep(0.08)
+    await storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+
+    # Retrieving after 0.16 second
+    await asleep(0.08)
+    await storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+
+    # Retrieving after 0.24 second
+    await asleep(0.08)
+    assert await storage.retrieve(key) is None
+
+
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
 async def test_redisstorage_expired(anyio_backend):
     if await is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
@@ -185,6 +215,36 @@ async def test_redisstorage_expired(anyio_backend):
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert await storage.retrieve(first_key) is None
+
+
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
+async def test_redis_ttl_after_hits(use_temp_dir, anyio_backend):
+    storage = AsyncRedisStorage(ttl=0.2)
+
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+
+    response = Response(200, headers=[], content=b"test")
+    await response.aread()
+
+    # Storing
+    await storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+
+    # Retrieving after 0.08 second
+    await asleep(0.08)
+    await storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+
+    # Retrieving after 0.16 second
+    await asleep(0.08)
+    await storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+
+    # Retrieving after 0.24 second
+    await asleep(0.08)
+    assert await storage.retrieve(key) is None
 
 
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
@@ -209,6 +269,36 @@ async def test_sqlite_expired(anyio_backend):
 
 
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
+async def test_sqlite_ttl_after_hits(use_temp_dir, anyio_backend):
+    storage = AsyncSQLiteStorage(ttl=0.2)
+
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+
+    response = Response(200, headers=[], content=b"test")
+    await response.aread()
+
+    # Storing
+    await storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+
+    # Retrieving after 0.08 second
+    await asleep(0.08)
+    await storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+
+    # Retrieving after 0.16 second
+    await asleep(0.08)
+    await storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+
+    # Retrieving after 0.24 second
+    await asleep(0.08)
+    assert await storage.retrieve(key) is None
+
+
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
 async def test_inmemory_expired(anyio_backend):
     storage = AsyncInMemoryStorage(ttl=0.1)
     first_request = Request(b"GET", "https://example.com")
@@ -227,6 +317,36 @@ async def test_inmemory_expired(anyio_backend):
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert await storage.retrieve(first_key) is None
+
+
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
+async def test_inmemory_ttl_after_hits(use_temp_dir, anyio_backend):
+    storage = AsyncInMemoryStorage(ttl=0.2)
+
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+
+    response = Response(200, headers=[], content=b"test")
+    await response.aread()
+
+    # Storing
+    await storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+
+    # Retrieving after 0.08 second
+    await asleep(0.08)
+    await storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+
+    # Retrieving after 0.16 second
+    await asleep(0.08)
+    await storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+
+    # Retrieving after 0.24 second
+    await asleep(0.08)
+    assert await storage.retrieve(key) is None
 
 
 @pytest.mark.anyio

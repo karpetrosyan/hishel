@@ -165,6 +165,36 @@ def test_filestorage_timer(use_temp_dir, anyio_backend):
 
 
 
+def test_filestorage_ttl_after_hits(use_temp_dir, anyio_backend):
+    storage = FileStorage(ttl=0.2, check_ttl_every=0.2)
+
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+
+    # Storing
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.08 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.16 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.24 second
+    sleep(0.08)
+    assert storage.retrieve(key) is None
+
+
+
 def test_redisstorage_expired(anyio_backend):
     if is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
@@ -185,6 +215,36 @@ def test_redisstorage_expired(anyio_backend):
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert storage.retrieve(first_key) is None
+
+
+
+def test_redis_ttl_after_hits(use_temp_dir, anyio_backend):
+    storage = RedisStorage(ttl=0.2)
+
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+
+    # Storing
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.08 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.16 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.24 second
+    sleep(0.08)
+    assert storage.retrieve(key) is None
 
 
 
@@ -209,6 +269,36 @@ def test_sqlite_expired(anyio_backend):
 
 
 
+def test_sqlite_ttl_after_hits(use_temp_dir, anyio_backend):
+    storage = SQLiteStorage(ttl=0.2)
+
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+
+    # Storing
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.08 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.16 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.24 second
+    sleep(0.08)
+    assert storage.retrieve(key) is None
+
+
+
 def test_inmemory_expired(anyio_backend):
     storage = InMemoryStorage(ttl=0.1)
     first_request = Request(b"GET", "https://example.com")
@@ -227,6 +317,36 @@ def test_inmemory_expired(anyio_backend):
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert storage.retrieve(first_key) is None
+
+
+
+def test_inmemory_ttl_after_hits(use_temp_dir, anyio_backend):
+    storage = InMemoryStorage(ttl=0.2)
+
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+
+    # Storing
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.08 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.16 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.24 second
+    sleep(0.08)
+    assert storage.retrieve(key) is None
 
 
 
