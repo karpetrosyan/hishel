@@ -521,7 +521,7 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
                 return
             except KeyError:  # pragma: no cover
                 pass
-        await self.store(key, response, request, metadata)
+        await self.store(key, response, request, metadata)  # pragma: no cover
 
     async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """

@@ -521,7 +521,7 @@ class InMemoryStorage(BaseStorage):
                 return
             except KeyError:  # pragma: no cover
                 pass
-        self.store(key, response, request, metadata)
+        self.store(key, response, request, metadata)  # pragma: no cover
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
