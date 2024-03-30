@@ -141,7 +141,7 @@ class FileStorage(BaseStorage):
         :param request: An HTTP request
         :type request: httpcore.Request
         :param metadata: Additional information about the stored response
-        :type metadata: Optional[Metadata]
+        :type metadata: Metadata
         """
         response_path = self._base_path / key
 
@@ -288,7 +288,7 @@ class SQLiteStorage(BaseStorage):
         :param request: An HTTP request
         :type request: httpcore.Request
         :param metadata: Additional information about the stored response
-        :type metadata: Optional[Metadata]
+        :type metadata: Metadata
         """
 
         self._setup()
@@ -412,7 +412,7 @@ class RedisStorage(BaseStorage):
         :param request: An HTTP request
         :type request: httpcore.Request
         :param metadata: Additional information about the stored response
-        :type metadata: Optional[Metadata]
+        :type metadata: Metadata
         """
 
         ttl_in_milliseconds = self._client.pttl(key)
@@ -510,7 +510,7 @@ class InMemoryStorage(BaseStorage):
         :param request: An HTTP request
         :type request: httpcore.Request
         :param metadata: Additional information about the stored response
-        :type metadata: Optional[Metadata]
+        :type metadata: Metadata
         """
 
         with self._lock:
@@ -642,7 +642,7 @@ class S3Storage(BaseStorage):  # pragma: no cover
         :param request: An HTTP request
         :type request: httpcore.Request
         :param metadata: Additional information about the stored response
-        :type metadata: Optional[Metadata]
+        :type metadata: Metadata
         """
 
         with self._lock:

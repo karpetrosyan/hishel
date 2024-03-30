@@ -141,7 +141,7 @@ class AsyncFileStorage(AsyncBaseStorage):
         :param request: An HTTP request
         :type request: httpcore.Request
         :param metadata: Additional information about the stored response
-        :type metadata: Optional[Metadata]
+        :type metadata: Metadata
         """
         response_path = self._base_path / key
 
@@ -288,7 +288,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
         :param request: An HTTP request
         :type request: httpcore.Request
         :param metadata: Additional information about the stored response
-        :type metadata: Optional[Metadata]
+        :type metadata: Metadata
         """
 
         await self._setup()
@@ -412,7 +412,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
         :param request: An HTTP request
         :type request: httpcore.Request
         :param metadata: Additional information about the stored response
-        :type metadata: Optional[Metadata]
+        :type metadata: Metadata
         """
 
         ttl_in_milliseconds = await self._client.pttl(key)
@@ -510,7 +510,7 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
         :param request: An HTTP request
         :type request: httpcore.Request
         :param metadata: Additional information about the stored response
-        :type metadata: Optional[Metadata]
+        :type metadata: Metadata
         """
 
         async with self._lock:
@@ -642,7 +642,7 @@ class AsyncS3Storage(AsyncBaseStorage):  # pragma: no cover
         :param request: An HTTP request
         :type request: httpcore.Request
         :param metadata: Additional information about the stored response
-        :type metadata: Optional[Metadata]
+        :type metadata: Metadata
         """
 
         async with self._lock:
