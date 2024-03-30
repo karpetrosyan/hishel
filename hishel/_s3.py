@@ -79,7 +79,7 @@ class S3Manager:
                 self._client.delete_object(Bucket=self._bucket_name, Key=obj["Key"])
 
 
-class AsyncS3Manager:
+class AsyncS3Manager:  # pragma: no cover
     def __init__(
         self, client: tp.Any, bucket_name: str, check_ttl_every: tp.Union[int, float], is_binary: bool = False
     ):

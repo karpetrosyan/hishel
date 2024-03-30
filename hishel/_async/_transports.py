@@ -10,7 +10,7 @@ from hishel._utils import extract_header_values_decoded, normalized_url
 
 from .._controller import Controller, allowed_stale
 from .._headers import parse_cache_control
-from .._serializers import JSONSerializer
+from .._serializers import JSONSerializer, Metadata
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
 if tp.TYPE_CHECKING:  # pragma: no cover
@@ -130,18 +130,12 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
 
             if isinstance(res, httpcore.Response):
                 # Simply use the response if the controller determines it is ready for use.
-                metadata["number_of_uses"] += 1
-                stored_response.read()
-                await self._storage.update_metadata(
-                    key=key, request=stored_request, response=stored_response, metadata=metadata
-                )
-                res.extensions["from_cache"] = True  # type: ignore[index]
-                res.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                return Response(
-                    status_code=res.status,
-                    headers=res.headers,
-                    stream=AsyncCacheStream(fake_stream(stored_response.content)),
-                    extensions=res.extensions,
+                return await self._create_hishel_response(
+                    key=key,
+                    response=res,
+                    request=httpcore_request,
+                    cached=True,
+                    metadata=metadata,
                 )
 
             if request_cache_control.only_if_cached:
@@ -160,14 +154,12 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                     response = await self._transport.handle_async_request(revalidation_request)
                 except ConnectError:
                     if self._controller._allow_stale and allowed_stale(response=stored_response):
-                        await stored_response.aread()
-                        stored_response.extensions["from_cache"] = True  # type: ignore[index]
-                        stored_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                        return Response(
-                            status_code=stored_response.status,
-                            headers=stored_response.headers,
-                            stream=AsyncCacheStream(fake_stream(stored_response.content)),
-                            extensions=stored_response.extensions,
+                        return await self._create_hishel_response(
+                            key=key,
+                            response=stored_response,
+                            request=httpcore_request,
+                            cached=True,
+                            metadata=metadata,
                         )
                     raise  # pragma: no cover
                 assert isinstance(response.stream, tp.AsyncIterable)
@@ -186,26 +178,13 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 await full_response.aread()
                 await response.aclose()
 
-                metadata["number_of_uses"] += response.status_code == 304
-
-                await self._storage.store(
-                    key,
+                assert isinstance(full_response.stream, tp.AsyncIterable)
+                return await self._create_hishel_response(
+                    key=key,
                     response=full_response,
                     request=httpcore_request,
+                    cached=response.status_code == 304,
                     metadata=metadata,
-                )
-
-                assert isinstance(full_response.stream, tp.AsyncIterable)
-                full_response.extensions["from_cache"] = (  # type: ignore[index]
-                    httpcore_response.status == 304
-                )
-                if full_response.extensions["from_cache"]:
-                    full_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                return Response(
-                    status_code=full_response.status,
-                    headers=full_response.headers,
-                    stream=AsyncCacheStream(fake_stream(full_response.content)),
-                    extensions=full_response.extensions,
                 )
 
         response = await self._transport.handle_async_request(request)
@@ -226,12 +205,35 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 request=httpcore_request,
             )
 
-        response.extensions["from_cache"] = False  # type: ignore[index]
+        return await self._create_hishel_response(
+            key=key,
+            response=httpcore_response,
+            request=httpcore_request,
+            cached=False,
+        )
+
+    async def _create_hishel_response(
+        self,
+        key: str,
+        response: httpcore.Response,
+        request: httpcore.Request,
+        cached: bool,
+        metadata: Metadata | None = None,
+    ) -> Response:
+        if cached:
+            assert metadata
+            metadata["number_of_uses"] += 1
+            response.read()
+            await self._storage.update_metadata(key=key, request=request, response=response, metadata=metadata)
+            response.extensions["from_cache"] = True  # type: ignore[index]
+            response.extensions["cache_metadata"] = metadata  # type: ignore[index]
+        else:
+            response.extensions["from_cache"] = False  # type: ignore[index]
         return Response(
-            status_code=httpcore_response.status,
-            headers=httpcore_response.headers,
-            stream=AsyncCacheStream(fake_stream(httpcore_response.content)),
-            extensions=httpcore_response.extensions,
+            status_code=response.status,
+            headers=response.headers,
+            stream=AsyncCacheStream(fake_stream(response.content)),
+            extensions=response.extensions,
         )
 
     async def aclose(self) -> None:
