@@ -1,9 +1,12 @@
 import time
 import typing as tp
-from datetime import datetime, timedelta, timezone
 
 from anyio import to_thread
 from botocore.exceptions import ClientError
+
+
+def get_timestamp_in_ms():
+    return time.time() * 1000
 
 
 class S3Manager:
@@ -16,12 +19,28 @@ class S3Manager:
         self._last_cleaned = time.monotonic()
         self._check_ttl_every = check_ttl_every
 
-    def write_to(self, path: str, data: tp.Union[bytes, str]) -> None:
+    def write_to(self, path: str, data: tp.Union[bytes, str], only_metadata: bool = False) -> None:
         path = "hishel-" + path
         if isinstance(data, str):
             data = data.encode("utf-8")
 
-        self._client.put_object(Bucket=self._bucket_name, Key=path, Body=data)
+        created_at = None
+        if only_metadata:
+            try:
+                response = self._client.get_object(
+                    Bucket=self._bucket_name,
+                    Key=path,
+                )
+                created_at = response["Metadata"]["created_at"]
+            except Exception:
+                pass
+
+        self._client.put_object(
+            Bucket=self._bucket_name,
+            Key=path,
+            Body=data,
+            Metadata={"created_at": created_at or str(get_timestamp_in_ms())},
+        )
 
     def read_from(self, path: str) -> tp.Union[bytes, str]:
         path = "hishel-" + path
@@ -43,7 +62,7 @@ class S3Manager:
         if time.monotonic() - self._last_cleaned < self._check_ttl_every:
             try:
                 response = self._client.get_object(Bucket=self._bucket_name, Key=path)
-                if datetime.now(timezone.utc) - response["LastModified"] > timedelta(milliseconds=ttl):
+                if get_timestamp_in_ms() - float(response["Metadata"]["created_at"]) > ttl:
                     self._client.delete_object(Bucket=self._bucket_name, Key=path)
                 return
             except ClientError as e:
@@ -56,7 +75,7 @@ class S3Manager:
             if not obj["Key"].startswith("hishel-"):  # pragma: no cover
                 continue
 
-            if datetime.now(timezone.utc) - obj["LastModified"] > timedelta(milliseconds=ttl):
+            if get_timestamp_in_ms() - float(obj["Metadata"]["created_at"]) > ttl:
                 self._client.delete_object(Bucket=self._bucket_name, Key=obj["Key"])
 
 
@@ -66,8 +85,8 @@ class AsyncS3Manager:
     ):
         self._sync_manager = S3Manager(client, bucket_name, check_ttl_every, is_binary)
 
-    async def write_to(self, path: str, data: tp.Union[bytes, str]) -> None:
-        return await to_thread.run_sync(self._sync_manager.write_to, path, data)
+    async def write_to(self, path: str, data: tp.Union[bytes, str], only_metadata: bool = False) -> None:
+        return await to_thread.run_sync(self._sync_manager.write_to, path, data, only_metadata)
 
     async def read_from(self, path: str) -> tp.Union[bytes, str]:
         return await to_thread.run_sync(self._sync_manager.read_from, path)

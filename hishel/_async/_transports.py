@@ -1,4 +1,3 @@
-import datetime
 import types
 import typing as tp
 
@@ -11,7 +10,7 @@ from hishel._utils import extract_header_values_decoded, normalized_url
 
 from .._controller import Controller, allowed_stale
 from .._headers import parse_cache_control
-from .._serializers import JSONSerializer, Metadata
+from .._serializers import JSONSerializer
 from ._storages import AsyncBaseStorage, AsyncFileStorage
 
 if tp.TYPE_CHECKING:  # pragma: no cover
@@ -133,11 +132,8 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 # Simply use the response if the controller determines it is ready for use.
                 metadata["number_of_uses"] += 1
                 stored_response.read()
-                await self._storage.store(
-                    key=key,
-                    request=stored_request,
-                    response=stored_response,
-                    metadata=metadata,
+                await self._storage.update_metadata(
+                    key=key, request=stored_request, response=stored_response, metadata=metadata
                 )
                 res.extensions["from_cache"] = True  # type: ignore[index]
                 res.extensions["cache_metadata"] = metadata  # type: ignore[index]
@@ -224,14 +220,10 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         await httpcore_response.aclose()
 
         if self._controller.is_cachable(request=httpcore_request, response=httpcore_response):
-            metadata = Metadata(
-                cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0
-            )
             await self._storage.store(
                 key,
                 response=httpcore_response,
                 request=httpcore_request,
-                metadata=metadata,
             )
 
         response.extensions["from_cache"] = False  # type: ignore[index]
