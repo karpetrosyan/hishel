@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import types
 import typing as tp
@@ -94,17 +96,9 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
 
             if isinstance(res, Response):
                 # Simply use the response if the controller determines it is ready for use.
-                metadata["number_of_uses"] += 1
-                stored_response.read()
-                await self._storage.store(
-                    key=key,
-                    request=request,
-                    response=stored_response,
-                    metadata=metadata,
+                return await self._create_hishel_response(
+                    key=key, response=stored_response, request=request, metadata=metadata, cached=True
                 )
-                res.extensions["from_cache"] = True  # type: ignore[index]
-                res.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                return res
 
             if request_cache_control.only_if_cached:
                 return generate_504()
@@ -116,9 +110,9 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                     response = await self._pool.handle_async_request(res)
                 except ConnectError:
                     if self._controller._allow_stale and allowed_stale(response=stored_response):
-                        stored_response.extensions["from_cache"] = True  # type: ignore[index]
-                        stored_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                        return stored_response
+                        return await self._create_hishel_response(
+                            key=key, response=stored_response, request=request, metadata=metadata, cached=True
+                        )
                     raise  # pragma: no cover
                 # Merge headers with the stale response.
                 full_response = self._controller.handle_validation_response(
@@ -126,12 +120,9 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                 )
 
                 await full_response.aread()
-                metadata["number_of_uses"] += response.status == 304
-                await self._storage.store(key, response=full_response, request=request, metadata=metadata)
-                full_response.extensions["from_cache"] = response.status == 304  # type: ignore[index]
-                if full_response.extensions["from_cache"]:
-                    full_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                return full_response
+                return await self._create_hishel_response(
+                    key=key, response=full_response, request=request, metadata=metadata, cached=response.status == 304
+                )
 
         response = await self._pool.handle_async_request(request)
 
@@ -142,7 +133,25 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
             )
             await self._storage.store(key, response=response, request=request, metadata=metadata)
 
-        response.extensions["from_cache"] = False  # type: ignore[index]
+        return await self._create_hishel_response(key=key, response=response, request=request, cached=False)
+
+    async def _create_hishel_response(
+        self,
+        key: str,
+        response: Response,
+        request: Request,
+        cached: bool,
+        metadata: Metadata | None = None,
+    ) -> Response:
+        if cached:
+            assert metadata
+            metadata["number_of_uses"] += 1
+            response.read()
+            await self._storage.update_metadata(key=key, request=request, response=response, metadata=metadata)
+            response.extensions["from_cache"] = True  # type: ignore[index]
+            response.extensions["cache_metadata"] = metadata  # type: ignore[index]
+        else:
+            response.extensions["from_cache"] = False  # type: ignore[index]
         return response
 
     async def aclose(self) -> None:
