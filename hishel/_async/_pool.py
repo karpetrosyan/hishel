@@ -87,6 +87,8 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
             # Try using the stored response if it was discovered.
 
             stored_response, stored_request, metadata = stored_data
+
+            # Immediately read the stored response to avoid issues when trying to access the response body.
             stored_response.read()
 
             res = self._controller.construct_response_from_cache(
@@ -105,36 +107,41 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                 return generate_504()
 
             if isinstance(res, Request):
-                # Re-validating the response.
+                # Controller has determined that the response needs to be re-validated.
 
                 try:
-                    response = await self._pool.handle_async_request(res)
+                    revalidation_response = await self._pool.handle_async_request(res)
                 except ConnectError:
+                    # If there is a connection error, we can use the stale response if allowed.
                     if self._controller._allow_stale and allowed_stale(response=stored_response):
                         return await self._create_hishel_response(
                             key=key, response=stored_response, request=request, metadata=metadata, cached=True
                         )
                     raise  # pragma: no cover
                 # Merge headers with the stale response.
-                full_response = self._controller.handle_validation_response(
-                    old_response=stored_response, new_response=response
+                final_response = self._controller.handle_validation_response(
+                    old_response=stored_response, new_response=revalidation_response
                 )
 
-                await full_response.aread()
+                await final_response.aread()
                 return await self._create_hishel_response(
-                    key=key, response=full_response, request=request, metadata=metadata, cached=response.status == 304
+                    key=key,
+                    response=final_response,
+                    request=request,
+                    metadata=metadata,
+                    cached=revalidation_response.status == 304,
                 )
 
-        response = await self._pool.handle_async_request(request)
-        await response.aread()
+        regular_response = await self._pool.handle_async_request(request)
+        await regular_response.aread()
 
-        if self._controller.is_cachable(request=request, response=response):
+        if self._controller.is_cachable(request=request, response=regular_response):
             metadata = Metadata(
                 cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0
             )
-            await self._storage.store(key, response=response, request=request, metadata=metadata)
+            await self._storage.store(key, response=regular_response, request=request, metadata=metadata)
 
-        return await self._create_hishel_response(key=key, response=response, request=request, cached=False)
+        return await self._create_hishel_response(key=key, response=regular_response, request=request, cached=False)
 
     async def _create_hishel_response(
         self,
