@@ -1,4 +1,5 @@
-import datetime
+from __future__ import annotations
+
 import types
 import typing as tp
 
@@ -122,6 +123,7 @@ class CacheTransport(httpx.BaseTransport):
             # Try using the stored response if it was discovered.
 
             stored_response, stored_request, metadata = stored_data
+            stored_response.read()
 
             res = self._controller.construct_response_from_cache(
                 request=httpcore_request,
@@ -131,21 +133,12 @@ class CacheTransport(httpx.BaseTransport):
 
             if isinstance(res, httpcore.Response):
                 # Simply use the response if the controller determines it is ready for use.
-                metadata["number_of_uses"] += 1
-                stored_response.read()
-                self._storage.store(
+                return self._create_hishel_response(
                     key=key,
-                    request=stored_request,
-                    response=stored_response,
+                    response=res,
+                    request=httpcore_request,
+                    cached=True,
                     metadata=metadata,
-                )
-                res.extensions["from_cache"] = True  # type: ignore[index]
-                res.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                return Response(
-                    status_code=res.status,
-                    headers=res.headers,
-                    stream=CacheStream(fake_stream(stored_response.content)),
-                    extensions=res.extensions,
                 )
 
             if request_cache_control.only_if_cached:
@@ -164,14 +157,12 @@ class CacheTransport(httpx.BaseTransport):
                     response = self._transport.handle_request(revalidation_request)
                 except ConnectError:
                     if self._controller._allow_stale and allowed_stale(response=stored_response):
-                        stored_response.read()
-                        stored_response.extensions["from_cache"] = True  # type: ignore[index]
-                        stored_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                        return Response(
-                            status_code=stored_response.status,
-                            headers=stored_response.headers,
-                            stream=CacheStream(fake_stream(stored_response.content)),
-                            extensions=stored_response.extensions,
+                        return self._create_hishel_response(
+                            key=key,
+                            response=stored_response,
+                            request=httpcore_request,
+                            cached=True,
+                            metadata=metadata,
                         )
                     raise  # pragma: no cover
                 assert isinstance(response.stream, tp.Iterable)
@@ -190,26 +181,13 @@ class CacheTransport(httpx.BaseTransport):
                 full_response.read()
                 response.close()
 
-                metadata["number_of_uses"] += response.status_code == 304
-
-                self._storage.store(
-                    key,
+                assert isinstance(full_response.stream, tp.Iterable)
+                return self._create_hishel_response(
+                    key=key,
                     response=full_response,
                     request=httpcore_request,
+                    cached=response.status_code == 304,
                     metadata=metadata,
-                )
-
-                assert isinstance(full_response.stream, tp.Iterable)
-                full_response.extensions["from_cache"] = (  # type: ignore[index]
-                    httpcore_response.status == 304
-                )
-                if full_response.extensions["from_cache"]:
-                    full_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                return Response(
-                    status_code=full_response.status,
-                    headers=full_response.headers,
-                    stream=CacheStream(fake_stream(full_response.content)),
-                    extensions=full_response.extensions,
                 )
 
         response = self._transport.handle_request(request)
@@ -224,22 +202,40 @@ class CacheTransport(httpx.BaseTransport):
         httpcore_response.close()
 
         if self._controller.is_cachable(request=httpcore_request, response=httpcore_response):
-            metadata = Metadata(
-                cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0
-            )
             self._storage.store(
                 key,
                 response=httpcore_response,
                 request=httpcore_request,
-                metadata=metadata,
             )
 
-        response.extensions["from_cache"] = False  # type: ignore[index]
+        return self._create_hishel_response(
+            key=key,
+            response=httpcore_response,
+            request=httpcore_request,
+            cached=False,
+        )
+
+    def _create_hishel_response(
+        self,
+        key: str,
+        response: httpcore.Response,
+        request: httpcore.Request,
+        cached: bool,
+        metadata: Metadata | None = None,
+    ) -> Response:
+        if cached:
+            assert metadata
+            metadata["number_of_uses"] += 1
+            self._storage.update_metadata(key=key, request=request, response=response, metadata=metadata)
+            response.extensions["from_cache"] = True  # type: ignore[index]
+            response.extensions["cache_metadata"] = metadata  # type: ignore[index]
+        else:
+            response.extensions["from_cache"] = False  # type: ignore[index]
         return Response(
-            status_code=httpcore_response.status,
-            headers=httpcore_response.headers,
-            stream=CacheStream(fake_stream(httpcore_response.content)),
-            extensions=httpcore_response.extensions,
+            status_code=response.status,
+            headers=response.headers,
+            stream=CacheStream(fake_stream(response.content)),
+            extensions=response.extensions,
         )
 
     def close(self) -> None:

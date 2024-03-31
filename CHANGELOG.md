@@ -1,5 +1,9 @@
 # Changelog
 
+## Unrelesed
+
+- Prevent cache hits from resetting the ttl. (#215)
+
 ## 0.0.25 (26th March, 2024)
 
 - Add `force_cache` property to the controller, allowing RFC9111 rules to be completely disabled. (#204)

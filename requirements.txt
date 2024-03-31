@@ -16,7 +16,6 @@ anyio==4.3.0
 trio==0.24.0
 coverage==7.4.1
 types-PyYAML==6.0.12.12
-moto[s3]==4.2.14
 
 # build
 hatch==1.7.0

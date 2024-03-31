@@ -1,4 +1,8 @@
+from __future__ import annotations
+
+import datetime
 import logging
+import os
 import time
 import typing as tp
 import warnings
@@ -48,7 +52,10 @@ class BaseStorage:
         self._serializer = serializer or JSONSerializer()
         self._ttl = ttl
 
-    def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
+        raise NotImplementedError()
+
+    def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         raise NotImplementedError()
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
@@ -97,9 +104,35 @@ class FileStorage(BaseStorage):
         self._check_ttl_every = check_ttl_every
         self._last_cleaned = time.monotonic()
 
-    def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :param response: An HTTP response
+        :type response: httpcore.Response
+        :param request: An HTTP request
+        :type request: httpcore.Request
+        :param metadata: Additional information about the stored response
+        :type metadata: Optional[Metadata]
+        """
+
+        metadata = metadata or Metadata(
+            cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0
+        )
+        response_path = self._base_path / key
+
+        with self._lock:
+            self._file_manager.write_to(
+                str(response_path),
+                self._serializer.dumps(response=response, request=request, metadata=metadata),
+            )
+        self._remove_expired_caches(response_path)
+
+    def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+        """
+        Updates the metadata of the stored response.
 
         :param key: Hashed value of concatenated HTTP method and URI
         :type key: str
@@ -113,11 +146,19 @@ class FileStorage(BaseStorage):
         response_path = self._base_path / key
 
         with self._lock:
-            self._file_manager.write_to(
-                str(response_path),
-                self._serializer.dumps(response=response, request=request, metadata=metadata),
-            )
-        self._remove_expired_caches(response_path)
+            if response_path.exists():
+                atime = response_path.stat().st_atime
+                old_mtime = response_path.stat().st_mtime
+                self._file_manager.write_to(
+                    str(response_path),
+                    self._serializer.dumps(response=response, request=request, metadata=metadata),
+                )
+
+                # Restore the old atime and mtime (we use mtime to check the cache expiration time)
+                os.utime(response_path, (atime, old_mtime))
+                return
+
+        return self.store(key, response, request, metadata)  # pragma: no cover
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -206,7 +247,7 @@ class SQLiteStorage(BaseStorage):
                 self._connection.commit()
                 self._setup_completed = True
 
-    def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
 
@@ -217,11 +258,15 @@ class SQLiteStorage(BaseStorage):
         :param request: An HTTP request
         :type request: httpcore.Request
         :param metadata: Additioal information about the stored response
-        :type metadata: Metadata
+        :type metadata: Optional[Metadata]
         """
 
         self._setup()
         assert self._connection
+
+        metadata = metadata or Metadata(
+            cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0
+        )
 
         with self._lock:
             self._connection.execute("DELETE FROM cache WHERE key = ?", [key])
@@ -231,6 +276,33 @@ class SQLiteStorage(BaseStorage):
             )
             self._connection.commit()
         self._remove_expired_caches()
+
+    def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+        """
+        Updates the metadata of the stored response.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :param response: An HTTP response
+        :type response: httpcore.Response
+        :param request: An HTTP request
+        :type request: httpcore.Request
+        :param metadata: Additional information about the stored response
+        :type metadata: Metadata
+        """
+
+        self._setup()
+        assert self._connection
+
+        with self._lock:
+            cursor = self._connection.execute("SELECT data FROM cache WHERE key = ?", [key])
+            row = cursor.fetchone()
+            if row is not None:
+                serialized_response = self._serializer.dumps(response=response, request=request, metadata=metadata)
+                self._connection.execute("UPDATE cache SET data = ? WHERE key = ?", [serialized_response, key])
+                self._connection.commit()
+                return
+        return self.store(key, response, request, metadata)  # pragma: no cover
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -302,7 +374,7 @@ class RedisStorage(BaseStorage):
         else:  # pragma: no cover
             self._client = client
 
-    def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
 
@@ -313,8 +385,12 @@ class RedisStorage(BaseStorage):
         :param request: An HTTP request
         :type request: httpcore.Request
         :param metadata: Additioal information about the stored response
-        :type metadata: Metadata
+        :type metadata: Optional[Metadata]
         """
+
+        metadata = metadata or Metadata(
+            cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0
+        )
 
         if self._ttl is not None:
             px = float_seconds_to_int_milliseconds(self._ttl)
@@ -324,6 +400,31 @@ class RedisStorage(BaseStorage):
         self._client.set(
             key, self._serializer.dumps(response=response, request=request, metadata=metadata), px=px
         )
+
+    def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+        """
+        Updates the metadata of the stored response.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :param response: An HTTP response
+        :type response: httpcore.Response
+        :param request: An HTTP request
+        :type request: httpcore.Request
+        :param metadata: Additional information about the stored response
+        :type metadata: Metadata
+        """
+
+        ttl_in_milliseconds = self._client.pttl(key)
+
+        if ttl_in_milliseconds == -2:  # pragma: no cover
+            self.store(key, response, request, metadata)
+        else:
+            self._client.set(
+                key,
+                self._serializer.dumps(response=response, request=request, metadata=metadata),
+                px=ttl_in_milliseconds,
+            )
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -373,7 +474,7 @@ class InMemoryStorage(BaseStorage):
         self._cache: LFUCache[str, tp.Tuple[StoredResponse, float]] = LFUCache(capacity=capacity)
         self._lock = Lock()
 
-    def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
 
@@ -384,8 +485,12 @@ class InMemoryStorage(BaseStorage):
         :param request: An HTTP request
         :type request: httpcore.Request
         :param metadata: Additioal information about the stored response
-        :type metadata: Metadata
+        :type metadata: Optional[Metadata]
         """
+
+        metadata = metadata or Metadata(
+            cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0
+        )
 
         with self._lock:
             response_clone = clone_model(response)
@@ -393,6 +498,30 @@ class InMemoryStorage(BaseStorage):
             stored_response: StoredResponse = (deepcopy(response_clone), deepcopy(request_clone), metadata)
             self._cache.put(key, (stored_response, time.monotonic()))
         self._remove_expired_caches()
+
+    def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+        """
+        Updates the metadata of the stored response.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :param response: An HTTP response
+        :type response: httpcore.Response
+        :param request: An HTTP request
+        :type request: httpcore.Request
+        :param metadata: Additional information about the stored response
+        :type metadata: Metadata
+        """
+
+        with self._lock:
+            try:
+                stored_response, created_at = self._cache.get(key)
+                stored_response = (stored_response[0], stored_response[1], metadata)
+                self._cache.put(key, (stored_response, created_at))
+                return
+            except KeyError:  # pragma: no cover
+                pass
+        self.store(key, response, request, metadata)  # pragma: no cover
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -432,7 +561,7 @@ class InMemoryStorage(BaseStorage):
                 self._cache.remove_key(key)
 
 
-class S3Storage(BaseStorage):
+class S3Storage(BaseStorage):  # pragma: no cover
     """
     AWS S3 storage.
 
@@ -478,7 +607,7 @@ class S3Storage(BaseStorage):
         )
         self._lock = Lock()
 
-    def store(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
 
@@ -489,14 +618,36 @@ class S3Storage(BaseStorage):
         :param request: An HTTP request
         :type request: httpcore.Request
         :param metadata: Additioal information about the stored response
-        :type metadata: Metadata`
+        :type metadata: Optional[Metadata]`
         """
+
+        metadata = metadata or Metadata(
+            cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0
+        )
 
         with self._lock:
             serialized = self._serializer.dumps(response=response, request=request, metadata=metadata)
             self._s3_manager.write_to(path=key, data=serialized)
 
         self._remove_expired_caches(key)
+
+    def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+        """
+        Updates the metadata of the stored response.
+
+        :param key: Hashed value of concatenated HTTP method and URI
+        :type key: str
+        :param response: An HTTP response
+        :type response: httpcore.Response
+        :param request: An HTTP request
+        :type request: httpcore.Request
+        :param metadata: Additional information about the stored response
+        :type metadata: Metadata
+        """
+
+        with self._lock:
+            serialized = self._serializer.dumps(response=response, request=request, metadata=metadata)
+            self._s3_manager.write_to(path=key, data=serialized, only_metadata=True)
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """

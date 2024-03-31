@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import types
 import typing as tp
@@ -85,6 +87,7 @@ class CacheConnectionPool(RequestInterface):
             # Try using the stored response if it was discovered.
 
             stored_response, stored_request, metadata = stored_data
+            stored_response.read()
 
             res = self._controller.construct_response_from_cache(
                 request=request,
@@ -94,17 +97,9 @@ class CacheConnectionPool(RequestInterface):
 
             if isinstance(res, Response):
                 # Simply use the response if the controller determines it is ready for use.
-                metadata["number_of_uses"] += 1
-                stored_response.read()
-                self._storage.store(
-                    key=key,
-                    request=request,
-                    response=stored_response,
-                    metadata=metadata,
+                return self._create_hishel_response(
+                    key=key, response=stored_response, request=request, metadata=metadata, cached=True
                 )
-                res.extensions["from_cache"] = True  # type: ignore[index]
-                res.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                return res
 
             if request_cache_control.only_if_cached:
                 return generate_504()
@@ -116,9 +111,9 @@ class CacheConnectionPool(RequestInterface):
                     response = self._pool.handle_request(res)
                 except ConnectError:
                     if self._controller._allow_stale and allowed_stale(response=stored_response):
-                        stored_response.extensions["from_cache"] = True  # type: ignore[index]
-                        stored_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                        return stored_response
+                        return self._create_hishel_response(
+                            key=key, response=stored_response, request=request, metadata=metadata, cached=True
+                        )
                     raise  # pragma: no cover
                 # Merge headers with the stale response.
                 full_response = self._controller.handle_validation_response(
@@ -126,23 +121,37 @@ class CacheConnectionPool(RequestInterface):
                 )
 
                 full_response.read()
-                metadata["number_of_uses"] += response.status == 304
-                self._storage.store(key, response=full_response, request=request, metadata=metadata)
-                full_response.extensions["from_cache"] = response.status == 304  # type: ignore[index]
-                if full_response.extensions["from_cache"]:
-                    full_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                return full_response
+                return self._create_hishel_response(
+                    key=key, response=full_response, request=request, metadata=metadata, cached=response.status == 304
+                )
 
         response = self._pool.handle_request(request)
+        response.read()
 
         if self._controller.is_cachable(request=request, response=response):
-            response.read()
             metadata = Metadata(
                 cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0
             )
             self._storage.store(key, response=response, request=request, metadata=metadata)
 
-        response.extensions["from_cache"] = False  # type: ignore[index]
+        return self._create_hishel_response(key=key, response=response, request=request, cached=False)
+
+    def _create_hishel_response(
+        self,
+        key: str,
+        response: Response,
+        request: Request,
+        cached: bool,
+        metadata: Metadata | None = None,
+    ) -> Response:
+        if cached:
+            assert metadata
+            metadata["number_of_uses"] += 1
+            self._storage.update_metadata(key=key, request=request, response=response, metadata=metadata)
+            response.extensions["from_cache"] = True  # type: ignore[index]
+            response.extensions["cache_metadata"] = metadata  # type: ignore[index]
+        else:
+            response.extensions["from_cache"] = False  # type: ignore[index]
         return response
 
     def close(self) -> None:
