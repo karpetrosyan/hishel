@@ -123,6 +123,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             # Try using the stored response if it was discovered.
 
             stored_response, stored_request, metadata = stored_data
+            stored_response.read()
 
             res = self._controller.construct_response_from_cache(
                 request=httpcore_request,
@@ -225,7 +226,6 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         if cached:
             assert metadata
             metadata["number_of_uses"] += 1
-            response.read()
             await self._storage.update_metadata(key=key, request=request, response=response, metadata=metadata)
             response.extensions["from_cache"] = True  # type: ignore[index]
             response.extensions["cache_metadata"] = metadata  # type: ignore[index]

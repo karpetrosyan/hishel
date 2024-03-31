@@ -87,6 +87,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
             # Try using the stored response if it was discovered.
 
             stored_response, stored_request, metadata = stored_data
+            stored_response.read()
 
             res = self._controller.construct_response_from_cache(
                 request=request,
@@ -125,9 +126,9 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                 )
 
         response = await self._pool.handle_async_request(request)
+        await response.aread()
 
         if self._controller.is_cachable(request=request, response=response):
-            await response.aread()
             metadata = Metadata(
                 cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0
             )
@@ -146,7 +147,6 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
         if cached:
             assert metadata
             metadata["number_of_uses"] += 1
-            response.read()
             await self._storage.update_metadata(key=key, request=request, response=response, metadata=metadata)
             response.extensions["from_cache"] = True  # type: ignore[index]
             response.extensions["cache_metadata"] = metadata  # type: ignore[index]

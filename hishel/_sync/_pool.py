@@ -87,6 +87,7 @@ class CacheConnectionPool(RequestInterface):
             # Try using the stored response if it was discovered.
 
             stored_response, stored_request, metadata = stored_data
+            stored_response.read()
 
             res = self._controller.construct_response_from_cache(
                 request=request,
@@ -125,9 +126,9 @@ class CacheConnectionPool(RequestInterface):
                 )
 
         response = self._pool.handle_request(request)
+        response.read()
 
         if self._controller.is_cachable(request=request, response=response):
-            response.read()
             metadata = Metadata(
                 cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0
             )
@@ -146,7 +147,6 @@ class CacheConnectionPool(RequestInterface):
         if cached:
             assert metadata
             metadata["number_of_uses"] += 1
-            response.read()
             self._storage.update_metadata(key=key, request=request, response=response, metadata=metadata)
             response.extensions["from_cache"] = True  # type: ignore[index]
             response.extensions["cache_metadata"] = metadata  # type: ignore[index]
