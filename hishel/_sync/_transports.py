@@ -96,6 +96,7 @@ class CacheTransport(httpx.BaseTransport):
         else:
             body_for_key = b""
 
+        # Construct the HTTPCore request because Controllers and Storages work with HTTPCore requests.
         httpcore_request = httpcore.Request(
             method=request.method,
             url=httpcore.URL(
@@ -123,6 +124,8 @@ class CacheTransport(httpx.BaseTransport):
             # Try using the stored response if it was discovered.
 
             stored_response, stored_request, metadata = stored_data
+
+            # Immediately read the stored response to avoid issues when trying to access the response body.
             stored_response.read()
 
             res = self._controller.construct_response_from_cache(
@@ -145,7 +148,7 @@ class CacheTransport(httpx.BaseTransport):
                 return generate_504()
 
             if isinstance(res, httpcore.Request):
-                # Re-validating the response.
+                # Controller has determined that the response needs to be re-validated.
                 assert isinstance(res.stream, tp.Iterable)
                 revalidation_request = Request(
                     method=res.method,
@@ -154,8 +157,9 @@ class CacheTransport(httpx.BaseTransport):
                     stream=CacheStream(res.stream),
                 )
                 try:
-                    response = self._transport.handle_request(revalidation_request)
+                    revalidation_response = self._transport.handle_request(revalidation_request)
                 except ConnectError:
+                    # If there is a connection error, we can use the stale response if allowed.
                     if self._controller._allow_stale and allowed_stale(response=stored_response):
                         return self._create_hishel_response(
                             key=key,
@@ -165,52 +169,52 @@ class CacheTransport(httpx.BaseTransport):
                             metadata=metadata,
                         )
                     raise  # pragma: no cover
-                assert isinstance(response.stream, tp.Iterable)
-                httpcore_response = httpcore.Response(
-                    status=response.status_code,
-                    headers=response.headers.raw,
-                    content=CacheStream(response.stream),
-                    extensions=response.extensions,
+                assert isinstance(revalidation_response.stream, tp.Iterable)
+                httpcore_revalidation_response = httpcore.Response(
+                    status=revalidation_response.status_code,
+                    headers=revalidation_response.headers.raw,
+                    content=CacheStream(revalidation_response.stream),
+                    extensions=revalidation_response.extensions,
                 )
 
                 # Merge headers with the stale response.
-                full_response = self._controller.handle_validation_response(
-                    old_response=stored_response, new_response=httpcore_response
+                final_httpcore_response = self._controller.handle_validation_response(
+                    old_response=stored_response, new_response=httpcore_revalidation_response
                 )
 
-                full_response.read()
-                response.close()
+                final_httpcore_response.read()
+                revalidation_response.close()
 
-                assert isinstance(full_response.stream, tp.Iterable)
+                assert isinstance(final_httpcore_response.stream, tp.Iterable)
                 return self._create_hishel_response(
                     key=key,
-                    response=full_response,
+                    response=final_httpcore_response,
                     request=httpcore_request,
-                    cached=response.status_code == 304,
+                    cached=revalidation_response.status_code == 304,
                     metadata=metadata,
                 )
 
-        response = self._transport.handle_request(request)
-        assert isinstance(response.stream, tp.Iterable)
-        httpcore_response = httpcore.Response(
-            status=response.status_code,
-            headers=response.headers.raw,
-            content=CacheStream(response.stream),
-            extensions=response.extensions,
+        regular_response = self._transport.handle_request(request)
+        assert isinstance(regular_response.stream, tp.Iterable)
+        httpcore_regular_response = httpcore.Response(
+            status=regular_response.status_code,
+            headers=regular_response.headers.raw,
+            content=CacheStream(regular_response.stream),
+            extensions=regular_response.extensions,
         )
-        httpcore_response.read()
-        httpcore_response.close()
+        httpcore_regular_response.read()
+        httpcore_regular_response.close()
 
-        if self._controller.is_cachable(request=httpcore_request, response=httpcore_response):
+        if self._controller.is_cachable(request=httpcore_request, response=httpcore_regular_response):
             self._storage.store(
                 key,
-                response=httpcore_response,
+                response=httpcore_regular_response,
                 request=httpcore_request,
             )
 
         return self._create_hishel_response(
             key=key,
-            response=httpcore_response,
+            response=httpcore_regular_response,
             request=httpcore_request,
             cached=False,
         )
