@@ -2,6 +2,7 @@
 
 ## Unrelesed
 
+- Expose `AsyncBaseStorage` and `BaseStorage`. (#220)
 - Prevent cache hits from resetting the ttl. (#215)
 
 ## 0.0.25 (26th March, 2024)
