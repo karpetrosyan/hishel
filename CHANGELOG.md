@@ -1,6 +1,6 @@
 # Changelog
 
-## Unrelesed
+## 0.0.26 (12th April, 2024)
 
 - Expose `AsyncBaseStorage` and `BaseStorage`. (#220)
 - Prevent cache hits from resetting the ttl. (#215)
