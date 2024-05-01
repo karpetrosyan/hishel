@@ -33,7 +33,14 @@ from .._utils import float_seconds_to_int_milliseconds
 
 logger = logging.getLogger("hishel.storages")
 
-__all__ = ("AsyncFileStorage", "AsyncRedisStorage", "AsyncSQLiteStorage", "AsyncInMemoryStorage", "AsyncS3Storage")
+__all__ = (
+    "AsyncBaseStorage",
+    "AsyncFileStorage",
+    "AsyncRedisStorage",
+    "AsyncSQLiteStorage",
+    "AsyncInMemoryStorage",
+    "AsyncS3Storage",
+)
 
 StoredResponse: TypeAlias = tp.Tuple[Response, Request, Metadata]
 
