@@ -2,7 +2,7 @@
 
 # linting
 ruff==0.3.0
-mypy==1.8.0
+mypy==1.10.0
 
 # docs
 mkdocs==1.5.3
