@@ -424,7 +424,9 @@ class RedisStorage(BaseStorage):
 
         ttl_in_milliseconds = self._client.pttl(key)
 
-        if ttl_in_milliseconds == -2:  # pragma: no cover
+        # -2: if the key does not exist in Redis
+        # -1: if the key exists in Redis but has no expiration
+        if ttl_in_milliseconds == -2 or ttl_in_milliseconds == -1:  # pragma: no cover
             self.store(key, response, request, metadata)
         else:
             self._client.set(
