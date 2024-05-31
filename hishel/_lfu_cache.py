@@ -68,5 +68,4 @@ class LFUCache(Generic[K, V]):
             del self.cache[key]
 
     def __iter__(self) -> Iterator[K]:
-        for key in self.cache:
-            yield key
+        yield from self.cache

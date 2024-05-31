@@ -225,16 +225,14 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
     def __init__(
         self,
         serializer: tp.Optional[BaseSerializer] = None,
-        connection: tp.Optional["anysqlite.Connection"] = None,
+        connection: tp.Optional[anysqlite.Connection] = None,
         ttl: tp.Optional[tp.Union[int, float]] = None,
     ) -> None:
         if anysqlite is None:  # pragma: no cover
             raise RuntimeError(
-                (
-                    f"The `{type(self).__name__}` was used, but the required packages were not found. "
-                    "Check that you have `Hishel` installed with the `sqlite` extension as shown.\n"
-                    "```pip install hishel[sqlite]```"
-                )
+                f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                "Check that you have `Hishel` installed with the `sqlite` extension as shown.\n"
+                "```pip install hishel[sqlite]```"
             )
         super().__init__(serializer, ttl)
 
@@ -249,7 +247,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
                 if not self._connection:  # pragma: no cover
                     self._connection = await anysqlite.connect(".hishel.sqlite", check_same_thread=False)
                 await self._connection.execute(
-                    ("CREATE TABLE IF NOT EXISTS cache(key TEXT, data BLOB, date_created REAL)")
+                    "CREATE TABLE IF NOT EXISTS cache(key TEXT, data BLOB, date_created REAL)"
                 )
                 await self._connection.commit()
                 self._setup_completed = True
@@ -363,16 +361,14 @@ class AsyncRedisStorage(AsyncBaseStorage):
     def __init__(
         self,
         serializer: tp.Optional[BaseSerializer] = None,
-        client: tp.Optional["redis.Redis"] = None,  # type: ignore
+        client: tp.Optional[redis.Redis] = None,  # type: ignore
         ttl: tp.Optional[tp.Union[int, float]] = None,
     ) -> None:
         if redis is None:  # pragma: no cover
             raise RuntimeError(
-                (
-                    f"The `{type(self).__name__}` was used, but the required packages were not found. "
-                    "Check that you have `Hishel` installed with the `redis` extension as shown.\n"
-                    "```pip install hishel[redis]```"
-                )
+                f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                "Check that you have `Hishel` installed with the `redis` extension as shown.\n"
+                "```pip install hishel[redis]```"
             )
         super().__init__(serializer, ttl)
 
@@ -599,11 +595,9 @@ class AsyncS3Storage(AsyncBaseStorage):  # pragma: no cover
 
         if boto3 is None:  # pragma: no cover
             raise RuntimeError(
-                (
-                    f"The `{type(self).__name__}` was used, but the required packages were not found. "
-                    "Check that you have `Hishel` installed with the `s3` extension as shown.\n"
-                    "```pip install hishel[s3]```"
-                )
+                f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                "Check that you have `Hishel` installed with the `s3` extension as shown.\n"
+                "```pip install hishel[s3]```"
             )
 
         self._bucket_name = bucket_name
