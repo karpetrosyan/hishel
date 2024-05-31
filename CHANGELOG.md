@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.27 (31th May, 2024)
+
+- Fix `RedisStorage` when using without ttl. (#231)
+
 ## 0.0.26 (12th April, 2024)
 
 - Expose `AsyncBaseStorage` and `BaseStorage`. (#220)
