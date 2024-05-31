@@ -424,7 +424,9 @@ class AsyncRedisStorage(AsyncBaseStorage):
 
         ttl_in_milliseconds = await self._client.pttl(key)
 
-        if ttl_in_milliseconds == -2:  # pragma: no cover
+        # -2: if the key does not exist in Redis
+        # -1: if the key exists in Redis but has no expiration
+        if ttl_in_milliseconds == -2 or ttl_in_milliseconds == -1:  # pragma: no cover
             await self.store(key, response, request, metadata)
         else:
             await self._client.set(

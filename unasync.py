@@ -43,7 +43,7 @@ SUBS = [
     ("__aenter__", "__enter__"),
     ("__aexit__", "__exit__"),
     ("*@pytest.mark.anyio", ""),
-    ('*@pytest.mark.parametrize\("anyio_backend", \["asyncio"\]\)', ""),
+    (r'*@pytest.mark.parametrize\("anyio_backend", \["asyncio"\]\)', ""),
     ("anysqlite", "sqlite3"),
 ]
 COMPILED_SUBS = [(re.compile(r"(^|\b)" + regex + r"($|\b)"), repl) for regex, repl in SUBS]
