@@ -34,7 +34,8 @@ class CacheStream(ByteStream):
         self._httpcore_stream = httpcore_stream
 
     def __iter__(self) -> tp.Iterator[bytes]:
-        yield from self._httpcore_stream
+        for part in self._httpcore_stream:
+            yield part
 
     def close(self) -> None:
         if hasattr(self._httpcore_stream, "close"):

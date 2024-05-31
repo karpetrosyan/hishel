@@ -230,9 +230,9 @@ class SQLiteStorage(BaseStorage):
     ) -> None:
         if sqlite3 is None:  # pragma: no cover
             raise RuntimeError(
-                    f"The `{type(self).__name__}` was used, but the required packages were not found. "
-                    "Check that you have `Hishel` installed with the `sqlite` extension as shown.\n"
-                    "```pip install hishel[sqlite]```"
+                f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                "Check that you have `Hishel` installed with the `sqlite` extension as shown.\n"
+                "```pip install hishel[sqlite]```"
             )
         super().__init__(serializer, ttl)
 
@@ -366,9 +366,9 @@ class RedisStorage(BaseStorage):
     ) -> None:
         if redis is None:  # pragma: no cover
             raise RuntimeError(
-                    f"The `{type(self).__name__}` was used, but the required packages were not found. "
-                    "Check that you have `Hishel` installed with the `redis` extension as shown.\n"
-                    "```pip install hishel[redis]```"
+                f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                "Check that you have `Hishel` installed with the `redis` extension as shown.\n"
+                "```pip install hishel[redis]```"
             )
         super().__init__(serializer, ttl)
 
@@ -595,9 +595,9 @@ class S3Storage(BaseStorage):  # pragma: no cover
 
         if boto3 is None:  # pragma: no cover
             raise RuntimeError(
-                    f"The `{type(self).__name__}` was used, but the required packages were not found. "
-                    "Check that you have `Hishel` installed with the `s3` extension as shown.\n"
-                    "```pip install hishel[s3]```"
+                f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                "Check that you have `Hishel` installed with the `s3` extension as shown.\n"
+                "```pip install hishel[s3]```"
             )
 
         self._bucket_name = bucket_name
