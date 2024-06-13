@@ -19,8 +19,8 @@
       <img src="https://img.shields.io/codecov/c/github/karpetrosyan/hishel" alt="license">
   </a>
 
-  <a href="https://static.pepy.tech/badge/hishel/month">
-      <img src="https://static.pepy.tech/badge/hishel/month" alt="Downloads">
+  <a href="https://github.com/karpetrosyan/hishel">
+      <img src="https://img.shields.io/pypi/dm/hishel.svg" alt="Downloads">
   </a>
 </p>
 
