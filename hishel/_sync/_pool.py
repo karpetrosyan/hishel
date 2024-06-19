@@ -124,6 +124,14 @@ class CacheConnectionPool(RequestInterface):
                 )
 
                 final_response.read()
+
+                if self._controller.is_cachable(request=request, response=final_response):
+                    metadata = Metadata(
+                        cache_key=key,
+                        created_at=datetime.datetime.now(datetime.timezone.utc),
+                        number_of_uses=0,
+                    )
+                    self._storage.store(key, response=final_response, request=request, metadata=metadata)
                 return self._create_hishel_response(
                     key=key,
                     response=final_response,

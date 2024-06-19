@@ -179,13 +179,24 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
 
                 # Merge headers with the stale response.
                 final_httpcore_response = self._controller.handle_validation_response(
-                    old_response=stored_response, new_response=httpcore_revalidation_response
+                    old_response=stored_response,
+                    new_response=httpcore_revalidation_response,
                 )
 
                 await final_httpcore_response.aread()
                 await revalidation_response.aclose()
 
                 assert isinstance(final_httpcore_response.stream, tp.AsyncIterable)
+
+                if self._controller.is_cachable(
+                    request=httpcore_request,
+                    response=final_httpcore_response,
+                ):
+                    await self._storage.store(
+                        key,
+                        response=final_httpcore_response,
+                        request=httpcore_request,
+                    )
                 return await self._create_hishel_response(
                     key=key,
                     response=final_httpcore_response,

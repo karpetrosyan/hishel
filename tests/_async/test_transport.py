@@ -5,7 +5,7 @@ import pytest
 import sniffio
 
 import hishel
-from hishel._utils import BaseClock
+from hishel._utils import BaseClock, extract_header_values_decoded
 
 
 @pytest.mark.anyio
@@ -280,3 +280,100 @@ async def test_transport_caching_post_method():
             response = await cache_transport.handle_async_request(request)
             assert response.status_code == 200
             assert not response.extensions["from_cache"]
+
+
+@pytest.mark.anyio
+async def test_transport_revalidation():
+    class MockedClock(BaseClock):
+        def __init__(self, initial: int):
+            self.current = initial
+
+        def now(self) -> int:
+            return self.current
+
+        def inc(self, seconds: int = 1) -> None:
+            self.current += seconds
+
+    clock = MockedClock(1440504000)  # Tue, 25 Aug 2015 12:00:00 GMT
+    controller = hishel.Controller(clock=clock)
+    storage = hishel.AsyncInMemoryStorage()
+
+    async with hishel.MockAsyncTransport() as transport:
+        transport.add_responses(
+            [
+                httpx.Response(
+                    200,
+                    headers=[
+                        (b"Cache-Control", b"max-age=2"),
+                        (b"Date", b"Tue, 25 Aug 2015 12:00:00 GMT"),
+                    ],
+                    content=b"Hello, World.",
+                ),
+                httpx.Response(
+                    200,
+                    headers=[
+                        (b"Cache-Control", b"max-age=2"),
+                        (b"Date", b"Tue, 25 Aug 2015 12:00:02 GMT"),
+                    ],
+                    content=b"Hello, World.",
+                ),
+                httpx.Response(
+                    304,
+                    headers=[
+                        (b"Cache-Control", b"max-age=2"),
+                        (b"Date", b"Tue, 25 Aug 2015 12:00:04 GMT"),
+                    ],
+                ),
+            ]
+        )
+        async with hishel.AsyncCacheTransport(
+            transport=transport,
+            controller=controller,
+            storage=storage,
+        ) as cache_transport:
+            request = httpx.Request("GET", "https://example.com/")
+
+            # MISS
+            response = await cache_transport.handle_async_request(request)
+            assert response.extensions["from_cache"] is False
+
+            # HIT
+            clock.inc()
+            response = await cache_transport.handle_async_request(request)
+            assert response.extensions["from_cache"] is True
+
+            # Cache contains the right date
+            stored = await storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
+            assert stored
+            stored_response, stored_request, stored_metadata = stored
+            assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Tue, 25 Aug 2015 12:00:00 GMT"]
+
+            # Found in cache, but expired ... MISS
+            clock.inc()
+            response = await cache_transport.handle_async_request(request)
+            assert response.extensions["from_cache"] is False
+
+            # HIT, new cache version
+            clock.inc()
+            response = await cache_transport.handle_async_request(request)
+            assert response.extensions["from_cache"] is True
+
+            # Cache contains the right date
+            stored = await storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
+            assert stored
+            stored_response, stored_request, stored_metadata = stored
+            assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Tue, 25 Aug 2015 12:00:02 GMT"]
+
+            # HIT after revalidation
+            clock.inc()
+            response = await cache_transport.handle_async_request(request)
+            assert response.extensions["from_cache"] is True
+
+            # Date is updated, but the original content is still there (although 304 did not contain it)
+            stored = await storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
+            assert stored
+            stored_response, stored_request, stored_metadata = stored
+            assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Tue, 25 Aug 2015 12:00:04 GMT"]
+            assert stored_response.status == 200
+            stored_response.read()
+            assert stored_response.content == b"Hello, World."

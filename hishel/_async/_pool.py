@@ -124,6 +124,14 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                 )
 
                 await final_response.aread()
+
+                if self._controller.is_cachable(request=request, response=final_response):
+                    metadata = Metadata(
+                        cache_key=key,
+                        created_at=datetime.datetime.now(datetime.timezone.utc),
+                        number_of_uses=0,
+                    )
+                    await self._storage.store(key, response=final_response, request=request, metadata=metadata)
                 return await self._create_hishel_response(
                     key=key,
                     response=final_response,

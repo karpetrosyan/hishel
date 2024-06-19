@@ -6,7 +6,7 @@ import sniffio
 from httpcore._models import Request, Response
 
 import hishel
-from hishel._utils import BaseClock, extract_header_values, header_presents
+from hishel._utils import BaseClock, extract_header_values, extract_header_values_decoded, header_presents
 
 
 
@@ -253,3 +253,100 @@ def test_pool_caching_post_method():
             response = cache_pool.request("POST", "https://www.example.com", content=b"request-2")
             assert response.status == 200
             assert not response.extensions["from_cache"]
+
+
+
+def test_pool_revalidation():
+    class MockedClock(BaseClock):
+        def __init__(self, initial: int):
+            self.current = initial
+
+        def now(self) -> int:
+            return self.current
+
+        def inc(self, seconds: int = 1) -> None:
+            self.current += seconds
+
+    clock = MockedClock(1440504000)  # Tue, 25 Aug 2015 12:00:00 GMT
+    controller = hishel.Controller(clock=clock)
+    storage = hishel.InMemoryStorage()
+
+    with hishel.MockConnectionPool() as pool:
+        pool.add_responses(
+            [
+                httpcore.Response(
+                    200,
+                    headers=[
+                        (b"Cache-Control", b"max-age=2"),
+                        (b"Date", b"Tue, 25 Aug 2015 12:00:00 GMT"),
+                    ],
+                    content=b"Hello, World.",
+                ),
+                httpcore.Response(
+                    200,
+                    headers=[
+                        (b"Cache-Control", b"max-age=2"),
+                        (b"Date", b"Tue, 25 Aug 2015 12:00:02 GMT"),
+                    ],
+                    content=b"Hello, World.",
+                ),
+                httpcore.Response(
+                    304,
+                    headers=[
+                        (b"Cache-Control", b"max-age=2"),
+                        (b"Date", b"Tue, 25 Aug 2015 12:00:04 GMT"),
+                    ],
+                ),
+            ]
+        )
+        with hishel.CacheConnectionPool(
+            pool=pool,
+            controller=controller,
+            storage=storage,
+        ) as cache_pool:
+            request = httpcore.Request("GET", "https://example.com/")
+
+            # MISS
+            response = cache_pool.handle_request(request)
+            assert response.extensions["from_cache"] is False
+
+            # HIT
+            clock.inc()
+            response = cache_pool.handle_request(request)
+            assert response.extensions["from_cache"] is True
+
+            # Cache contains the right date
+            stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
+            assert stored
+            stored_response, stored_request, stored_metadata = stored
+            assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Tue, 25 Aug 2015 12:00:00 GMT"]
+
+            # Found in cache, but expired ... MISS
+            clock.inc()
+            response = cache_pool.handle_request(request)
+            assert response.extensions["from_cache"] is False
+
+            # HIT, new cache version
+            clock.inc()
+            response = cache_pool.handle_request(request)
+            assert response.extensions["from_cache"] is True
+
+            # Cache contains the right date
+            stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
+            assert stored
+            stored_response, stored_request, stored_metadata = stored
+            assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Tue, 25 Aug 2015 12:00:02 GMT"]
+
+            # HIT after revalidation
+            clock.inc()
+            response = cache_pool.handle_request(request)
+            assert response.extensions["from_cache"] is True
+
+            # Date is updated, but the original content is still there (although 304 did not contain it)
+            stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
+            assert stored
+            stored_response, stored_request, stored_metadata = stored
+            assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Tue, 25 Aug 2015 12:00:04 GMT"]
+            assert stored_response.status == 200
+            stored_response.read()
+            assert stored_response.content == b"Hello, World."
