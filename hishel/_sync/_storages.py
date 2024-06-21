@@ -693,7 +693,7 @@ class SQLStorage(BaseStorage):
         self: Self,
         engine: sqlalchemy.Engine,
         serializer: tp.Optional[BaseSerializer] = None,
-        ttl: tp.Optional[tp.Union[int, float]] = None,
+        ttl: tp.Optional[datetime.timedelta] = None,
         max_id_len: int = 1024,
         max_data_size_in_bytes: int = 1_048_576  # 1MB
     ) -> None:
@@ -703,11 +703,11 @@ class SQLStorage(BaseStorage):
                 "Check that you have `Hishel` installed with the `sql` extension as shown.\n"
                 "```pip install hishel[sql]```"
             )
-        super().__init__(serializer=serializer, ttl=ttl)
+        super().__init__(serializer=serializer, ttl=ttl.total_seconds())
         self._engine = engine
         self._has_done_setup = False
         self._lock = Lock()
-        self._ttl_as_timedelta = datetime.timedelta(seconds=self._ttl)
+        self._ttl_as_timedelta = ttl
 
         class Base(sqlalchemy.orm.DeclarativeBase):
             pass
@@ -715,10 +715,10 @@ class SQLStorage(BaseStorage):
         class Cache(Base):
             __tablename__ = 'cache'
             id: sqlalchemy.orm.Mapped[str] = sqlalchemy.orm.mapped_column(
-                sqlalchemy.String(max_id_len, collation="utf-8"),
+                sqlalchemy.String(max_id_len),
                 primary_key=True,
             )
-            data: sqlalchemy.orm.Mapped[tp.Union[str, bytes]] = sqlalchemy.orm.mapped_column(
+            data: sqlalchemy.orm.Mapped[bytes] = sqlalchemy.orm.mapped_column(
                 sqlalchemy.BLOB(max_data_size_in_bytes),
             )
             date_created: sqlalchemy.orm.Mapped[datetime] = sqlalchemy.orm.mapped_column(
@@ -745,15 +745,16 @@ class SQLStorage(BaseStorage):
 
         with sqlalchemy.orm.Session(self._engine) as session:
             self._clear_cache(key=key, session=session)
-            serialized_response = self._serializer.dumps(
-                response=response,
-                request=request,
-                metadata=metadata,)
+            serialized_response = self._serialize_data(
+                    response=response,
+                    request=request,
+                    metadata=metadata,
+                )
             session.add(
                 self._cache_cls(
                     id=key,
                     data=serialized_response,
-                    date_created=metadata.created_at,
+                    date_created=metadata["created_at"],
                 ),
             )
             session.commit()
@@ -771,7 +772,11 @@ class SQLStorage(BaseStorage):
         with sqlalchemy.orm.Session(self._engine) as session:
             row = self._get_from_db(key=key, session=session)
             if row is not None:
-                row.data = self._serializer.dumps(response=response, request=request, metadata=metadata)
+                row.data = self._serialize_data(
+                    response=response,
+                    request=request,
+                    metadata=metadata,
+                )
                 session.add(row)
                 session.commit()
                 return
@@ -782,12 +787,11 @@ class SQLStorage(BaseStorage):
         self._setup()
         with sqlalchemy.orm.Session(self._engine) as session:
             self._clear_cache(key=key, session=session)
-            result = session.scalars(
-                sqlalchemy.select(self._cache_cls).where(key=key)
-            ).first()
-        if not result:
+            session.commit()
+            result = session.scalars(sqlalchemy.select(self._cache_cls).where(self._cache_cls.id==key,)).one_or_none()
+        if result is None:
             return None
-        return self._serializer.loads(result.data)
+        return self._deserialize_data(result.data)
 
     @override
     def close(self: Self) -> None:
@@ -801,10 +805,15 @@ class SQLStorage(BaseStorage):
             self._has_done_setup = True
 
     def _clear_cache(self: Self, key: str, session: sqlalchemy.orm.Session) -> None:
-        delete_statement = sqlalchemy.delete(self._cache_cls).where(
-            self._cache_cls.id == key and
-            self._cache_cls.date_created + self._ttl_as_timedelta >
-            datetime.datetime.now(tz=datetime.timezone.utc)
+        if self._ttl_as_timedelta is None:
+            return
+        delete_statement = (
+            sqlalchemy.delete(self._cache_cls)
+            .where(self._cache_cls.id == key)
+            .where(
+                self._cache_cls.date_created + self._ttl_as_timedelta >
+                datetime.datetime.now(tz=datetime.timezone.utc)
+            )
         )
         session.execute(delete_statement)
 
@@ -812,4 +821,27 @@ class SQLStorage(BaseStorage):
         self._clear_cache(key=key, session=session)
         return session.scalars(
                 sqlalchemy.select(self._cache_cls).where(key=key)
-        ).first()
+        ).one_or_none()
+
+    # I need to serialize / deserialize as it can handle only bytes.
+
+    def _serialize_data(
+        self: Self,
+        response: Response,
+        request: Request,
+        metadata: Metadata,
+    ) -> bytes:
+        serialized_data = self._serializer.dumps(response=response, request=request, metadata=metadata)
+        if serialized_data is str:
+            return serialized_data.encode("utf-8")
+        return serialized_data
+
+    def _deserialize_data(
+        self: Self,
+        data: bytes,
+    ) -> tp.Tuple[Response, Request, Metadata]:
+        try:
+            cleaned_data = data.decode("utf-8")
+        except UnicodeDecodeError:
+            cleaned_data = data
+        return self._serializer.loads(cleaned_data)
