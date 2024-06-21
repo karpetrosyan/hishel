@@ -760,4 +760,4 @@ class SQLStorage(BaseStorage):
 
     @override
     def close(self: Self) -> None:
-        raise NotImplementedError()
+        pass
