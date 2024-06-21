@@ -21,8 +21,13 @@ try:
 except ImportError:  # pragma: no cover
     sqlite3 = None  # type: ignore
 
+try:
+    import sqlalchemy
+except ImportError:  # pragma: no cover
+    sqlalchemy = None  # type: ignore
+
 from httpcore import Request, Response
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, Self, override
 
 from hishel._serializers import BaseSerializer, clone_model
 
@@ -679,3 +684,49 @@ class S3Storage(BaseStorage):  # pragma: no cover
         with self._lock:
             converted_ttl = float_seconds_to_int_milliseconds(self._ttl)
             self._s3_manager.remove_expired(ttl=converted_ttl, key=key)
+
+
+class SQLStorage(BaseStorage):
+    def __init__(
+        self: Self,
+        engine: sqlalchemy.Engine,
+        serializer: tp.Optional[BaseSerializer] = None,
+        ttl: tp.Optional[tp.Union[int, float]] = None,
+        max_id_len: int = 1024,
+        max_data_size_in_bytes: int = 1_048_576  # 1MB
+    ) -> None:
+        if sqlalchemy is None:
+            raise RuntimeError(
+                f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                "Check that you have `Hishel` installed with the `sql` extension as shown.\n"
+                "```pip install hishel[sql]```"
+            )
+        super().__init__(serializer=serializer, ttl=ttl)
+        self._engine = engine
+        self._has_done_setup = False
+        self._lock = Lock()
+        
+        class Base(sqlalchemy.orm.DeclarativeBase):
+            pass
+
+        class Cache(Base):
+            __tablename__ = 'cache'
+            id: sqlalchemy.orm.Mapped[str] = sqlalchemy.orm.mapped_column(
+                sqlalchemy.String(max_id_len, collation="utf-8"),
+            )
+            data: sqlalchemy.orm.Mapped[bytes] = sqlalchemy.orm.mapped_column(
+                sqlalchemy.BLOB(max_data_size_in_bytes),
+            )
+            date_created: sqlalchemy.orm.Mapped[datetime] = sqlalchemy.orm.mapped_column(
+                sqlalchemy.DateTime(timezone=True),
+            )
+
+        self._cache_cls = Cache
+        self._base = Base
+
+    def _setup(self: Self) -> None:
+        if self._has_done_setup:
+            return
+        with self._lock:
+            self._base.metadata.create_all(self._engine)
+            self._has_done_setup = True
