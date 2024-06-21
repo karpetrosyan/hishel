@@ -707,7 +707,8 @@ class SQLStorage(BaseStorage):
         self._engine = engine
         self._has_done_setup = False
         self._lock = Lock()
-        
+        self._ttl_as_timedelta = datetime.timedelta(seconds=self._ttl)
+
         class Base(sqlalchemy.orm.DeclarativeBase):
             pass
 
@@ -727,13 +728,6 @@ class SQLStorage(BaseStorage):
         self._cache_cls = Cache
         self._base = Base
 
-    def _setup(self: Self) -> None:
-        if self._has_done_setup:
-            return
-        with self._lock:
-            self._base.metadata.create_all(self._engine)
-            self._has_done_setup = True
-    
     @override
     def store(
         self: Self,
@@ -742,7 +736,27 @@ class SQLStorage(BaseStorage):
         request: Request,
         metadata: Metadata | None = None,
     ) -> None:
-        raise NotImplementedError()
+        self._setup()
+        metadata = metadata or Metadata(
+            cache_key=key,
+            created_at=datetime.datetime.now(datetime.timezone.utc),
+            number_of_uses=0,
+        )
+
+        with sqlalchemy.orm.Session(self._engine) as session:
+            self._clear_cache(key=key, session=session)
+            serialized_response = self._serializer.dumps(
+                response=response,
+                request=request,
+                metadata=metadata,)
+            session.add(
+                self._cache_cls(
+                    id=key,
+                    data=serialized_response,
+                    date_created=metadata.created_at,
+                ),
+            )
+            session.commit()
 
     @override
     def update_metadata(
@@ -752,12 +766,50 @@ class SQLStorage(BaseStorage):
         request: Request,
         metadata: Metadata | None = None,
     ) -> None:
-        raise NotImplementedError()
+        self._setup()
+
+        with sqlalchemy.orm.Session(self._engine) as session:
+            row = self._get_from_db(key=key, session=session)
+            if row is not None:
+                row.data = self._serializer.dumps(response=response, request=request, metadata=metadata)
+                session.add(row)
+                session.commit()
+                return
+        return self.store(key, response, request, metadata)  # pragma: no cover
 
     @override
     def retrieve(self: Self, key: str) -> tp.Optional[StoredResponse]:
-        raise NotImplementedError()
+        self._setup()
+        with sqlalchemy.orm.Session(self._engine) as session:
+            self._clear_cache(key=key, session=session)
+            result = session.scalars(
+                sqlalchemy.select(self._cache_cls).where(key=key)
+            ).first()
+        if not result:
+            return None
+        return self._serializer.loads(result.data)
 
     @override
     def close(self: Self) -> None:
         pass
+
+    def _setup(self: Self) -> None:
+        if self._has_done_setup:
+            return
+        with self._lock:
+            self._base.metadata.create_all(self._engine)
+            self._has_done_setup = True
+
+    def _clear_cache(self: Self, key: str, session: sqlalchemy.orm.Session) -> None:
+        delete_statement = sqlalchemy.delete(self._cache_cls).where(
+            self._cache_cls.id == key and
+            self._cache_cls.date_created + self._ttl_as_timedelta >
+            datetime.datetime.now(tz=datetime.timezone.utc)
+        )
+        session.execute(delete_statement)
+
+    def _get_from_db(self: Self, key: str, session: sqlalchemy.orm.Session) -> tp.Optional[sqlalchemy.orm.DeclarativeBase]:
+        self._clear_cache(key=key, session=session)
+        return session.scalars(
+                sqlalchemy.select(self._cache_cls).where(key=key)
+        ).first()
