@@ -23,6 +23,7 @@ except ImportError:  # pragma: no cover
 
 try:
     import sqlalchemy
+    import sqlalchemy.orm
 except ImportError:  # pragma: no cover
     sqlalchemy = None  # type: ignore
 
@@ -43,6 +44,7 @@ __all__ = (
     "FileStorage",
     "RedisStorage",
     "SQLiteStorage",
+    "SQLStorage",
     "InMemoryStorage",
     "S3Storage",
 )
@@ -713,6 +715,7 @@ class SQLStorage(BaseStorage):
             __tablename__ = 'cache'
             id: sqlalchemy.orm.Mapped[str] = sqlalchemy.orm.mapped_column(
                 sqlalchemy.String(max_id_len, collation="utf-8"),
+                primary_key=True,
             )
             data: sqlalchemy.orm.Mapped[tp.Union[str, bytes]] = sqlalchemy.orm.mapped_column(
                 sqlalchemy.BLOB(max_data_size_in_bytes),
