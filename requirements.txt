@@ -1,4 +1,4 @@
--e .[yaml,redis,sqlite,s3]
+-e .[yaml,redis,sqlite,s3,sql]
 
 # linting
 ruff==0.3.0

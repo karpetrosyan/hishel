@@ -52,6 +52,10 @@ s3 = [
     "boto3>=1.15.3; python_version >= '3.12'"
 ]
 
+sql = [
+    "SQLAlchemy>=2"
+]
+
 [project.urls]
 Homepage = "https://hishel.com"
 Source = "https://github.com/karpetrosyan/hishel"
