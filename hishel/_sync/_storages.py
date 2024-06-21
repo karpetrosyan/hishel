@@ -730,3 +730,31 @@ class SQLStorage(BaseStorage):
         with self._lock:
             self._base.metadata.create_all(self._engine)
             self._has_done_setup = True
+    
+    @override
+    def store(
+        self: Self,
+        key: str,
+        response: Response,
+        request: Request,
+        metadata: Metadata | None = None,
+    ) -> None:
+        raise NotImplementedError()
+
+    @override
+    def update_metadata(
+        self: Self,
+        key: str,
+        response: Response,
+        request: Request,
+        metadata: Metadata | None = None,
+    ) -> None:
+        raise NotImplementedError()
+
+    @override
+    def retrieve(self: Self, key: str) -> tp.Optional[StoredResponse]:
+        raise NotImplementedError()
+
+    @override
+    def close(self: Self) -> None:
+        raise NotImplementedError()
