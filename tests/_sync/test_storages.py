@@ -8,7 +8,7 @@ from httpcore import Request, Response
 from sqlalchemy import create_engine
 
 from hishel import FileStorage, InMemoryStorage, RedisStorage, SQLiteStorage, SQLStorage
-from hishel._serializers import Metadata
+from hishel._serializers import Metadata, JSONSerializer, YAMLSerializer, PickleSerializer
 from hishel._utils import sleep, generate_key
 
 dummy_metadata = Metadata(cache_key="test", number_of_uses=0, created_at=datetime.datetime.now(datetime.timezone.utc))
@@ -373,9 +373,15 @@ def test_filestorage_empty_file_exception(use_temp_dir):
     assert storage.retrieve(key) is None
 
 
-def test_sql_ttl_after_hits(anyio_backend):
-    engine = create_engine("sqlite:///:memory:")
-    storage = SQLStorage(engine=engine, ttl=0.2)
+@pytest.mark.parametrize(
+    "serializer",
+    [
+        (JSONSerializer()),
+        (YAMLSerializer()),
+        (PickleSerializer()),
+    ]
+)
+def test_sql_ttl_after_hits(serializer, anyio_backend):
 
     request = Request(b"GET", "https://example.com")
 
@@ -403,7 +409,15 @@ def test_sql_ttl_after_hits(anyio_backend):
     assert storage.retrieve(key) is None
 
 
-def test_sql_expired(anyio_backend):
+@pytest.mark.parametrize(
+    "serializer",
+    [
+        (JSONSerializer()),
+        (YAMLSerializer()),
+        (PickleSerializer()),
+    ]
+)
+def test_sql_expired(serializer, anyio_backend):
     engine = create_engine("sqlite:///:memory:")
     storage = SQLStorage(engine=engine, ttl=0.1)
     first_request = Request(b"GET", "https://example.com")
