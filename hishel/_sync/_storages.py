@@ -714,7 +714,7 @@ class SQLStorage(BaseStorage):
             id: sqlalchemy.orm.Mapped[str] = sqlalchemy.orm.mapped_column(
                 sqlalchemy.String(max_id_len, collation="utf-8"),
             )
-            data: sqlalchemy.orm.Mapped[bytes] = sqlalchemy.orm.mapped_column(
+            data: sqlalchemy.orm.Mapped[tp.Union[str, bytes]] = sqlalchemy.orm.mapped_column(
                 sqlalchemy.BLOB(max_data_size_in_bytes),
             )
             date_created: sqlalchemy.orm.Mapped[datetime] = sqlalchemy.orm.mapped_column(
