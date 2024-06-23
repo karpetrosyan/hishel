@@ -49,6 +49,7 @@ async def test_pool_response_validation():
         response = await cache_pool.handle_async_request(request)
         assert response.status == 200
         assert response.extensions["from_cache"]
+        assert response.extensions["revalidated"]
         assert header_presents(response.headers, b"Content-Type")
         assert extract_header_values(response.headers, b"Content-Type", single=True)[0] == b"application/json"
         assert await response.aread() == b"test"
