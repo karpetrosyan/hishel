@@ -62,11 +62,12 @@ True
 
 ### revalidated
 
-Every response will have a revalidated extension that indicates whether the response has been revalidated or not.
+Every response will have a `revalidated` extension that indicates whether the response has been revalidated or not.
 
 !!! note
     Note that a response could have `revalidated` set to `True` even when `from_cache` is set to `False`. This occurs when the cached entry has been updated and a new entry is downloaded during revalidation.
 
+```python
 >>> import hishel
 >>> client = hishel.CacheClient()
 >>> response = client.get("https://www.example.com/endpoint_that_is_fresh")
@@ -75,7 +76,7 @@ False
 >>> response = client.get("https://www.example.com/endpoint_that_is_stale")
 >>> response.extensions["revalidated"]
 True
-
+```
 
 ### cache_metadata
 
