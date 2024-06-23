@@ -73,7 +73,7 @@ Every response will have a revalidated extension that indicates whether the resp
 >>> response.extensions["revalidated"]
 False
 >>> response = client.get("https://www.example.com/endpoint_that_is_stale")
->>> response.extensions["revalidated]
+>>> response.extensions["revalidated"]
 True
 
 
