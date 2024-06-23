@@ -1,5 +1,9 @@
 # Changelog
 
+## development
+
+- Add `revalidated` response extension. (#242)
+
 ## 0.0.27 (31th May, 2024)
 
 - Fix `RedisStorage` when using without ttl. (#231)
