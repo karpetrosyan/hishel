@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.29 (23th June, 2024)
+
+- Documentation hotfix. (#244)
+
 ## 0.0.28 (23th June, 2024)
 
 - Add `revalidated` response extension. (#242)
