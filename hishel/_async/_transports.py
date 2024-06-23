@@ -141,6 +141,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                     response=res,
                     request=httpcore_request,
                     cached=True,
+                    revalidated=False,
                     metadata=metadata,
                 )
 
@@ -166,6 +167,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                             response=stored_response,
                             request=httpcore_request,
                             cached=True,
+                            revalidated=False,
                             metadata=metadata,
                         )
                     raise  # pragma: no cover
@@ -191,6 +193,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                     response=final_httpcore_response,
                     request=httpcore_request,
                     cached=revalidation_response.status_code == 304,
+                    revalidated=True,
                     metadata=metadata,
                 )
 
@@ -217,6 +220,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             response=httpcore_regular_response,
             request=httpcore_request,
             cached=False,
+            revalidated=False,
         )
 
     async def _create_hishel_response(
@@ -225,6 +229,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         response: httpcore.Response,
         request: httpcore.Request,
         cached: bool,
+        revalidated: bool,
         metadata: Metadata | None = None,
     ) -> Response:
         if cached:
@@ -235,6 +240,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             response.extensions["cache_metadata"] = metadata  # type: ignore[index]
         else:
             response.extensions["from_cache"] = False  # type: ignore[index]
+        response.extensions["revalidated"] = revalidated  # type: ignore[index]
         return Response(
             status_code=response.status,
             headers=response.headers,
