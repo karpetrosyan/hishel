@@ -54,6 +54,7 @@ async def test_transport_response_validation():
         response = await cache_transport.handle_async_request(request)
         assert response.status_code == 200
         assert response.extensions["from_cache"]
+        assert response.extensions["revalidated"]
         assert "Content-Type" in response.headers
         assert response.headers["Content-Type"] == "application/json"
         assert await response.aread() == b"test"
