@@ -181,13 +181,25 @@ class CacheTransport(httpx.BaseTransport):
 
                 # Merge headers with the stale response.
                 final_httpcore_response = self._controller.handle_validation_response(
-                    old_response=stored_response, new_response=httpcore_revalidation_response
+                    old_response=stored_response,
+                    new_response=httpcore_revalidation_response,
                 )
 
                 final_httpcore_response.read()
                 revalidation_response.close()
 
                 assert isinstance(final_httpcore_response.stream, tp.Iterable)
+
+                # RFC 9111: 4.3.3. Handling a Validation Response
+                # A 304 (Not Modified) response status code indicates that the stored response can be updated and
+                # reused. A full response (i.e., one containing content) indicates that none of the stored responses
+                # nominated in the conditional request are suitable. Instead, the cache MUST use the full response to
+                # satisfy the request. The cache MAY store such a full response, subject to its constraints.
+                if revalidation_response.status_code != 304 and self._controller.is_cachable(
+                    request=httpcore_request, response=final_httpcore_response
+                ):
+                    self._storage.store(key, response=final_httpcore_response, request=httpcore_request)
+
                 return self._create_hishel_response(
                     key=key,
                     response=final_httpcore_response,
