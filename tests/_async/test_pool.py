@@ -1,4 +1,5 @@
 import typing as tp
+from unittest.mock import AsyncMock
 
 import httpcore
 import pytest
@@ -344,3 +345,54 @@ async def test_revalidation_with_new_content():
             stored_response, stored_request, stored_metadata = stored
             assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:11 GMT"]
             assert stored_response.content == b"Eat at Joe's."
+
+
+@pytest.mark.anyio
+async def test_transport_revalidation_forward_extensions():
+    class MockedClock(BaseClock):
+        current = 1440504000  # Mon, 25 Aug 2015 12:00:00 GMT
+
+        def now(self) -> int:
+            return self.current
+
+    clock = MockedClock()
+    controller = hishel.Controller(clock=clock)
+
+    async with hishel.MockAsyncConnectionPool() as pool:
+        pool.handle_async_request = AsyncMock(side_effect=pool.handle_async_request)  # type: ignore[method-assign]
+        pool.add_responses(
+            [
+                httpcore.Response(
+                    200,
+                    headers=[
+                        (b"Cache-Control", b"max-age=1"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+                    ],
+                ),
+                httpcore.Response(
+                    304,
+                    headers=[
+                        (b"Cache-Control", b"max-age=1"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:01 GMT"),
+                    ],
+                ),
+            ]
+        )
+        async with hishel.AsyncCacheConnectionPool(
+            pool=pool, controller=controller, storage=hishel.AsyncInMemoryStorage()
+        ) as cache_pool:
+            # first request with extensions
+            await cache_pool.handle_async_request(
+                httpcore.Request("GET", "https://www.example.com", extensions={"foo": "bar"})
+            )
+            assert pool.handle_async_request.call_args[0][0].extensions["foo"] == "bar"
+
+            # cache expires
+            clock.current += 1
+
+            # second request with extensions that should be passed to revalidation request
+            response = await cache_pool.handle_async_request(
+                httpcore.Request("GET", "https://www.example.com", extensions={"foo": "baz"})
+            )
+            assert response.extensions["revalidated"] is True
+            assert pool.handle_async_request.call_args[0][0].extensions["foo"] == "baz"

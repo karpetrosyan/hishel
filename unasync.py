@@ -13,6 +13,7 @@ SUBS = [
     ("AsyncFileStorage", "FileStorage"),
     ("AsyncBaseStorage", "BaseStorage"),
     ("AsyncFileManager", "FileManager"),
+    ("AsyncMock", "Mock"),
     ("MockAsyncConnectionPool", "MockConnectionPool"),
     ("MockAsyncTransport", "MockTransport"),
     ("AsyncRedisStorage", "RedisStorage"),
