@@ -1,5 +1,9 @@
 # Changelog
 
+## development
+
+- Fix cache update on revalidation response with content (rfc9111 section 4.3.3) (#239)
+
 ## 0.0.29 (23th June, 2024)
 
 - Documentation hotfix. (#244)
