@@ -286,7 +286,7 @@ async def test_transport_caching_post_method():
 @pytest.mark.anyio
 async def test_revalidation_with_new_content():
     class MockedClock(BaseClock):
-        current = 1440504000  # Mon, 25 Aug 2015 12:00:01 GMT
+        current = 1440504000  # Mon, 25 Aug 2015 12:00:00 GMT
 
         def now(self) -> int:
             return self.current
@@ -314,6 +314,13 @@ async def test_revalidation_with_new_content():
                     ],
                     content=b"Eat at Joe's.",
                 ),
+                httpx.Response(
+                    304,
+                    headers=[
+                        (b"Cache-Control", b"max-age=10"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:11 GMT"),
+                    ],
+                ),
             ]
         )
         async with hishel.AsyncCacheTransport(
@@ -326,6 +333,7 @@ async def test_revalidation_with_new_content():
             # Hit
             response = await cache_transport.handle_async_request(httpx.Request("GET", "https://example.com/"))
             assert response.extensions["from_cache"]
+            assert response.extensions["cache_metadata"]["number_of_uses"] == 1
 
             # Cache contains the first response content
             stored = await storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
@@ -334,8 +342,8 @@ async def test_revalidation_with_new_content():
             assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:00 GMT"]
             assert stored_response.content == b"Hello, World."
 
-            # tic, tac
-            clock.current += 1  # one second passed
+            # tic, tac... one second passed
+            clock.current += 1
 
             # Miss (expired), send revalidation, 200, store
             response = await cache_transport.handle_async_request(httpx.Request("GET", "https://example.com/"))
@@ -344,10 +352,24 @@ async def test_revalidation_with_new_content():
             # Hit (cf issue #239)
             response = await cache_transport.handle_async_request(httpx.Request("GET", "https://example.com/"))
             assert response.extensions["from_cache"]
+            assert response.extensions["cache_metadata"]["number_of_uses"] == 1
 
             # Cache was updated and contains the second response content
             stored = await storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
             assert stored
             stored_response, stored_request, stored_metadata = stored
             assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:01 GMT"]
+            assert stored_response.content == b"Eat at Joe's."
+
+            # tic, tac, tic, tac... ten more seconds passed, let's check the 304 behavious is not broken
+            clock.current += 10
+
+            # Miss (expired), send revalidation, 304, update metadata but keep previous content
+            response = await cache_transport.handle_async_request(httpx.Request("GET", "https://example.com/"))
+            assert response.extensions["from_cache"]
+            assert response.extensions["cache_metadata"]["number_of_uses"] == 2
+            stored = await storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
+            assert stored
+            stored_response, stored_request, stored_metadata = stored
+            assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:11 GMT"]
             assert stored_response.content == b"Eat at Joe's."
