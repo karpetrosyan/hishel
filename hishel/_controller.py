@@ -107,6 +107,7 @@ class Controller:
         self,
         cacheable_methods: tp.Optional[tp.List[str]] = None,
         cacheable_status_codes: tp.Optional[tp.List[int]] = None,
+        cache_private: bool = True,
         allow_heuristics: bool = False,
         clock: tp.Optional[BaseClock] = None,
         allow_stale: bool = False,
@@ -128,6 +129,7 @@ class Controller:
                 self._cacheable_methods.append(method.upper())
 
         self._cacheable_status_codes = cacheable_status_codes if cacheable_status_codes else [200, 301, 308]
+        self._cache_private = cache_private
         self._clock = clock if clock else Clock()
         self._allow_heuristics = allow_heuristics
         self._allow_stale = allow_stale
@@ -174,6 +176,12 @@ class Controller:
         # note that the must-understand cache directive overrides
         # no-store in certain circumstances; see Section 5.2.2.3.
         if response_cache_control.no_store and not response_cache_control.must_understand:
+            return False
+
+        # a shared cache must not store a response with private directive
+        # Note that we do not implement special handling for the qualified form,
+        # which would only forbid storing specified headers.
+        if not self._cache_private and response_cache_control.private:
             return False
 
         expires_presents = header_presents(response.headers, b"expires")

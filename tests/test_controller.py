@@ -160,6 +160,34 @@ def test_is_cachable_for_no_store():
     assert not controller.is_cachable(request=request, response=response)
 
 
+def test_is_cachable_for_shared_cache():
+    controller = Controller(cache_private=False, allow_heuristics=True)
+
+    request = Request(b"GET", b"https://example.com", headers=[])
+
+    response = Response(200, headers=[(b"Cache-Control", b"public")])
+
+    assert controller.is_cachable(request=request, response=response)
+
+    response = Response(200, headers=[(b"Cache-Control", b"private")])
+
+    assert not controller.is_cachable(request=request, response=response)
+
+    response = Response(200, headers=[(b"Cache-Control", b"private=set-cookie")])
+
+    assert not controller.is_cachable(request=request, response=response)
+
+
+def test_is_cachable_for_private_cache():
+    controller = Controller()
+
+    request = Request(b"GET", b"https://example.com", headers=[])
+
+    response = Response(200, headers=[(b"Cache-Control", b"private")])
+
+    assert controller.is_cachable(request=request, response=response)
+
+
 def test_get_freshness_lifetime():
     response = Response(status=200, headers=[(b"Cache-Control", b"max-age=3600")])
 
