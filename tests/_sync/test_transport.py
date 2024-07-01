@@ -1,5 +1,4 @@
 import typing as tp
-from unittest.mock import Mock
 
 import httpx
 import pytest
@@ -384,11 +383,15 @@ def test_transport_revalidation_forward_extensions():
         def now(self) -> int:
             return self.current
 
+    class MockedTransportWithExtensionsMemory(hishel.MockTransport):
+        def handle_request(self, request: httpx.Request) -> httpx.Response:
+            self.last_request_extensions = request.extensions
+            return super().handle_request(request)
+
     clock = MockedClock()
     controller = hishel.Controller(clock=clock)
 
-    with hishel.MockTransport() as transport:
-        transport.handle_request = Mock(side_effect=transport.handle_request)  # type: ignore[method-assign]
+    with MockedTransportWithExtensionsMemory() as transport:
         transport.add_responses(
             [
                 httpx.Response(
@@ -414,7 +417,7 @@ def test_transport_revalidation_forward_extensions():
             cache_transport.handle_request(
                 httpx.Request("GET", "https://www.example.com", extensions={"foo": "bar"})
             )
-            assert transport.handle_request.call_args[0][0].extensions["foo"] == "bar"
+            assert transport.last_request_extensions["foo"] == "bar"
 
             # cache expires
             clock.current += 1
@@ -424,4 +427,4 @@ def test_transport_revalidation_forward_extensions():
                 httpx.Request("GET", "https://www.example.com", extensions={"foo": "baz"})
             )
             assert response.extensions["revalidated"] is True
-            assert transport.handle_request.call_args[0][0].extensions["foo"] == "baz"
+            assert transport.last_request_extensions["foo"] == "baz"

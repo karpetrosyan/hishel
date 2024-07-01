@@ -1,5 +1,4 @@
 import typing as tp
-from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -384,11 +383,15 @@ async def test_transport_revalidation_forward_extensions():
         def now(self) -> int:
             return self.current
 
+    class MockedTransportWithExtensionsMemory(hishel.MockAsyncTransport):
+        async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+            self.last_request_extensions = request.extensions
+            return await super().handle_async_request(request)
+
     clock = MockedClock()
     controller = hishel.Controller(clock=clock)
 
-    async with hishel.MockAsyncTransport() as transport:
-        transport.handle_async_request = AsyncMock(side_effect=transport.handle_async_request)  # type: ignore[method-assign]
+    async with MockedTransportWithExtensionsMemory() as transport:
         transport.add_responses(
             [
                 httpx.Response(
@@ -414,7 +417,7 @@ async def test_transport_revalidation_forward_extensions():
             await cache_transport.handle_async_request(
                 httpx.Request("GET", "https://www.example.com", extensions={"foo": "bar"})
             )
-            assert transport.handle_async_request.call_args[0][0].extensions["foo"] == "bar"
+            assert transport.last_request_extensions["foo"] == "bar"
 
             # cache expires
             clock.current += 1
@@ -424,4 +427,4 @@ async def test_transport_revalidation_forward_extensions():
                 httpx.Request("GET", "https://www.example.com", extensions={"foo": "baz"})
             )
             assert response.extensions["revalidated"] is True
-            assert transport.handle_async_request.call_args[0][0].extensions["foo"] == "baz"
+            assert transport.last_request_extensions["foo"] == "baz"

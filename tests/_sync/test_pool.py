@@ -1,5 +1,4 @@
 import typing as tp
-from unittest.mock import Mock
 
 import httpcore
 import pytest
@@ -348,18 +347,22 @@ def test_revalidation_with_new_content():
 
 
 
-def test_transport_revalidation_forward_extensions():
+def test_poool_revalidation_forward_extensions():
     class MockedClock(BaseClock):
         current = 1440504000  # Mon, 25 Aug 2015 12:00:00 GMT
 
         def now(self) -> int:
             return self.current
 
+    class MockedConnectionPoolWithExtensionsMemory(hishel.MockConnectionPool):
+        def handle_request(self, request: httpcore.Request) -> httpcore.Response:
+            self.last_request_extensions = request.extensions
+            return super().handle_request(request)
+
     clock = MockedClock()
     controller = hishel.Controller(clock=clock)
 
-    with hishel.MockConnectionPool() as pool:
-        pool.handle_request = Mock(side_effect=pool.handle_request)  # type: ignore[method-assign]
+    with MockedConnectionPoolWithExtensionsMemory() as pool:
         pool.add_responses(
             [
                 httpcore.Response(
@@ -385,7 +388,7 @@ def test_transport_revalidation_forward_extensions():
             cache_pool.handle_request(
                 httpcore.Request("GET", "https://www.example.com", extensions={"foo": "bar"})
             )
-            assert pool.handle_request.call_args[0][0].extensions["foo"] == "bar"
+            assert pool.last_request_extensions["foo"] == "bar"
 
             # cache expires
             clock.current += 1
@@ -395,4 +398,4 @@ def test_transport_revalidation_forward_extensions():
                 httpcore.Request("GET", "https://www.example.com", extensions={"foo": "baz"})
             )
             assert response.extensions["revalidated"] is True
-            assert pool.handle_request.call_args[0][0].extensions["foo"] == "baz"
+            assert pool.last_request_extensions["foo"] == "baz"
