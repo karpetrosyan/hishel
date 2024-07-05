@@ -832,7 +832,7 @@ class SQLStorage(BaseStorage):
         metadata: Metadata,
     ) -> bytes:
         serialized_data = self._serializer.dumps(response=response, request=request, metadata=metadata)
-        if serialized_data is str:
+        if isinstance(serialized_data, str):
             return serialized_data.encode("utf-8")
         return serialized_data
 
@@ -840,8 +840,8 @@ class SQLStorage(BaseStorage):
         self: Self,
         data: bytes,
     ) -> tp.Tuple[Response, Request, Metadata]:
-        try:
+        if isinstance(data, bytes):
             cleaned_data = data.decode("utf-8")
-        except UnicodeDecodeError:
+        else:
             cleaned_data = data
         return self._serializer.loads(cleaned_data)
