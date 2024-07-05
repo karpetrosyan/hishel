@@ -156,6 +156,7 @@ class CacheTransport(httpx.BaseTransport):
                     url=normalized_url(res.url),
                     headers=res.headers,
                     stream=CacheStream(res.stream),
+                    extensions=res.extensions,
                 )
                 try:
                     revalidation_response = self._transport.handle_request(revalidation_request)

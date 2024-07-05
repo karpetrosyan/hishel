@@ -373,3 +373,58 @@ def test_revalidation_with_new_content():
             stored_response, stored_request, stored_metadata = stored
             assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:11 GMT"]
             assert stored_response.content == b"Eat at Joe's."
+
+
+
+def test_transport_revalidation_forward_extensions():
+    class MockedClock(BaseClock):
+        current = 1440504000  # Mon, 25 Aug 2015 12:00:00 GMT
+
+        def now(self) -> int:
+            return self.current
+
+    class MockedTransportWithExtensionsMemory(hishel.MockTransport):
+        def handle_request(self, request: httpx.Request) -> httpx.Response:
+            self.last_request_extensions = request.extensions
+            return super().handle_request(request)
+
+    clock = MockedClock()
+    controller = hishel.Controller(clock=clock)
+
+    with MockedTransportWithExtensionsMemory() as transport:
+        transport.add_responses(
+            [
+                httpx.Response(
+                    200,
+                    headers=[
+                        (b"Cache-Control", b"max-age=1"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+                    ],
+                ),
+                httpx.Response(
+                    304,
+                    headers=[
+                        (b"Cache-Control", b"max-age=1"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:01 GMT"),
+                    ],
+                ),
+            ]
+        )
+        with hishel.CacheTransport(
+            transport=transport, controller=controller, storage=hishel.InMemoryStorage()
+        ) as cache_transport:
+            # first request with extensions
+            cache_transport.handle_request(
+                httpx.Request("GET", "https://www.example.com", extensions={"foo": "bar"})
+            )
+            assert transport.last_request_extensions["foo"] == "bar"
+
+            # cache expires
+            clock.current += 1
+
+            # second request with extensions that should be passed to revalidation request
+            response = cache_transport.handle_request(
+                httpx.Request("GET", "https://www.example.com", extensions={"foo": "baz"})
+            )
+            assert response.extensions["revalidated"] is True
+            assert transport.last_request_extensions["foo"] == "baz"
