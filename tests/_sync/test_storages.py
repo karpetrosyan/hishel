@@ -416,7 +416,7 @@ def test_sql_ttl_after_hits(serializer, anyio_backend):
 )
 def test_sql_expired(serializer, anyio_backend):
     engine = create_engine("sqlite:///:memory:")
-    storage = SQLStorage(engine=engine, ttl=0.1)
+    storage = SQLStorage(engine=engine, ttl=datetime.timedelta(seconds=0.1))
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
