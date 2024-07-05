@@ -156,6 +156,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                     url=normalized_url(res.url),
                     headers=res.headers,
                     stream=AsyncCacheStream(res.stream),
+                    extensions=res.extensions,
                 )
                 try:
                     revalidation_response = await self._transport.handle_async_request(revalidation_request)
