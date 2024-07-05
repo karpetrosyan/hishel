@@ -811,7 +811,7 @@ class SQLStorage(BaseStorage):
             sqlalchemy.delete(self._cache_cls)
             .where(self._cache_cls.id == key)
             .where(
-                self._cache_cls.date_created + self._ttl_as_timedelta.total_seconds() >
+                self._cache_cls.date_created + self._ttl_as_timedelta.total_seconds() <
                 datetime.datetime.now(tz=datetime.timezone.utc).timestamp()
             )
         )
