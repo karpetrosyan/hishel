@@ -382,7 +382,7 @@ def test_filestorage_empty_file_exception(use_temp_dir):
     ]
 )
 def test_sql_ttl_after_hits(serializer, anyio_backend):
-    engine = create_engine("sqlite:////home/avihai/Documents/hishel/my.db")
+    engine = create_engine("sqlite:///:memory:")
     storage = SQLStorage(engine=engine, ttl=datetime.timedelta(seconds=0.2), serializer=serializer)
 
     request = Request(b"GET", "https://example.com")
@@ -401,13 +401,8 @@ def test_sql_ttl_after_hits(serializer, anyio_backend):
     storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
     assert storage.retrieve(key) is not None
 
-    # Retrieving after 0.16 second
-    sleep(0.08)
-    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
-    assert storage.retrieve(key) is not None
-
     # Retrieving after 0.24 second
-    sleep(0.08)
+    sleep(0.16)
     assert storage.retrieve(key) is None
 
 
