@@ -721,8 +721,8 @@ class SQLStorage(BaseStorage):
             data: sqlalchemy.orm.Mapped[bytes] = sqlalchemy.orm.mapped_column(
                 sqlalchemy.BLOB(max_data_size_in_bytes),
             )
-            date_created: sqlalchemy.orm.Mapped[datetime.datetime] = sqlalchemy.orm.mapped_column(
-                sqlalchemy.DateTime(timezone=True),
+            date_created: sqlalchemy.orm.Mapped[float] = sqlalchemy.orm.mapped_column(
+                sqlalchemy.Float(),
             )
 
         self._cache_cls = Cache
@@ -754,7 +754,7 @@ class SQLStorage(BaseStorage):
                 self._cache_cls(
                     id=key,
                     data=serialized_response,
-                    date_created=metadata["created_at"],
+                    date_created=metadata["created_at"].timestamp(),
                 ),
             )
             session.commit()
@@ -811,8 +811,8 @@ class SQLStorage(BaseStorage):
             sqlalchemy.delete(self._cache_cls)
             .where(self._cache_cls.id == key)
             .where(
-                self._cache_cls.date_created + self._ttl_as_timedelta <
-                datetime.datetime.now(tz=datetime.timezone.utc)
+                self._cache_cls.date_created + self._ttl_as_timedelta.total_seconds() <
+                datetime.datetime.now(tz=datetime.timezone.utc).timestamp()
             )
         )
         session.execute(delete_statement)
