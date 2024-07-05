@@ -820,7 +820,8 @@ class SQLStorage(BaseStorage):
     def _get_from_db(self: Self, key: str, session: sqlalchemy.orm.Session) -> tp.Optional[sqlalchemy.orm.DeclarativeBase]:
         self._clear_cache(key=key, session=session)
         return session.scalars(
-                sqlalchemy.select(self._cache_cls).where(key=key)
+                sqlalchemy.select(self._cache_cls)
+                .where(self._cache_cls.id == key)
         ).one_or_none()
 
     # I need to serialize / deserialize as it can handle only bytes.
