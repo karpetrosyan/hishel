@@ -6,6 +6,7 @@
 - Fix request extensions that were not passed into revalidation request for transport-based implementation (but were
   passed for the pool-based impl) (#247).
 - Add `cache_private` property to the controller to support acting as shared cache. (#224)
+- Improve efficiency of scanning cached responses in `FileStorage` by reducing number of syscalls. (#252)
 
 ## 0.0.29 (23th June, 2024)
 
