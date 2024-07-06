@@ -68,11 +68,11 @@
 - Add `cache_disabled` extension to temporarily disable the cache (#109)
 - Update `datetime.datetime.utcnow()` to `datetime.datetime.now(datetime.timezone.utc)` since `datetime.datetime.utcnow()` has been deprecated. (#111)
 
-## 0.0.17 (6th November, 2023) 
+## 0.0.17 (6th November, 2023)
 
 - Fix `Last-Modified` validation.
 
-## 0.0.16 (25th October, 2023) 
+## 0.0.16 (25th October, 2023)
 
 - Add `install_cache` function. (#95)
 - Add sqlite support. (#92)
@@ -92,19 +92,19 @@
 
 - Add metadata into the response extensions. (#56)
 
-## 0.0.11 (15th August, 2023) 
+## 0.0.11 (15th August, 2023)
 
 - Add support for request `cache-control` directives. (#42)
 - Drop httpcore dependency. (#40)
 - Support HTTP methods only if they are defined as cacheable. (#37)
 
-## 0.0.10 (7th August, 2023) 
+## 0.0.10 (7th August, 2023)
 
 - Add Response metadata. (#33)
 - Add API Reference documentation. (#30)
 - Use stale responses only if the client is disconnected. (#28)
 
-## 0.0.9 (1st August, 2023) 
+## 0.0.9 (1st August, 2023)
 
 - Expose Controller API. (#23)
 
@@ -123,7 +123,7 @@
 ## 0.0.6 (29th July, 2023)
 
 - Fix `Vary` header validation. (#8)
-- Dump original requests with the responses. (#7) 
+- Dump original requests with the responses. (#7)
 
 ## 0.0.5 (29th July, 2023)
 
