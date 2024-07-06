@@ -5,6 +5,7 @@
 - Fix cache update on revalidation response with content (rfc9111 section 4.3.3) (#239)
 - Fix request extensions that were not passed into revalidation request for transport-based implementation (but were
   passed for the pool-based impl) (#247).
+- Add `cache_private` property to the controller to support acting as shared cache. (#224)
 
 ## 0.0.29 (23th June, 2024)
 
