@@ -90,6 +90,22 @@ client = hishel.CacheClient(controller=controller)
 !!! tip
     If you're not familiar with `Heuristics Caching`, you can [read about it in the specification](https://www.rfc-editor.org/rfc/rfc9111.html#name-calculating-heuristic-fresh).
 
+### Preventing caching of private responses
+
+If you want `Hishel` to act as a _shared_ cache, you need to prevent it from caching responses with the `private` directive.
+
+Example:
+
+```python
+import hishel
+
+controller = hishel.Controller(cache_private=False)
+client = hishel.CacheClient(controller=controller)
+```
+
+!!! note
+    Servers may prohibit only some headers from being stored in a shared cache by sending a headers such as `Cache-Control: private=set-cookie`. However, `Hishel` with `cache_private=False` will still not cache the response, at all.
+
 ### Allowing stale responses
 
 Some servers allow the use of stale responses if they cannot be re-validated or the client is disconnected from the server. Clients MAY use stale responses in such cases, but this behavior is disabled by default in `Hishel`.
