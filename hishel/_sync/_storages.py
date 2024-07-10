@@ -203,11 +203,12 @@ class FileStorage(BaseStorage):
 
         self._last_cleaned = time.monotonic()
         with self._lock:
-            for file in self._base_path.iterdir():
-                if file.is_file():
-                    age = time.time() - file.stat().st_mtime
-                    if age > self._ttl:
-                        file.unlink()
+            with os.scandir(self._base_path) as entries:
+                for entry in entries:
+                    if entry.is_file():
+                        age = time.time() - entry.stat().st_mtime
+                        if age > self._ttl:
+                            os.unlink(entry.path)
 
 
 class SQLiteStorage(BaseStorage):
