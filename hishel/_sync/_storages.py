@@ -150,7 +150,7 @@ class FileStorage(BaseStorage):
         :type key: Union[str, Response]
         """
 
-        if isinstance(key, Response):
+        if isinstance(key, Response):  # pragma: no cover
             key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         response_path = self._base_path / key
@@ -315,7 +315,7 @@ class SQLiteStorage(BaseStorage):
         self._setup()
         assert self._connection
 
-        if isinstance(key, Response):
+        if isinstance(key, Response):  # pragma: no cover
             key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         with self._lock:
@@ -452,7 +452,7 @@ class RedisStorage(BaseStorage):
         :type key: Union[str, Response]
         """
 
-        if isinstance(key, Response):
+        if isinstance(key, Response):  # pragma: no cover
             key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         self._client.delete(key)
@@ -565,7 +565,7 @@ class InMemoryStorage(BaseStorage):
         :type key: Union[str, Response]
         """
 
-        if isinstance(key, Response):
+        if isinstance(key, Response):  # pragma: no cover
             key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         with self._lock:
@@ -709,7 +709,7 @@ class S3Storage(BaseStorage):  # pragma: no cover
         :type key: Union[str, Response]
         """
 
-        if isinstance(key, Response):
+        if isinstance(key, Response):  # pragma: no cover
             key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         with self._lock:

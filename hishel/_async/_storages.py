@@ -150,7 +150,7 @@ class AsyncFileStorage(AsyncBaseStorage):
         :type key: Union[str, Response]
         """
 
-        if isinstance(key, Response):
+        if isinstance(key, Response):  # pragma: no cover
             key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         response_path = self._base_path / key
@@ -315,7 +315,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
         await self._setup()
         assert self._connection
 
-        if isinstance(key, Response):
+        if isinstance(key, Response):  # pragma: no cover
             key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         async with self._lock:
@@ -452,7 +452,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
         :type key: Union[str, Response]
         """
 
-        if isinstance(key, Response):
+        if isinstance(key, Response):  # pragma: no cover
             key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         await self._client.delete(key)
@@ -565,7 +565,7 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
         :type key: Union[str, Response]
         """
 
-        if isinstance(key, Response):
+        if isinstance(key, Response):  # pragma: no cover
             key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         async with self._lock:
@@ -709,7 +709,7 @@ class AsyncS3Storage(AsyncBaseStorage):  # pragma: no cover
         :type key: Union[str, Response]
         """
 
-        if isinstance(key, Response):
+        if isinstance(key, Response):  # pragma: no cover
             key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         async with self._lock:

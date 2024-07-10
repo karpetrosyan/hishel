@@ -390,7 +390,7 @@ def test_filestorage_remove(use_temp_dir):
 
 
 def test_redisstorage_remove(anyio_backend):
-    if is_redis_down():
+    if is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
 
     storage = RedisStorage()

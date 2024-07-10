@@ -390,7 +390,7 @@ async def test_filestorage_remove(use_temp_dir):
 
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
 async def test_redisstorage_remove(anyio_backend):
-    if await is_redis_down():
+    if await is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
 
     storage = AsyncRedisStorage()
