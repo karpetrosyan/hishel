@@ -19,3 +19,4 @@ types-PyYAML==6.0.12.20240311
 
 # build
 hatch==1.7.0
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
