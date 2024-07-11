@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import datetime
 import types
 import typing as tp
 
@@ -100,7 +99,12 @@ class CacheConnectionPool(RequestInterface):
             if isinstance(res, Response):
                 # Simply use the response if the controller determines it is ready for use.
                 return self._create_hishel_response(
-                    key=key, response=stored_response, request=request, metadata=metadata, cached=True
+                    key=key,
+                    response=stored_response,
+                    request=request,
+                    metadata=metadata,
+                    cached=True,
+                    revalidated=False,
                 )
 
             if request_cache_control.only_if_cached:
@@ -115,7 +119,12 @@ class CacheConnectionPool(RequestInterface):
                     # If there is a connection error, we can use the stale response if allowed.
                     if self._controller._allow_stale and allowed_stale(response=stored_response):
                         return self._create_hishel_response(
-                            key=key, response=stored_response, request=request, metadata=metadata, cached=True
+                            key=key,
+                            response=stored_response,
+                            request=request,
+                            metadata=metadata,
+                            cached=True,
+                            revalidated=False,
                         )
                     raise  # pragma: no cover
                 # Merge headers with the stale response.
@@ -124,24 +133,35 @@ class CacheConnectionPool(RequestInterface):
                 )
 
                 final_response.read()
+
+                # RFC 9111: 4.3.3. Handling a Validation Response
+                # A 304 (Not Modified) response status code indicates that the stored response can be updated and
+                # reused. A full response (i.e., one containing content) indicates that none of the stored responses
+                # nominated in the conditional request are suitable. Instead, the cache MUST use the full response to
+                # satisfy the request. The cache MAY store such a full response, subject to its constraints.
+                if revalidation_response.status != 304 and self._controller.is_cachable(
+                    request=request, response=final_response
+                ):
+                    self._storage.store(key, response=final_response, request=request)
+
                 return self._create_hishel_response(
                     key=key,
                     response=final_response,
                     request=request,
-                    metadata=metadata,
                     cached=revalidation_response.status == 304,
+                    revalidated=True,
+                    metadata=metadata,
                 )
 
         regular_response = self._pool.handle_request(request)
         regular_response.read()
 
         if self._controller.is_cachable(request=request, response=regular_response):
-            metadata = Metadata(
-                cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0
-            )
-            self._storage.store(key, response=regular_response, request=request, metadata=metadata)
+            self._storage.store(key, response=regular_response, request=request)
 
-        return self._create_hishel_response(key=key, response=regular_response, request=request, cached=False)
+        return self._create_hishel_response(
+            key=key, response=regular_response, request=request, cached=False, revalidated=False
+        )
 
     def _create_hishel_response(
         self,
@@ -149,6 +169,7 @@ class CacheConnectionPool(RequestInterface):
         response: Response,
         request: Request,
         cached: bool,
+        revalidated: bool,
         metadata: Metadata | None = None,
     ) -> Response:
         if cached:
@@ -159,6 +180,7 @@ class CacheConnectionPool(RequestInterface):
             response.extensions["cache_metadata"] = metadata  # type: ignore[index]
         else:
             response.extensions["from_cache"] = False  # type: ignore[index]
+        response.extensions["revalidated"] = revalidated  # type: ignore[index]
         return response
 
     def close(self) -> None:
