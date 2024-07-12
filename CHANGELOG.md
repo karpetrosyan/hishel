@@ -1,6 +1,6 @@
 # Changelog
 
-## development
+## 0.0.30 (12th July, 2024)
 
 - Fix cache update on revalidation response with content (rfc9111 section 4.3.3) (#239)
 - Fix request extensions that were not passed into revalidation request for transport-based implementation (but were
