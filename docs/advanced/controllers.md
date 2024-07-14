@@ -104,7 +104,7 @@ client = hishel.CacheClient(controller=controller)
 ```
 
 !!! note
-    Servers may prohibit only some headers from being stored in a shared cache by sending a headers such as `Cache-Control: private=set-cookie`. However, `Hishel` with `cache_private=False` will still not cache the response, at all.
+    Servers may prohibit only some headers from being stored in a shared cache by sending a header such as `Cache-Control: private=set-cookie`. However, `Hishel` with `cache_private=False` will still not cache the response, at all.
 
 ### Allowing stale responses
 
