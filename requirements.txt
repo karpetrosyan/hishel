@@ -14,7 +14,7 @@ types-boto3==1.0.2
 types-redis==4.6.0.20240425
 anyio==4.4.0
 trio==0.25.0
-coverage==7.4.4
+coverage==7.6.0
 types-PyYAML==6.0.12.20240311
 
 # build
