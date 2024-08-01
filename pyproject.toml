@@ -40,7 +40,7 @@ yaml = [
 ]
 
 redis = [
-    "redis==5.0.1"
+    "redis==5.0.4"
 ]
 
 sqlite = [
