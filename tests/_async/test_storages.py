@@ -5,7 +5,6 @@ from pathlib import Path
 import anysqlite
 import pytest
 from httpcore import Request, Response
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from hishel import AsyncFileStorage, AsyncInMemoryStorage, AsyncRedisStorage, AsyncSQLiteStorage, AsyncSQLStorage
 from hishel._serializers import JSONSerializer, Metadata, PickleSerializer, YAMLSerializer
@@ -383,8 +382,7 @@ async def test_filestorage_empty_file_exception(use_temp_dir):
     ],
 )
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
-async def test_sql_ttl_after_hits(serializer, anyio_backend):
-    engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///:memory:")
+async def test_sql_ttl_after_hits(serializer, anyio_backend, engine):
     storage = AsyncSQLStorage(engine=engine, ttl=datetime.timedelta(seconds=0.2), serializer=serializer)
 
     request = Request(b"GET", "https://example.com")
@@ -408,17 +406,8 @@ async def test_sql_ttl_after_hits(serializer, anyio_backend):
     assert await storage.retrieve(key) is None
 
 
-@pytest.mark.parametrize(
-    "serializer",
-    [
-        (JSONSerializer()),
-        (YAMLSerializer()),
-        (PickleSerializer()),
-    ],
-)
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
-async def test_sql_expired(serializer, anyio_backend):
-    engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///:memory:")
+async def test_sql_expired(anyio_backend, engine):
     storage = AsyncSQLStorage(
         engine=engine,
         ttl=datetime.timedelta(seconds=0.1),
@@ -513,8 +502,7 @@ async def test_inmemorystorage_remove():
     ],
 )
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
-async def test_sql_remove(serializer, anyio_backend):
-    engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///:memory:")
+async def test_sql_remove(serializer, anyio_backend, engine):
     storage = AsyncSQLStorage(
         engine=engine,
         serializer=serializer,

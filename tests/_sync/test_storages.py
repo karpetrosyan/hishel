@@ -5,7 +5,6 @@ from pathlib import Path
 import sqlite3
 import pytest
 from httpcore import Request, Response
-from sqlalchemy import Engine, create_engine
 
 from hishel import FileStorage, InMemoryStorage, RedisStorage, SQLiteStorage, SQLStorage
 from hishel._serializers import JSONSerializer, Metadata, PickleSerializer, YAMLSerializer
@@ -383,8 +382,7 @@ def test_filestorage_empty_file_exception(use_temp_dir):
     ],
 )
 
-def test_sql_ttl_after_hits(serializer):
-    engine: Engine = create_engine("sqlite:///:memory:")
+def test_sql_ttl_after_hits(serializer, engine):
     storage = SQLStorage(engine=engine, ttl=datetime.timedelta(seconds=0.2), serializer=serializer)
 
     request = Request(b"GET", "https://example.com")
@@ -408,17 +406,8 @@ def test_sql_ttl_after_hits(serializer):
     assert storage.retrieve(key) is None
 
 
-@pytest.mark.parametrize(
-    "serializer",
-    [
-        (JSONSerializer()),
-        (YAMLSerializer()),
-        (PickleSerializer()),
-    ],
-)
 
-def test_sql_expired(serializer):
-    engine: Engine = create_engine("sqlite:///:memory:")
+def test_sql_expired(anyio_backend, engine):
     storage = SQLStorage(
         engine=engine,
         ttl=datetime.timedelta(seconds=0.1),
@@ -513,8 +502,7 @@ def test_inmemorystorage_remove():
     ],
 )
 
-def test_sql_remove(serializer):
-    engine: Engine = create_engine("sqlite:///:memory:")
+def test_sql_remove(serializer, engine):
     storage = SQLStorage(
         engine=engine,
         serializer=serializer,
