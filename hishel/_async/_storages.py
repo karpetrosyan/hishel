@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover
     anysqlite = None  # type: ignore
 
 from httpcore import Request, Response
-from typing_extensions import TypeAlias
+from typing_extensions import Self, TypeAlias, override
 
 from hishel._serializers import BaseSerializer, clone_model
 
@@ -37,6 +37,7 @@ __all__ = (
     "AsyncBaseStorage",
     "AsyncFileStorage",
     "AsyncRedisStorage",
+    "AsyncSQLStorage",
     "AsyncSQLiteStorage",
     "AsyncInMemoryStorage",
     "AsyncS3Storage",
@@ -48,6 +49,14 @@ try:
     import redis.asyncio as redis
 except ImportError:  # pragma: no cover
     redis = None  # type: ignore
+
+
+try:
+    import sqlalchemy
+    import sqlalchemy.ext.asyncio
+    import sqlalchemy.orm
+except ImportError:  # pragma: no cover
+    sqlalchemy = None  # type: ignore
 
 
 class AsyncBaseStorage:
@@ -679,3 +688,173 @@ class AsyncS3Storage(AsyncBaseStorage):  # pragma: no cover
         async with self._lock:
             converted_ttl = float_seconds_to_int_milliseconds(self._ttl)
             await self._s3_manager.remove_expired(ttl=converted_ttl, key=key)
+
+
+class AsyncSQLStorage(AsyncBaseStorage):
+    def __init__(
+        self: Self,
+        engine: sqlalchemy.ext.asyncio.AsyncEngine,
+        serializer: tp.Optional[BaseSerializer] = None,
+        ttl: tp.Optional[datetime.timedelta] = None,
+        max_id_len: int = 1024,
+        max_data_size_in_bytes: int = 1_048_576,  # 1MB
+    ) -> None:
+        if sqlalchemy is None:
+            raise RuntimeError(
+                f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                "Check that you have `Hishel` installed with the `sql` extension as shown.\n"
+                "```pip install hishel[sql]```"
+            )
+        super().__init__(serializer=serializer, ttl=ttl.total_seconds())
+        self._engine = engine
+        self._has_done_setup = False
+        self._lock = AsyncLock()
+        self._ttl_as_timedelta = ttl
+
+        class Base(sqlalchemy.orm.DeclarativeBase):
+            pass
+
+        class Cache(Base):
+            __tablename__ = "cache"
+            id: sqlalchemy.orm.Mapped[str] = sqlalchemy.orm.mapped_column(
+                sqlalchemy.String(max_id_len),
+                primary_key=True,
+            )
+            data: sqlalchemy.orm.Mapped[bytes] = sqlalchemy.orm.mapped_column(
+                sqlalchemy.BLOB(max_data_size_in_bytes),
+            )
+            date_created: sqlalchemy.orm.Mapped[float] = sqlalchemy.orm.mapped_column(
+                sqlalchemy.Float(),
+            )
+
+        self._cache_cls = Cache
+        self._base = Base
+
+    @override
+    async def store(
+        self: Self,
+        key: str,
+        response: Response,
+        request: Request,
+        metadata: Metadata | None = None,
+    ) -> None:
+        self._setup()
+        metadata = metadata or Metadata(
+            cache_key=key,
+            created_at=datetime.datetime.now(datetime.timezone.utc),
+            number_of_uses=0,
+        )
+
+        with sqlalchemy.orm.Session(self._engine) as session:
+            self._clear_cache(key=key, session=session)
+            serialized_response = self._serialize_data(
+                response=response,
+                request=request,
+                metadata=metadata,
+            )
+            session.add(
+                self._cache_cls(
+                    id=key,
+                    data=serialized_response,
+                    date_created=metadata["created_at"].timestamp(),
+                ),
+            )
+            session.commit()
+
+    @override
+    async def update_metadata(
+        self,
+        key: str,
+        response: Response,
+        request: Request,
+        metadata: Metadata,
+    ) -> None:
+        self._setup()
+
+        with sqlalchemy.orm.Session(self._engine) as session:
+            row = self._get_from_db(key=key, session=session)
+            if row is not None:
+                row.data = self._serialize_data(
+                    response=response,
+                    request=request,
+                    metadata=metadata,
+                )
+                session.add(row)
+                session.commit()
+                return
+        return self.store(key, response, request, metadata)  # pragma: no cover
+
+    @override
+    async def retrieve(
+        self,
+        key: str,
+    ) -> tp.Optional[StoredResponse]:
+        self._setup()
+        with sqlalchemy.orm.Session(self._engine) as session:
+            self._clear_cache(key=key, session=session)
+            session.commit()
+            result = session.scalars(
+                sqlalchemy.select(self._cache_cls).where(
+                    self._cache_cls.id == key,
+                )
+            ).one_or_none()
+        if result is None:
+            return None
+        return self._deserialize_data(result.data)
+
+    @override
+    def close(self: Self) -> None:
+        pass
+
+    def _setup(self: Self) -> None:
+        if self._has_done_setup:
+            return
+        with self._lock:
+            self._base.metadata.create_all(self._engine)
+            self._has_done_setup = True
+
+    def _clear_cache(
+        self: Self,
+        key: str,
+        session: sqlalchemy.orm.Session,
+    ) -> None:
+        if self._ttl_as_timedelta is None:
+            return
+        delete_statement = (
+            sqlalchemy.delete(self._cache_cls)
+            .where(self._cache_cls.id == key)
+            .where(
+                self._cache_cls.date_created + self._ttl_as_timedelta.total_seconds()
+                < datetime.datetime.now(tz=datetime.timezone.utc).timestamp()
+            )
+        )
+        session.execute(delete_statement)
+
+    def _get_from_db(
+        self: Self, key: str, session: sqlalchemy.orm.Session
+    ) -> tp.Optional[sqlalchemy.orm.DeclarativeBase]:
+        self._clear_cache(key=key, session=session)
+        return session.scalars(sqlalchemy.select(self._cache_cls).where(self._cache_cls.id == key)).one_or_none()
+
+    # I need to serialize / deserialize as it can handle only bytes.
+
+    def _serialize_data(
+        self: Self,
+        response: Response,
+        request: Request,
+        metadata: Metadata,
+    ) -> bytes:
+        serialized_data = self._serializer.dumps(response=response, request=request, metadata=metadata)
+        if isinstance(serialized_data, str):
+            return serialized_data.encode("utf-8")
+        return serialized_data
+
+    def _deserialize_data(
+        self: Self,
+        data: bytes,
+    ) -> tp.Tuple[Response, Request, Metadata]:
+        try:
+            cleaned_data = data.decode("utf-8")
+        except UnicodeDecodeError:
+            cleaned_data = data
+        return self._serializer.loads(cleaned_data)
