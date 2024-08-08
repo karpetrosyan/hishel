@@ -787,12 +787,14 @@ class SQLStorage(BaseStorage):
             )
         super().__init__(
             serializer=serializer,
-            ttl=ttl.total_seconds() if ttl else ttl,
+            ttl=ttl.total_seconds()
+            if isinstance(ttl, datetime.timedelta)
+            else ttl,
         )
         self._engine = engine
         self._has_done_setup = False
         self._lock = Lock()
-        self._ttl_as_timedelta = ttl
+        self._ttl_as_timedelta: tp.Optional[datetime.timedelta] = ttl
 
         class Base(sqlalchemy.orm.DeclarativeBase):
             pass

@@ -789,12 +789,14 @@ class AsyncSQLStorage(AsyncBaseStorage):
             )
         super().__init__(
             serializer=serializer,
-            ttl=ttl.total_seconds() if ttl else ttl,
+            ttl=ttl.total_seconds()
+            if isinstance(ttl, datetime.timedelta)
+            else ttl,
         )
         self._engine: sqlalchemy.ext.asyncio.AsyncEngine = engine
         self._has_done_setup: bool = False
         self._lock: AsyncLock = AsyncLock()
-        self._ttl_as_timedelta: datetime.timedelta = ttl
+        self._ttl_as_timedelta: tp.Optional[datetime.timedelta] = ttl
 
         class Base(sqlalchemy.ext.asyncio.AsyncAttrs, sqlalchemy.orm.DeclarativeBase):
             pass
@@ -855,7 +857,7 @@ class AsyncSQLStorage(AsyncBaseStorage):
         request: Request,
         metadata: Metadata,
     ) -> None:
-        self._setup()
+        await self._setup()
 
         async with sqlalchemy.ext.asyncio.AsyncSession(self._engine) as session:
             async with session.begin():
@@ -876,7 +878,7 @@ class AsyncSQLStorage(AsyncBaseStorage):
         self,
         key: str,
     ) -> tp.Optional[StoredResponse]:
-        self._setup()
+        await self._setup()
         async with sqlalchemy.ext.asyncio.AsyncSession(self._engine) as session:
             async with session.begin():
                 await self._clear_cache(key=key, session=session)
