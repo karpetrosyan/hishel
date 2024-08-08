@@ -901,10 +901,7 @@ class AsyncSQLStorage(AsyncBaseStorage):
 
         async with sqlalchemy.ext.asyncio.AsyncSession(self._engine) as session:
             async with session.begin():
-                delete_item_stmt = (
-                    sqlalchemy.delete(self._cache_cls)
-                    .where(self._cache_cls.id == key)
-                )
+                delete_item_stmt = sqlalchemy.delete(self._cache_cls).where(self._cache_cls.id == key)
                 await session.execute(delete_item_stmt)
                 await session.commit()
 
