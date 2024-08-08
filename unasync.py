@@ -48,7 +48,6 @@ SUBS = [
     ("create_async_engine", "create_engine"),
     ("from sqlalchemy.ext.asyncio import", "from sqlalchemy import"),
     ("sqlalchemy.ext.asyncio.AsyncAttrs, ", ""),
-    ("sqlalchemy.ext.asyncio.AsyncAttrs", ""),
     (".stream_scalars", ".scalars"),
     (r", self._engine.begin\(\) as conn", ""),
     (r"conn.run_sync\(self\.\_base.metadata.create_all\)", "self._base.metadata.create_all(self._engine)"),
