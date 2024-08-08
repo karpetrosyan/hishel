@@ -22,14 +22,8 @@ try:
 except ImportError:  # pragma: no cover
     sqlite3 = None  # type: ignore
 
-try:
-    import sqlalchemy
-    import sqlalchemy.orm
-except ImportError:  # pragma: no cover
-    sqlalchemy = None  # type: ignore
-
 from httpcore import Request, Response
-from typing_extensions import TypeAlias, Self, override
+from typing_extensions import Self, TypeAlias, override
 
 from hishel._serializers import BaseSerializer, clone_model
 
@@ -44,8 +38,8 @@ __all__ = (
     "BaseStorage",
     "FileStorage",
     "RedisStorage",
-    "SQLiteStorage",
     "SQLStorage",
+    "SQLiteStorage",
     "InMemoryStorage",
     "S3Storage",
 )
@@ -57,6 +51,13 @@ try:
     import redis
 except ImportError:  # pragma: no cover
     redis = None  # type: ignore
+
+
+try:
+    import sqlalchemy
+    import sqlalchemy.orm
+except ImportError:  # pragma: no cover
+    sqlalchemy = None  # type: ignore
 
 
 class BaseStorage:
@@ -855,6 +856,9 @@ class SQLStorage(BaseStorage):
         metadata: Metadata | None = None,
     ) -> None:
         self._setup()
+        metadata = metadata = metadata or Metadata(
+            cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0,
+        )
 
         with sqlalchemy.orm.Session(self._engine) as session:
             row = self._get_from_db(key=key, session=session)
@@ -926,7 +930,7 @@ class SQLStorage(BaseStorage):
         )
         session.execute(delete_statement)
 
-    def _get_from_db(self: Self, key: str, session: sqlalchemy.orm.Session) -> tp.Optional[sqlalchemy.orm.DeclarativeBase]:
+    def _get_from_db(self: Self, key: str, session: sqlalchemy.orm.Session) -> tp.Optional[tp.Any]:
         self._clear_cache(key=key, session=session)
         return session.scalars(
                 sqlalchemy.select(self._cache_cls)
@@ -951,7 +955,7 @@ class SQLStorage(BaseStorage):
         data: bytes,
     ) -> tp.Tuple[Response, Request, Metadata]:
         try:
-            cleaned_data = data.decode("utf-8")
+            cleaned_data: tp.Union[str, bytes] = data.decode("utf-8")
         except UnicodeDecodeError:
             cleaned_data = data
         return self._serializer.loads(cleaned_data)

@@ -789,9 +789,7 @@ class AsyncSQLStorage(AsyncBaseStorage):
             )
         super().__init__(
             serializer=serializer,
-            ttl=ttl.total_seconds()
-            if isinstance(ttl, datetime.timedelta)
-            else ttl,
+            ttl=ttl.total_seconds() if isinstance(ttl, datetime.timedelta) else ttl,
         )
         self._engine: sqlalchemy.ext.asyncio.AsyncEngine = engine
         self._has_done_setup: bool = False
@@ -939,7 +937,7 @@ class AsyncSQLStorage(AsyncBaseStorage):
         self: Self,
         key: str,
         session: sqlalchemy.ext.asyncio.AsyncSession,
-    ) -> tp.Optional[sqlalchemy.orm.DeclarativeBase]:
+    ) -> tp.Optional[tp.Any]:
         await self._clear_cache(key=key, session=session)
         return await (
             await session.stream_scalars(
@@ -967,7 +965,7 @@ class AsyncSQLStorage(AsyncBaseStorage):
         data: bytes,
     ) -> tp.Tuple[Response, Request, Metadata]:
         try:
-            cleaned_data = data.decode("utf-8")
+            cleaned_data: tp.Union[str, bytes] = data.decode("utf-8")
         except UnicodeDecodeError:
             cleaned_data = data
         return self._serializer.loads(cleaned_data)
