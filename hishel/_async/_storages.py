@@ -706,12 +706,12 @@ class AsyncSQLStorage(AsyncBaseStorage):
                 "```pip install hishel[sql]```"
             )
         super().__init__(serializer=serializer, ttl=ttl.total_seconds())
-        self._engine = engine
-        self._has_done_setup = False
-        self._lock = AsyncLock()
-        self._ttl_as_timedelta = ttl
+        self._engine: sqlalchemy.ext.asyncio.AsyncEngine = engine
+        self._has_done_setup: bool = False
+        self._lock: AsyncLock = AsyncLock()
+        self._ttl_as_timedelta: datetime.timedelta = ttl
 
-        class Base(sqlalchemy.orm.DeclarativeBase):
+        class Base(sqlalchemy.ext.asyncio.AsyncAttrs, sqlalchemy.orm.DeclarativeBase):
             pass
 
         class Cache(Base):
@@ -738,28 +738,29 @@ class AsyncSQLStorage(AsyncBaseStorage):
         request: Request,
         metadata: Metadata | None = None,
     ) -> None:
-        self._setup()
+        await self._setup()
         metadata = metadata or Metadata(
             cache_key=key,
             created_at=datetime.datetime.now(datetime.timezone.utc),
             number_of_uses=0,
         )
 
-        with sqlalchemy.orm.Session(self._engine) as session:
-            self._clear_cache(key=key, session=session)
-            serialized_response = self._serialize_data(
-                response=response,
-                request=request,
-                metadata=metadata,
-            )
-            session.add(
-                self._cache_cls(
-                    id=key,
-                    data=serialized_response,
-                    date_created=metadata["created_at"].timestamp(),
-                ),
-            )
-            session.commit()
+        async with sqlalchemy.ext.asyncio.AsyncSession(self._engine) as session:
+            async with session.begin():
+                await self._clear_cache(key=key, session=session)
+                serialized_response = self._serialize_data(
+                    response=response,
+                    request=request,
+                    metadata=metadata,
+                )
+                session.add(
+                    self._cache_cls(
+                        id=key,
+                        data=serialized_response,
+                        date_created=metadata["created_at"].timestamp(),
+                    ),
+                )
+                session.commit()
 
     @override
     async def update_metadata(
@@ -803,20 +804,20 @@ class AsyncSQLStorage(AsyncBaseStorage):
         return self._deserialize_data(result.data)
 
     @override
-    def close(self: Self) -> None:
+    async def aclose(self: Self) -> None:
         pass
 
-    def _setup(self: Self) -> None:
+    async def _setup(self: Self) -> None:
         if self._has_done_setup:
             return
-        with self._lock:
-            self._base.metadata.create_all(self._engine)
+        async with self._lock, self._engine.begin() as conn:
+            await conn.run_sync(self._base.metadata.create_all)
             self._has_done_setup = True
 
-    def _clear_cache(
+    async def _clear_cache(
         self: Self,
         key: str,
-        session: sqlalchemy.orm.Session,
+        session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> None:
         if self._ttl_as_timedelta is None:
             return
@@ -830,7 +831,7 @@ class AsyncSQLStorage(AsyncBaseStorage):
         )
         session.execute(delete_statement)
 
-    def _get_from_db(
+    async def _get_from_db(
         self: Self, key: str, session: sqlalchemy.orm.Session
     ) -> tp.Optional[sqlalchemy.orm.DeclarativeBase]:
         self._clear_cache(key=key, session=session)
