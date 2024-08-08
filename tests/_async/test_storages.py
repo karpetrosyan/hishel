@@ -7,7 +7,7 @@ import pytest
 from httpcore import Request, Response
 
 from hishel import AsyncFileStorage, AsyncInMemoryStorage, AsyncRedisStorage, AsyncSQLiteStorage, AsyncSQLStorage
-from hishel._serializers import JSONSerializer, Metadata, PickleSerializer, YAMLSerializer
+from hishel._serializers import Metadata
 from hishel._utils import asleep, generate_key
 
 dummy_metadata = Metadata(cache_key="test", number_of_uses=0, created_at=datetime.datetime.now(datetime.timezone.utc))
@@ -373,17 +373,12 @@ async def test_filestorage_empty_file_exception(use_temp_dir):
     assert await storage.retrieve(key) is None
 
 
-@pytest.mark.parametrize(
-    "serializer",
-    [
-        (JSONSerializer()),
-        (YAMLSerializer()),
-        (PickleSerializer()),
-    ],
-)
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
-async def test_sql_ttl_after_hits(serializer, anyio_backend, engine):
-    storage = AsyncSQLStorage(engine=engine, ttl=datetime.timedelta(seconds=0.2), serializer=serializer)
+async def test_sql_ttl_after_hits(anyio_backend, engine):
+    storage = AsyncSQLStorage(
+        engine=engine,
+        ttl=datetime.timedelta(seconds=0.2),
+    )
 
     request = Request(b"GET", "https://example.com")
 
@@ -493,19 +488,10 @@ async def test_inmemorystorage_remove():
     assert await storage.retrieve(key) is None
 
 
-@pytest.mark.parametrize(
-    "serializer",
-    [
-        (JSONSerializer()),
-        (YAMLSerializer()),
-        (PickleSerializer()),
-    ],
-)
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
-async def test_sql_remove(serializer, anyio_backend, engine):
+async def test_sql_remove(anyio_backend, engine):
     storage = AsyncSQLStorage(
         engine=engine,
-        serializer=serializer,
     )
     request = Request(b"GET", "https://example.com")
 

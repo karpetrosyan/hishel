@@ -845,7 +845,6 @@ class AsyncSQLStorage(AsyncBaseStorage):
                         date_created=metadata["created_at"].timestamp(),
                     ),
                 )
-                await session.commit()
 
     @override
     async def update_metadata(
@@ -867,7 +866,6 @@ class AsyncSQLStorage(AsyncBaseStorage):
                         metadata=metadata,
                     )
                     session.add(row)
-                    await session.commit()
                     return
         return await self.store(key, response, request, metadata)  # pragma: no cover
 
@@ -880,7 +878,6 @@ class AsyncSQLStorage(AsyncBaseStorage):
         async with sqlalchemy.ext.asyncio.AsyncSession(self._engine) as session:
             async with session.begin():
                 await self._clear_cache(key=key, session=session)
-                await session.commit()
             result = await (
                 await session.stream_scalars(
                     sqlalchemy.select(self._cache_cls).where(
@@ -909,7 +906,6 @@ class AsyncSQLStorage(AsyncBaseStorage):
             async with session.begin():
                 delete_item_stmt = sqlalchemy.delete(self._cache_cls).where(self._cache_cls.id == key)
                 await session.execute(delete_item_stmt)
-                await session.commit()
 
     @override
     async def aclose(self: Self) -> None:

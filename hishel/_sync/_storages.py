@@ -845,7 +845,6 @@ class SQLStorage(BaseStorage):
                         date_created=metadata["created_at"].timestamp(),
                     ),
                 )
-                session.commit()
 
     @override
     def update_metadata(
@@ -867,7 +866,6 @@ class SQLStorage(BaseStorage):
                         metadata=metadata,
                     )
                     session.add(row)
-                    session.commit()
                     return
         return self.store(key, response, request, metadata)  # pragma: no cover
 
@@ -880,7 +878,6 @@ class SQLStorage(BaseStorage):
         with sqlalchemy.orm.Session(self._engine) as session:
             with session.begin():
                 self._clear_cache(key=key, session=session)
-                session.commit()
             result = (
                 session.scalars(
                     sqlalchemy.select(self._cache_cls).where(
@@ -909,7 +906,6 @@ class SQLStorage(BaseStorage):
             with session.begin():
                 delete_item_stmt = sqlalchemy.delete(self._cache_cls).where(self._cache_cls.id == key)
                 session.execute(delete_item_stmt)
-                session.commit()
 
     @override
     def close(self: Self) -> None:
