@@ -772,18 +772,19 @@ class AsyncSQLStorage(AsyncBaseStorage):
     ) -> None:
         self._setup()
 
-        with sqlalchemy.orm.Session(self._engine) as session:
-            row = self._get_from_db(key=key, session=session)
-            if row is not None:
-                row.data = self._serialize_data(
-                    response=response,
-                    request=request,
-                    metadata=metadata,
-                )
-                session.add(row)
-                session.commit()
-                return
-        return self.store(key, response, request, metadata)  # pragma: no cover
+        async with sqlalchemy.ext.asyncio.AsyncSession(self._engine) as session:
+            async with session.begin():
+                row = await self._get_from_db(key=key, session=session)
+                if row is not None:
+                    row.data = self._serialize_data(
+                        response=response,
+                        request=request,
+                        metadata=metadata,
+                    )
+                    session.add(row)
+                    session.commit()
+                    return
+        return await self.store(key, response, request, metadata)  # pragma: no cover
 
     @override
     async def retrieve(
@@ -835,10 +836,18 @@ class AsyncSQLStorage(AsyncBaseStorage):
         await session.execute(delete_statement)
 
     async def _get_from_db(
-        self: Self, key: str, session: sqlalchemy.orm.Session
+        self: Self,
+        key: str,
+        session: sqlalchemy.orm.Session,
     ) -> tp.Optional[sqlalchemy.orm.DeclarativeBase]:
         await self._clear_cache(key=key, session=session)
-        return session.scalars(sqlalchemy.select(self._cache_cls).where(self._cache_cls.id == key)).one_or_none()
+        return await (
+            await session.stream_scalars(
+                sqlalchemy.select(self._cache_cls).where(
+                    self._cache_cls.id == key,
+                )
+            )
+        ).one_or_none()
 
     # I need to serialize / deserialize as it can handle only bytes.
 

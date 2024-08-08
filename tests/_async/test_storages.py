@@ -384,7 +384,6 @@ async def test_filestorage_empty_file_exception(use_temp_dir):
 @pytest.mark.parametrize('anyio_backend', ['asyncio'])
 async def test_sql_ttl_after_hits(serializer, anyio_backend):
     engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///my.db")
     storage = AsyncSQLStorage(engine=engine, ttl=datetime.timedelta(seconds=0.2), serializer=serializer)
 
     request = Request(b"GET", "https://example.com")
@@ -396,16 +395,16 @@ async def test_sql_ttl_after_hits(serializer, anyio_backend):
 
     # Storing
     await storage.store(key, response=response, request=request, metadata=dummy_metadata)
-    assert storage.retrieve(key) is not None
+    assert await storage.retrieve(key) is not None
 
     # Retrieving after 0.08 second
-    asleep(0.08)
+    await asleep(0.08)
     await storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
-    assert storage.retrieve(key) is not None
+    assert await storage.retrieve(key) is not None
 
     # Retrieving after 0.24 second
-    asleep(0.16)
-    assert storage.retrieve(key) is None
+    await asleep(0.16)
+    assert await storage.retrieve(key) is None
 
 
 @pytest.mark.parametrize(
@@ -419,7 +418,6 @@ async def test_sql_ttl_after_hits(serializer, anyio_backend):
 @pytest.mark.parametrize('anyio_backend', ['asyncio'])
 async def test_sql_expired(serializer, anyio_backend):
     engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    # engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///my.db")
     storage = AsyncSQLStorage(
         engine=engine,
         ttl=datetime.timedelta(seconds=0.1),
