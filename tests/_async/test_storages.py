@@ -382,7 +382,7 @@ async def test_filestorage_empty_file_exception(use_temp_dir):
         (PickleSerializer()),
     ],
 )
-@pytest.mark.parametrize('anyio_backend', ['asyncio'])
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
 async def test_sql_ttl_after_hits(serializer, anyio_backend):
     engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///:memory:")
     storage = AsyncSQLStorage(engine=engine, ttl=datetime.timedelta(seconds=0.2), serializer=serializer)
@@ -416,7 +416,7 @@ async def test_sql_ttl_after_hits(serializer, anyio_backend):
         (PickleSerializer()),
     ],
 )
-@pytest.mark.parametrize('anyio_backend', ['asyncio'])
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
 async def test_sql_expired(serializer, anyio_backend):
     engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///:memory:")
     storage = AsyncSQLStorage(
@@ -439,6 +439,8 @@ async def test_sql_expired(serializer, anyio_backend):
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert await storage.retrieve(first_key) is None
+
+
 @pytest.mark.anyio
 async def test_filestorage_remove(use_temp_dir):
     storage = AsyncFileStorage()
@@ -490,6 +492,33 @@ async def test_sqlitestorage_remove():
 @pytest.mark.anyio
 async def test_inmemorystorage_remove():
     storage = AsyncInMemoryStorage()
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+    response = Response(200, headers=[], content=b"test")
+
+    await response.aread()
+    await storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+    await storage.remove(key)
+    assert await storage.retrieve(key) is None
+
+
+@pytest.mark.parametrize(
+    "serializer",
+    [
+        (JSONSerializer()),
+        (YAMLSerializer()),
+        (PickleSerializer()),
+    ],
+)
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
+async def test_sql_remove(serializer, anyio_backend):
+    engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    storage = AsyncSQLStorage(
+        engine=engine,
+        serializer=serializer,
+    )
     request = Request(b"GET", "https://example.com")
 
     key = generate_key(request)

@@ -787,7 +787,10 @@ class AsyncSQLStorage(AsyncBaseStorage):
                 "Check that you have `Hishel` installed with the `sql` extension as shown.\n"
                 "```pip install hishel[sql]```"
             )
-        super().__init__(serializer=serializer, ttl=ttl.total_seconds())
+        super().__init__(
+            serializer=serializer,
+            ttl=ttl.total_seconds() if ttl else ttl,
+        )
         self._engine: sqlalchemy.ext.asyncio.AsyncEngine = engine
         self._has_done_setup: bool = False
         self._lock: AsyncLock = AsyncLock()
@@ -842,7 +845,7 @@ class AsyncSQLStorage(AsyncBaseStorage):
                         date_created=metadata["created_at"].timestamp(),
                     ),
                 )
-                session.commit()
+                await session.commit()
 
     @override
     async def update_metadata(
@@ -864,7 +867,7 @@ class AsyncSQLStorage(AsyncBaseStorage):
                         metadata=metadata,
                     )
                     session.add(row)
-                    session.commit()
+                    await session.commit()
                     return
         return await self.store(key, response, request, metadata)  # pragma: no cover
 
@@ -877,7 +880,7 @@ class AsyncSQLStorage(AsyncBaseStorage):
         async with sqlalchemy.ext.asyncio.AsyncSession(self._engine) as session:
             async with session.begin():
                 await self._clear_cache(key=key, session=session)
-                session.commit()
+                await session.commit()
             result = await (
                 await session.stream_scalars(
                     sqlalchemy.select(self._cache_cls).where(
@@ -888,6 +891,22 @@ class AsyncSQLStorage(AsyncBaseStorage):
         if result is None:
             return None
         return self._deserialize_data(result.data)
+
+    @override
+    async def remove(self, key: RemoveTypes) -> None:
+        await self._setup()
+
+        if isinstance(key, Response):  # pragma: no cover
+            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+
+        async with sqlalchemy.ext.asyncio.AsyncSession(self._engine) as session:
+            async with session.begin():
+                delete_item_stmt = (
+                    sqlalchemy.delete(self._cache_cls)
+                    .where(self._cache_cls.id == key)
+                )
+                await session.execute(delete_item_stmt)
+                await session.commit()
 
     @override
     async def aclose(self: Self) -> None:
