@@ -4,6 +4,7 @@ import datetime
 import logging
 import os
 import time
+import typing as t
 import typing as tp
 import warnings
 from copy import deepcopy
@@ -50,6 +51,7 @@ __all__ = (
 )
 
 StoredResponse: TypeAlias = tp.Tuple[Response, Request, Metadata]
+RemoveTypes = tp.Union[str, Response]
 
 try:
     import redis
@@ -67,6 +69,9 @@ class BaseStorage:
         self._ttl = ttl
 
     def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
+        raise NotImplementedError()
+
+    def remove(self, key: RemoveTypes) -> None:
         raise NotImplementedError()
 
     def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
@@ -144,6 +149,23 @@ class FileStorage(BaseStorage):
             )
         self._remove_expired_caches(response_path)
 
+    def remove(self, key: RemoveTypes) -> None:
+        """
+        Removes the response from the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI or an HTTP response
+        :type key: Union[str, Response]
+        """
+
+        if isinstance(key, Response):  # pragma: no cover
+            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+
+        response_path = self._base_path / key
+
+        with self._lock:
+            if response_path.exists():
+                response_path.unlink()
+
     def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
         Updates the metadata of the stored response.
@@ -210,11 +232,12 @@ class FileStorage(BaseStorage):
 
         self._last_cleaned = time.monotonic()
         with self._lock:
-            for file in self._base_path.iterdir():
-                if file.is_file():
-                    age = time.time() - file.stat().st_mtime
-                    if age > self._ttl:
-                        file.unlink()
+            with os.scandir(self._base_path) as entries:
+                for entry in entries:
+                    if entry.is_file():
+                        age = time.time() - entry.stat().st_mtime
+                        if age > self._ttl:
+                            os.unlink(entry.path)
 
 
 class SQLiteStorage(BaseStorage):
@@ -288,6 +311,24 @@ class SQLiteStorage(BaseStorage):
             )
             self._connection.commit()
         self._remove_expired_caches()
+
+    def remove(self, key: RemoveTypes) -> None:
+        """
+        Removes the response from the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI or an HTTP response
+        :type key: Union[str, Response]
+        """
+
+        self._setup()
+        assert self._connection
+
+        if isinstance(key, Response):  # pragma: no cover
+            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+
+        with self._lock:
+            self._connection.execute("DELETE FROM cache WHERE key = ?", [key])
+            self._connection.commit()
 
     def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
@@ -411,6 +452,19 @@ class RedisStorage(BaseStorage):
             key, self._serializer.dumps(response=response, request=request, metadata=metadata), px=px
         )
 
+    def remove(self, key: RemoveTypes) -> None:
+        """
+        Removes the response from the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI or an HTTP response
+        :type key: Union[str, Response]
+        """
+
+        if isinstance(key, Response):  # pragma: no cover
+            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+
+        self._client.delete(key)
+
     def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
         Updates the metadata of the stored response.
@@ -510,6 +564,20 @@ class InMemoryStorage(BaseStorage):
             stored_response: StoredResponse = (deepcopy(response_clone), deepcopy(request_clone), metadata)
             self._cache.put(key, (stored_response, time.monotonic()))
         self._remove_expired_caches()
+
+    def remove(self, key: RemoveTypes) -> None:
+        """
+        Removes the response from the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI or an HTTP response
+        :type key: Union[str, Response]
+        """
+
+        if isinstance(key, Response):  # pragma: no cover
+            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+
+        with self._lock:
+            self._cache.remove_key(key)
 
     def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
@@ -640,6 +708,20 @@ class S3Storage(BaseStorage):  # pragma: no cover
             self._s3_manager.write_to(path=key, data=serialized)
 
         self._remove_expired_caches(key)
+
+    def remove(self, key: RemoveTypes) -> None:
+        """
+        Removes the response from the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI or an HTTP response
+        :type key: Union[str, Response]
+        """
+
+        if isinstance(key, Response):  # pragma: no cover
+            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+
+        with self._lock:
+            self._s3_manager.remove_entry(key)
 
     def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """

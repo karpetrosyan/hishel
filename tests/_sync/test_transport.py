@@ -5,7 +5,7 @@ import pytest
 import sniffio
 
 import hishel
-from hishel._utils import BaseClock
+from hishel._utils import BaseClock, extract_header_values_decoded
 
 
 
@@ -54,6 +54,7 @@ def test_transport_response_validation():
         response = cache_transport.handle_request(request)
         assert response.status_code == 200
         assert response.extensions["from_cache"]
+        assert response.extensions["revalidated"]
         assert "Content-Type" in response.headers
         assert response.headers["Content-Type"] == "application/json"
         assert response.read() == b"test"
@@ -280,3 +281,150 @@ def test_transport_caching_post_method():
             response = cache_transport.handle_request(request)
             assert response.status_code == 200
             assert not response.extensions["from_cache"]
+
+
+
+def test_revalidation_with_new_content():
+    class MockedClock(BaseClock):
+        current = 1440504000  # Mon, 25 Aug 2015 12:00:00 GMT
+
+        def now(self) -> int:
+            return self.current
+
+    clock = MockedClock()
+    controller = hishel.Controller(clock=clock)
+    storage = hishel.InMemoryStorage()
+
+    with hishel.MockTransport() as transport:
+        transport.add_responses(
+            [
+                httpx.Response(
+                    200,
+                    headers=[
+                        (b"Cache-Control", b"max-age=1"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+                    ],
+                    content=b"Hello, World.",
+                ),
+                httpx.Response(
+                    200,
+                    headers=[
+                        (b"Cache-Control", b"max-age=10"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:01 GMT"),
+                    ],
+                    content=b"Eat at Joe's.",
+                ),
+                httpx.Response(
+                    304,
+                    headers=[
+                        (b"Cache-Control", b"max-age=10"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:11 GMT"),
+                    ],
+                ),
+            ]
+        )
+        with hishel.CacheTransport(
+            transport=transport, controller=controller, storage=storage
+        ) as cache_transport:
+            # Miss, 200, store
+            response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
+            assert not response.extensions["from_cache"]
+
+            # Hit
+            response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
+            assert response.extensions["from_cache"]
+            assert response.extensions["cache_metadata"]["number_of_uses"] == 1
+
+            # Cache contains the first response content
+            stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
+            assert stored
+            stored_response, stored_request, stored_metadata = stored
+            assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:00 GMT"]
+            assert stored_response.content == b"Hello, World."
+
+            # tic, tac... one second passed
+            clock.current += 1
+
+            # Miss (expired), send revalidation, 200, store
+            response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
+            assert not response.extensions["from_cache"]
+
+            # Hit (cf issue #239)
+            response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
+            assert response.extensions["from_cache"]
+            assert response.extensions["cache_metadata"]["number_of_uses"] == 1
+
+            # Cache was updated and contains the second response content
+            stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
+            assert stored
+            stored_response, stored_request, stored_metadata = stored
+            assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:01 GMT"]
+            assert stored_response.content == b"Eat at Joe's."
+
+            # tic, tac, tic, tac... ten more seconds passed, let's check the 304 behavious is not broken
+            clock.current += 10
+
+            # Miss (expired), send revalidation, 304, update metadata but keep previous content
+            response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
+            assert response.extensions["from_cache"]
+            assert response.extensions["cache_metadata"]["number_of_uses"] == 2
+            stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
+            assert stored
+            stored_response, stored_request, stored_metadata = stored
+            assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:11 GMT"]
+            assert stored_response.content == b"Eat at Joe's."
+
+
+
+def test_transport_revalidation_forward_extensions():
+    class MockedClock(BaseClock):
+        current = 1440504000  # Mon, 25 Aug 2015 12:00:00 GMT
+
+        def now(self) -> int:
+            return self.current
+
+    class MockedTransportWithExtensionsMemory(hishel.MockTransport):
+        def handle_request(self, request: httpx.Request) -> httpx.Response:
+            self.last_request_extensions = request.extensions
+            return super().handle_request(request)
+
+    clock = MockedClock()
+    controller = hishel.Controller(clock=clock)
+
+    with MockedTransportWithExtensionsMemory() as transport:
+        transport.add_responses(
+            [
+                httpx.Response(
+                    200,
+                    headers=[
+                        (b"Cache-Control", b"max-age=1"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+                    ],
+                ),
+                httpx.Response(
+                    304,
+                    headers=[
+                        (b"Cache-Control", b"max-age=1"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:01 GMT"),
+                    ],
+                ),
+            ]
+        )
+        with hishel.CacheTransport(
+            transport=transport, controller=controller, storage=hishel.InMemoryStorage()
+        ) as cache_transport:
+            # first request with extensions
+            cache_transport.handle_request(
+                httpx.Request("GET", "https://www.example.com", extensions={"foo": "bar"})
+            )
+            assert transport.last_request_extensions["foo"] == "bar"
+
+            # cache expires
+            clock.current += 1
+
+            # second request with extensions that should be passed to revalidation request
+            response = cache_transport.handle_request(
+                httpx.Request("GET", "https://www.example.com", extensions={"foo": "baz"})
+            )
+            assert response.extensions["revalidated"] is True
+            assert transport.last_request_extensions["foo"] == "baz"

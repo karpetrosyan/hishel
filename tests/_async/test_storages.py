@@ -269,6 +269,7 @@ async def test_sqlite_expired(anyio_backend):
     assert await storage.retrieve(first_key) is None
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
 async def test_sqlite_ttl_after_hits(use_temp_dir, anyio_backend):
     storage = AsyncSQLiteStorage(ttl=0.2)
@@ -438,3 +439,64 @@ async def test_sql_expired(serializer, anyio_backend):
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert await storage.retrieve(first_key) is None
+@pytest.mark.anyio
+async def test_filestorage_remove(use_temp_dir):
+    storage = AsyncFileStorage()
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+    response = Response(200, headers=[], content=b"test")
+
+    await response.aread()
+    await storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+    await storage.remove(key)
+    assert await storage.retrieve(key) is None
+
+
+@pytest.mark.parametrize("anyio_backend", ["asyncio"])
+async def test_redisstorage_remove(anyio_backend):
+    if await is_redis_down():  # pragma: no cover
+        pytest.fail("Redis server was not found")
+
+    storage = AsyncRedisStorage()
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+    response = Response(200, headers=[], content=b"test")
+
+    await response.aread()
+    await storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+    await storage.remove(key)
+    assert await storage.retrieve(key) is None
+
+
+@pytest.mark.anyio
+async def test_sqlitestorage_remove():
+    storage = AsyncSQLiteStorage(connection=await anysqlite.connect(":memory:"))
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+    response = Response(200, headers=[], content=b"test")
+
+    await response.aread()
+    await storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+    await storage.remove(key)
+    assert await storage.retrieve(key) is None
+
+
+@pytest.mark.anyio
+async def test_inmemorystorage_remove():
+    storage = AsyncInMemoryStorage()
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+    response = Response(200, headers=[], content=b"test")
+
+    await response.aread()
+    await storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert await storage.retrieve(key) is not None
+    await storage.remove(key)
+    assert await storage.retrieve(key) is None

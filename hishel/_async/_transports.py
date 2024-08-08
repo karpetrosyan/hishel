@@ -141,6 +141,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                     response=res,
                     request=httpcore_request,
                     cached=True,
+                    revalidated=False,
                     metadata=metadata,
                 )
 
@@ -155,6 +156,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                     url=normalized_url(res.url),
                     headers=res.headers,
                     stream=AsyncCacheStream(res.stream),
+                    extensions=res.extensions,
                 )
                 try:
                     revalidation_response = await self._transport.handle_async_request(revalidation_request)
@@ -166,6 +168,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                             response=stored_response,
                             request=httpcore_request,
                             cached=True,
+                            revalidated=False,
                             metadata=metadata,
                         )
                     raise  # pragma: no cover
@@ -179,18 +182,31 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
 
                 # Merge headers with the stale response.
                 final_httpcore_response = self._controller.handle_validation_response(
-                    old_response=stored_response, new_response=httpcore_revalidation_response
+                    old_response=stored_response,
+                    new_response=httpcore_revalidation_response,
                 )
 
                 await final_httpcore_response.aread()
                 await revalidation_response.aclose()
 
                 assert isinstance(final_httpcore_response.stream, tp.AsyncIterable)
+
+                # RFC 9111: 4.3.3. Handling a Validation Response
+                # A 304 (Not Modified) response status code indicates that the stored response can be updated and
+                # reused. A full response (i.e., one containing content) indicates that none of the stored responses
+                # nominated in the conditional request are suitable. Instead, the cache MUST use the full response to
+                # satisfy the request. The cache MAY store such a full response, subject to its constraints.
+                if revalidation_response.status_code != 304 and self._controller.is_cachable(
+                    request=httpcore_request, response=final_httpcore_response
+                ):
+                    await self._storage.store(key, response=final_httpcore_response, request=httpcore_request)
+
                 return await self._create_hishel_response(
                     key=key,
                     response=final_httpcore_response,
                     request=httpcore_request,
                     cached=revalidation_response.status_code == 304,
+                    revalidated=True,
                     metadata=metadata,
                 )
 
@@ -217,6 +233,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             response=httpcore_regular_response,
             request=httpcore_request,
             cached=False,
+            revalidated=False,
         )
 
     async def _create_hishel_response(
@@ -225,6 +242,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         response: httpcore.Response,
         request: httpcore.Request,
         cached: bool,
+        revalidated: bool,
         metadata: Metadata | None = None,
     ) -> Response:
         if cached:
@@ -235,6 +253,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             response.extensions["cache_metadata"] = metadata  # type: ignore[index]
         else:
             response.extensions["from_cache"] = False  # type: ignore[index]
+        response.extensions["revalidated"] = revalidated  # type: ignore[index]
         return Response(
             status_code=response.status,
             headers=response.headers,
