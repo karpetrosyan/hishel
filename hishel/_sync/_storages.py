@@ -55,6 +55,7 @@ except ImportError:  # pragma: no cover
 
 try:
     import sqlalchemy
+    import sqlalchemy.ext.asyncio
     import sqlalchemy.orm
 except ImportError:  # pragma: no cover
     sqlalchemy = None  # type: ignore
@@ -778,7 +779,7 @@ class SQLStorage(BaseStorage):
         serializer: tp.Optional[BaseSerializer] = None,
         ttl: tp.Optional[datetime.timedelta] = None,
         max_id_len: int = 1024,
-        max_data_size_in_bytes: int = 1_048_576  # 1MB
+        max_data_size_in_bytes: int = 1_048_576,  # 1MB
     ) -> None:
         if sqlalchemy is None:
             raise RuntimeError(
@@ -788,20 +789,18 @@ class SQLStorage(BaseStorage):
             )
         super().__init__(
             serializer=serializer,
-            ttl=ttl.total_seconds()
-            if isinstance(ttl, datetime.timedelta)
-            else ttl,
+            ttl=ttl.total_seconds() if isinstance(ttl, datetime.timedelta) else ttl,
         )
-        self._engine = engine
-        self._has_done_setup = False
-        self._lock = Lock()
+        self._engine: sqlalchemy.Engine = engine
+        self._has_done_setup: bool = False
+        self._lock: Lock = Lock()
         self._ttl_as_timedelta: tp.Optional[datetime.timedelta] = ttl
 
         class Base(sqlalchemy.orm.DeclarativeBase):
             pass
 
         class Cache(Base):
-            __tablename__ = 'cache'
+            __tablename__ = "cache"
             id: sqlalchemy.orm.Mapped[str] = sqlalchemy.orm.mapped_column(
                 sqlalchemy.String(max_id_len),
                 primary_key=True,
@@ -832,20 +831,21 @@ class SQLStorage(BaseStorage):
         )
 
         with sqlalchemy.orm.Session(self._engine) as session:
-            self._clear_cache(key=key, session=session)
-            serialized_response = self._serialize_data(
+            with session.begin():
+                self._clear_cache(key=key, session=session)
+                serialized_response = self._serialize_data(
                     response=response,
                     request=request,
                     metadata=metadata,
                 )
-            session.add(
-                self._cache_cls(
-                    id=key,
-                    data=serialized_response,
-                    date_created=metadata["created_at"].timestamp(),
-                ),
-            )
-            session.commit()
+                session.add(
+                    self._cache_cls(
+                        id=key,
+                        data=serialized_response,
+                        date_created=metadata["created_at"].timestamp(),
+                    ),
+                )
+                session.commit()
 
     @override
     def update_metadata(
@@ -853,62 +853,67 @@ class SQLStorage(BaseStorage):
         key: str,
         response: Response,
         request: Request,
-        metadata: Metadata | None = None,
+        metadata: Metadata,
     ) -> None:
         self._setup()
-        metadata = metadata = metadata or Metadata(
-            cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0,
-        )
 
         with sqlalchemy.orm.Session(self._engine) as session:
-            row = self._get_from_db(key=key, session=session)
-            if row is not None:
-                row.data = self._serialize_data(
-                    response=response,
-                    request=request,
-                    metadata=metadata,
-                )
-                session.add(row)
-                session.commit()
-                return
+            with session.begin():
+                row = self._get_from_db(key=key, session=session)
+                if row is not None:
+                    row.data = self._serialize_data(
+                        response=response,
+                        request=request,
+                        metadata=metadata,
+                    )
+                    session.add(row)
+                    session.commit()
+                    return
         return self.store(key, response, request, metadata)  # pragma: no cover
 
     @override
-    def retrieve(self: Self, key: str) -> tp.Optional[StoredResponse]:
+    def retrieve(
+        self: Self,
+        key: str,
+    ) -> tp.Optional[StoredResponse]:
         self._setup()
         with sqlalchemy.orm.Session(self._engine) as session:
-            self._clear_cache(key=key, session=session)
-            session.commit()
-            result = session.scalars(sqlalchemy.select(self._cache_cls).where(self._cache_cls.id==key,)).one_or_none()
+            with session.begin():
+                self._clear_cache(key=key, session=session)
+                session.commit()
+            result = (
+                session.scalars(
+                    sqlalchemy.select(self._cache_cls).where(
+                        self._cache_cls.id == key,
+                    )
+                )
+            ).one_or_none()
         if result is None:
             return None
         return self._deserialize_data(result.data)
 
     @override
-    def close(self: Self) -> None:
-        pass
-
-    @override
-    def remove(self, key: RemoveTypes) -> None:
+    def remove(self: Self, key: RemoveTypes) -> None:
         """
         Removes the response from the cache.
 
         :param key: Hashed value of concatenated HTTP method and URI or an HTTP response
         :type key: Union[str, Response]
         """
-
         self._setup()
 
         if isinstance(key, Response):  # pragma: no cover
             key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         with sqlalchemy.orm.Session(self._engine) as session:
-            delete_item_stmt = (
-                sqlalchemy.delete(self._cache_cls)
-                .where(self._cache_cls.id == key)
-            )
-            session.execute(delete_item_stmt)
-            session.commit()
+            with session.begin():
+                delete_item_stmt = sqlalchemy.delete(self._cache_cls).where(self._cache_cls.id == key)
+                session.execute(delete_item_stmt)
+                session.commit()
+
+    @override
+    def close(self: Self) -> None:
+        pass
 
     def _setup(self: Self) -> None:
         if self._has_done_setup:
@@ -917,24 +922,35 @@ class SQLStorage(BaseStorage):
             self._base.metadata.create_all(self._engine)
             self._has_done_setup = True
 
-    def _clear_cache(self: Self, key: str, session: sqlalchemy.orm.Session) -> None:
+    def _clear_cache(
+        self: Self,
+        key: str,
+        session: sqlalchemy.orm.Session,
+    ) -> None:
         if self._ttl_as_timedelta is None:
             return
         delete_statement = (
             sqlalchemy.delete(self._cache_cls)
             .where(self._cache_cls.id == key)
             .where(
-                self._cache_cls.date_created + self._ttl_as_timedelta.total_seconds() <
-                datetime.datetime.now(tz=datetime.timezone.utc).timestamp()
+                self._cache_cls.date_created + self._ttl_as_timedelta.total_seconds()
+                < datetime.datetime.now(tz=datetime.timezone.utc).timestamp()
             )
         )
         session.execute(delete_statement)
 
-    def _get_from_db(self: Self, key: str, session: sqlalchemy.orm.Session) -> tp.Optional[tp.Any]:
+    def _get_from_db(
+        self: Self,
+        key: str,
+        session: sqlalchemy.orm.Session,
+    ) -> tp.Optional[tp.Any]:
         self._clear_cache(key=key, session=session)
-        return session.scalars(
-                sqlalchemy.select(self._cache_cls)
-                .where(self._cache_cls.id == key)
+        return (
+            session.scalars(
+                sqlalchemy.select(self._cache_cls).where(
+                    self._cache_cls.id == key,
+                )
+            )
         ).one_or_none()
 
     # I need to serialize / deserialize as it can handle only bytes.

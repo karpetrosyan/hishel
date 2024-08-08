@@ -849,7 +849,7 @@ class AsyncSQLStorage(AsyncBaseStorage):
 
     @override
     async def update_metadata(
-        self,
+        self: Self,
         key: str,
         response: Response,
         request: Request,
@@ -873,7 +873,7 @@ class AsyncSQLStorage(AsyncBaseStorage):
 
     @override
     async def retrieve(
-        self,
+        self: Self,
         key: str,
     ) -> tp.Optional[StoredResponse]:
         await self._setup()
@@ -893,7 +893,13 @@ class AsyncSQLStorage(AsyncBaseStorage):
         return self._deserialize_data(result.data)
 
     @override
-    async def remove(self, key: RemoveTypes) -> None:
+    async def remove(self: Self, key: RemoveTypes) -> None:
+        """
+        Removes the response from the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI or an HTTP response
+        :type key: Union[str, Response]
+        """
         await self._setup()
 
         if isinstance(key, Response):  # pragma: no cover

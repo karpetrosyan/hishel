@@ -5,10 +5,10 @@ from pathlib import Path
 import sqlite3
 import pytest
 from httpcore import Request, Response
-from sqlalchemy import create_engine
+from sqlalchemy import Engine, create_engine
 
 from hishel import FileStorage, InMemoryStorage, RedisStorage, SQLiteStorage, SQLStorage
-from hishel._serializers import Metadata, JSONSerializer, YAMLSerializer, PickleSerializer
+from hishel._serializers import JSONSerializer, Metadata, PickleSerializer, YAMLSerializer
 from hishel._utils import sleep, generate_key
 
 dummy_metadata = Metadata(cache_key="test", number_of_uses=0, created_at=datetime.datetime.now(datetime.timezone.utc))
@@ -119,7 +119,7 @@ def test_inmemorystorage():
 
 
 
-def test_filestorage_expired(use_temp_dir, anyio_backend):
+def test_filestorage_expired(use_temp_dir):
     storage = FileStorage(ttl=0.2, check_ttl_every=0.1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
@@ -140,7 +140,7 @@ def test_filestorage_expired(use_temp_dir, anyio_backend):
 
 
 
-def test_filestorage_timer(use_temp_dir, anyio_backend):
+def test_filestorage_timer(use_temp_dir):
     storage = FileStorage(ttl=0.2, check_ttl_every=0.2)
 
     first_request = Request(b"GET", "https://example.com")
@@ -166,7 +166,7 @@ def test_filestorage_timer(use_temp_dir, anyio_backend):
 
 
 
-def test_filestorage_ttl_after_hits(use_temp_dir, anyio_backend):
+def test_filestorage_ttl_after_hits(use_temp_dir):
     storage = FileStorage(ttl=0.2, check_ttl_every=0.2)
 
     request = Request(b"GET", "https://example.com")
@@ -219,7 +219,7 @@ def test_redisstorage_expired(anyio_backend):
 
 
 
-def test_redis_ttl_after_hits(use_temp_dir, anyio_backend):
+def test_redis_ttl_after_hits(use_temp_dir):
     storage = RedisStorage(ttl=0.2)
 
     request = Request(b"GET", "https://example.com")
@@ -271,7 +271,7 @@ def test_sqlite_expired(anyio_backend):
 
 @pytest.mark.xfail
 
-def test_sqlite_ttl_after_hits(use_temp_dir, anyio_backend):
+def test_sqlite_ttl_after_hits(use_temp_dir):
     storage = SQLiteStorage(ttl=0.2)
 
     request = Request(b"GET", "https://example.com")
@@ -322,7 +322,7 @@ def test_inmemory_expired(anyio_backend):
 
 
 
-def test_inmemory_ttl_after_hits(use_temp_dir, anyio_backend):
+def test_inmemory_ttl_after_hits(use_temp_dir):
     storage = InMemoryStorage(ttl=0.2)
 
     request = Request(b"GET", "https://example.com")
@@ -380,10 +380,11 @@ def test_filestorage_empty_file_exception(use_temp_dir):
         (JSONSerializer()),
         (YAMLSerializer()),
         (PickleSerializer()),
-    ]
+    ],
 )
-def test_sql_ttl_after_hits(serializer, anyio_backend):
-    engine = create_engine("sqlite:///:memory:")
+
+def test_sql_ttl_after_hits(serializer):
+    engine: Engine = create_engine("sqlite:///:memory:")
     storage = SQLStorage(engine=engine, ttl=datetime.timedelta(seconds=0.2), serializer=serializer)
 
     request = Request(b"GET", "https://example.com")
@@ -413,11 +414,15 @@ def test_sql_ttl_after_hits(serializer, anyio_backend):
         (JSONSerializer()),
         (YAMLSerializer()),
         (PickleSerializer()),
-    ]
+    ],
 )
-def test_sql_expired(serializer, anyio_backend):
-    engine = create_engine("sqlite:///:memory:")
-    storage = SQLStorage(engine=engine, ttl=datetime.timedelta(seconds=0.1))
+
+def test_sql_expired(serializer):
+    engine: Engine = create_engine("sqlite:///:memory:")
+    storage = SQLStorage(
+        engine=engine,
+        ttl=datetime.timedelta(seconds=0.1),
+    )
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
@@ -434,6 +439,8 @@ def test_sql_expired(serializer, anyio_backend):
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert storage.retrieve(first_key) is None
+
+
 
 def test_filestorage_remove(use_temp_dir):
     storage = FileStorage()
@@ -497,18 +504,21 @@ def test_inmemorystorage_remove():
     assert storage.retrieve(key) is None
 
 
-
 @pytest.mark.parametrize(
     "serializer",
     [
         (JSONSerializer()),
         (YAMLSerializer()),
         (PickleSerializer()),
-    ]
+    ],
 )
+
 def test_sql_remove(serializer):
-    engine = create_engine("sqlite:///:memory:")
-    storage = SQLStorage(engine=engine, serializer=serializer)
+    engine: Engine = create_engine("sqlite:///:memory:")
+    storage = SQLStorage(
+        engine=engine,
+        serializer=serializer,
+    )
     request = Request(b"GET", "https://example.com")
 
     key = generate_key(request)
