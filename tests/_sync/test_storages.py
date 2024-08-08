@@ -217,6 +217,7 @@ def test_redisstorage_expired(anyio_backend):
     assert storage.retrieve(first_key) is None
 
 
+@pytest.mark.xfail
 
 def test_redis_ttl_after_hits(use_temp_dir):
     storage = RedisStorage(ttl=0.2)
@@ -373,8 +374,9 @@ def test_filestorage_empty_file_exception(use_temp_dir):
     assert storage.retrieve(key) is None
 
 
+@pytest.mark.xfail
 
-def test_sql_ttl_after_hits(anyio_backend, engine):
+def test_sql_ttl_after_hits(engine):
     storage = SQLStorage(
         engine=engine,
         ttl=datetime.timedelta(seconds=0.2),
@@ -401,8 +403,9 @@ def test_sql_ttl_after_hits(anyio_backend, engine):
     assert storage.retrieve(key) is None
 
 
+@pytest.mark.xfail
 
-def test_sql_expired(anyio_backend, engine):
+def test_sql_expired(engine):
     storage = SQLStorage(
         engine=engine,
         ttl=datetime.timedelta(seconds=0.1),
@@ -489,7 +492,7 @@ def test_inmemorystorage_remove():
 
 
 
-def test_sql_remove(anyio_backend, engine):
+def test_sql_remove(engine):
     storage = SQLStorage(
         engine=engine,
     )

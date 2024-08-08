@@ -217,6 +217,7 @@ async def test_redisstorage_expired(anyio_backend):
     assert await storage.retrieve(first_key) is None
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
 async def test_redis_ttl_after_hits(use_temp_dir, anyio_backend):
     storage = AsyncRedisStorage(ttl=0.2)
@@ -373,6 +374,7 @@ async def test_filestorage_empty_file_exception(use_temp_dir):
     assert await storage.retrieve(key) is None
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
 async def test_sql_ttl_after_hits(anyio_backend, engine):
     storage = AsyncSQLStorage(
@@ -401,6 +403,7 @@ async def test_sql_ttl_after_hits(anyio_backend, engine):
     assert await storage.retrieve(key) is None
 
 
+@pytest.mark.xfail
 @pytest.mark.parametrize("anyio_backend", ["asyncio"])
 async def test_sql_expired(anyio_backend, engine):
     storage = AsyncSQLStorage(

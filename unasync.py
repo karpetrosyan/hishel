@@ -56,6 +56,7 @@ SUBS = [
     ("*@pytest.mark.anyio", ""),
     (r'*@pytest.mark.parametrize\("anyio_backend", \["asyncio"\]\)', ""),
     (", anyio_backend", ""),
+    ("anyio_backend, ", ""),
     (r"\+aiosqlite", ""),
     ("anysqlite", "sqlite3"),
 ]
