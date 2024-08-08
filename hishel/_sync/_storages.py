@@ -785,7 +785,10 @@ class SQLStorage(BaseStorage):
                 "Check that you have `Hishel` installed with the `sql` extension as shown.\n"
                 "```pip install hishel[sql]```"
             )
-        super().__init__(serializer=serializer, ttl=ttl.total_seconds())
+        super().__init__(
+            serializer=serializer,
+            ttl=ttl.total_seconds() if ttl else ttl,
+        )
         self._engine = engine
         self._has_done_setup = False
         self._lock = Lock()
@@ -878,6 +881,28 @@ class SQLStorage(BaseStorage):
     @override
     def close(self: Self) -> None:
         pass
+
+    @override
+    def remove(self, key: RemoveTypes) -> None:
+        """
+        Removes the response from the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI or an HTTP response
+        :type key: Union[str, Response]
+        """
+
+        self._setup()
+
+        if isinstance(key, Response):  # pragma: no cover
+            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+
+        with sqlalchemy.orm.Session(self._engine) as session:
+            delete_item_stmt = (
+                sqlalchemy.delete(self._cache_cls)
+                .where(self._cache_cls.id == key)
+            )
+            session.execute(delete_item_stmt)
+            session.commit()
 
     def _setup(self: Self) -> None:
         if self._has_done_setup:

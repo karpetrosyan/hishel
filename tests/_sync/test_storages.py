@@ -495,3 +495,27 @@ def test_inmemorystorage_remove():
     assert storage.retrieve(key) is not None
     storage.remove(key)
     assert storage.retrieve(key) is None
+
+
+
+@pytest.mark.parametrize(
+    "serializer",
+    [
+        (JSONSerializer()),
+        (YAMLSerializer()),
+        (PickleSerializer()),
+    ]
+)
+def test_sql_remove(serializer):
+    engine = create_engine("sqlite:///:memory:")
+    storage = SQLStorage(engine=engine, serializer=serializer)
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+    response = Response(200, headers=[], content=b"test")
+
+    response.read()
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+    storage.remove(key)
+    assert storage.retrieve(key) is None
