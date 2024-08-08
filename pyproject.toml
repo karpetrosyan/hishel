@@ -53,7 +53,7 @@ s3 = [
 ]
 
 sql = [
-    "SQLAlchemy>=2"
+    "SQLAlchemy[asyncio]>=2"
 ]
 
 [project.urls]

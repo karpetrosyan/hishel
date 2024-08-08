@@ -372,16 +372,19 @@ async def test_filestorage_empty_file_exception(use_temp_dir):
     assert os.path.getsize(filedir) == 0
     assert await storage.retrieve(key) is None
 
+
 @pytest.mark.parametrize(
     "serializer",
     [
         (JSONSerializer()),
         (YAMLSerializer()),
         (PickleSerializer()),
-    ]
+    ],
 )
+@pytest.mark.parametrize('anyio_backend', ['asyncio'])
 async def test_sql_ttl_after_hits(serializer, anyio_backend):
     engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///my.db")
     storage = AsyncSQLStorage(engine=engine, ttl=datetime.timedelta(seconds=0.2), serializer=serializer)
 
     request = Request(b"GET", "https://example.com")
@@ -411,11 +414,16 @@ async def test_sql_ttl_after_hits(serializer, anyio_backend):
         (JSONSerializer()),
         (YAMLSerializer()),
         (PickleSerializer()),
-    ]
+    ],
 )
+@pytest.mark.parametrize('anyio_backend', ['asyncio'])
 async def test_sql_expired(serializer, anyio_backend):
     engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    storage = AsyncSQLStorage(engine=engine, ttl=datetime.timedelta(seconds=0.1))
+    # engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///my.db")
+    storage = AsyncSQLStorage(
+        engine=engine,
+        ttl=datetime.timedelta(seconds=0.1),
+    )
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
 
@@ -428,7 +436,7 @@ async def test_sql_expired(serializer, anyio_backend):
     await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
     assert await storage.retrieve(first_key) is not None
 
-    asleep(0.3)
+    await asleep(0.3)
     await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert await storage.retrieve(first_key) is None

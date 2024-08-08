@@ -791,12 +791,15 @@ class AsyncSQLStorage(AsyncBaseStorage):
         key: str,
     ) -> tp.Optional[StoredResponse]:
         self._setup()
-        with sqlalchemy.orm.Session(self._engine) as session:
-            self._clear_cache(key=key, session=session)
-            session.commit()
-            result = session.scalars(
-                sqlalchemy.select(self._cache_cls).where(
-                    self._cache_cls.id == key,
+        async with sqlalchemy.ext.asyncio.AsyncSession(self._engine) as session:
+            async with session.begin():
+                await self._clear_cache(key=key, session=session)
+                session.commit()
+            result = await (
+                await session.stream_scalars(
+                    sqlalchemy.select(self._cache_cls).where(
+                        self._cache_cls.id == key,
+                    )
                 )
             ).one_or_none()
         if result is None:
@@ -829,12 +832,12 @@ class AsyncSQLStorage(AsyncBaseStorage):
                 < datetime.datetime.now(tz=datetime.timezone.utc).timestamp()
             )
         )
-        session.execute(delete_statement)
+        await session.execute(delete_statement)
 
     async def _get_from_db(
         self: Self, key: str, session: sqlalchemy.orm.Session
     ) -> tp.Optional[sqlalchemy.orm.DeclarativeBase]:
-        self._clear_cache(key=key, session=session)
+        await self._clear_cache(key=key, session=session)
         return session.scalars(sqlalchemy.select(self._cache_cls).where(self._cache_cls.id == key)).one_or_none()
 
     # I need to serialize / deserialize as it can handle only bytes.
