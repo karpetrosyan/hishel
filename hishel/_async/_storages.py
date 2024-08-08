@@ -936,7 +936,7 @@ class AsyncSQLStorage(AsyncBaseStorage):
     async def _get_from_db(
         self: Self,
         key: str,
-        session: sqlalchemy.orm.Session,
+        session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> tp.Optional[sqlalchemy.orm.DeclarativeBase]:
         await self._clear_cache(key=key, session=session)
         return await (
