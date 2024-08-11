@@ -394,13 +394,13 @@ def test_sql_ttl_after_hits(engine):
     assert storage.retrieve(key) is not None
 
     # Retrieving after 0.08 second
-    sleep(0.08)
-    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
-    assert storage.retrieve(key) is not None
+    sleep(0.08)  # pragma: no cover
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)  # pragma: no cover
+    assert storage.retrieve(key) is not None  # pragma: no cover
 
     # Retrieving after 0.24 second
-    sleep(0.16)
-    assert storage.retrieve(key) is None
+    sleep(0.16)  # pragma: no cover
+    assert storage.retrieve(key) is None  # pragma: no cover
 
 
 @pytest.mark.xfail
@@ -422,10 +422,12 @@ def test_sql_expired(engine):
     storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
     assert storage.retrieve(first_key) is not None
 
-    sleep(0.3)
-    storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
+    sleep(0.3)  # pragma: no cover
+    storage.store(
+        second_key, response=response, request=second_request, metadata=dummy_metadata
+    )  # pragma: no cover
 
-    assert storage.retrieve(first_key) is None
+    assert storage.retrieve(first_key) is None  # pragma: no cover
 
 
 

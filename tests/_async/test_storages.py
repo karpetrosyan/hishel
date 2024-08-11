@@ -394,13 +394,13 @@ async def test_sql_ttl_after_hits(anyio_backend, engine):
     assert await storage.retrieve(key) is not None
 
     # Retrieving after 0.08 second
-    await asleep(0.08)
-    await storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
-    assert await storage.retrieve(key) is not None
+    await asleep(0.08)  # pragma: no cover
+    await storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)  # pragma: no cover
+    assert await storage.retrieve(key) is not None  # pragma: no cover
 
     # Retrieving after 0.24 second
-    await asleep(0.16)
-    assert await storage.retrieve(key) is None
+    await asleep(0.16)  # pragma: no cover
+    assert await storage.retrieve(key) is None  # pragma: no cover
 
 
 @pytest.mark.xfail
@@ -422,10 +422,12 @@ async def test_sql_expired(anyio_backend, engine):
     await storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
     assert await storage.retrieve(first_key) is not None
 
-    await asleep(0.3)
-    await storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
+    await asleep(0.3)  # pragma: no cover
+    await storage.store(
+        second_key, response=response, request=second_request, metadata=dummy_metadata
+    )  # pragma: no cover
 
-    assert await storage.retrieve(first_key) is None
+    assert await storage.retrieve(first_key) is None  # pragma: no cover
 
 
 @pytest.mark.anyio
