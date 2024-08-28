@@ -227,10 +227,13 @@ class FileStorage(BaseStorage):
         with self._lock:
             with os.scandir(self._base_path) as entries:
                 for entry in entries:
-                    if entry.is_file():
-                        age = time.time() - entry.stat().st_mtime
-                        if age > self._ttl:
-                            os.unlink(entry.path)
+                    try:
+                        if entry.is_file():
+                            age = time.time() - entry.stat().st_mtime
+                            if age > self._ttl:
+                                os.unlink(entry.path)
+                    except FileNotFoundError:  # pragma: no cover
+                        pass
 
 
 class SQLiteStorage(BaseStorage):
