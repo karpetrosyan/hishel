@@ -2,7 +2,7 @@
 
 ## development
 
-- Fix race condition on file storage cache clean.
+- Ignore file not found error when cleaning up a file storage. (#264)  
 
 ## 0.0.30 (12th July, 2024)
 
