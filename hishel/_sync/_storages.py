@@ -377,8 +377,8 @@ class SQLiteStorage(BaseStorage):
             return self._serializer.loads(cached_response)
 
     def close(self) -> None:  # pragma: no cover
-        assert self._connection
-        self._connection.close()
+        if self._connection is not None:
+            self._connection.close()
 
     def _remove_expired_caches(self) -> None:
         assert self._connection
