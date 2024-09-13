@@ -3,6 +3,7 @@
 ## development
 
 - Ignore file not found error when cleaning up a file storage. (#264)  
+- Fix `AssertionError` on `client.close()` when use SQLiteStorage. (#268)  
 
 ## 0.0.30 (12th July, 2024)
 
