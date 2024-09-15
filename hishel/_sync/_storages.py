@@ -227,10 +227,13 @@ class FileStorage(BaseStorage):
         with self._lock:
             with os.scandir(self._base_path) as entries:
                 for entry in entries:
-                    if entry.is_file():
-                        age = time.time() - entry.stat().st_mtime
-                        if age > self._ttl:
-                            os.unlink(entry.path)
+                    try:
+                        if entry.is_file():
+                            age = time.time() - entry.stat().st_mtime
+                            if age > self._ttl:
+                                os.unlink(entry.path)
+                    except FileNotFoundError:  # pragma: no cover
+                        pass
 
 
 class SQLiteStorage(BaseStorage):
@@ -374,8 +377,8 @@ class SQLiteStorage(BaseStorage):
             return self._serializer.loads(cached_response)
 
     def close(self) -> None:  # pragma: no cover
-        assert self._connection
-        self._connection.close()
+        if self._connection is not None:
+            self._connection.close()
 
     def _remove_expired_caches(self) -> None:
         assert self._connection
