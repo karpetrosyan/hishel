@@ -197,7 +197,7 @@ async def test_force_cache():
 
         async with hishel.AsyncCacheClient(
             storage=hishel.AsyncInMemoryStorage(),
-            controller=hishel.Controller(cacheable_methods=['HEAD']),
+            controller=hishel.Controller(cacheable_methods=["HEAD"]),
             transport=transport,
         ) as client:
             response = await client.head("https://example.com")

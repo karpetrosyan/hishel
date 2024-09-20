@@ -197,7 +197,7 @@ def test_force_cache():
 
         with hishel.CacheClient(
             storage=hishel.InMemoryStorage(),
-            controller=hishel.Controller(cacheable_methods=['HEAD']),
+            controller=hishel.Controller(cacheable_methods=["HEAD"]),
             transport=transport,
         ) as client:
             response = client.head("https://example.com")
