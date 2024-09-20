@@ -28,7 +28,7 @@ def test_is_cachable_for_cachables():
 
 
 def test_force_cache_property_for_is_cachable():
-    controller = Controller(force_cache=True)
+    controller = Controller(force_cache=True, cacheable_status_codes=[400])
     request = Request("GET", "https://example.com", extensions={"force_cache": False})
     uncachable_response = Response(status=400)
 
@@ -860,7 +860,7 @@ def test_freshness_lifetime_invalid_information():
 
 
 def test_force_cache_extension_for_is_cachable():
-    controller = Controller()
+    controller = Controller(cacheable_status_codes=[400])
     request = Request("GET", "https://example.com")
     uncachable_response = Response(status=400)
 
