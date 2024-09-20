@@ -4,6 +4,7 @@
 
 - Ignore file not found error when cleaning up a file storage. (#264)  
 - Fix `AssertionError` on `client.close()` when use SQLiteStorage. (#269)  
+- Fix ignored flags when use `force_cache`. (#271)  
 
 ## 0.0.30 (12th July, 2024)
 
