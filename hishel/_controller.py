@@ -149,9 +149,6 @@ class Controller:
         method = request.method.decode("ascii")
         force_cache = request.extensions.get("force_cache", None)
 
-        if force_cache if force_cache is not None else self._force_cache:
-            return True
-
         if response.status not in self._cacheable_status_codes:
             return False
 
@@ -161,6 +158,9 @@ class Controller:
         # the request method is understood by the cache
         if method not in self._cacheable_methods:
             return False
+
+        if force_cache if force_cache is not None else self._force_cache:
+            return True
 
         response_cache_control = parse_cache_control(extract_header_values_decoded(response.headers, b"cache-control"))
         request_cache_control = parse_cache_control(extract_header_values_decoded(request.headers, b"cache-control"))

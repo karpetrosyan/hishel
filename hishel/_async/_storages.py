@@ -227,10 +227,13 @@ class AsyncFileStorage(AsyncBaseStorage):
         async with self._lock:
             with os.scandir(self._base_path) as entries:
                 for entry in entries:
-                    if entry.is_file():
-                        age = time.time() - entry.stat().st_mtime
-                        if age > self._ttl:
-                            os.unlink(entry.path)
+                    try:
+                        if entry.is_file():
+                            age = time.time() - entry.stat().st_mtime
+                            if age > self._ttl:
+                                os.unlink(entry.path)
+                    except FileNotFoundError:  # pragma: no cover
+                        pass
 
 
 class AsyncSQLiteStorage(AsyncBaseStorage):
@@ -374,8 +377,8 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
             return self._serializer.loads(cached_response)
 
     async def aclose(self) -> None:  # pragma: no cover
-        assert self._connection
-        await self._connection.close()
+        if self._connection is not None:
+            await self._connection.close()
 
     async def _remove_expired_caches(self) -> None:
         assert self._connection

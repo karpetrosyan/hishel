@@ -195,7 +195,11 @@ def test_force_cache():
             ]
         )
 
-        with hishel.CacheClient(storage=hishel.InMemoryStorage(), transport=transport) as client:
+        with hishel.CacheClient(
+            storage=hishel.InMemoryStorage(),
+            controller=hishel.Controller(cacheable_methods=["HEAD"]),
+            transport=transport,
+        ) as client:
             response = client.head("https://example.com")
             assert response.status_code == 200
             assert not response.extensions["from_cache"]
