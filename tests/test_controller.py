@@ -243,6 +243,12 @@ def test_get_age():
     assert age == 86400  # One day
 
 
+def test_get_age_return_inf_for_invalid_date():
+    age = get_age(response=Response(status=200), clock=Clock())
+
+    assert age == float("inf")
+
+
 def test_allowed_stale_no_cache():
     response = Response(status=200, headers=[(b"Cache-Control", b"no-cache")])
 

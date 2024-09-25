@@ -1,5 +1,9 @@
 # Changelog
 
+## development
+
+- Don't raise an exception if the `Date` header is not present. (#273)
+
 ## 0.0.31 (22nd Sep, 2024)
 
 - Ignore file not found error when cleaning up a file storage. (#264)  
