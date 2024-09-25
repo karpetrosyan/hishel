@@ -82,7 +82,7 @@ def get_age(response: Response, clock: "BaseClock") -> int:
     if not header_presents(response.headers, b"date"):
         # If the response does not have a date header, then it is impossible to calculate the age.
         # Instead of raising an exception, we return infinity to be sure that the response is not considered fresh.
-        return float("inf")  # pragma: no cover
+        return float("inf")  # type: ignore
 
     date = parse_date(extract_header_values_decoded(response.headers, b"date")[0])
 
