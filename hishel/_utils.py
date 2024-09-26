@@ -6,6 +6,7 @@ from hashlib import blake2b
 
 import anyio
 import httpcore
+import httpx
 
 HEADERS_ENCODING = "iso-8859-1"
 
@@ -31,6 +32,16 @@ def normalized_url(url: tp.Union[httpcore.URL, str, bytes]) -> str:
         port = f":{url.port}" if url.port is not None else ""
         return f'{url.scheme.decode("ascii")}://{url.host.decode("ascii")}{port}{url.target.decode("ascii")}'
     assert False, "Invalid type for `normalized_url`"  # pragma: no cover
+
+
+def get_safe_url(url: httpcore.URL) -> str:
+    httpx_url = httpx.URL(bytes(url).decode("ascii"))
+
+    schema = httpx_url.scheme
+    host = httpx_url.host
+    path = httpx_url.path
+
+    return f"{schema}://{host}{path}"
 
 
 def generate_key(request: httpcore.Request, body: bytes = b"") -> str:

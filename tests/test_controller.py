@@ -1,3 +1,4 @@
+import logging
 import re
 
 import pytest
@@ -76,34 +77,54 @@ def test_force_cache_property_for_construct_response_from_cache():
     )
 
 
-def test_is_cachable_for_non_cachables():
+def test_is_cachable_for_non_cachables(caplog):
     controller = Controller()
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
     response = Response(200, headers=[])
 
-    assert not controller.is_cachable(request=request, response=response)
+    with caplog.at_level(logging.DEBUG):
+        assert not controller.is_cachable(request=request, response=response)
+
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ as not cachable "
+        "since it does not contain any of the required cache directives."
+    ]
 
 
-def test_is_cachable_for_heuristically_cachable():
+def test_is_cachable_for_heuristically_cachable(caplog):
     controller = Controller(allow_heuristics=True)
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
     response = Response(200, headers=[])
 
-    assert controller.is_cachable(request=request, response=response)
+    with caplog.at_level(logging.DEBUG):
+        assert controller.is_cachable(request=request, response=response)
+
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ as "
+        "cachable since its status code is heuristically cacheable."
+    ]
 
 
-def test_is_cachable_for_invalid_method():
+def test_is_cachable_for_invalid_method(caplog):
     controller = Controller(cacheable_methods=["GET"])
 
     request = Request(b"POST", b"https://example.com", headers=[])
 
     response = Response(200, headers=[])
 
-    assert not controller.is_cachable(request=request, response=response)
+    with caplog.at_level(logging.DEBUG):
+        assert not controller.is_cachable(request=request, response=response)
+
+    assert caplog.messages == [
+        (
+            "Considering the resource located at https://example.com/ "
+            "as not cachable since the request method (POST) is not in the list of cacheable methods."
+        )
+    ]
 
 
 def test_is_cachable_for_post():
@@ -130,34 +151,54 @@ def test_controller_with_unsupported_method():
         Controller(cacheable_methods=["INVALID_METHOD"])
 
 
-def test_is_cachable_for_unsupported_status():
+def test_is_cachable_for_unsupported_status(caplog):
     controller = Controller(cacheable_status_codes=[301])
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
     response = Response(200, headers=[(b"Expires", b"some-date")])
 
-    assert not controller.is_cachable(request=request, response=response)
+    with caplog.at_level(logging.DEBUG):
+        assert not controller.is_cachable(request=request, response=response)
+
+    assert caplog.messages == [
+        (
+            "Considering the resource located at https://example.com/ "
+            "as not cachable since its status code (200) is not in the list of cacheable status codes."
+        )
+    ]
 
 
-def test_is_cachable_for_not_final():
+def test_is_cachable_for_not_final(caplog):
     controller = Controller(cacheable_status_codes=[100])
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
     response = Response(100, headers=[(b"Expires", b"some-date")])
 
-    assert not controller.is_cachable(request=request, response=response)
+    with caplog.at_level(logging.DEBUG):
+        assert not controller.is_cachable(request=request, response=response)
+
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ as "
+        "not cachable since its status code is informational."
+    ]
 
 
-def test_is_cachable_for_no_store():
+def test_is_cachable_for_no_store(caplog):
     controller = Controller(allow_heuristics=True)
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
     response = Response(200, headers=[(b"Cache-Control", b"no-store")])
 
-    assert not controller.is_cachable(request=request, response=response)
+    with caplog.at_level(logging.DEBUG):
+        assert not controller.is_cachable(request=request, response=response)
+
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ as not cachable"
+        " since the response contains the no-store directive."
+    ]
 
 
 def test_is_cachable_for_shared_cache():
@@ -178,14 +219,20 @@ def test_is_cachable_for_shared_cache():
     assert not controller.is_cachable(request=request, response=response)
 
 
-def test_is_cachable_for_private_cache():
+def test_is_cachable_for_private_cache(caplog):
     controller = Controller()
 
     request = Request(b"GET", b"https://example.com", headers=[])
 
     response = Response(200, headers=[(b"Cache-Control", b"private")])
 
-    assert controller.is_cachable(request=request, response=response)
+    with caplog.at_level(logging.DEBUG):
+        assert controller.is_cachable(request=request, response=response)
+
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ as cachable since it"
+        " meets the criteria for being stored in the cache."
+    ]
 
 
 def test_get_freshness_lifetime():
@@ -272,21 +319,29 @@ def test_clock():
     assert Clock().now() > date_07_19_2023
 
 
-def test_permanent_redirect_cache():
+def test_permanent_redirect_cache(caplog):
     controller = Controller()
 
     request = Request(b"GET", b"https://example.com")
 
     response = Response(status=301)
 
-    assert controller.is_cachable(request=request, response=response)
+    with caplog.at_level(logging.DEBUG):
+        assert controller.is_cachable(request=request, response=response)
+
+    assert caplog.messages == [
+        (
+            "Considering the resource located at https://example.com/ "
+            "as cachable since its status code is a permanent redirect."
+        )
+    ]
 
     response = Response(status=302)
 
     assert not controller.is_cachable(request=request, response=response)
 
 
-def test_make_conditional_request_with_etag():
+def test_make_conditional_request_with_etag(caplog):
     controller = Controller()
 
     request = Request(
@@ -299,15 +354,22 @@ def test_make_conditional_request_with_etag():
 
     response = Response(status=200, headers=[(b"Etag", b"some-etag")])
 
-    controller._make_request_conditional(request=request, response=response)
+    with caplog.at_level(logging.DEBUG):
+        controller._make_request_conditional(request=request, response=response)
 
     assert request.headers == [
         (b"Content-Type", b"application/json"),
         (b"If-None-Match", b"some-etag"),
     ]
+    assert caplog.messages == [
+        (
+            "Adding the 'If-None-Match' header with the value of 'some-etag' "
+            "to the request for the resource located at https://example.com/."
+        )
+    ]
 
 
-def test_make_conditional_request_with_last_modified():
+def test_make_conditional_request_with_last_modified(caplog):
     controller = Controller()
 
     request = Request(
@@ -320,22 +382,34 @@ def test_make_conditional_request_with_last_modified():
 
     response = Response(status=200, headers=[(b"Last-Modified", b"Wed, 21 Oct 2015 07:28:00 GMT")])
 
-    controller._make_request_conditional(request=request, response=response)
+    with caplog.at_level(logging.DEBUG):
+        controller._make_request_conditional(request=request, response=response)
 
     assert request.headers == [
         (b"Content-Type", b"application/json"),
         (b"If-Modified-Since", b"Wed, 21 Oct 2015 07:28:00 GMT"),
     ]
+    assert caplog.messages == [
+        "Adding the 'If-Modified-Since' header with the value of 'Wed, 21 Oct 2015 07:28:00 GMT' "
+        "to the request for the resource located at https://example.com/."
+    ]
 
 
-def test_construct_response_from_cache_redirect():
+def test_construct_response_from_cache_redirect(caplog):
     controller = Controller()
     response = Response(status=301)
     original_request = Request("GET", "https://example.com")
     request = Request("GET", "https://example.com")
-    assert response is controller.construct_response_from_cache(
-        request=request, response=response, original_request=original_request
-    )
+
+    with caplog.at_level(logging.DEBUG):
+        assert response is controller.construct_response_from_cache(
+            request=request, response=response, original_request=original_request
+        )
+
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ "
+        "as valid for cache use since its status code is a permanent redirect."
+    ]
 
 
 def test_construct_response_from_cache_fresh():
@@ -379,7 +453,79 @@ def test_construct_response_from_cache_stale():
     assert isinstance(conditional_request, Request)
 
 
-def test_construct_response_from_cache_with_no_cache():
+def test_construct_response_from_cache_with_always_revalidate(caplog):
+    controller = Controller(always_revalidate=True)
+    response = Response(
+        status=200,
+        headers=[
+            (b"Cache-Control", b"max-age=1"),
+            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+        ],
+    )
+    original_request = Request("GET", "https://example.com")
+    request = Request("GET", "https://example.com")
+
+    with caplog.at_level(logging.DEBUG):
+        conditional_request = controller.construct_response_from_cache(
+            request=request, response=response, original_request=original_request
+        )
+        assert isinstance(conditional_request, Request)
+
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ "
+        "as needing revalidation since the cache is set to always revalidate."
+    ]
+
+
+def test_construct_response_from_cache_with_must_revalidate(caplog):
+    controller = Controller()
+    response = Response(
+        status=200,
+        headers=[
+            (b"Cache-Control", b"max-age=1, must-revalidate"),
+            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+        ],
+    )
+    original_request = Request("GET", "https://example.com")
+    request = Request("GET", "https://example.com")
+
+    with caplog.at_level(logging.DEBUG):
+        conditional_request = controller.construct_response_from_cache(
+            request=request, response=response, original_request=original_request
+        )
+        assert isinstance(conditional_request, Request)
+
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ "
+        "as needing revalidation since the response contains the must-revalidate directive."
+    ]
+
+
+def test_construct_response_from_cache_with_request_no_cache(caplog):
+    controller = Controller(allow_stale=True)
+    response = Response(
+        status=200,
+        headers=[
+            (b"Cache-Control", b"max-age=1"),
+            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+        ],
+    )
+    original_request = Request("GET", "https://example.com")
+    request = Request("GET", "https://example.com", headers=[(b"Cache-Control", b"no-cache")])
+
+    with caplog.at_level(logging.DEBUG):
+        conditional_request = controller.construct_response_from_cache(
+            request=request, response=response, original_request=original_request
+        )
+        assert isinstance(conditional_request, Request)
+
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ "
+        "as needing revalidation since the request contains the no-cache directive."
+    ]
+
+
+def test_construct_response_from_cache_with_no_cache(caplog):
     controller = Controller(allow_stale=True)
     response = Response(
         status=200,
@@ -390,13 +536,20 @@ def test_construct_response_from_cache_with_no_cache():
     )
     original_request = Request("GET", "https://example.com")
     request = Request("GET", "https://example.com")
-    conditional_request = controller.construct_response_from_cache(
-        request=request, response=response, original_request=original_request
-    )
-    assert isinstance(conditional_request, Request)
+
+    with caplog.at_level(logging.DEBUG):
+        conditional_request = controller.construct_response_from_cache(
+            request=request, response=response, original_request=original_request
+        )
+        assert isinstance(conditional_request, Request)
+
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ "
+        "as needing revalidation since the response contains the no-cache directive."
+    ]
 
 
-def test_construct_response_heuristically():
+def test_construct_response_heuristically(caplog):
     class MockedClock(BaseClock):
         def now(self) -> int:
             return 1440590400  # Mon, 26 Aug 2015 12:00:00 GMT
@@ -414,10 +567,17 @@ def test_construct_response_heuristically():
     original_request = Request("GET", "https://example.com")
     request = Request("GET", "https://example.com")
 
-    res = controller.construct_response_from_cache(
-        request=request, response=response, original_request=original_request
-    )
-
+    with caplog.at_level(logging.DEBUG):
+        res = controller.construct_response_from_cache(
+            request=request, response=response, original_request=original_request
+        )
+    assert caplog.messages == [
+        "Could not determine the freshness lifetime of the resource located at "
+        "https://example.com/, trying to use heuristics to calculate it.",
+        "Successfully calculated the freshness lifetime of the resource "
+        "located at https://example.com/ using heuristics.",
+        "Considering the resource located at https://example.com/ as valid for cache use since it is fresh.",
+    ]
     assert isinstance(res, Response)
 
     # Age more than 7 days
@@ -429,9 +589,20 @@ def test_construct_response_heuristically():
         ],
     )
 
-    res = controller.construct_response_from_cache(
-        request=request, response=response, original_request=original_request
-    )
+    caplog.clear()
+    with caplog.at_level(logging.DEBUG):
+        res = controller.construct_response_from_cache(
+            request=request, response=response, original_request=original_request
+        )
+    assert caplog.messages == [
+        "Could not determine the freshness lifetime of the resource located at "
+        "https://example.com/, trying to use heuristics to calculate it.",
+        "Successfully calculated the freshness lifetime of the resource"
+        " located at https://example.com/ using heuristics.",
+        "Considering the resource located at https://example.com/ as needing revalidation since it is not fresh.",
+        "Adding the 'If-Modified-Since' header with the value of 'Mon, 25 Aug 2003 12:00:00 GMT'"
+        " to the request for the resource located at https://example.com/.",
+    ]
 
     assert not isinstance(res, Response)
 
@@ -504,6 +675,48 @@ def test_vary_validation():
     assert not controller._validate_vary(request=request, response=response, original_request=original_request)
 
 
+def test_construct_response_from_cache_with_vary_mismatch(caplog):
+    original_request = Request(
+        method="GET",
+        url="https://example.com",
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+        ],
+    )
+
+    request = Request(
+        method="GET",
+        url="https://example.com",
+        headers=[
+            (b"Content-Type", b"application/xml"),
+            (b"Content-Language", b"en-US"),
+        ],
+    )
+
+    response = Response(
+        status=200,
+        headers=[
+            (b"Content-Type", b"application/json"),
+            (b"Content-Language", b"en-US"),
+            (b"Vary", b"Content-Type, Content-Language"),
+        ],
+    )
+
+    controller = Controller()
+
+    with caplog.at_level(logging.DEBUG):
+        cached_response = controller.construct_response_from_cache(
+            original_request=original_request, request=request, response=response
+        )
+
+    assert cached_response is None
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ "
+        "as invalid for cache use since the vary headers do not match."
+    ]
+
+
 def test_vary_validation_value_mismatch():
     original_request = Request(
         method="GET",
@@ -570,7 +783,7 @@ def test_vary_validation_value_wildcard():
     assert not controller._validate_vary(request=request, response=response, original_request=original_request)
 
 
-def test_max_age_request_directive():
+def test_max_age_request_directive(caplog):
     class MockedClock(BaseClock):
         def now(self) -> int:
             return 1440507600  # Mon, 25 Aug 2015 13:00:00 GMT
@@ -606,13 +819,20 @@ def test_max_age_request_directive():
 
     controller = Controller(clock=MockedClock())
 
-    cached_response = controller.construct_response_from_cache(
-        original_request=original_request, request=request, response=response
-    )
+    with caplog.at_level(logging.DEBUG):
+        cached_response = controller.construct_response_from_cache(
+            original_request=original_request, request=request, response=response
+        )
     assert cached_response is None
+    assert caplog.messages == [
+        (
+            "Considering the resource located at https://example.com/ "
+            "as invalid for cache use since the age of the response exceeds the max-age directive."
+        )
+    ]
 
 
-def test_max_age_request_directive_without_max_stale():
+def test_max_age_request_directive_with_max_stale(caplog):
     class MockedClock(BaseClock):
         def now(self) -> int:
             return 1440507600  # Mon, 25 Aug 2015 13:00:00 GMT
@@ -632,7 +852,7 @@ def test_max_age_request_directive_without_max_stale():
         headers=[
             (b"Content-Type", b"application/json"),
             (b"Content-Language", b"en-US"),
-            (b"Cache-Control", "max-age=3600"),
+            (b"Cache-Control", "max-age=3600, max-stale=10000"),
         ],
     )
 
@@ -648,13 +868,19 @@ def test_max_age_request_directive_without_max_stale():
 
     controller = Controller(clock=MockedClock())
 
-    cached_response = controller.construct_response_from_cache(
-        original_request=original_request, request=request, response=response
-    )
-    assert cached_response is None
+    with caplog.at_level(logging.DEBUG):
+        cached_response = controller.construct_response_from_cache(
+            original_request=original_request, request=request, response=response
+        )
+
+    assert isinstance(cached_response, Response)
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ as valid for "
+        "cache use since the freshness lifetime has been exceeded less than max-stale."
+    ]
 
 
-def test_max_stale_request_directive():
+def test_max_stale_request_directive(caplog):
     class MockedClock(BaseClock):
         def now(self) -> int:
             return 1440507600  # Mon, 25 Aug 2015 13:00:00 GMT
@@ -690,13 +916,18 @@ def test_max_stale_request_directive():
 
     controller = Controller(clock=MockedClock())
 
-    cached_response = controller.construct_response_from_cache(
-        original_request=original_request, request=request, response=response
-    )
+    with caplog.at_level(logging.DEBUG):
+        cached_response = controller.construct_response_from_cache(
+            original_request=original_request, request=request, response=response
+        )
     assert cached_response is None
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ as invalid for"
+        " cache use since the freshness lifetime has been exceeded more than max-stale."
+    ]
 
 
-def test_min_fresh_request_directive():
+def test_min_fresh_request_directive(caplog):
     class MockedClock(BaseClock):
         def now(self) -> int:
             return 1440507600  # Mon, 25 Aug 2015 13:00:00 GMT
@@ -732,10 +963,15 @@ def test_min_fresh_request_directive():
 
     controller = Controller(clock=MockedClock())
 
-    cached_response = controller.construct_response_from_cache(
-        original_request=original_request, request=request, response=response
-    )
+    with caplog.at_level(logging.DEBUG):
+        cached_response = controller.construct_response_from_cache(
+            original_request=original_request, request=request, response=response
+        )
     assert cached_response is None
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ as invalid for cache"
+        " use since the time left for freshness is less than the min-fresh directive."
+    ]
 
 
 def test_no_cache_request_directive():
@@ -827,7 +1063,7 @@ def test_no_store_response_directive():
     assert not controller.is_cachable(request=request, response=response)
 
 
-def test_must_understand_response_directive():
+def test_must_understand_response_directive(caplog):
     request = Request(
         method="GET",
         url="https://example.com",
@@ -849,23 +1085,41 @@ def test_must_understand_response_directive():
 
     controller = Controller()
 
-    assert controller.is_cachable(request=request, response=response)
+    with caplog.at_level(logging.DEBUG):
+        assert controller.is_cachable(request=request, response=response)
+
+    assert caplog.messages == [
+        "Skipping the no-store directive for the resource located at https://example.com/"
+        " since the response contains the must-understand directive.",
+        "Considering the resource located at https://example.com/ as cachable "
+        "since it meets the criteria for being stored in the cache.",
+    ]
 
 
-def test_freshness_lifetime_invalid_information():
+def test_freshness_lifetime_invalid_information(caplog):
     controller = Controller()
     response = Response(
         status=400,
     )
     original_request = Request("GET", "https://example.com")
     request = Request("GET", "https://example.com")
-    conditional_request = controller.construct_response_from_cache(
-        request=request, response=response, original_request=original_request
-    )
+
+    with caplog.at_level(logging.DEBUG):
+        conditional_request = controller.construct_response_from_cache(
+            request=request, response=response, original_request=original_request
+        )
     assert isinstance(conditional_request, Request)
+    assert caplog.messages == [
+        "Could not determine the freshness lifetime of the resource located at https://example.com/, "
+        "trying to use heuristics to calculate it.",
+        (
+            "Could not calculate the freshness lifetime of the resource located at https://example.com/. "
+            "Making a conditional request to revalidate the response."
+        ),
+    ]
 
 
-def test_force_cache_extension_for_is_cachable():
+def test_force_cache_extension_for_is_cachable(caplog):
     controller = Controller(cacheable_status_codes=[400])
     request = Request("GET", "https://example.com")
     uncachable_response = Response(status=400)
@@ -874,10 +1128,16 @@ def test_force_cache_extension_for_is_cachable():
 
     request = Request("GET", "https://example.com", extensions={"force_cache": True})
 
-    assert controller.is_cachable(request=request, response=uncachable_response) is True
+    with caplog.at_level(logging.DEBUG):
+        assert controller.is_cachable(request=request, response=uncachable_response) is True
+
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ as"
+        " cachable since the request is forced to use the cache."
+    ]
 
 
-def test_force_cache_extension_for_construct_response_from_cache():
+def test_force_cache_extension_for_construct_response_from_cache(caplog):
     class MockedClock(BaseClock):
         def now(self) -> int:
             return 1440504001  # Mon, 25 Aug 2015 12:00:01 GMT
@@ -893,22 +1153,33 @@ def test_force_cache_extension_for_construct_response_from_cache():
         ],
     )
 
-    assert isinstance(
-        controller.construct_response_from_cache(
-            request=request,
-            response=cachable_response,
-            original_request=original_request,
-        ),
-        Request,
-    )
+    with caplog.at_level(logging.DEBUG):
+        assert isinstance(
+            controller.construct_response_from_cache(
+                request=request,
+                response=cachable_response,
+                original_request=original_request,
+            ),
+            Request,
+        )
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ as needing revalidation since it is not fresh."
+    ]
 
     request = Request("Get", "https://example.com", extensions={"force_cache": True})
 
-    assert isinstance(
-        controller.construct_response_from_cache(
-            request=request,
-            response=cachable_response,
-            original_request=original_request,
-        ),
-        Response,
-    )
+    caplog.clear()
+    with caplog.at_level(logging.DEBUG):
+        assert isinstance(
+            controller.construct_response_from_cache(
+                request=request,
+                response=cachable_response,
+                original_request=original_request,
+            ),
+            Response,
+        )
+
+    assert caplog.messages == [
+        "Considering the resource located at https://example.com/ "
+        "as valid for cache use since the request is forced to use the cache."
+    ]
