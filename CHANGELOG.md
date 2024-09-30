@@ -1,6 +1,6 @@
 # Changelog
 
-## development
+## 0.0.32 (27th Sep, 2024)
 
 - Don't raise an exception if the `Date` header is not present. (#273)
 
