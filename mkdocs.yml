@@ -50,6 +50,7 @@ nav:
       - Controllers: advanced/controllers.md
       - HTTP Headers: advanced/http_headers.md
       - Extensions: advanced/extensions.md
+      - Logging: advanced/logging.md
   - Examples:
       - GitHub: examples/github.md
       - FastAPI: examples/fastapi.md
