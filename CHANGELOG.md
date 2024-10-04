@@ -1,6 +1,6 @@
 # Changelog
 
-## Development
+## 0.0.33 (4th Oct, 2024)
 
 - Added a [Logging](https://hishel.com/advanced/logging/) section to the documentation.
 
