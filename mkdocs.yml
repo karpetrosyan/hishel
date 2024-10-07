@@ -3,6 +3,7 @@ repo_url: https://github.com/karpetrosyan/hishel
 
 theme:
   name: material
+  custom_dir: overrides
   features:
     - content.code.copy
     - toc.integrate
