@@ -1,7 +1,10 @@
 <p align="center" class="logo">
     <div align="center">
-        <a href=""><img width="350" height="250" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_yellow.png#gh-dark-mode-only" alt='HTTPX'></a>
-        <a href=""><img width="350" height="250" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_black.png#gh-light-mode-only" alt='HTTPX'></a>
+        <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_yellow.png">
+            <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_black.png">
+            <img alt="Logo" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_yellow.png">
+        </picture>
     </div>
 </p>
 
