@@ -1,6 +1,6 @@
 <p align="center" class="logo">
     <div align="center">
-        <a href=""><img width="350" height="250" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_black.png#only-light" alt='HTTPX'></a>
+        <a href=""><img width="350" height="250" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_yellow.png" alt='HTTPX'></a>
     </div>
 </p>
 
