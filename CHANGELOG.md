@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0 (27th Oct, 2024)
+
+- Add support for Python 3.12 / drop Python 3.8. (#286)
+
 ## 0.0.33 (4th Oct, 2024)
 
 - Added a [Logging](https://hishel.com/advanced/logging/) section to the documentation.
