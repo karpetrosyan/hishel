@@ -49,7 +49,7 @@ def generate_key(request: httpcore.Request, body: bytes = b"") -> str:
 
     key_parts = [request.method, encoded_url, body]
 
-    key = blake2b(digest_size=16)
+    key = blake2b(digest_size=16, usedforsecurity=False)
     for part in key_parts:
         key.update(part)
     return key.hexdigest()
