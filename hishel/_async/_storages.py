@@ -23,7 +23,9 @@ except ImportError:  # pragma: no cover
     anysqlite = None  # type: ignore
 
 from httpcore import Request, Response
-from typing_extensions import TypeAlias
+
+if t.TYPE_CHECKING:  # pragma: no cover
+    from typing_extensions import TypeAlias
 
 from hishel._serializers import BaseSerializer, clone_model
 
