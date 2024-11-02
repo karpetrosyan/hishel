@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 (2nd Nov, 2024)
+
+- FIx typig extensions nor found. (#290)
+
 ## 0.1.0 (2nd Nov, 2024)
 
 - Add support for Python 3.12 / drop Python 3.8. (#286)
