@@ -24,7 +24,7 @@ except ImportError:  # pragma: no cover
 
 from httpcore import Request, Response
 
-if t.TYPE_CHECKING:
+if t.TYPE_CHECKING:  # pragma: no cover
     from typing_extensions import TypeAlias
 
 from hishel._serializers import BaseSerializer, clone_model
