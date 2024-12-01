@@ -383,8 +383,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
             await self._connection.close()
 
     async def _remove_expired_caches(self) -> None:
-        assert self._connection
-        if self._ttl is None:
+        if self._ttl is None or self._connection is None:
             return
 
         async with self._lock:
