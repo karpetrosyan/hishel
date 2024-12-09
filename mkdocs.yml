@@ -3,6 +3,7 @@ repo_url: https://github.com/karpetrosyan/hishel
 
 theme:
   name: material
+  custom_dir: overrides
   features:
     - content.code.copy
     - toc.integrate
@@ -50,6 +51,7 @@ nav:
       - Controllers: advanced/controllers.md
       - HTTP Headers: advanced/http_headers.md
       - Extensions: advanced/extensions.md
+      - Logging: advanced/logging.md
   - Examples:
       - GitHub: examples/github.md
       - FastAPI: examples/fastapi.md

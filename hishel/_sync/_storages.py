@@ -23,7 +23,9 @@ except ImportError:  # pragma: no cover
     sqlite3 = None  # type: ignore
 
 from httpcore import Request, Response
-from typing_extensions import TypeAlias
+
+if t.TYPE_CHECKING:  # pragma: no cover
+    from typing_extensions import TypeAlias
 
 from hishel._serializers import BaseSerializer, clone_model
 
@@ -377,8 +379,8 @@ class SQLiteStorage(BaseStorage):
             return self._serializer.loads(cached_response)
 
     def close(self) -> None:  # pragma: no cover
-        assert self._connection
-        self._connection.close()
+        if self._connection is not None:
+            self._connection.close()
 
     def _remove_expired_caches(self) -> None:
         assert self._connection

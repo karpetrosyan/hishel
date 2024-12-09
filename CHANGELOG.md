@@ -1,8 +1,27 @@
 # Changelog
 
-## development
+## 0.1.1 (2nd Nov, 2024)
+
+- FIx typig extensions nor found. (#290)
+
+## 0.1.0 (2nd Nov, 2024)
+
+- Add support for Python 3.12 / drop Python 3.8. (#286)
+- Specify usedforsecurity=False in blake2b. (#285)
+
+## 0.0.33 (4th Oct, 2024)
+
+- Added a [Logging](https://hishel.com/advanced/logging/) section to the documentation.
+
+## 0.0.32 (27th Sep, 2024)
+
+- Don't raise an exception if the `Date` header is not present. (#273)
+
+## 0.0.31 (22nd Sep, 2024)
 
 - Ignore file not found error when cleaning up a file storage. (#264)  
+- Fix `AssertionError` on `client.close()` when use SQLiteStorage. (#269)  
+- Fix ignored flags when use `force_cache`. (#271)  
 
 ## 0.0.30 (12th July, 2024)
 

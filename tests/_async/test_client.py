@@ -195,7 +195,11 @@ async def test_force_cache():
             ]
         )
 
-        async with hishel.AsyncCacheClient(storage=hishel.AsyncInMemoryStorage(), transport=transport) as client:
+        async with hishel.AsyncCacheClient(
+            storage=hishel.AsyncInMemoryStorage(),
+            controller=hishel.Controller(cacheable_methods=["HEAD"]),
+            transport=transport,
+        ) as client:
             response = await client.head("https://example.com")
             assert response.status_code == 200
             assert not response.extensions["from_cache"]
