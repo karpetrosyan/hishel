@@ -1,3 +1,5 @@
+import httpcore
+import pytest
 from httpcore import Request
 
 from hishel._controller import get_updated_headers
@@ -6,6 +8,7 @@ from hishel._utils import (
     extract_header_values_decoded,
     float_seconds_to_int_milliseconds,
     generate_key,
+    get_safe_url,
     header_presents,
     parse_date,
 )
@@ -90,3 +93,34 @@ def test_float_seconds_to_milliseconds():
     seconds = 1.234
     milliseconds = float_seconds_to_int_milliseconds(seconds)
     assert milliseconds == 1234
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        pytest.param(
+            "https://example.com/path?query=1",
+            "https://example.com/path",
+            id="url_with_query_is_ignored",
+        ),
+        pytest.param(
+            "https://example.com/path",
+            "https://example.com/path",
+            id="url_without_query",
+        ),
+        pytest.param("https://example.com", "https://example.com/", id="url_without_path"),
+        pytest.param(
+            "https://xn--e1afmkfd.xn--p1ag",
+            "https://пример.ру/",
+            id="url_with_idna",
+        ),
+    ],
+)
+def test_safe_url(
+    url: str,
+    expected: str,
+) -> None:
+    httpcore_url = httpcore.URL(url)
+    safe_url = get_safe_url(httpcore_url)
+
+    assert safe_url == expected
