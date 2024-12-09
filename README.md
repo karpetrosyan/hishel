@@ -1,6 +1,13 @@
-<p align="center">
-  <a href=""><img width="350" height="250" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/.github/logo.jpg" alt='HTTPX'></a>
+<p align="center" class="logo">
+    <div align="center">
+        <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_yellow.png">
+            <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_black.png">
+            <img alt="Logo" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_yellow.png">
+        </picture>
+    </div>
 </p>
+
 
 
 <p align="center"><strong>Hishel</strong> <em>- An elegant HTTP Cache implementation for httpx and httpcore.</em></p>
@@ -19,8 +26,8 @@
       <img src="https://img.shields.io/codecov/c/github/karpetrosyan/hishel" alt="license">
   </a>
 
-  <a href="https://static.pepy.tech/badge/hishel/month">
-      <img src="https://static.pepy.tech/badge/hishel/month" alt="Downloads">
+  <a href="https://github.com/karpetrosyan/hishel">
+      <img src="https://img.shields.io/pypi/dm/hishel.svg" alt="Downloads">
   </a>
 </p>
 

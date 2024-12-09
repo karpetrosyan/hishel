@@ -4,6 +4,7 @@ import datetime
 import logging
 import os
 import time
+import typing as t
 import typing as tp
 import warnings
 from copy import deepcopy
@@ -22,7 +23,9 @@ except ImportError:  # pragma: no cover
     anysqlite = None  # type: ignore
 
 from httpcore import Request, Response
-from typing_extensions import TypeAlias
+
+if t.TYPE_CHECKING:  # pragma: no cover
+    from typing_extensions import TypeAlias
 
 from hishel._serializers import BaseSerializer, clone_model
 
@@ -43,6 +46,7 @@ __all__ = (
 )
 
 StoredResponse: TypeAlias = tp.Tuple[Response, Request, Metadata]
+RemoveTypes = tp.Union[str, Response]
 
 try:
     import redis.asyncio as redis
@@ -60,6 +64,9 @@ class AsyncBaseStorage:
         self._ttl = ttl
 
     async def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
+        raise NotImplementedError()
+
+    async def remove(self, key: RemoveTypes) -> None:
         raise NotImplementedError()
 
     async def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
@@ -137,6 +144,23 @@ class AsyncFileStorage(AsyncBaseStorage):
             )
         await self._remove_expired_caches(response_path)
 
+    async def remove(self, key: RemoveTypes) -> None:
+        """
+        Removes the response from the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI or an HTTP response
+        :type key: Union[str, Response]
+        """
+
+        if isinstance(key, Response):  # pragma: no cover
+            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+
+        response_path = self._base_path / key
+
+        async with self._lock:
+            if response_path.exists():
+                response_path.unlink()
+
     async def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
         Updates the metadata of the stored response.
@@ -203,11 +227,15 @@ class AsyncFileStorage(AsyncBaseStorage):
 
         self._last_cleaned = time.monotonic()
         async with self._lock:
-            for file in self._base_path.iterdir():
-                if file.is_file():
-                    age = time.time() - file.stat().st_mtime
-                    if age > self._ttl:
-                        file.unlink()
+            with os.scandir(self._base_path) as entries:
+                for entry in entries:
+                    try:
+                        if entry.is_file():
+                            age = time.time() - entry.stat().st_mtime
+                            if age > self._ttl:
+                                os.unlink(entry.path)
+                    except FileNotFoundError:  # pragma: no cover
+                        pass
 
 
 class AsyncSQLiteStorage(AsyncBaseStorage):
@@ -282,6 +310,24 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
             await self._connection.commit()
         await self._remove_expired_caches()
 
+    async def remove(self, key: RemoveTypes) -> None:
+        """
+        Removes the response from the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI or an HTTP response
+        :type key: Union[str, Response]
+        """
+
+        await self._setup()
+        assert self._connection
+
+        if isinstance(key, Response):  # pragma: no cover
+            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+
+        async with self._lock:
+            await self._connection.execute("DELETE FROM cache WHERE key = ?", [key])
+            await self._connection.commit()
+
     async def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
         Updates the metadata of the stored response.
@@ -333,8 +379,8 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
             return self._serializer.loads(cached_response)
 
     async def aclose(self) -> None:  # pragma: no cover
-        assert self._connection
-        await self._connection.close()
+        if self._connection is not None:
+            await self._connection.close()
 
     async def _remove_expired_caches(self) -> None:
         assert self._connection
@@ -403,6 +449,19 @@ class AsyncRedisStorage(AsyncBaseStorage):
         await self._client.set(
             key, self._serializer.dumps(response=response, request=request, metadata=metadata), px=px
         )
+
+    async def remove(self, key: RemoveTypes) -> None:
+        """
+        Removes the response from the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI or an HTTP response
+        :type key: Union[str, Response]
+        """
+
+        if isinstance(key, Response):  # pragma: no cover
+            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+
+        await self._client.delete(key)
 
     async def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
@@ -503,6 +562,20 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
             stored_response: StoredResponse = (deepcopy(response_clone), deepcopy(request_clone), metadata)
             self._cache.put(key, (stored_response, time.monotonic()))
         await self._remove_expired_caches()
+
+    async def remove(self, key: RemoveTypes) -> None:
+        """
+        Removes the response from the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI or an HTTP response
+        :type key: Union[str, Response]
+        """
+
+        if isinstance(key, Response):  # pragma: no cover
+            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+
+        async with self._lock:
+            self._cache.remove_key(key)
 
     async def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
@@ -633,6 +706,20 @@ class AsyncS3Storage(AsyncBaseStorage):  # pragma: no cover
             await self._s3_manager.write_to(path=key, data=serialized)
 
         await self._remove_expired_caches(key)
+
+    async def remove(self, key: RemoveTypes) -> None:
+        """
+        Removes the response from the cache.
+
+        :param key: Hashed value of concatenated HTTP method and URI or an HTTP response
+        :type key: Union[str, Response]
+        """
+
+        if isinstance(key, Response):  # pragma: no cover
+            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+
+        async with self._lock:
+            await self._s3_manager.remove_entry(key)
 
     async def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """

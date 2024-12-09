@@ -7,7 +7,7 @@ name = "hishel"
 dynamic = ["readme", "version"]
 description = "Persistent cache implementation for httpx and httpcore"
 license = "BSD-3-Clause"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
     { name = "Kar Petrosyan", email = "kar.petrosyanpy@gmail.com" },
 ]
@@ -21,16 +21,15 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
-    "httpx>=0.22.0",
-    "typing_extensions>=4.8.0"
+    "httpx>=0.28.0",
 ]
 
 [project.optional-dependencies]

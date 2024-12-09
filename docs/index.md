@@ -1,5 +1,8 @@
-<p align="center">
-  <a href=""><img width="350" height="250" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/.github/logo.jpg" alt='HTTPX'></a>
+<p align="center" class="logo">
+    <div align="center">
+        <a href=""><img width="350" height="250" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_yellow.png#only-dark" alt='HTTPX'></a>
+        <a href=""><img width="350" height="250" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_black.png#only-light" alt='HTTPX'></a>
+    </div>
 </p>
 
 

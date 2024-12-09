@@ -78,6 +78,10 @@ class S3Manager:
             if get_timestamp_in_ms() - float(obj["Metadata"]["created_at"]) > ttl:
                 self._client.delete_object(Bucket=self._bucket_name, Key=obj["Key"])
 
+    def remove_entry(self, key: str) -> None:
+        path = "hishel-" + key
+        self._client.delete_object(Bucket=self._bucket_name, Key=path)
+
 
 class AsyncS3Manager:  # pragma: no cover
     def __init__(
@@ -93,3 +97,6 @@ class AsyncS3Manager:  # pragma: no cover
 
     async def remove_expired(self, ttl: int, key: str) -> None:
         return await to_thread.run_sync(self._sync_manager.remove_expired, ttl, key)
+
+    async def remove_entry(self, key: str) -> None:
+        return await to_thread.run_sync(self._sync_manager.remove_entry, key)
