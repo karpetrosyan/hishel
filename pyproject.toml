@@ -29,7 +29,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
-    "httpx>=0.22.0",
+    "httpx>=0.28.0",
 ]
 
 [project.optional-dependencies]

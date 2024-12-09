@@ -1,8 +1,12 @@
 # Changelog
 
+## development
+
+- Fix compatibility with httpx. (#291)
+
 ## 0.1.1 (2nd Nov, 2024)
 
-- FIx typig extensions nor found. (#290)
+- Fix typing extensions not found. (#290)
 
 ## 0.1.0 (2nd Nov, 2024)
 

@@ -152,7 +152,7 @@ class CacheTransport(httpx.BaseTransport):
                 # Controller has determined that the response needs to be re-validated.
                 assert isinstance(res.stream, tp.Iterable)
                 revalidation_request = Request(
-                    method=res.method,
+                    method=res.method.decode(),
                     url=normalized_url(res.url),
                     headers=res.headers,
                     stream=CacheStream(res.stream),
