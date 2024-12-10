@@ -71,6 +71,8 @@ storage = hishel.FileStorage(ttl=3600)
 If you do this, `Hishel` will delete any stored responses whose ttl has expired.
 In this example, the stored responses were limited to 1 hour.
 
+The default `ttl` is `None`, which means that responses will be stored until the [controller](controllers.md) decides to remove them.
+
 #### Check ttl every
 
 In order to avoid excessive memory utilization, `Hishel` must periodically clean the old responses, or responses that are not being used and should be deleted from the cache.
@@ -178,6 +180,8 @@ storage = hishel.RedisStorage(ttl=3600)
 If you do this, `Hishel` will delete any stored responses whose ttl has expired.
 In this example, the stored responses were limited to 1 hour.
 
+The default `ttl` is `None`, which means that responses will be stored until the [controller](controllers.md) decides to remove them.
+
 ### :simple-sqlite: SQLite storage
 
 `Hishel` includes built-in [sqlite](https://www.sqlite.org/index.html) support, allowing you to store your responses in sqlite database.
@@ -233,6 +237,8 @@ storage = hishel.SQLiteStorage(ttl=3600)
 If you do this, `Hishel` will delete any stored responses whose ttl has expired.
 In this example, the stored responses were limited to 1 hour.
 
+The default `ttl` is `None`, which means that responses will be stored until the [controller](controllers.md) decides to remove them.
+
 
 ### :material-aws: AWS S3 storage
 
@@ -284,5 +290,17 @@ storage = hishel.S3Storage(ttl=3600)
 If you do this, `Hishel` will delete any stored responses whose ttl has expired.
 In this example, the stored responses were limited to 1 hour.
 
+The default `ttl` is `None`, which means that responses will be stored until the [controller](controllers.md) decides to remove them.
 
+#### Check ttl every
 
+In order to avoid excessive memory utilization, `Hishel` must periodically clean the old responses, or responses that are not being used and should be deleted from the cache.
+It clears the cache by default every minute, but you may change the interval directly with the `check_ttl_every` argument.
+
+Example:
+
+```python
+import hishel
+
+storage = hishel.S3Storage(check_ttl_every=600) # check every 600s (10m) 
+```

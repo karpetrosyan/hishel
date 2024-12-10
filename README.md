@@ -1,6 +1,13 @@
-<p align="center">
-  <a href=""><img width="350" height="250" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/.github/logo.jpg" alt='HTTPX'></a>
+<p align="center" class="logo">
+    <div align="center">
+        <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_yellow.png">
+            <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_black.png">
+            <img alt="Logo" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_yellow.png">
+        </picture>
+    </div>
 </p>
+
 
 
 <p align="center"><strong>Hishel</strong> <em>- An elegant HTTP Cache implementation for httpx and httpcore.</em></p>
@@ -19,8 +26,8 @@
       <img src="https://img.shields.io/codecov/c/github/karpetrosyan/hishel" alt="license">
   </a>
 
-  <a href="https://static.pepy.tech/badge/hishel/month">
-      <img src="https://static.pepy.tech/badge/hishel/month" alt="Downloads">
+  <a href="https://github.com/karpetrosyan/hishel">
+      <img src="https://img.shields.io/pypi/dm/hishel.svg" alt="Downloads">
   </a>
 </p>
 
@@ -70,40 +77,58 @@ async with hishel.AsyncCacheClient() as client:
     await client.get("https://hishel.com")  # takes from the cache
 ```
 
-## HTTPX and HTTP Core
+## Configurations
 
-`Hishel` also supports the transports of `HTTPX` and the connection pools of `HTTP Core`.
-
-`Hishel` respects existing **transports** and **connection pools** and can therefore work **on top of them**, making hishel a very **compatible and flexible library**.
-
-
-**Transports** example:
-
-``` python
-import httpx
-import hishel
-
-transport = httpx.HTTPTransport()
-cache_transport = hishel.CacheTransport(transport=transport)
-
-req = httpx.Request("GET", "https://hishel.com")
-
-cache_transport.handle_request(req)
-cache_transport.handle_request(req)  # takes from the cache
-```
-
-**Connection Pool** example:
-
+Configure when and how you want to store your responses.
 
 ```python
-import httpcore
 import hishel
 
-pool = hishel.CacheConnectionPool(pool=httpcore.ConnectionPool())
+# All the specification configs
+controller = hishel.Controller(
+        # Cache only GET and POST methods
+        cacheable_methods=["GET", "POST"],
 
-pool.request("GET", "https://hishel.com")
-pool.request("GET", "https://hishel.com")  # takes from the cache
+        # Cache only 200 status codes
+        cacheable_status_codes=[200],
 
+        # Use the stale response if there is a connection issue and the new response cannot be obtained.
+        allow_stale=True,
+
+        # First, revalidate the response and then utilize it.
+        # If the response has not changed, do not download the
+        # entire response data from the server; instead,
+        # use the one you have because you know it has not been modified.
+        always_revalidate=True,
+)
+
+# All the storage configs
+storage = hishel.S3Storage(
+        bucket_name="my_bucket_name", # store my cache files in the `my_bucket_name` bucket
+        ttl=3600, # delete the response if it is in the cache for more than an hour
+)
+client = hishel.CacheClient(controller=controller, storage=storage)
+
+
+# Ignore the fact that the server does not recommend you cache this request!
+client.post(
+        "https://example.com",
+        extensions={"force_cache": True}
+)
+
+
+# Return a regular response if it is in the cache; else, return a 504 status code. DO NOT SEND A REQUEST!
+client.post(
+        "https://example.com",
+        headers=[("Cache-Control", "only-if-cached")]
+)
+
+
+# Ignore cached responses and do not store incoming responses!
+response = client.post(
+        "https://example.com",
+        extensions={"cache_disabled": True}
+)
 ```
 
 ## How and where are the responses saved?

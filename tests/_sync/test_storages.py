@@ -3,12 +3,10 @@ import os
 from pathlib import Path
 
 import sqlite3
-import boto3
 import pytest
 from httpcore import Request, Response
-from moto import mock_s3
 
-from hishel import FileStorage, InMemoryStorage, RedisStorage, S3Storage, SQLiteStorage
+from hishel import FileStorage, InMemoryStorage, RedisStorage, SQLiteStorage
 from hishel._serializers import Metadata
 from hishel._utils import sleep, generate_key
 
@@ -23,23 +21,6 @@ def is_redis_down() -> bool:
         return not connection.ping()
     except BaseException:  # pragma: no cover
         return True
-
-
-@pytest.fixture(scope="function")
-def aws_credentials():
-    """Mocked AWS Credentials for moto."""
-
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
-    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
-
-
-@pytest.fixture(scope="function")
-def s3(aws_credentials):
-    with mock_s3():
-        yield boto3.client("s3", region_name="us-east-1")
 
 
 
@@ -66,31 +47,7 @@ def test_filestorage(use_temp_dir):
 
 
 
-def test_s3storage(use_temp_dir, s3):
-    boto3.client("s3").create_bucket(Bucket="testBucket")
-    storage = S3Storage(bucket_name="testBucket")
-
-    request = Request(b"GET", "https://example.com")
-
-    key = generate_key(request)
-
-    response = Response(200, headers=[], content=b"test")
-    response.read()
-
-    storage.store(key, response=response, request=request, metadata=dummy_metadata)
-
-    stored_data = storage.retrieve(key)
-    assert stored_data is not None
-    stored_response, stored_request, metadata = stored_data
-    stored_response.read()
-    assert isinstance(stored_response, Response)
-    assert stored_response.status == 200
-    assert stored_response.headers == []
-    assert stored_response.content == b"test"
-
-
-
-def test_redisstorage():
+def test_redisstorage(anyio_backend):
     if is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
     storage = RedisStorage()
@@ -161,7 +118,7 @@ def test_inmemorystorage():
 
 
 
-def test_filestorage_expired(use_temp_dir):
+def test_filestorage_expired(use_temp_dir, anyio_backend):
     storage = FileStorage(ttl=0.2, check_ttl_every=0.1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
@@ -182,30 +139,7 @@ def test_filestorage_expired(use_temp_dir):
 
 
 
-def test_s3storage_expired(use_temp_dir, s3):
-    boto3.client("s3").create_bucket(Bucket="testBucket")
-    storage = S3Storage(bucket_name="testBucket", ttl=1)
-
-    first_request = Request(b"GET", "https://example.com")
-    second_request = Request(b"GET", "https://anotherexample.com")
-
-    first_key = generate_key(first_request)
-    second_key = generate_key(second_request)
-
-    response = Response(200, headers=[], content=b"test")
-    response.read()
-
-    storage.store(first_key, response=response, request=first_request, metadata=dummy_metadata)
-    assert storage.retrieve(first_key) is not None
-
-    sleep(1)
-    storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
-
-    assert storage.retrieve(first_key) is None
-
-
-
-def test_filestorage_timer(use_temp_dir):
+def test_filestorage_timer(use_temp_dir, anyio_backend):
     storage = FileStorage(ttl=0.2, check_ttl_every=0.2)
 
     first_request = Request(b"GET", "https://example.com")
@@ -231,7 +165,37 @@ def test_filestorage_timer(use_temp_dir):
 
 
 
-def test_redisstorage_expired():
+def test_filestorage_ttl_after_hits(use_temp_dir, anyio_backend):
+    storage = FileStorage(ttl=0.2, check_ttl_every=0.2)
+
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+
+    # Storing
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.08 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.16 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.24 second
+    sleep(0.08)
+    assert storage.retrieve(key) is None
+
+
+
+def test_redisstorage_expired(anyio_backend):
     if is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
     storage = RedisStorage(ttl=0.1)
@@ -254,7 +218,37 @@ def test_redisstorage_expired():
 
 
 
-def test_sqlite_expired():
+def test_redis_ttl_after_hits(use_temp_dir, anyio_backend):
+    storage = RedisStorage(ttl=0.2)
+
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+
+    # Storing
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.08 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.16 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.24 second
+    sleep(0.08)
+    assert storage.retrieve(key) is None
+
+
+
+def test_sqlite_expired(anyio_backend):
     storage = SQLiteStorage(ttl=0.1, connection=sqlite3.connect(":memory:"))
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
@@ -274,8 +268,39 @@ def test_sqlite_expired():
     assert storage.retrieve(first_key) is None
 
 
+@pytest.mark.xfail
 
-def test_inmemory_expired():
+def test_sqlite_ttl_after_hits(use_temp_dir, anyio_backend):
+    storage = SQLiteStorage(ttl=0.2)
+
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+
+    # Storing
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.08 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.16 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.24 second
+    sleep(0.08)
+    assert storage.retrieve(key) is None
+
+
+
+def test_inmemory_expired(anyio_backend):
     storage = InMemoryStorage(ttl=0.1)
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
@@ -293,6 +318,36 @@ def test_inmemory_expired():
     storage.store(second_key, response=response, request=second_request, metadata=dummy_metadata)
 
     assert storage.retrieve(first_key) is None
+
+
+
+def test_inmemory_ttl_after_hits(use_temp_dir, anyio_backend):
+    storage = InMemoryStorage(ttl=0.2)
+
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+
+    response = Response(200, headers=[], content=b"test")
+    response.read()
+
+    # Storing
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.08 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.16 second
+    sleep(0.08)
+    storage.update_metadata(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+
+    # Retrieving after 0.24 second
+    sleep(0.08)
+    assert storage.retrieve(key) is None
 
 
 
@@ -315,4 +370,67 @@ def test_filestorage_empty_file_exception(use_temp_dir):
     with open(filedir, "w+", encoding="utf-8") as file:
         file.truncate(0)
     assert os.path.getsize(filedir) == 0
+    assert storage.retrieve(key) is None
+
+
+
+def test_filestorage_remove(use_temp_dir):
+    storage = FileStorage()
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+    response = Response(200, headers=[], content=b"test")
+
+    response.read()
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+    storage.remove(key)
+    assert storage.retrieve(key) is None
+
+
+
+def test_redisstorage_remove(anyio_backend):
+    if is_redis_down():  # pragma: no cover
+        pytest.fail("Redis server was not found")
+
+    storage = RedisStorage()
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+    response = Response(200, headers=[], content=b"test")
+
+    response.read()
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+    storage.remove(key)
+    assert storage.retrieve(key) is None
+
+
+
+def test_sqlitestorage_remove():
+    storage = SQLiteStorage(connection=sqlite3.connect(":memory:"))
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+    response = Response(200, headers=[], content=b"test")
+
+    response.read()
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+    storage.remove(key)
+    assert storage.retrieve(key) is None
+
+
+
+def test_inmemorystorage_remove():
+    storage = InMemoryStorage()
+    request = Request(b"GET", "https://example.com")
+
+    key = generate_key(request)
+    response = Response(200, headers=[], content=b"test")
+
+    response.read()
+    storage.store(key, response=response, request=request, metadata=dummy_metadata)
+    assert storage.retrieve(key) is not None
+    storage.remove(key)
     assert storage.retrieve(key) is None

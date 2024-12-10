@@ -26,6 +26,9 @@ For example, if the response has a `Cache-Control` header that contains a `no-st
 >>> response = client.get("https://www.example.com/uncachable-endpoint", extensions={"force_cache": True})
 ```
 
+!!! note
+    You can [configure this extension globally for the controller](controllers.md#force-caching), rather than setting force_cache to True for each request.
+
 ### cache_disabled 
 
 This extension temporarily disables the cache by passing appropriate RFC9111 headers to
@@ -54,6 +57,24 @@ from the cache, and `False` when the response was received over the network.
 False
 >>> response = client.get("https://www.example.com")
 >>> response.extensions["from_cache"]
+True
+```
+
+### revalidated
+
+Every response will have a `revalidated` extension that indicates whether the response has been revalidated or not.
+
+!!! note
+    Note that a response could have `revalidated` set to `True` even when `from_cache` is set to `False`. This occurs when the cached entry has been updated and a new entry is downloaded during revalidation.
+
+```python
+>>> import hishel
+>>> client = hishel.CacheClient()
+>>> response = client.get("https://www.example.com/endpoint_that_is_fresh")
+>>> response.extensions["revalidated"]
+False
+>>> response = client.get("https://www.example.com/endpoint_that_is_stale")
+>>> response.extensions["revalidated"]
 True
 ```
 

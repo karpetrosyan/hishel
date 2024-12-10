@@ -13,6 +13,8 @@ __all__ = ("MockAsyncConnectionPool", "MockAsyncTransport")
 
 class MockAsyncConnectionPool(AsyncRequestInterface):
     async def handle_async_request(self, request: httpcore.Request) -> httpcore.Response:
+        assert isinstance(request.stream, tp.AsyncIterable)
+        data = b"".join([chunk async for chunk in request.stream])  # noqa: F841
         return self.mocked_responses.pop(0)
 
     def add_responses(self, responses: tp.List[httpcore.Response]) -> None:
@@ -28,8 +30,7 @@ class MockAsyncConnectionPool(AsyncRequestInterface):
         exc_type: tp.Optional[tp.Type[BaseException]] = None,
         exc_value: tp.Optional[BaseException] = None,
         traceback: tp.Optional[TracebackType] = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 class MockAsyncTransport(httpx.AsyncBaseTransport):

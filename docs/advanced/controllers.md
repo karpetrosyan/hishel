@@ -6,6 +6,22 @@ icon: material/brain
 
 You can choose which parts of [RFC 9111](https://www.rfc-editor.org/rfc/rfc9111.html) to ignore. For example, this is useful when you want to ensure that your client does **not use stale responses** even if they are **acceptable from the server.**
 
+### Force caching
+
+If you only need to cache responses without validating the headers and following RFC9111 rules, simply set the `force_cache` property to true.
+
+Example:
+
+```python
+import hishel
+
+controller = hishel.Controller(force_cache=True)
+client = hishel.CacheClient(controller=controller)
+```
+
+!!! note
+    [force_cache](extensions.md#force_cache) extension will always overwrite the controller's force_cache property.
+
 ### Cachable HTTP methods
 
 You can specify which HTTP methods `Hishel` should cache.
@@ -15,7 +31,7 @@ Example:
 ```python
 import hishel
 
-controller = hishel.Controller(cacheable_methods=["GET", "PUT"])
+controller = hishel.Controller(cacheable_methods=["GET", "POST"])
 client = hishel.CacheClient(controller=controller)
 ```
 
@@ -74,6 +90,22 @@ client = hishel.CacheClient(controller=controller)
 !!! tip
     If you're not familiar with `Heuristics Caching`, you can [read about it in the specification](https://www.rfc-editor.org/rfc/rfc9111.html#name-calculating-heuristic-fresh).
 
+### Preventing caching of private responses
+
+If you want `Hishel` to act as a _shared_ cache, you need to prevent it from caching responses with the `private` directive.
+
+Example:
+
+```python
+import hishel
+
+controller = hishel.Controller(cache_private=False)
+client = hishel.CacheClient(controller=controller)
+```
+
+!!! note
+    Servers may prohibit only some headers from being stored in a shared cache by sending a header such as `Cache-Control: private=set-cookie`. However, `Hishel` with `cache_private=False` will still not cache the response, at all.
+
 ### Allowing stale responses
 
 Some servers allow the use of stale responses if they cannot be re-validated or the client is disconnected from the server. Clients MAY use stale responses in such cases, but this behavior is disabled by default in `Hishel`.
@@ -118,8 +150,8 @@ import hishel
 import httpcore
 from hishel._utils import generate_key
 
-def custom_key_generator(request: httpcore.Request):
-    key = generate_key(request)
+def custom_key_generator(request: httpcore.Request, body: bytes):
+    key = generate_key(request, body)
     method = request.method.decode()
     host = request.url.host.decode()
     return f"{method}|{host}|{key}"

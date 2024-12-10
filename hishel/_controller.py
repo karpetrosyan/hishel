@@ -1,3 +1,4 @@
+import logging
 import typing as tp
 
 from httpcore import Request, Response
@@ -10,11 +11,15 @@ from ._utils import (
     extract_header_values,
     extract_header_values_decoded,
     generate_key,
+    get_safe_url,
     header_presents,
     parse_date,
 )
 
+logger = logging.getLogger("hishel.controller")
+
 HEURISTICALLY_CACHEABLE_STATUS_CODES = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
+HTTP_METHODS = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]
 
 __all__ = ("Controller", "HEURISTICALLY_CACHEABLE_STATUS_CODES")
 
@@ -78,8 +83,10 @@ def get_heuristic_freshness(response: Response, clock: "BaseClock") -> int:
 
 
 def get_age(response: Response, clock: "BaseClock") -> int:
-    if not header_presents(response.headers, b"date"):  # pragma: no cover
-        raise RuntimeError("The `Date` header is missing in the response.")
+    if not header_presents(response.headers, b"date"):
+        # If the response does not have a date header, then it is impossible to calculate the age.
+        # Instead of raising an exception, we return infinity to be sure that the response is not considered fresh.
+        return float("inf")  # type: ignore
 
     date = parse_date(extract_header_values_decoded(response.headers, b"date")[0])
 
@@ -106,11 +113,13 @@ class Controller:
         self,
         cacheable_methods: tp.Optional[tp.List[str]] = None,
         cacheable_status_codes: tp.Optional[tp.List[int]] = None,
+        cache_private: bool = True,
         allow_heuristics: bool = False,
         clock: tp.Optional[BaseClock] = None,
         allow_stale: bool = False,
         always_revalidate: bool = False,
-        key_generator: tp.Optional[tp.Callable[[Request], str]] = None,
+        force_cache: bool = False,
+        key_generator: tp.Optional[tp.Callable[[Request, tp.Optional[bytes]], str]] = None,
     ):
         self._cacheable_methods = []
 
@@ -118,17 +127,20 @@ class Controller:
             self._cacheable_methods.append("GET")
         else:
             for method in cacheable_methods:
-                if method.upper() not in ["GET", "HEAD"]:
+                if method.upper() not in HTTP_METHODS:
                     raise RuntimeError(
-                        f"Hishel does not support the HTTP method `{method}`. Please use either `GET` or `HEAD`."
+                        f"Hishel does not support the HTTP method `{method}`.\n"
+                        f"Please use the methods from this list: {HTTP_METHODS}"
                     )
                 self._cacheable_methods.append(method.upper())
 
         self._cacheable_status_codes = cacheable_status_codes if cacheable_status_codes else [200, 301, 308]
+        self._cache_private = cache_private
         self._clock = clock if clock else Clock()
         self._allow_heuristics = allow_heuristics
         self._allow_stale = allow_stale
         self._always_revalidate = always_revalidate
+        self._force_cache = force_cache
         self._key_generator = key_generator or generate_key
 
     def is_cachable(self, request: Request, response: Response) -> bool:
@@ -141,34 +153,98 @@ class Controller:
         lists the steps that this method simply follows.
         """
         method = request.method.decode("ascii")
-
-        if request.extensions.get("force_cache", False):
-            return True
+        force_cache = request.extensions.get("force_cache", None)
 
         if response.status not in self._cacheable_status_codes:
+            logger.debug(
+                (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    f"as not cachable since its status code ({response.status})"
+                    " is not in the list of cacheable status codes."
+                )
+            )
             return False
 
         if response.status in (301, 308):
+            logger.debug(
+                (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as cachable since its status code is a permanent redirect."
+                )
+            )
             return True
 
         # the request method is understood by the cache
         if method not in self._cacheable_methods:
+            logger.debug(
+                (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    f"as not cachable since the request method ({method}) is not in the list of cacheable methods."
+                )
+            )
             return False
+
+        if force_cache if force_cache is not None else self._force_cache:
+            logger.debug(
+                (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as cachable since the request is forced to use the cache."
+                )
+            )
+            return True
 
         response_cache_control = parse_cache_control(extract_header_values_decoded(response.headers, b"cache-control"))
         request_cache_control = parse_cache_control(extract_header_values_decoded(request.headers, b"cache-control"))
 
         # the response status code is final
         if response.status // 100 == 1:
+            logger.debug(
+                (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as not cachable since its status code is informational."
+                )
+            )
             return False
 
         # the no-store cache directive is not present (see Section 5.2.2.5)
         if request_cache_control.no_store:
+            logger.debug(
+                (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as not cachable since the request contains the no-store directive."
+                )
+            )
             return False
 
         # note that the must-understand cache directive overrides
         # no-store in certain circumstances; see Section 5.2.2.3.
-        if response_cache_control.no_store and not response_cache_control.must_understand:
+        if response_cache_control.no_store:
+            if response_cache_control.must_understand:
+                logger.debug(
+                    (
+                        f"Skipping the no-store directive for the resource located at {get_safe_url(request.url)} "
+                        "since the response contains the must-understand directive."
+                    )
+                )
+            else:
+                logger.debug(
+                    (
+                        f"Considering the resource located at {get_safe_url(request.url)} "
+                        "as not cachable since the response contains the no-store directive."
+                    )
+                )
+                return False
+
+        # a shared cache must not store a response with private directive
+        # Note that we do not implement special handling for the qualified form,
+        # which would only forbid storing specified headers.
+        if not self._cache_private and response_cache_control.private:
+            logger.debug(
+                (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as not cachable since the response contains the private directive."
+                )
+            )
             return False
 
         expires_presents = header_presents(response.headers, b"expires")
@@ -181,6 +257,12 @@ class Controller:
         # - a cache extension that allows it to be cached (see Section 5.2.3); or
         # - a status code that is defined as heuristically cacheable (see Section 4.2.2).
         if self._allow_heuristics and response.status in HEURISTICALLY_CACHEABLE_STATUS_CODES:
+            logger.debug(
+                (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as cachable since its status code is heuristically cacheable."
+                )
+            )
             return True
 
         if not any(
@@ -191,8 +273,20 @@ class Controller:
                 response_cache_control.max_age is not None,
             ]
         ):
+            logger.debug(
+                (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as not cachable since it does not contain any of the required cache directives."
+                )
+            )
             return False
 
+        logger.debug(
+            (
+                f"Considering the resource located at {get_safe_url(request.url)} "
+                "as cachable since it meets the criteria for being stored in the cache."
+            )
+        )
         # response is a cachable!
         return True
 
@@ -208,11 +302,23 @@ class Controller:
 
         if header_presents(response.headers, b"last-modified"):
             last_modified = extract_header_values(response.headers, b"last-modified", single=True)[0]
+            logger.debug(
+                (
+                    f"Adding the 'If-Modified-Since' header with the value of '{last_modified.decode('ascii')}' "
+                    f"to the request for the resource located at {get_safe_url(request.url)}."
+                )
+            )
         else:
             last_modified = None
 
         if header_presents(response.headers, b"etag"):
             etag = extract_header_values(response.headers, b"etag", single=True)[0]
+            logger.debug(
+                (
+                    f"Adding the 'If-None-Match' header with the value of '{etag.decode('ascii')}' "
+                    f"to the request for the resource located at {get_safe_url(request.url)}."
+                )
+            )
         else:
             etag = None
 
@@ -265,6 +371,12 @@ class Controller:
         # Use of responses with status codes 301 and 308 is always
         # legal as long as they don't adhere to any caching rules.
         if response.status in (301, 308):
+            logger.debug(
+                (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as valid for cache use since its status code is a permanent redirect."
+                )
+            )
             return response
 
         response_cache_control = parse_cache_control(extract_header_values_decoded(response.headers, b"Cache-Control"))
@@ -274,10 +386,23 @@ class Controller:
         # response (if any) match those presented (see Section 4.1)
         if not self._validate_vary(request=request, response=response, original_request=original_request):
             # If the vary headers does not match, then do not use the response
+            logger.debug(
+                (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as invalid for cache use since the vary headers do not match."
+                )
+            )
             return None  # pragma: no cover
 
         # !!! this should be after the "vary" header validation.
-        if request.extensions.get("force_cache", False):
+        force_cache = request.extensions.get("force_cache", None)
+        if force_cache if force_cache is not None else self._force_cache:
+            logger.debug(
+                (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as valid for cache use since the request is forced to use the cache."
+                )
+            )
             return response
 
         # the stored response does not contain the
@@ -289,15 +414,58 @@ class Controller:
             or response_cache_control.must_revalidate
             or request_cache_control.no_cache
         ):
+            if self._always_revalidate:
+                log_text = (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as needing revalidation since the cache is set to always revalidate."
+                )
+            elif response_cache_control.no_cache:
+                log_text = (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as needing revalidation since the response contains the no-cache directive."
+                )
+            elif response_cache_control.must_revalidate:
+                log_text = (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as needing revalidation since the response contains the must-revalidate directive."
+                )
+            elif request_cache_control.no_cache:
+                log_text = (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as needing revalidation since the request contains the no-cache directive."
+                )
+            else:
+                assert False, "Unreachable code "  # pragma: no cover
+            logger.debug(log_text)
             self._make_request_conditional(request=request, response=response)
             return request
 
         freshness_lifetime = get_freshness_lifetime(response)
 
         if freshness_lifetime is None:
+            logger.debug(
+                (
+                    "Could not determine the freshness lifetime of "
+                    f"the resource located at {get_safe_url(request.url)}, "
+                    "trying to use heuristics to calculate it."
+                )
+            )
             if self._allow_heuristics and response.status in HEURISTICALLY_CACHEABLE_STATUS_CODES:
                 freshness_lifetime = get_heuristic_freshness(response=response, clock=self._clock)
+                logger.debug(
+                    (
+                        f"Successfully calculated the freshness lifetime of the resource located at "
+                        f"{get_safe_url(request.url)} using heuristics."
+                    )
+                )
             else:
+                logger.debug(
+                    (
+                        "Could not calculate the freshness lifetime of "
+                        f"the resource located at {get_safe_url(request.url)}. "
+                        "Making a conditional request to revalidate the response."
+                    )
+                )
                 # If Freshness cannot be calculated, then send the request
                 self._make_request_conditional(request=request, response=response)
                 return request
@@ -312,6 +480,13 @@ class Controller:
         # be fresh for at least the specified number of seconds.
         if request_cache_control.min_fresh is not None:
             if freshness_lifetime < (age + request_cache_control.min_fresh):
+                logger.debug(
+                    (
+                        f"Considering the resource located at {get_safe_url(request.url)} "
+                        "as invalid for cache use since the time left for "
+                        "freshness is less than the min-fresh directive."
+                    )
+                )
                 return None
 
         # The max-stale request directive indicates that the
@@ -324,7 +499,21 @@ class Controller:
             exceeded_freshness_lifetime = age - freshness_lifetime
 
             if request_cache_control.max_stale < exceeded_freshness_lifetime:
+                logger.debug(
+                    (
+                        f"Considering the resource located at {get_safe_url(request.url)} "
+                        "as invalid for cache use since the freshness lifetime has been exceeded more than max-stale."
+                    )
+                )
                 return None
+            else:
+                logger.debug(
+                    (
+                        f"Considering the resource located at {get_safe_url(request.url)} "
+                        "as valid for cache use since the freshness lifetime has been exceeded less than max-stale."
+                    )
+                )
+                return response
 
         # The max-age request directive indicates that
         # the client prefers a response whose age is
@@ -333,9 +522,12 @@ class Controller:
         # the client does not wish to receive a stale response.
         if request_cache_control.max_age is not None:
             if request_cache_control.max_age < age:
-                return None
-
-            if request_cache_control.max_stale is None and not is_fresh:
+                logger.debug(
+                    (
+                        f"Considering the resource located at {get_safe_url(request.url)} "
+                        "as invalid for cache use since the age of the response exceeds the max-age directive."
+                    )
+                )
                 return None
 
         # the stored response is one of the following:
@@ -343,8 +535,20 @@ class Controller:
         #   allowed to be served stale (see Section 4.2.4), or
         #   successfully validated (see Section 4.3).
         if is_fresh:
+            logger.debug(
+                (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as valid for cache use since it is fresh."
+                )
+            )
             return response
         else:
+            logger.debug(
+                (
+                    f"Considering the resource located at {get_safe_url(request.url)} "
+                    "as needing revalidation since it is not fresh."
+                )
+            )
             # Otherwise, make a conditional request
             self._make_request_conditional(request=request, response=response)
             return request
