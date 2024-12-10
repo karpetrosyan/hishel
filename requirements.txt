@@ -18,5 +18,5 @@ coverage==7.6.0
 types-PyYAML==6.0.12.20240311
 
 # build
-hatch==1.7.0
+hatch==1.9.3
 zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
