@@ -224,11 +224,9 @@ class YAMLSerializer(BaseSerializer):
         """
         if yaml is None:  # pragma: no cover
             raise RuntimeError(
-                (
-                    f"The `{type(self).__name__}` was used, but the required packages were not found. "
-                    "Check that you have `Hishel` installed with the `yaml` extension as shown.\n"
-                    "```pip install hishel[yaml]```"
-                )
+                f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                "Check that you have `Hishel` installed with the `yaml` extension as shown.\n"
+                "```pip install hishel[yaml]```"
             )
         response_dict = {
             "status": response.status,
@@ -278,11 +276,9 @@ class YAMLSerializer(BaseSerializer):
         """
         if yaml is None:  # pragma: no cover
             raise RuntimeError(
-                (
-                    f"The `{type(self).__name__}` was used, but the required packages were not found. "
-                    "Check that you have `Hishel` installed with the `yaml` extension as shown.\n"
-                    "```pip install hishel[yaml]```"
-                )
+                f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                "Check that you have `Hishel` installed with the `yaml` extension as shown.\n"
+                "```pip install hishel[yaml]```"
             )
 
         full_json = yaml.safe_load(data)

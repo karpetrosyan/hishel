@@ -1,4 +1,5 @@
-import datetime
+from __future__ import annotations
+
 import types
 import typing as tp
 
@@ -15,6 +16,10 @@ from ._storages import BaseStorage, FileStorage
 T = tp.TypeVar("T")
 
 __all__ = ("CacheConnectionPool",)
+
+
+def fake_stream(content: bytes) -> tp.Iterable[bytes]:
+    yield content
 
 
 def generate_504() -> Response:
@@ -60,7 +65,16 @@ class CacheConnectionPool(RequestInterface):
         if request.extensions.get("cache_disabled", False):
             request.headers.extend([(b"cache-control", b"no-cache"), (b"cache-control", b"max-age=0")])
 
-        key = self._controller._key_generator(request)
+        if request.method.upper() not in [b"GET", b"HEAD"]:
+            # If the HTTP method is, for example, POST,
+            # we must also use the request data to generate the hash.
+            assert isinstance(request.stream, tp.Iterable)
+            body_for_key = b"".join([chunk for chunk in request.stream])
+            request.stream = fake_stream(body_for_key)
+        else:
+            body_for_key = b""
+
+        key = self._controller._key_generator(request, body_for_key)
         stored_data = self._storage.retrieve(key)
 
         request_cache_control = parse_cache_control(extract_header_values_decoded(request.headers, b"Cache-Control"))
@@ -73,6 +87,9 @@ class CacheConnectionPool(RequestInterface):
 
             stored_response, stored_request, metadata = stored_data
 
+            # Immediately read the stored response to avoid issues when trying to access the response body.
+            stored_response.read()
+
             res = self._controller.construct_response_from_cache(
                 request=request,
                 response=stored_response,
@@ -81,55 +98,89 @@ class CacheConnectionPool(RequestInterface):
 
             if isinstance(res, Response):
                 # Simply use the response if the controller determines it is ready for use.
-                metadata["number_of_uses"] += 1
-                stored_response.read()
-                self._storage.store(
+                return self._create_hishel_response(
                     key=key,
-                    request=request,
                     response=stored_response,
+                    request=request,
                     metadata=metadata,
+                    cached=True,
+                    revalidated=False,
                 )
-                res.extensions["from_cache"] = True  # type: ignore[index]
-                res.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                return res
 
             if request_cache_control.only_if_cached:
                 return generate_504()
 
             if isinstance(res, Request):
-                # Re-validating the response.
+                # Controller has determined that the response needs to be re-validated.
 
                 try:
-                    response = self._pool.handle_request(res)
+                    revalidation_response = self._pool.handle_request(res)
                 except ConnectError:
+                    # If there is a connection error, we can use the stale response if allowed.
                     if self._controller._allow_stale and allowed_stale(response=stored_response):
-                        stored_response.extensions["from_cache"] = True  # type: ignore[index]
-                        stored_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                        return stored_response
+                        return self._create_hishel_response(
+                            key=key,
+                            response=stored_response,
+                            request=request,
+                            metadata=metadata,
+                            cached=True,
+                            revalidated=False,
+                        )
                     raise  # pragma: no cover
                 # Merge headers with the stale response.
-                full_response = self._controller.handle_validation_response(
-                    old_response=stored_response, new_response=response
+                final_response = self._controller.handle_validation_response(
+                    old_response=stored_response, new_response=revalidation_response
                 )
 
-                full_response.read()
-                metadata["number_of_uses"] += response.status == 304
-                self._storage.store(key, response=full_response, request=request, metadata=metadata)
-                full_response.extensions["from_cache"] = response.status == 304  # type: ignore[index]
-                if full_response.extensions["from_cache"]:
-                    full_response.extensions["cache_metadata"] = metadata  # type: ignore[index]
-                return full_response
+                final_response.read()
 
-        response = self._pool.handle_request(request)
+                # RFC 9111: 4.3.3. Handling a Validation Response
+                # A 304 (Not Modified) response status code indicates that the stored response can be updated and
+                # reused. A full response (i.e., one containing content) indicates that none of the stored responses
+                # nominated in the conditional request are suitable. Instead, the cache MUST use the full response to
+                # satisfy the request. The cache MAY store such a full response, subject to its constraints.
+                if revalidation_response.status != 304 and self._controller.is_cachable(
+                    request=request, response=final_response
+                ):
+                    self._storage.store(key, response=final_response, request=request)
 
-        if self._controller.is_cachable(request=request, response=response):
-            response.read()
-            metadata = Metadata(
-                cache_key=key, created_at=datetime.datetime.now(datetime.timezone.utc), number_of_uses=0
-            )
-            self._storage.store(key, response=response, request=request, metadata=metadata)
+                return self._create_hishel_response(
+                    key=key,
+                    response=final_response,
+                    request=request,
+                    cached=revalidation_response.status == 304,
+                    revalidated=True,
+                    metadata=metadata,
+                )
 
-        response.extensions["from_cache"] = False  # type: ignore[index]
+        regular_response = self._pool.handle_request(request)
+        regular_response.read()
+
+        if self._controller.is_cachable(request=request, response=regular_response):
+            self._storage.store(key, response=regular_response, request=request)
+
+        return self._create_hishel_response(
+            key=key, response=regular_response, request=request, cached=False, revalidated=False
+        )
+
+    def _create_hishel_response(
+        self,
+        key: str,
+        response: Response,
+        request: Request,
+        cached: bool,
+        revalidated: bool,
+        metadata: Metadata | None = None,
+    ) -> Response:
+        if cached:
+            assert metadata
+            metadata["number_of_uses"] += 1
+            self._storage.update_metadata(key=key, request=request, response=response, metadata=metadata)
+            response.extensions["from_cache"] = True  # type: ignore[index]
+            response.extensions["cache_metadata"] = metadata  # type: ignore[index]
+        else:
+            response.extensions["from_cache"] = False  # type: ignore[index]
+        response.extensions["revalidated"] = revalidated  # type: ignore[index]
         return response
 
     def close(self) -> None:

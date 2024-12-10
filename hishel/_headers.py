@@ -38,8 +38,6 @@ BOOLEAN_FIELDS = [
     "only_if_cached",
     "public",
     "proxy_revalidate",
-    "stale_if_error",
-    "stale_while_revalidate",
 ]
 
 LIST_FIELDS = ["no_cache", "private"]
@@ -146,8 +144,6 @@ class CacheControl:
         proxy_revalidate: bool = False,  # [RFC9111, Section 5.2.2.8]
         public: bool = False,  # [RFC9111, Section 5.2.2.9]
         s_maxage: Optional[int] = None,  # [RFC9111, Section 5.2.2.10]
-        stale_if_error: bool = False,  # [RFC5861, Section 4]
-        stale_while_revalidate: bool = False,  # [RFC5861, Section 3]
     ) -> None:
         self.immutable = immutable
         self.max_age = max_age
@@ -163,8 +159,6 @@ class CacheControl:
         self.proxy_revalidate = proxy_revalidate
         self.public = public
         self.s_maxage = s_maxage
-        self.stale_if_error = stale_if_error
-        self.stale_while_revalidate = stale_while_revalidate
 
     @classmethod
     def validate(cls, directives: Dict[str, Any]) -> Dict[str, Any]:

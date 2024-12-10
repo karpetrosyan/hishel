@@ -71,6 +71,20 @@ storage = hishel.FileStorage(ttl=3600)
 If you do this, `Hishel` will delete any stored responses whose ttl has expired.
 In this example, the stored responses were limited to 1 hour.
 
+The default `ttl` is `None`, which means that responses will be stored until the [controller](controllers.md) decides to remove them.
+
+#### Check ttl every
+
+In order to avoid excessive memory utilization, `Hishel` must periodically clean the old responses, or responses that are not being used and should be deleted from the cache.
+It clears the cache by default every minute, but you may change the interval directly with the `check_ttl_every` argument.
+
+Example:
+
+```python
+import hishel
+
+storage = hishel.FileStorage(check_ttl_every=600) # check every 600s (10m) 
+```
 
 ### :material-memory: In-memory storage
 
@@ -166,6 +180,8 @@ storage = hishel.RedisStorage(ttl=3600)
 If you do this, `Hishel` will delete any stored responses whose ttl has expired.
 In this example, the stored responses were limited to 1 hour.
 
+The default `ttl` is `None`, which means that responses will be stored until the [controller](controllers.md) decides to remove them.
+
 ### :simple-sqlite: SQLite storage
 
 `Hishel` includes built-in [sqlite](https://www.sqlite.org/index.html) support, allowing you to store your responses in sqlite database.
@@ -221,50 +237,70 @@ storage = hishel.SQLiteStorage(ttl=3600)
 If you do this, `Hishel` will delete any stored responses whose ttl has expired.
 In this example, the stored responses were limited to 1 hour.
 
-
-## Which storage is the best?
-
-Let's start with some basic benchmarks to see which one is the fastest.
-
-So there are the results of the benchmarks, where we simply sent 1000 synchronous requests to [hishel.com](https://hishel.com).
-
-| Storage           | Time                          |
-| -----------       | ---- |
-| `FileStorage`     | 0.4s |
-| `SQLiteStorage`   | 2s   |
-| `RedisStorage`    | 0.5s |
-| `InMemoryStorage` | 0.2s |
+The default `ttl` is `None`, which means that responses will be stored until the [controller](controllers.md) decides to remove them.
 
 
-!!! note
-    It is important to note that the results may differ for your environment due to a variety of factors that we ignore.
+### :material-aws: AWS S3 storage
 
-In most cases, `FileStorage`, `RedisStorage` and `InMemoryStorage` are significantly faster than `SQLiteStorage`, but `SQLiteStorage` can be used if you already have a well-configured sqlite database and want to keep cached responses close to your application data.
+`Hishel` has built-in [AWS S3](https://aws.amazon.com/s3/) support, allowing users to store responses in the cloud.
 
-For each storage option, there are some benefits.
+Example:
 
-FileStorage
+```python
+import hishel
 
-1. **0 configuration**
-2. **very fast**
-3. **easy access**
+storage = hishel.S3Storage(bucket_name="cached_responses")
+client = hishel.CacheClient(storage=storage)
+```
 
-RedisStorage
+Or if you are using Transports
+```python
 
-1. **can be shared**
-2. **very fast**
-3. **redis features**
+import httpx
+import hishel
 
-InMemoryStorage
+storage = hishel.S3Storage(bucket_name="cached_responses")
+transport = hishel.CacheTransport(httpx.HTTPTransport(), storage=storage)
+```
 
-1. **temporary cache**
-2. **very fast**
+#### Custom AWS S3 client
 
-SQLiteStorage
+If you want to manually configure the client instance, pass it to Hishel.
 
-1. **can be shared**
-2. **sqlite features**
+```python
+import hishel
+import boto3
 
-!!! tip
-    Any [serializer](serializers.md) can be used with any storage because they are all fully compatible.
+s3_client = boto3.client('s3')
 
+storage = hishel.S3Storage(bucket_name="cached_responses", client=s3_client)
+client = hishel.CacheClient(storage=storage)
+```
+
+#### Responses ttl in S3Storage
+
+You can explicitly specify the ttl for stored responses in this manner.
+
+```python
+import hishel
+
+storage = hishel.S3Storage(ttl=3600)
+```
+
+If you do this, `Hishel` will delete any stored responses whose ttl has expired.
+In this example, the stored responses were limited to 1 hour.
+
+The default `ttl` is `None`, which means that responses will be stored until the [controller](controllers.md) decides to remove them.
+
+#### Check ttl every
+
+In order to avoid excessive memory utilization, `Hishel` must periodically clean the old responses, or responses that are not being used and should be deleted from the cache.
+It clears the cache by default every minute, but you may change the interval directly with the `check_ttl_every` argument.
+
+Example:
+
+```python
+import hishel
+
+storage = hishel.S3Storage(check_ttl_every=600) # check every 600s (10m) 
+```

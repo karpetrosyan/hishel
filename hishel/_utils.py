@@ -6,6 +6,7 @@ from hashlib import blake2b
 
 import anyio
 import httpcore
+import httpx
 
 HEADERS_ENCODING = "iso-8859-1"
 
@@ -33,15 +34,22 @@ def normalized_url(url: tp.Union[httpcore.URL, str, bytes]) -> str:
     assert False, "Invalid type for `normalized_url`"  # pragma: no cover
 
 
-def generate_key(request: httpcore.Request) -> str:
+def get_safe_url(url: httpcore.URL) -> str:
+    httpx_url = httpx.URL(bytes(url).decode("ascii"))
+
+    schema = httpx_url.scheme
+    host = httpx_url.host
+    path = httpx_url.path
+
+    return f"{schema}://{host}{path}"
+
+
+def generate_key(request: httpcore.Request, body: bytes = b"") -> str:
     encoded_url = normalized_url(request.url).encode("ascii")
 
-    key_parts = [
-        request.method,
-        encoded_url,
-    ]
+    key_parts = [request.method, encoded_url, body]
 
-    key = blake2b(digest_size=16)
+    key = blake2b(digest_size=16, usedforsecurity=False)
     for part in key_parts:
         key.update(part)
     return key.hexdigest()

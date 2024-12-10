@@ -13,19 +13,19 @@ jobs:
     
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12" ]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13" ]
     
     env: 
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     steps:
       - uses: "actions/checkout@v4"
-      - uses: "actions/setup-python@v4"
+      - uses: "actions/setup-python@v5"
         with:
           python-version: "${{ matrix.python-version }}"
           allow-prereleases: true
       - name: "Install dependencies"
-        run: pip install -r requirements.txt
+        run: scripts/install
       - name: Start Redis
         uses: supercharge/redis-github-action@1.8.0
         with:
@@ -33,4 +33,4 @@ jobs:
       - name: "Run tests"
         run: scripts/test
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4

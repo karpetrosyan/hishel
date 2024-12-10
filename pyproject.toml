@@ -7,7 +7,7 @@ name = "hishel"
 dynamic = ["readme", "version"]
 description = "Persistent cache implementation for httpx and httpcore"
 license = "BSD-3-Clause"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
     { name = "Kar Petrosyan", email = "kar.petrosyanpy@gmail.com" },
 ]
@@ -21,15 +21,15 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
-    "httpx>=0.22.0"
+    "httpx>=0.28.0",
 ]
 
 [project.optional-dependencies]
@@ -39,11 +39,16 @@ yaml = [
 ]
 
 redis = [
-    "redis==5.0.1"
+    "redis==5.0.4"
 ]
 
 sqlite = [
     "anysqlite>=0.0.5"
+]
+
+s3 = [
+    "boto3>=1.15.0,<=1.15.3; python_version < '3.12'",
+    "boto3>=1.15.3; python_version >= '3.12'"
 ]
 
 [project.urls]
@@ -73,7 +78,7 @@ path = "CHANGELOG.md"
 strict = true
 show_error_codes = true
 warn_unused_ignores = false
-
+exclude = ['venv', '.venv']
 
 [[tool.mypy.overrides]]
 module = "tests.*"
@@ -88,7 +93,8 @@ filterwarnings = []
 [tool.coverage.run]
 omit = [
     "venv/*", 
-    "hishel/_sync/*"
+    "hishel/_sync/*",
+    "hishel/_s3.py"
 ]
 include = ["hishel/*", "tests/*"]
 
@@ -105,6 +111,8 @@ exclude = [
     "tests/_sync",
 ]
 line-length = 120
+
+[tool.ruff.lint]
 select = [
     "E",
     "F",
@@ -112,5 +120,5 @@ select = [
     "I"
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 combine-as-imports = true
