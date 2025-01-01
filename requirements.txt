@@ -13,8 +13,8 @@ pytest==8.0.2
 types-boto3==1.0.2
 types-redis==4.6.0.20240425
 anyio==4.4.0
-trio==0.25.0
-coverage==7.6.0
+trio==0.28.0
+coverage==7.6.10
 types-PyYAML==6.0.12.20240311
 
 # build
