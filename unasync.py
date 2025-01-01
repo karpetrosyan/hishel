@@ -27,7 +27,7 @@ SUBS = [
     ("AsyncClient", "Client"),
     ("AsyncIterable", "Iterable"),
     ("AsyncCacheStream", "CacheStream"),
-    ("AsyncByteStream", "ByteStream"),
+    ("AsyncByteStream", "SyncByteStream"),
     ("AsyncCacheConnectionPool", "CacheConnectionPool"),
     ("handle_async_request", "handle_request"),
     ("aread", "read"),
