@@ -5,7 +5,7 @@ import typing as tp
 
 import httpcore
 import httpx
-from httpx import ByteStream, Request, Response
+from httpx import SyncByteStream, Request, Response
 from httpx._exceptions import ConnectError
 
 from hishel._utils import extract_header_values_decoded, normalized_url
@@ -29,7 +29,7 @@ def generate_504() -> Response:
     return Response(status_code=504)
 
 
-class CacheStream(ByteStream):
+class CacheStream(SyncByteStream):
     def __init__(self, httpcore_stream: tp.Iterable[bytes]):
         self._httpcore_stream = httpcore_stream
 
