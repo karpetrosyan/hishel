@@ -4,6 +4,7 @@
 
 - Fix compatibility with httpx. (#291)
 - Use `SyncByteStream` instead of `ByteStream`. (#298)
+- Add `ignore_response_cache_control` (default `False`) as controller argument
 
 ## 0.1.1 (2nd Nov, 2024)
 

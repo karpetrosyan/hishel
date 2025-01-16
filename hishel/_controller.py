@@ -119,6 +119,7 @@ class Controller:
         allow_stale: bool = False,
         always_revalidate: bool = False,
         force_cache: bool = False,
+        ignore_response_cache_control: bool = False,
         key_generator: tp.Optional[tp.Callable[[Request, tp.Optional[bytes]], str]] = None,
     ):
         self._cacheable_methods = []
@@ -141,6 +142,7 @@ class Controller:
         self._allow_stale = allow_stale
         self._always_revalidate = always_revalidate
         self._force_cache = force_cache
+        self._ignore_response_cache_control = ignore_response_cache_control
         self._key_generator = key_generator or generate_key
 
     def is_cachable(self, request: Request, response: Response) -> bool:
@@ -184,7 +186,7 @@ class Controller:
             )
             return False
 
-        if force_cache if force_cache is not None else self._force_cache:
+        if force_cache or (force_cache is None and self._force_cache):
             logger.debug(
                 (
                     f"Considering the resource located at {get_safe_url(request.url)} "
@@ -218,7 +220,7 @@ class Controller:
 
         # note that the must-understand cache directive overrides
         # no-store in certain circumstances; see Section 5.2.2.3.
-        if response_cache_control.no_store:
+        if not self._ignore_response_cache_control and response_cache_control.no_store:
             if response_cache_control.must_understand:
                 logger.debug(
                     (
