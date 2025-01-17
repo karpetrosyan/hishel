@@ -190,7 +190,7 @@ class FileStorage(BaseStorage):
                 os.utime(response_path, (atime, old_mtime))
                 return
 
-        return self.store(key, response, request, metadata)  # pragma: no cover
+        self.store(key, response, request, metadata)  # pragma: no cover
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -355,7 +355,7 @@ class SQLiteStorage(BaseStorage):
                 self._connection.execute("UPDATE cache SET data = ? WHERE key = ?", [serialized_response, key])
                 self._connection.commit()
                 return
-        return self.store(key, response, request, metadata)  # pragma: no cover
+        self.store(key, response, request, metadata)  # pragma: no cover
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
