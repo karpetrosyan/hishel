@@ -162,7 +162,7 @@ class FileStorage(BaseStorage):
             if response_path.exists():
                 response_path.unlink()
 
-    def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+    def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> Metadata:
         """
         Updates the metadata of the stored response.
 
@@ -330,7 +330,7 @@ class SQLiteStorage(BaseStorage):
             self._connection.execute("DELETE FROM cache WHERE key = ?", [key])
             self._connection.commit()
 
-    def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
+    def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> Metadata:
         """
         Updates the metadata of the stored response.
 
