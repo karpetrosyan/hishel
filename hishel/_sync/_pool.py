@@ -82,6 +82,8 @@ class CacheConnectionPool(RequestInterface):
         if request_cache_control.only_if_cached and not stored_data:
             return generate_504()
 
+        metadata = None
+
         if stored_data:
             # Try using the stored response if it was discovered.
 
@@ -157,10 +159,15 @@ class CacheConnectionPool(RequestInterface):
         regular_response.read()
 
         if self._controller.is_cachable(request=request, response=regular_response):
-            self._storage.store(key, response=regular_response, request=request)
+            metadata = self._storage.store(key, response=regular_response, request=request)
 
         return self._create_hishel_response(
-            key=key, response=regular_response, request=request, cached=False, revalidated=False
+            key=key,
+            response=regular_response,
+            request=request,
+            cached=False,
+            revalidated=False,
+            metadata=metadata,
         )
 
     def _create_hishel_response(
@@ -170,16 +177,19 @@ class CacheConnectionPool(RequestInterface):
         request: Request,
         cached: bool,
         revalidated: bool,
-        metadata: Metadata | None = None,
+        metadata: Metadata | None,
     ) -> Response:
         if cached:
             assert metadata
             metadata["number_of_uses"] += 1
-            self._storage.update_metadata(key=key, request=request, response=response, metadata=metadata)
-            response.extensions["from_cache"] = True  # type: ignore[index]
+            self._storage.update_metadata(
+                key=key,
+                request=request,
+                response=response,
+                metadata=metadata,
+            )
             response.extensions["cache_metadata"] = metadata  # type: ignore[index]
-        else:
-            response.extensions["from_cache"] = False  # type: ignore[index]
+        response.extensions["from_cache"] = cached  # type: ignore[index]
         response.extensions["revalidated"] = revalidated  # type: ignore[index]
         return response
 
