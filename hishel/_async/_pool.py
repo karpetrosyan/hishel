@@ -177,7 +177,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
         request: Request,
         cached: bool,
         revalidated: bool,
-        metadata: Metadata | None = None,
+        metadata: Metadata | None,
     ) -> Response:
         if cached:
             assert metadata
