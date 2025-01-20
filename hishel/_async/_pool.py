@@ -82,6 +82,8 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
         if request_cache_control.only_if_cached and not stored_data:
             return generate_504()
 
+        metadata = None
+
         if stored_data:
             # Try using the stored response if it was discovered.
 
@@ -142,7 +144,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                 if revalidation_response.status != 304 and self._controller.is_cachable(
                     request=request, response=final_response
                 ):
-                    await self._storage.store(key, response=final_response, request=request)
+                    await metadata = self._storage.store(key, response=final_response, request=request)
 
                 return await self._create_hishel_response(
                     key=key,
@@ -157,10 +159,15 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
         await regular_response.aread()
 
         if self._controller.is_cachable(request=request, response=regular_response):
-            await self._storage.store(key, response=regular_response, request=request)
+            await metadata = self._storage.store(key, response=regular_response, request=request)
 
         return await self._create_hishel_response(
-            key=key, response=regular_response, request=request, cached=False, revalidated=False
+            key=key,
+            response=regular_response,
+            request=request,
+            cached=False,
+            revalidated=False,
+            metadata=metadata,
         )
 
     async def _create_hishel_response(
@@ -175,11 +182,14 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
         if cached:
             assert metadata
             metadata["number_of_uses"] += 1
-            await self._storage.update_metadata(key=key, request=request, response=response, metadata=metadata)
-            response.extensions["from_cache"] = True  # type: ignore[index]
+            await self._storage.update_metadata(
+                key=key,
+                request=request,
+                response=response,
+                metadata=metadata,
+            )
             response.extensions["cache_metadata"] = metadata  # type: ignore[index]
-        else:
-            response.extensions["from_cache"] = False  # type: ignore[index]
+        response.extensions["from_cache"] = cached  # type: ignore[index]
         response.extensions["revalidated"] = revalidated  # type: ignore[index]
         return response
 

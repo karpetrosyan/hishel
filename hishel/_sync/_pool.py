@@ -144,7 +144,7 @@ class CacheConnectionPool(RequestInterface):
                 if revalidation_response.status != 304 and self._controller.is_cachable(
                     request=request, response=final_response
                 ):
-                    self._storage.store(key, response=final_response, request=request)
+                    metadata = self._storage.store(key, response=final_response, request=request)
 
                 return self._create_hishel_response(
                     key=key,
