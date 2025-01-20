@@ -190,7 +190,7 @@ class AsyncFileStorage(AsyncBaseStorage):
                 os.utime(response_path, (atime, old_mtime))
                 return
 
-        return await self.store(key, response, request, metadata)  # pragma: no cover
+        await self.store(key, response, request, metadata)  # pragma: no cover
 
     async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -355,7 +355,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
                 await self._connection.execute("UPDATE cache SET data = ? WHERE key = ?", [serialized_response, key])
                 await self._connection.commit()
                 return
-        return await self.store(key, response, request, metadata)  # pragma: no cover
+        await self.store(key, response, request, metadata)  # pragma: no cover
 
     async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
