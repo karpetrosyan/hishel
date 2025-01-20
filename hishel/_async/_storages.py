@@ -354,8 +354,9 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
                 serialized_response = self._serializer.dumps(response=response, request=request, metadata=metadata)
                 await self._connection.execute("UPDATE cache SET data = ? WHERE key = ?", [serialized_response, key])
                 await self._connection.commit()
-                return
+                return None
         await self.store(key, response, request, metadata)  # pragma: no cover
+        return None
 
     async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
