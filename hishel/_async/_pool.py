@@ -144,7 +144,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
                 if revalidation_response.status != 304 and self._controller.is_cachable(
                     request=request, response=final_response
                 ):
-                    await metadata = self._storage.store(key, response=final_response, request=request)
+                    metadata = await self._storage.store(key, response=final_response, request=request)
 
                 return await self._create_hishel_response(
                     key=key,
@@ -159,7 +159,7 @@ class AsyncCacheConnectionPool(AsyncRequestInterface):
         await regular_response.aread()
 
         if self._controller.is_cachable(request=request, response=regular_response):
-            await metadata = self._storage.store(key, response=regular_response, request=request)
+            metadata = await self._storage.store(key, response=regular_response, request=request)
 
         return await self._create_hishel_response(
             key=key,
