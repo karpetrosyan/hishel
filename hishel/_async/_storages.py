@@ -188,7 +188,7 @@ class AsyncFileStorage(AsyncBaseStorage):
 
                 # Restore the old atime and mtime (we use mtime to check the cache expiration time)
                 os.utime(response_path, (atime, old_mtime))
-                return
+                return None
 
         await self.store(key, response, request, metadata)  # pragma: no cover
 
