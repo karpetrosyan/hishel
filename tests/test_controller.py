@@ -269,10 +269,10 @@ def test_get_heuristic_freshness():
 
 
 def test_get_heuristic_freshness_without_last_modified():
-    ONE_DAY = 86400
+    ONE_DAY = 86_400
 
     response = Response(200)
-    assert get_heuristic_freshness(response=response, clock=Clock()) == ONE_DAY
+    assert get_heuristic_freshness(response=response) == ONE_DAY
 
 
 @freeze_time("Tue, 26 Aug 2015 12:00:00 GMT")

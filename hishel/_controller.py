@@ -68,12 +68,12 @@ def get_freshness_lifetime(response: Response) -> tp.Optional[int]:
     return None
 
 
-def get_heuristic_freshness(response: Response, clock: "BaseClock") -> int:
+def get_heuristic_freshness(response: Response) -> int:
     last_modified = extract_header_values_decoded(response.headers, b"last-modified", single=True)
 
     if last_modified:
         last_modified_timestamp = parse_date(last_modified[0])
-        now = clock.now()
+        now = int(datetime.now(timezone.utc).timestamp())
 
         ONE_WEEK = 604_800
 
