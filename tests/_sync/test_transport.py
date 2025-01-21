@@ -3,6 +3,7 @@ import typing as tp
 import httpx
 import pytest
 import sniffio
+from freezegun import freeze_time
 
 import hishel
 from hishel._utils import BaseClock, extract_header_values_decoded
@@ -181,11 +182,8 @@ def test_transport_with_only_if_cached_directive_with_stored_response():
 
 
 
+@freeze_time("Mon, 25 Aug 2015 12:00:01 GMT")
 def test_transport_with_cache_disabled_extension():
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440504001  # Mon, 25 Aug 2015 12:00:01 GMT
-
     cachable_response = httpx.Response(
         200,
         headers=[
@@ -198,7 +196,6 @@ def test_transport_with_cache_disabled_extension():
         transport.add_responses([cachable_response, httpx.Response(201)])
         with hishel.CacheTransport(
             transport=transport,
-            controller=hishel.Controller(clock=MockedClock()),
             storage=hishel.InMemoryStorage(),
         ) as cache_transport:
             request = httpx.Request("GET", "https://www.example.com")
@@ -285,7 +282,7 @@ def test_transport_caching_post_method():
 
 
 def test_revalidation_with_new_content():
-    with freeze_time("Mon, Aug 25 2015, 12:00:00 GMT") as frozen_datetime:
+    with freeze_time("Mon, 25 Aug 2015 12:00:00 GMT") as frozen_datetime:
         controller = hishel.Controller()
         storage = hishel.InMemoryStorage()
 
@@ -333,7 +330,9 @@ def test_revalidation_with_new_content():
                 stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
                 assert stored
                 stored_response, stored_request, stored_metadata = stored
-                assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:00 GMT"]
+                assert extract_header_values_decoded(stored_response.headers, b"Date") == [
+                    "Mon, 25 Aug 2015 12:00:00 GMT"
+                ]
                 assert stored_response.content == b"Hello, World."
 
                 # tic, tac... one second passed
@@ -352,7 +351,9 @@ def test_revalidation_with_new_content():
                 stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
                 assert stored
                 stored_response, stored_request, stored_metadata = stored
-                assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:01 GMT"]
+                assert extract_header_values_decoded(stored_response.headers, b"Date") == [
+                    "Mon, 25 Aug 2015 12:00:01 GMT"
+                ]
                 assert stored_response.content == b"Eat at Joe's."
 
                 # tic, tac, tic, tac... ten more seconds passed, let's check the 304 behavious is not broken
@@ -365,7 +366,9 @@ def test_revalidation_with_new_content():
                 stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
                 assert stored
                 stored_response, stored_request, stored_metadata = stored
-                assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:11 GMT"]
+                assert extract_header_values_decoded(stored_response.headers, b"Date") == [
+                    "Mon, 25 Aug 2015 12:00:11 GMT"
+                ]
                 assert stored_response.content == b"Eat at Joe's."
 
 
