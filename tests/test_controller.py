@@ -260,7 +260,7 @@ def test_get_freshness_lifetime_with_expires():
     assert freshness_lifetime == 86400  # one day
 
 
-@freeze_time("Mon, 25 Aug 2003 12:00:00 GMT")
+@freeze_time("Mon, Aug 25 2004, 12:00:00 GMT")
 def test_get_heuristic_freshness():
     ONE_WEEK = 604_800
 
@@ -421,7 +421,7 @@ def test_construct_response_from_cache_fresh():
     )
 
 
-@freeze_time("Mon, 25 Aug 2003 12:00:02 GMT")
+@freeze_time("Mon, 25 Aug 2015 12:00:02 GMT")
 def test_construct_response_from_cache_stale():
     controller = Controller()
     response = Response(

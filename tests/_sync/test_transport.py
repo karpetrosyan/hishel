@@ -285,94 +285,88 @@ def test_transport_caching_post_method():
 
 
 def test_revalidation_with_new_content():
-    class MockedClock(BaseClock):
-        current = 1440504000  # Mon, 25 Aug 2015 12:00:00 GMT
+    with freeze_time("Mon, Aug 25 2015, 12:00:00 GMT") as frozen_datetime:
+        controller = hishel.Controller()
+        storage = hishel.InMemoryStorage()
 
-        def now(self) -> int:
-            return self.current
+        with hishel.MockTransport() as transport:
+            transport.add_responses(
+                [
+                    httpx.Response(
+                        200,
+                        headers=[
+                            (b"Cache-Control", b"max-age=1"),
+                            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+                        ],
+                        content=b"Hello, World.",
+                    ),
+                    httpx.Response(
+                        200,
+                        headers=[
+                            (b"Cache-Control", b"max-age=10"),
+                            (b"Date", b"Mon, 25 Aug 2015 12:00:01 GMT"),
+                        ],
+                        content=b"Eat at Joe's.",
+                    ),
+                    httpx.Response(
+                        304,
+                        headers=[
+                            (b"Cache-Control", b"max-age=10"),
+                            (b"Date", b"Mon, 25 Aug 2015 12:00:11 GMT"),
+                        ],
+                    ),
+                ]
+            )
+            with hishel.CacheTransport(
+                transport=transport, controller=controller, storage=storage
+            ) as cache_transport:
+                # Miss, 200, store
+                response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
+                assert not response.extensions["from_cache"]
 
-    clock = MockedClock()
-    controller = hishel.Controller(clock=clock)
-    storage = hishel.InMemoryStorage()
+                # Hit
+                response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
+                assert response.extensions["from_cache"]
+                assert response.extensions["cache_metadata"]["number_of_uses"] == 1
 
-    with hishel.MockTransport() as transport:
-        transport.add_responses(
-            [
-                httpx.Response(
-                    200,
-                    headers=[
-                        (b"Cache-Control", b"max-age=1"),
-                        (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
-                    ],
-                    content=b"Hello, World.",
-                ),
-                httpx.Response(
-                    200,
-                    headers=[
-                        (b"Cache-Control", b"max-age=10"),
-                        (b"Date", b"Mon, 25 Aug 2015 12:00:01 GMT"),
-                    ],
-                    content=b"Eat at Joe's.",
-                ),
-                httpx.Response(
-                    304,
-                    headers=[
-                        (b"Cache-Control", b"max-age=10"),
-                        (b"Date", b"Mon, 25 Aug 2015 12:00:11 GMT"),
-                    ],
-                ),
-            ]
-        )
-        with hishel.CacheTransport(
-            transport=transport, controller=controller, storage=storage
-        ) as cache_transport:
-            # Miss, 200, store
-            response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
-            assert not response.extensions["from_cache"]
+                # Cache contains the first response content
+                stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
+                assert stored
+                stored_response, stored_request, stored_metadata = stored
+                assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:00 GMT"]
+                assert stored_response.content == b"Hello, World."
 
-            # Hit
-            response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
-            assert response.extensions["from_cache"]
-            assert response.extensions["cache_metadata"]["number_of_uses"] == 1
+                # tic, tac... one second passed
+                frozen_datetime.tick()
 
-            # Cache contains the first response content
-            stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
-            assert stored
-            stored_response, stored_request, stored_metadata = stored
-            assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:00 GMT"]
-            assert stored_response.content == b"Hello, World."
+                # Miss (expired), send revalidation, 200, store
+                response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
+                assert not response.extensions["from_cache"]
 
-            # tic, tac... one second passed
-            clock.current += 1
+                # Hit (cf issue #239)
+                response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
+                assert response.extensions["from_cache"]
+                assert response.extensions["cache_metadata"]["number_of_uses"] == 1
 
-            # Miss (expired), send revalidation, 200, store
-            response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
-            assert not response.extensions["from_cache"]
+                # Cache was updated and contains the second response content
+                stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
+                assert stored
+                stored_response, stored_request, stored_metadata = stored
+                assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:01 GMT"]
+                assert stored_response.content == b"Eat at Joe's."
 
-            # Hit (cf issue #239)
-            response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
-            assert response.extensions["from_cache"]
-            assert response.extensions["cache_metadata"]["number_of_uses"] == 1
+                # tic, tac, tic, tac... ten more seconds passed, let's check the 304 behavious is not broken
+                frozen_datetime.tick(10)
 
-            # Cache was updated and contains the second response content
-            stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
-            assert stored
-            stored_response, stored_request, stored_metadata = stored
-            assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:01 GMT"]
-            assert stored_response.content == b"Eat at Joe's."
-
-            # tic, tac, tic, tac... ten more seconds passed, let's check the 304 behavious is not broken
-            clock.current += 10
-
-            # Miss (expired), send revalidation, 304, update metadata but keep previous content
-            response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
-            assert response.extensions["from_cache"]
-            assert response.extensions["cache_metadata"]["number_of_uses"] == 2
-            stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
-            assert stored
-            stored_response, stored_request, stored_metadata = stored
-            assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:11 GMT"]
-            assert stored_response.content == b"Eat at Joe's."
+                # Miss (expired), send revalidation, 304, update metadata but keep previous content
+                response = cache_transport.handle_request(httpx.Request("GET", "https://example.com/"))
+                assert response.extensions["from_cache"]
+                assert response.extensions["cache_metadata"]["number_of_uses"] == 2
+                stored = storage.retrieve(response.extensions["cache_metadata"]["cache_key"])
+                assert stored
+                stored_response, stored_request, stored_metadata = stored
+                assert extract_header_values_decoded(stored_response.headers, b"Date") == ["Mon, 25 Aug 2015 12:00:11 GMT"]
+                assert stored_response.content == b"Eat at Joe's."
 
 
 
