@@ -1,5 +1,6 @@
 import typing as tp
 
+from freezegun import freeze_time
 import httpcore
 import pytest
 import sniffio
@@ -162,11 +163,8 @@ async def test_pool_with_only_if_cached_directive_with_stored_response():
 
 
 @pytest.mark.anyio
+@freeze_time("Mon, 25 Aug 2015 12:00:01 GMT")
 async def test_pool_with_cache_disabled_extension():
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440504001  # Mon, 25 Aug 2015 12:00:01 GMT
-
     cachable_response = httpcore.Response(
         200,
         headers=[
@@ -178,7 +176,7 @@ async def test_pool_with_cache_disabled_extension():
     async with hishel.MockAsyncConnectionPool() as pool:
         pool.add_responses([cachable_response, httpcore.Response(201)])
         async with hishel.AsyncCacheConnectionPool(
-            pool=pool, controller=hishel.Controller(clock=MockedClock()), storage=hishel.AsyncInMemoryStorage()
+            pool=pool, storage=hishel.AsyncInMemoryStorage()
         ) as cache_transport:
             request = httpcore.Request("GET", "https://www.example.com")
             # This should create a cache entry
