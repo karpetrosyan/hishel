@@ -63,7 +63,7 @@ class BaseStorage:
         self._serializer = serializer or JSONSerializer()
         self._ttl = ttl
 
-    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> Metadata:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         raise NotImplementedError()
 
     def remove(self, key: RemoveTypes) -> None:
@@ -118,7 +118,7 @@ class FileStorage(BaseStorage):
         self._check_ttl_every = check_ttl_every
         self._last_cleaned = time.monotonic()
 
-    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> Metadata:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
 
@@ -143,7 +143,6 @@ class FileStorage(BaseStorage):
                 self._serializer.dumps(response=response, request=request, metadata=metadata),
             )
         self._remove_expired_caches(response_path)
-        return metadata
 
     def remove(self, key: RemoveTypes) -> None:
         """
@@ -188,9 +187,9 @@ class FileStorage(BaseStorage):
 
                 # Restore the old atime and mtime (we use mtime to check the cache expiration time)
                 os.utime(response_path, (atime, old_mtime))
-                return None
+                return
 
-        self.store(key, response, request, metadata)  # pragma: no cover
+        return self.store(key, response, request, metadata)  # pragma: no cover
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -281,7 +280,7 @@ class SQLiteStorage(BaseStorage):
                 self._connection.commit()
                 self._setup_completed = True
 
-    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> Metadata:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
 
@@ -310,7 +309,6 @@ class SQLiteStorage(BaseStorage):
             )
             self._connection.commit()
         self._remove_expired_caches()
-        return metadata
 
     def remove(self, key: RemoveTypes) -> None:
         """
@@ -354,9 +352,8 @@ class SQLiteStorage(BaseStorage):
                 serialized_response = self._serializer.dumps(response=response, request=request, metadata=metadata)
                 self._connection.execute("UPDATE cache SET data = ? WHERE key = ?", [serialized_response, key])
                 self._connection.commit()
-                return None
-        self.store(key, response, request, metadata)  # pragma: no cover
-        return None
+                return
+        return self.store(key, response, request, metadata)  # pragma: no cover
 
     def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -426,7 +423,7 @@ class RedisStorage(BaseStorage):
         else:  # pragma: no cover
             self._client = client
 
-    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> Metadata:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
 
@@ -452,7 +449,6 @@ class RedisStorage(BaseStorage):
         self._client.set(
             key, self._serializer.dumps(response=response, request=request, metadata=metadata), px=px
         )
-        return metadata
 
     def remove(self, key: RemoveTypes) -> None:
         """
@@ -542,7 +538,7 @@ class InMemoryStorage(BaseStorage):
         self._cache: LFUCache[str, tp.Tuple[StoredResponse, float]] = LFUCache(capacity=capacity)
         self._lock = Lock()
 
-    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> Metadata:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
 
@@ -566,7 +562,6 @@ class InMemoryStorage(BaseStorage):
             stored_response: StoredResponse = (deepcopy(response_clone), deepcopy(request_clone), metadata)
             self._cache.put(key, (stored_response, time.monotonic()))
         self._remove_expired_caches()
-        return metadata
 
     def remove(self, key: RemoveTypes) -> None:
         """
@@ -688,7 +683,7 @@ class S3Storage(BaseStorage):  # pragma: no cover
         )
         self._lock = Lock()
 
-    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> Metadata:
+    def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
 
@@ -711,7 +706,6 @@ class S3Storage(BaseStorage):  # pragma: no cover
             self._s3_manager.write_to(path=key, data=serialized)
 
         self._remove_expired_caches(key)
-        return metadata
 
     def remove(self, key: RemoveTypes) -> None:
         """

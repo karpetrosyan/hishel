@@ -82,8 +82,6 @@ class CacheConnectionPool(RequestInterface):
         if request_cache_control.only_if_cached and not stored_data:
             return generate_504()
 
-        metadata = None
-
         if stored_data:
             # Try using the stored response if it was discovered.
 
@@ -144,7 +142,7 @@ class CacheConnectionPool(RequestInterface):
                 if revalidation_response.status != 304 and self._controller.is_cachable(
                     request=request, response=final_response
                 ):
-                    metadata = self._storage.store(key, response=final_response, request=request)
+                    self._storage.store(key, response=final_response, request=request)
 
                 return self._create_hishel_response(
                     key=key,
@@ -159,15 +157,10 @@ class CacheConnectionPool(RequestInterface):
         regular_response.read()
 
         if self._controller.is_cachable(request=request, response=regular_response):
-            metadata = self._storage.store(key, response=regular_response, request=request)
+            self._storage.store(key, response=regular_response, request=request)
 
         return self._create_hishel_response(
-            key=key,
-            response=regular_response,
-            request=request,
-            cached=False,
-            revalidated=False,
-            metadata=metadata,
+            key=key, response=regular_response, request=request, cached=False, revalidated=False
         )
 
     def _create_hishel_response(
@@ -177,19 +170,16 @@ class CacheConnectionPool(RequestInterface):
         request: Request,
         cached: bool,
         revalidated: bool,
-        metadata: Metadata | None,
+        metadata: Metadata | None = None,
     ) -> Response:
         if cached:
             assert metadata
             metadata["number_of_uses"] += 1
-            self._storage.update_metadata(
-                key=key,
-                request=request,
-                response=response,
-                metadata=metadata,
-            )
+            self._storage.update_metadata(key=key, request=request, response=response, metadata=metadata)
+            response.extensions["from_cache"] = True  # type: ignore[index]
             response.extensions["cache_metadata"] = metadata  # type: ignore[index]
-        response.extensions["from_cache"] = cached  # type: ignore[index]
+        else:
+            response.extensions["from_cache"] = False  # type: ignore[index]
         response.extensions["revalidated"] = revalidated  # type: ignore[index]
         return response
 

@@ -63,7 +63,7 @@ class AsyncBaseStorage:
         self._serializer = serializer or JSONSerializer()
         self._ttl = ttl
 
-    async def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> Metadata:
+    async def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         raise NotImplementedError()
 
     async def remove(self, key: RemoveTypes) -> None:
@@ -118,7 +118,7 @@ class AsyncFileStorage(AsyncBaseStorage):
         self._check_ttl_every = check_ttl_every
         self._last_cleaned = time.monotonic()
 
-    async def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> Metadata:
+    async def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
 
@@ -143,7 +143,6 @@ class AsyncFileStorage(AsyncBaseStorage):
                 self._serializer.dumps(response=response, request=request, metadata=metadata),
             )
         await self._remove_expired_caches(response_path)
-        return metadata
 
     async def remove(self, key: RemoveTypes) -> None:
         """
@@ -188,9 +187,9 @@ class AsyncFileStorage(AsyncBaseStorage):
 
                 # Restore the old atime and mtime (we use mtime to check the cache expiration time)
                 os.utime(response_path, (atime, old_mtime))
-                return None
+                return
 
-        await self.store(key, response, request, metadata)  # pragma: no cover
+        return await self.store(key, response, request, metadata)  # pragma: no cover
 
     async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -281,7 +280,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
                 await self._connection.commit()
                 self._setup_completed = True
 
-    async def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> Metadata:
+    async def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
 
@@ -310,7 +309,6 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
             )
             await self._connection.commit()
         await self._remove_expired_caches()
-        return metadata
 
     async def remove(self, key: RemoveTypes) -> None:
         """
@@ -354,9 +352,8 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
                 serialized_response = self._serializer.dumps(response=response, request=request, metadata=metadata)
                 await self._connection.execute("UPDATE cache SET data = ? WHERE key = ?", [serialized_response, key])
                 await self._connection.commit()
-                return None
-        await self.store(key, response, request, metadata)  # pragma: no cover
-        return None
+                return
+        return await self.store(key, response, request, metadata)  # pragma: no cover
 
     async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
         """
@@ -426,7 +423,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
         else:  # pragma: no cover
             self._client = client
 
-    async def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> Metadata:
+    async def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
 
@@ -452,7 +449,6 @@ class AsyncRedisStorage(AsyncBaseStorage):
         await self._client.set(
             key, self._serializer.dumps(response=response, request=request, metadata=metadata), px=px
         )
-        return metadata
 
     async def remove(self, key: RemoveTypes) -> None:
         """
@@ -542,7 +538,7 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
         self._cache: LFUCache[str, tp.Tuple[StoredResponse, float]] = LFUCache(capacity=capacity)
         self._lock = AsyncLock()
 
-    async def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> Metadata:
+    async def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
 
@@ -566,7 +562,6 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
             stored_response: StoredResponse = (deepcopy(response_clone), deepcopy(request_clone), metadata)
             self._cache.put(key, (stored_response, time.monotonic()))
         await self._remove_expired_caches()
-        return metadata
 
     async def remove(self, key: RemoveTypes) -> None:
         """
@@ -688,7 +683,7 @@ class AsyncS3Storage(AsyncBaseStorage):  # pragma: no cover
         )
         self._lock = AsyncLock()
 
-    async def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> Metadata:
+    async def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
         """
         Stores the response in the cache.
 
@@ -711,7 +706,6 @@ class AsyncS3Storage(AsyncBaseStorage):  # pragma: no cover
             await self._s3_manager.write_to(path=key, data=serialized)
 
         await self._remove_expired_caches(key)
-        return metadata
 
     async def remove(self, key: RemoveTypes) -> None:
         """
