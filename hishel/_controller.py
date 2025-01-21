@@ -449,7 +449,7 @@ class Controller:
                 )
             )
             if self._allow_heuristics and response.status in HEURISTICALLY_CACHEABLE_STATUS_CODES:
-                freshness_lifetime = get_heuristic_freshness(response=response, clock=self._clock)
+                freshness_lifetime = get_heuristic_freshness(response=response)
                 logger.debug(
                     (
                         f"Successfully calculated the freshness lifetime of the resource located at "
