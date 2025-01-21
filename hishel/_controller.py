@@ -7,8 +7,6 @@ from httpcore import Request, Response
 from hishel._headers import Vary, parse_cache_control
 
 from ._utils import (
-    BaseClock,
-    Clock,
     extract_header_values,
     extract_header_values_decoded,
     generate_key,
@@ -113,7 +111,6 @@ class Controller:
         cacheable_status_codes: tp.Optional[tp.List[int]] = None,
         cache_private: bool = True,
         allow_heuristics: bool = False,
-        clock: tp.Optional[BaseClock] = None,
         allow_stale: bool = False,
         always_revalidate: bool = False,
         force_cache: bool = False,
@@ -134,7 +131,6 @@ class Controller:
 
         self._cacheable_status_codes = cacheable_status_codes if cacheable_status_codes else [200, 301, 308]
         self._cache_private = cache_private
-        self._clock = clock if clock else Clock()
         self._allow_heuristics = allow_heuristics
         self._allow_stale = allow_stale
         self._always_revalidate = always_revalidate

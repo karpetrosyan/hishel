@@ -12,7 +12,6 @@ from hishel._controller import (
     get_freshness_lifetime,
     get_heuristic_freshness,
 )
-from hishel._utils import Clock
 
 
 def test_is_cachable_for_cachables():
@@ -304,11 +303,6 @@ def test_allowed_stale_allowed():
     response = Response(status=200, headers=[(b"Cache-Control", b"max-age=3600")])
 
     assert allowed_stale(response)
-
-
-def test_clock():
-    date_07_19_2023 = 1689764505
-    assert Clock().now() > date_07_19_2023
 
 
 def test_permanent_redirect_cache(caplog):
