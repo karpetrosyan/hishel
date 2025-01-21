@@ -91,9 +91,7 @@ def get_age(response: Response) -> int:
 
     date = parse_date(extract_header_values_decoded(response.headers, b"date")[0])
 
-    now = datetime.now(timezone.utc)
-    apparent_age = max(0, now - date)
-    return int(apparent_age)
+    return max(0, (datetime.now(timezone.utc) - date).total_seconds())
 
 
 def allowed_stale(response: Response) -> bool:
