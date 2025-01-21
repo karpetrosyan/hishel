@@ -275,7 +275,7 @@ def test_get_heuristic_freshness_without_last_modified():
     assert get_heuristic_freshness(response=response, clock=Clock()) == ONE_DAY
 
 
-@freeze_time("Mon, 25 Aug 2003 12:00:00 GMT")
+@freeze_time("Tue, 26 Aug 2015 12:00:00 GMT")
 def test_get_age():
     response = Response(status=200, headers=[(b"Date", b"Tue, 25 Aug 2015 12:00:00 GMT")])
     age = get_age(response=response)
@@ -283,7 +283,7 @@ def test_get_age():
 
 
 def test_get_age_return_inf_for_invalid_date():
-    age = get_age(response=Response(status=200), clock=Clock())
+    age = get_age(response=Response(status=200))
 
     assert age == float("inf")
 

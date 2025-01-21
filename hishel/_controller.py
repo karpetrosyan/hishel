@@ -1,5 +1,6 @@
 import logging
 import typing as tp
+from datetime import datetime, timezone
 
 from httpcore import Request, Response
 
@@ -82,7 +83,7 @@ def get_heuristic_freshness(response: Response, clock: "BaseClock") -> int:
     return ONE_DAY
 
 
-def get_age(response: Response, clock: "BaseClock") -> int:
+def get_age(response: Response) -> int:
     if not header_presents(response.headers, b"date"):
         # If the response does not have a date header, then it is impossible to calculate the age.
         # Instead of raising an exception, we return infinity to be sure that the response is not considered fresh.
@@ -90,8 +91,7 @@ def get_age(response: Response, clock: "BaseClock") -> int:
 
     date = parse_date(extract_header_values_decoded(response.headers, b"date")[0])
 
-    now = clock.now()
-
+    now = datetime.now(timezone.utc)
     apparent_age = max(0, now - date)
     return int(apparent_age)
 
@@ -470,7 +470,7 @@ class Controller:
                 self._make_request_conditional(request=request, response=response)
                 return request
 
-        age = get_age(response, self._clock)
+        age = get_age(response)
         is_fresh = freshness_lifetime > age
 
         # The min-fresh request directive indicates that the client
