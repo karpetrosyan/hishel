@@ -1,8 +1,8 @@
 import logging
 import re
 
-from freezegun import freeze_time
 import pytest
+from freezegun import freeze_time
 from httpcore import Request, Response
 
 from hishel._controller import (
@@ -12,7 +12,7 @@ from hishel._controller import (
     get_freshness_lifetime,
     get_heuristic_freshness,
 )
-from hishel._utils import BaseClock, Clock
+from hishel._utils import Clock
 
 
 def test_is_cachable_for_cachables():

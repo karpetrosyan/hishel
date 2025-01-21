@@ -253,8 +253,15 @@ def test_pool_caching_post_method():
 
 
 
-@freeze_time("Mon, 25 Aug 2015 12:00:00 GMT")
 def test_revalidation_with_new_content():
+    class MockedClock(BaseClock):
+        current = 1440504000  # Mon, 25 Aug 2015 12:00:00 GMT
+
+        def now(self) -> int:
+            return self.current
+
+    clock = MockedClock()
+    controller = hishel.Controller(clock=clock)
     storage = hishel.InMemoryStorage()
 
     with hishel.MockConnectionPool() as pool:
@@ -285,7 +292,7 @@ def test_revalidation_with_new_content():
                 ),
             ]
         )
-        with hishel.CacheConnectionPool(pool=pool, storage=storage) as cache_pool:
+        with hishel.CacheConnectionPool(pool=pool, controller=controller, storage=storage) as cache_pool:
             # Miss, 200, store
             response = cache_pool.handle_request(httpcore.Request("GET", "https://example.com/"))
             assert not response.extensions["from_cache"]
