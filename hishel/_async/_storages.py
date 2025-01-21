@@ -46,7 +46,7 @@ __all__ = (
 )
 
 StoredResponse: TypeAlias = tuple[Response, Request, Metadata]
-RemoveTypes = str | Response
+RemoveTypes = tp.Union[str, Response]
 
 try:
     import redis.asyncio as redis
