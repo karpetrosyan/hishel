@@ -4,7 +4,6 @@ import datetime
 import logging
 import os
 import time
-import typing as t
 import typing as tp
 import warnings
 from copy import deepcopy
@@ -24,7 +23,7 @@ except ImportError:  # pragma: no cover
 
 from httpcore import Request, Response
 
-if t.TYPE_CHECKING:  # pragma: no cover
+if tp.TYPE_CHECKING:  # pragma: no cover
     from typing_extensions import TypeAlias
 
 from hishel._serializers import BaseSerializer, clone_model
@@ -153,7 +152,7 @@ class AsyncFileStorage(AsyncBaseStorage):
         """
 
         if isinstance(key, Response):  # pragma: no cover
-            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+            key = tp.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         response_path = self._base_path / key
 
@@ -322,7 +321,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
         assert self._connection
 
         if isinstance(key, Response):  # pragma: no cover
-            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+            key = tp.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         async with self._lock:
             await self._connection.execute("DELETE FROM cache WHERE key = ?", [key])
@@ -459,7 +458,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
         """
 
         if isinstance(key, Response):  # pragma: no cover
-            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+            key = tp.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         await self._client.delete(key)
 
@@ -572,7 +571,7 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
         """
 
         if isinstance(key, Response):  # pragma: no cover
-            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+            key = tp.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         async with self._lock:
             self._cache.remove_key(key)
@@ -716,7 +715,7 @@ class AsyncS3Storage(AsyncBaseStorage):  # pragma: no cover
         """
 
         if isinstance(key, Response):  # pragma: no cover
-            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+            key = tp.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         async with self._lock:
             await self._s3_manager.remove_entry(key)
