@@ -1,5 +1,3 @@
-import typing as tp
-
 import httpx
 import pytest
 import sniffio
@@ -238,7 +236,7 @@ def test_transport_with_custom_key_generator():
 
 
 def test_transport_with_wrong_type_of_storage():
-    storage: tp.Union[hishel.FileStorage, hishel.FileStorage]
+    storage: hishel.FileStorage | hishel.FileStorage
 
     try:  # pragma: no cover
         sniffio.current_async_library()

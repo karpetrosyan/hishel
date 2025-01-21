@@ -45,8 +45,8 @@ __all__ = (
     "AsyncS3Storage",
 )
 
-StoredResponse: TypeAlias = tp.Tuple[Response, Request, Metadata]
-RemoveTypes = tp.Union[str, Response]
+StoredResponse: TypeAlias = tuple[Response, Request, Metadata]
+RemoveTypes = str | Response
 
 try:
     import redis.asyncio as redis
@@ -57,8 +57,8 @@ except ImportError:  # pragma: no cover
 class AsyncBaseStorage:
     def __init__(
         self,
-        serializer: tp.Optional[BaseSerializer] = None,
-        ttl: tp.Optional[tp.Union[int, float]] = None,
+        serializer: BaseSerializer | None = None,
+        ttl: int | float | None = None,
     ) -> None:
         self._serializer = serializer or JSONSerializer()
         self._ttl = ttl
@@ -72,7 +72,7 @@ class AsyncBaseStorage:
     async def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         raise NotImplementedError()
 
-    async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
+    async def retrieve(self, key: str) -> StoredResponse | None:
         raise NotImplementedError()
 
     async def aclose(self) -> None:
@@ -84,22 +84,22 @@ class AsyncFileStorage(AsyncBaseStorage):
     A simple file storage.
 
     :param serializer: Serializer capable of serializing and de-serializing http responses, defaults to None
-    :type serializer: tp.Optional[BaseSerializer], optional
+    :type serializer: BaseSerializer | None, optional
     :param base_path: A storage base path where the responses should be saved, defaults to None
-    :type base_path: tp.Optional[Path], optional
+    :type base_path: Path | None, optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
-    :type ttl: tp.Optional[tp.Union[int, float]], optional
+    :type ttl: int | float | None, optional
     :param check_ttl_every: How often in seconds to check staleness of **all** cache files.
         Makes sense only with set `ttl`, defaults to 60
-    :type check_ttl_every: tp.Union[int, float]
+    :type check_ttl_every: int | float
     """
 
     def __init__(
         self,
-        serializer: tp.Optional[BaseSerializer] = None,
-        base_path: tp.Optional[Path] = None,
-        ttl: tp.Optional[tp.Union[int, float]] = None,
-        check_ttl_every: tp.Union[int, float] = 60,
+        serializer: BaseSerializer | None = None,
+        base_path: Path | None = None,
+        ttl: int | float | None = None,
+        check_ttl_every: int | float = 60,
     ) -> None:
         super().__init__(serializer, ttl)
 
@@ -191,14 +191,14 @@ class AsyncFileStorage(AsyncBaseStorage):
 
         return await self.store(key, response, request, metadata)  # pragma: no cover
 
-    async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
+    async def retrieve(self, key: str) -> StoredResponse | None:
         """
         Retreives the response from the cache using his key.
 
         :param key: Hashed value of concatenated HTTP method and URI
         :type key: str
         :return: An HTTP response and his HTTP request.
-        :rtype: tp.Optional[StoredResponse]
+        :rtype: StoredResponse | None
         """
 
         response_path = self._base_path / key
@@ -243,18 +243,18 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
     A simple sqlite3 storage.
 
     :param serializer: Serializer capable of serializing and de-serializing http responses, defaults to None
-    :type serializer: tp.Optional[BaseSerializer], optional
+    :type serializer: BaseSerializer | None, optional
     :param connection: A connection for sqlite, defaults to None
-    :type connection: tp.Optional[anysqlite.Connection], optional
+    :type connection: anysqlite.Connection | None, optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
-    :type ttl: tp.Optional[tp.Union[int, float]], optional
+    :type ttl: int | float | None, optional
     """
 
     def __init__(
         self,
-        serializer: tp.Optional[BaseSerializer] = None,
-        connection: tp.Optional[anysqlite.Connection] = None,
-        ttl: tp.Optional[tp.Union[int, float]] = None,
+        serializer: BaseSerializer | None = None,
+        connection: anysqlite.Connection | None = None,
+        ttl: int | float | None = None,
     ) -> None:
         if anysqlite is None:  # pragma: no cover
             raise RuntimeError(
@@ -264,7 +264,7 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
             )
         super().__init__(serializer, ttl)
 
-        self._connection: tp.Optional[anysqlite.Connection] = connection or None
+        self._connection: anysqlite.Connection | None = connection or None
         self._setup_lock = AsyncLock()
         self._setup_completed: bool = False
         self._lock = AsyncLock()
@@ -355,14 +355,14 @@ class AsyncSQLiteStorage(AsyncBaseStorage):
                 return
         return await self.store(key, response, request, metadata)  # pragma: no cover
 
-    async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
+    async def retrieve(self, key: str) -> StoredResponse | None:
         """
         Retreives the response from the cache using his key.
 
         :param key: Hashed value of concatenated HTTP method and URI
         :type key: str
         :return: An HTTP response and its HTTP request.
-        :rtype: tp.Optional[StoredResponse]
+        :rtype: StoredResponse | None
         """
 
         await self._setup()
@@ -397,18 +397,18 @@ class AsyncRedisStorage(AsyncBaseStorage):
     A simple redis storage.
 
     :param serializer: Serializer capable of serializing and de-serializing http responses, defaults to None
-    :type serializer: tp.Optional[BaseSerializer], optional
+    :type serializer: BaseSerializer | None, optional
     :param client: A client for redis, defaults to None
-    :type client: tp.Optional["redis.Redis"], optional
+    :type client: redis.Redis | None, optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
-    :type ttl: tp.Optional[tp.Union[int, float]], optional
+    :type ttl: int | float | None, optional
     """
 
     def __init__(
         self,
-        serializer: tp.Optional[BaseSerializer] = None,
-        client: tp.Optional[redis.Redis] = None,  # type: ignore
-        ttl: tp.Optional[tp.Union[int, float]] = None,
+        serializer: BaseSerializer | None = None,
+        client: redis.Redis | None = None,  # type: ignore
+        ttl: int | float | None = None,
     ) -> None:
         if redis is None:  # pragma: no cover
             raise RuntimeError(
@@ -490,14 +490,14 @@ class AsyncRedisStorage(AsyncBaseStorage):
                 px=ttl_in_milliseconds,
             )
 
-    async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
+    async def retrieve(self, key: str) -> StoredResponse | None:
         """
         Retreives the response from the cache using his key.
 
         :param key: Hashed value of concatenated HTTP method and URI
         :type key: str
         :return: An HTTP response and its HTTP request.
-        :rtype: tp.Optional[StoredResponse]
+        :rtype: StoredResponse | None
         """
 
         cached_response = await self._client.get(key)
@@ -515,17 +515,17 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
     A simple in-memory storage.
 
     :param serializer: Serializer capable of serializing and de-serializing http responses, defaults to None
-    :type serializer: tp.Optional[BaseSerializer], optional
+    :type serializer: BaseSerializer | None, optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
-    :type ttl: tp.Optional[tp.Union[int, float]], optional
+    :type ttl: int | float | None, optional
     :param capacity: The maximum number of responses that can be cached, defaults to 128
     :type capacity: int, optional
     """
 
     def __init__(
         self,
-        serializer: tp.Optional[BaseSerializer] = None,
-        ttl: tp.Optional[tp.Union[int, float]] = None,
+        serializer: BaseSerializer | None = None,
+        ttl: int | float | None = None,
         capacity: int = 128,
     ) -> None:
         super().__init__(serializer, ttl)
@@ -535,7 +535,7 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
 
         from hishel import LFUCache
 
-        self._cache: LFUCache[str, tp.Tuple[StoredResponse, float]] = LFUCache(capacity=capacity)
+        self._cache: LFUCache[str, tuple[StoredResponse, float]] = LFUCache(capacity=capacity)
         self._lock = AsyncLock()
 
     async def store(self, key: str, response: Response, request: Request, metadata: Metadata | None = None) -> None:
@@ -601,14 +601,14 @@ class AsyncInMemoryStorage(AsyncBaseStorage):
                 pass
         await self.store(key, response, request, metadata)  # pragma: no cover
 
-    async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
+    async def retrieve(self, key: str) -> StoredResponse | None:
         """
         Retreives the response from the cache using his key.
 
         :param key: Hashed value of concatenated HTTP method and URI
         :type key: str
         :return: An HTTP response and its HTTP request.
-        :rtype: tp.Optional[StoredResponse]
+        :rtype: StoredResponse | None
         """
 
         await self._remove_expired_caches()
@@ -646,23 +646,23 @@ class AsyncS3Storage(AsyncBaseStorage):  # pragma: no cover
     :param bucket_name: The name of the bucket to store the responses in
     :type bucket_name: str
     :param serializer: Serializer capable of serializing and de-serializing http responses, defaults to None
-    :type serializer: tp.Optional[BaseSerializer], optional
+    :type serializer: BaseSerializer | None, optional
     :param ttl: Specifies the maximum number of seconds that the response can be cached, defaults to None
-    :type ttl: tp.Optional[tp.Union[int, float]], optional
+    :type ttl: int | float | None, optional
     :param check_ttl_every: How often in seconds to check staleness of **all** cache files.
         Makes sense only with set `ttl`, defaults to 60
-    :type check_ttl_every: tp.Union[int, float]
+    :type check_ttl_every: int | float
     :param client: A client for S3, defaults to None
-    :type client: tp.Optional[tp.Any], optional
+    :type client: tp.Any | None, optional
     """
 
     def __init__(
         self,
         bucket_name: str,
-        serializer: tp.Optional[BaseSerializer] = None,
-        ttl: tp.Optional[tp.Union[int, float]] = None,
-        check_ttl_every: tp.Union[int, float] = 60,
-        client: tp.Optional[tp.Any] = None,
+        serializer: BaseSerializer | None = None,
+        ttl: int | float | None = None,
+        check_ttl_every: int | float = 60,
+        client: tp.Any | None = None,
     ) -> None:
         super().__init__(serializer, ttl)
 
@@ -739,14 +739,14 @@ class AsyncS3Storage(AsyncBaseStorage):  # pragma: no cover
             serialized = self._serializer.dumps(response=response, request=request, metadata=metadata)
             await self._s3_manager.write_to(path=key, data=serialized, only_metadata=True)
 
-    async def retrieve(self, key: str) -> tp.Optional[StoredResponse]:
+    async def retrieve(self, key: str) -> StoredResponse | None:
         """
         Retreives the response from the cache using his key.
 
         :param key: Hashed value of concatenated HTTP method and URI
         :type key: str
         :return: An HTTP response and its HTTP request.
-        :rtype: tp.Optional[StoredResponse]
+        :rtype: StoredResponse | None
         """
 
         await self._remove_expired_caches(key)
