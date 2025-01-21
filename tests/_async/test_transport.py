@@ -6,7 +6,7 @@ import sniffio
 from freezegun import freeze_time
 
 import hishel
-from hishel._utils import BaseClock, extract_header_values_decoded
+from hishel._utils import extract_header_values_decoded
 
 
 @pytest.mark.anyio
@@ -374,54 +374,46 @@ async def test_revalidation_with_new_content():
 
 @pytest.mark.anyio
 async def test_transport_revalidation_forward_extensions():
-    class MockedClock(BaseClock):
-        current = 1440504000  # Mon, 25 Aug 2015 12:00:00 GMT
-
-        def now(self) -> int:
-            return self.current
-
     class MockedTransportWithExtensionsMemory(hishel.MockAsyncTransport):
         async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
             self.last_request_extensions = request.extensions
             return await super().handle_async_request(request)
 
-    clock = MockedClock()
-    controller = hishel.Controller(clock=clock)
-
-    async with MockedTransportWithExtensionsMemory() as transport:
-        transport.add_responses(
-            [
-                httpx.Response(
-                    200,
-                    headers=[
-                        (b"Cache-Control", b"max-age=1"),
-                        (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
-                    ],
-                ),
-                httpx.Response(
-                    304,
-                    headers=[
-                        (b"Cache-Control", b"max-age=1"),
-                        (b"Date", b"Mon, 25 Aug 2015 12:00:01 GMT"),
-                    ],
-                ),
-            ]
-        )
-        async with hishel.AsyncCacheTransport(
-            transport=transport, controller=controller, storage=hishel.AsyncInMemoryStorage()
-        ) as cache_transport:
-            # first request with extensions
-            await cache_transport.handle_async_request(
-                httpx.Request("GET", "https://www.example.com", extensions={"foo": "bar"})
+    with freeze_time("Mon, 25 Aug 2015 12:00:00 GMT") as frozen_datetime:
+        async with MockedTransportWithExtensionsMemory() as transport:
+            transport.add_responses(
+                [
+                    httpx.Response(
+                        200,
+                        headers=[
+                            (b"Cache-Control", b"max-age=1"),
+                            (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+                        ],
+                    ),
+                    httpx.Response(
+                        304,
+                        headers=[
+                            (b"Cache-Control", b"max-age=1"),
+                            (b"Date", b"Mon, 25 Aug 2015 12:00:01 GMT"),
+                        ],
+                    ),
+                ]
             )
-            assert transport.last_request_extensions["foo"] == "bar"
+            async with hishel.AsyncCacheTransport(
+                transport=transport, storage=hishel.AsyncInMemoryStorage()
+            ) as cache_transport:
+                # first request with extensions
+                await cache_transport.handle_async_request(
+                    httpx.Request("GET", "https://www.example.com", extensions={"foo": "bar"})
+                )
+                assert transport.last_request_extensions["foo"] == "bar"
 
-            # cache expires
-            clock.current += 1
+                # cache expires
+                frozen_datetime.tick()
 
-            # second request with extensions that should be passed to revalidation request
-            response = await cache_transport.handle_async_request(
-                httpx.Request("GET", "https://www.example.com", extensions={"foo": "baz"})
-            )
-            assert response.extensions["revalidated"] is True
-            assert transport.last_request_extensions["foo"] == "baz"
+                # second request with extensions that should be passed to revalidation request
+                response = await cache_transport.handle_async_request(
+                    httpx.Request("GET", "https://www.example.com", extensions={"foo": "baz"})
+                )
+                assert response.extensions["revalidated"] is True
+                assert transport.last_request_extensions["foo"] == "baz"
