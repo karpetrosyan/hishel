@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import anyio
 
 
@@ -23,9 +25,8 @@ class AsyncFileManager(AsyncBaseFileManager):
 
     async def read_from(self, path: str, is_binary: bool | None = None) -> bytes | str:
         is_binary = self.is_binary if is_binary is None else is_binary
-        mode = "rb" if is_binary else "rt"
 
-        async with await anyio.open_file(path, mode) as f:  # type: ignore[call-overload]
+        async with await anyio.open_file(path, "rb" if is_binary else "rt") as f:  # type: ignore[call-overload]
             return await f.read()
 
 
@@ -50,4 +51,5 @@ class FileManager(BaseFileManager):
     def read_from(self, path: str, is_binary: bool | None = None) -> bytes | str:
         is_binary = self.is_binary if is_binary is None else is_binary
         with open(path, "rb" if is_binary else "rt") as f:
-            return f.read()
+            result = f.read()
+            return cast(bytes, result) if is_binary else cast(str, result)
