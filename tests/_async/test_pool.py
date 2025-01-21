@@ -255,9 +255,15 @@ async def test_pool_caching_post_method():
 
 
 @pytest.mark.anyio
-@freeze_time("Mon, 25 Aug 2015 12:00:00 GMT")
 async def test_revalidation_with_new_content():
-    controller = hishel.Controller()
+    class MockedClock(BaseClock):
+        current = 1440504000  # Mon, 25 Aug 2015 12:00:00 GMT
+
+        def now(self) -> int:
+            return self.current
+
+    clock = MockedClock()
+    controller = hishel.Controller(clock=clock)
     storage = hishel.AsyncInMemoryStorage()
 
     async with hishel.MockAsyncConnectionPool() as pool:
