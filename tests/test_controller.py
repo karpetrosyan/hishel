@@ -1,6 +1,7 @@
 import logging
 import re
 
+from freezegun import freeze_time
 import pytest
 from httpcore import Request, Response
 
@@ -40,12 +41,9 @@ def test_force_cache_property_for_is_cachable():
     assert controller.is_cachable(request=request, response=uncachable_response) is True
 
 
+@freeze_time("Mon, 25 Aug 2015 12:00:01 GMT")
 def test_force_cache_property_for_construct_response_from_cache():
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440504001  # Mon, 25 Aug 2015 12:00:01 GMT
-
-    controller = Controller(clock=MockedClock(), force_cache=True)
+    controller = Controller(force_cache=True)
     original_request = Request("GET", "https://example.com")
     request = Request("GET", "https://example.com", extensions={"force_cache": False})
     cachable_response = Response(
@@ -262,15 +260,12 @@ def test_get_freshness_lifetime_with_expires():
     assert freshness_lifetime == 86400  # one day
 
 
+@freeze_time("Mon, 25 Aug 2003 12:00:00 GMT")
 def test_get_heuristic_freshness():
     ONE_WEEK = 604_800
 
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1093435200  # Mon, 25 Aug 2003 12:00:00 GMT
-
     response = Response(status=200, headers=[(b"Last-Modified", "Mon, 25 Aug 2003 12:00:00 GMT")])
-    assert get_heuristic_freshness(response=response, clock=MockedClock()) == ONE_WEEK
+    assert get_heuristic_freshness(response=response) == ONE_WEEK
 
 
 def test_get_heuristic_freshness_without_last_modified():
@@ -280,13 +275,10 @@ def test_get_heuristic_freshness_without_last_modified():
     assert get_heuristic_freshness(response=response, clock=Clock()) == ONE_DAY
 
 
+@freeze_time("Mon, 25 Aug 2003 12:00:00 GMT")
 def test_get_age():
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440590400
-
     response = Response(status=200, headers=[(b"Date", b"Tue, 25 Aug 2015 12:00:00 GMT")])
-    age = get_age(response=response, clock=MockedClock())
+    age = get_age(response=response)
     assert age == 86400  # One day
 
 
@@ -412,12 +404,9 @@ def test_construct_response_from_cache_redirect(caplog):
     ]
 
 
+@freeze_time("Mon, 25 Aug 2003 12:00:00 GMT")
 def test_construct_response_from_cache_fresh():
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440504000
-
-    controller = Controller(clock=MockedClock())
+    controller = Controller()
     response = Response(
         status=200,
         headers=[
@@ -432,12 +421,9 @@ def test_construct_response_from_cache_fresh():
     )
 
 
+@freeze_time("Mon, 25 Aug 2003 12:00:02 GMT")
 def test_construct_response_from_cache_stale():
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440504002
-
-    controller = Controller(clock=MockedClock())
+    controller = Controller()
     response = Response(
         status=200,
         headers=[
@@ -549,12 +535,9 @@ def test_construct_response_from_cache_with_no_cache(caplog):
     ]
 
 
+@freeze_time("Mon, 26 Aug 2015 12:00:00 GMT")
 def test_construct_response_heuristically(caplog):
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440590400  # Mon, 26 Aug 2015 12:00:00 GMT
-
-    controller = Controller(allow_heuristics=True, clock=MockedClock())
+    controller = Controller(allow_heuristics=True)
 
     # Age less than 7 days
     response = Response(
@@ -783,11 +766,8 @@ def test_vary_validation_value_wildcard():
     assert not controller._validate_vary(request=request, response=response, original_request=original_request)
 
 
+@freeze_time("Mon, 25 Aug 2015 13:00:00 GMT")
 def test_max_age_request_directive(caplog):
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440507600  # Mon, 25 Aug 2015 13:00:00 GMT
-
     original_request = Request(
         method="GET",
         url="https://example.com",
@@ -817,7 +797,7 @@ def test_max_age_request_directive(caplog):
         ],
     )
 
-    controller = Controller(clock=MockedClock())
+    controller = Controller()
 
     with caplog.at_level(logging.DEBUG):
         cached_response = controller.construct_response_from_cache(
@@ -832,11 +812,8 @@ def test_max_age_request_directive(caplog):
     ]
 
 
+@freeze_time("Mon, 25 Aug 2015 13:00:00 GMT")
 def test_max_age_request_directive_with_max_stale(caplog):
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440507600  # Mon, 25 Aug 2015 13:00:00 GMT
-
     original_request = Request(
         method="GET",
         url="https://example.com",
@@ -866,7 +843,7 @@ def test_max_age_request_directive_with_max_stale(caplog):
         ],
     )
 
-    controller = Controller(clock=MockedClock())
+    controller = Controller()
 
     with caplog.at_level(logging.DEBUG):
         cached_response = controller.construct_response_from_cache(
@@ -880,11 +857,8 @@ def test_max_age_request_directive_with_max_stale(caplog):
     ]
 
 
+@freeze_time("Mon, 25 Aug 2015 13:00:00 GMT")
 def test_max_stale_request_directive(caplog):
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440507600  # Mon, 25 Aug 2015 13:00:00 GMT
-
     original_request = Request(
         method="GET",
         url="https://example.com",
@@ -914,7 +888,7 @@ def test_max_stale_request_directive(caplog):
         ],
     )
 
-    controller = Controller(clock=MockedClock())
+    controller = Controller()
 
     with caplog.at_level(logging.DEBUG):
         cached_response = controller.construct_response_from_cache(
@@ -927,11 +901,8 @@ def test_max_stale_request_directive(caplog):
     ]
 
 
+@freeze_time("Mon, 25 Aug 2015 13:00:00 GMT")
 def test_min_fresh_request_directive(caplog):
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440507600  # Mon, 25 Aug 2015 13:00:00 GMT
-
     original_request = Request(
         method="GET",
         url="https://example.com",
@@ -961,7 +932,7 @@ def test_min_fresh_request_directive(caplog):
         ],
     )
 
-    controller = Controller(clock=MockedClock())
+    controller = Controller()
 
     with caplog.at_level(logging.DEBUG):
         cached_response = controller.construct_response_from_cache(
@@ -1137,12 +1108,9 @@ def test_force_cache_extension_for_is_cachable(caplog):
     ]
 
 
+@freeze_time("Mon, 25 Aug 2015 12:00:01 GMT")
 def test_force_cache_extension_for_construct_response_from_cache(caplog):
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440504001  # Mon, 25 Aug 2015 12:00:01 GMT
-
-    controller = Controller(clock=MockedClock())
+    controller = Controller()
     original_request = Request("GET", "https://example.com")
     request = Request("GET", "https://example.com")
     cachable_response = Response(

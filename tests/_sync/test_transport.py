@@ -3,6 +3,7 @@ import typing as tp
 import httpx
 import pytest
 import sniffio
+from freezegun import freeze_time
 
 import hishel
 from hishel._utils import BaseClock, extract_header_values_decoded
@@ -181,11 +182,8 @@ def test_transport_with_only_if_cached_directive_with_stored_response():
 
 
 
+@freeze_time("# Mon, 25 Aug 2015 12:00:01 GMT")
 def test_transport_with_cache_disabled_extension():
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440504001  # Mon, 25 Aug 2015 12:00:01 GMT
-
     cachable_response = httpx.Response(
         200,
         headers=[
@@ -198,7 +196,6 @@ def test_transport_with_cache_disabled_extension():
         transport.add_responses([cachable_response, httpx.Response(201)])
         with hishel.CacheTransport(
             transport=transport,
-            controller=hishel.Controller(clock=MockedClock()),
             storage=hishel.InMemoryStorage(),
         ) as cache_transport:
             request = httpx.Request("GET", "https://www.example.com")
