@@ -4,7 +4,6 @@ import datetime
 import logging
 import os
 import time
-import typing as t
 import typing as tp
 import warnings
 from copy import deepcopy
@@ -46,7 +45,7 @@ __all__ = (
 )
 
 StoredResponse: TypeAlias = tuple[Response, Request, Metadata]
-RemoveTypes = str | Response
+RemoveTypes = tp.Union[str, Response]
 
 try:
     import redis
@@ -322,7 +321,7 @@ class SQLiteStorage(BaseStorage):
         assert self._connection
 
         if isinstance(key, Response):  # pragma: no cover
-            key = t.cast(str, key.extensions["cache_metadata"]["cache_key"])
+            key = tp.cast(str, key.extensions["cache_metadata"]["cache_key"])
 
         with self._lock:
             self._connection.execute("DELETE FROM cache WHERE key = ?", [key])
