@@ -14,7 +14,7 @@ from ._utils import (
     generate_key,
     get_safe_url,
     header_presents,
-    parse_date,
+    parse_date_to_epoch,
 )
 
 logger = logging.getLogger("hishel.controller")
@@ -60,9 +60,9 @@ def get_freshness_lifetime(response: Response) -> tp.Optional[int]:
 
     if header_presents(response.headers, b"expires"):
         expires = extract_header_values_decoded(response.headers, b"expires", single=True)[0]
-        expires_timestamp = parse_date(expires)
+        expires_timestamp = parse_date_to_epoch(expires)
         date = extract_header_values_decoded(response.headers, b"date", single=True)[0]
-        date_timestamp = parse_date(date)
+        date_timestamp = parse_date_to_epoch(date)
 
         return expires_timestamp - date_timestamp
     return None
@@ -72,7 +72,7 @@ def get_heuristic_freshness(response: Response) -> int:
     last_modified = extract_header_values_decoded(response.headers, b"last-modified", single=True)
 
     if last_modified:
-        last_modified_timestamp = parse_date(last_modified[0])
+        last_modified_timestamp = parse_date_to_epoch(last_modified[0])
         now = int(datetime.now(timezone.utc).timestamp())
 
         ONE_WEEK = 604_800
@@ -89,9 +89,9 @@ def get_age(response: Response) -> int:
         # Instead of raising an exception, we return infinity to be sure that the response is not considered fresh.
         return float("inf")  # type: ignore
 
-    date = parse_date(extract_header_values_decoded(response.headers, b"date")[0])
+    date = parse_date_to_epoch(extract_header_values_decoded(response.headers, b"date")[0])
 
-    return max(0, datetime.now(timezone.utc).total_seconds() - date)
+    return max(0, datetime.now(timezone.utc).timestamp() - date)
 
 
 def allowed_stale(response: Response) -> bool:
