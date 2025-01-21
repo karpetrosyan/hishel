@@ -97,15 +97,8 @@ def get_age(response: Response, clock: "BaseClock") -> int:
 
 
 def allowed_stale(response: Response) -> bool:
-    response_cache_control = parse_cache_control(extract_header_values_decoded(response.headers, b"Cache-Control"))
-
-    if response_cache_control.no_cache:
-        return False
-
-    if response_cache_control.must_revalidate:
-        return False
-
-    return True
+    rcc = parse_cache_control(extract_header_values_decoded(response.headers, b"Cache-Control"))
+    return not rcc.no_cache and not rcc.must_revalidate
 
 
 class Controller:
