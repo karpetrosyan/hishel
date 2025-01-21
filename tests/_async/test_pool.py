@@ -1,9 +1,9 @@
 import typing as tp
 
-from freezegun import freeze_time
 import httpcore
 import pytest
 import sniffio
+from freezegun import freeze_time
 from httpcore._models import Request, Response
 
 import hishel
@@ -175,9 +175,7 @@ async def test_pool_with_cache_disabled_extension():
 
     async with hishel.MockAsyncConnectionPool() as pool:
         pool.add_responses([cachable_response, httpcore.Response(201)])
-        async with hishel.AsyncCacheConnectionPool(
-            pool=pool, storage=hishel.AsyncInMemoryStorage()
-        ) as cache_transport:
+        async with hishel.AsyncCacheConnectionPool(pool=pool, storage=hishel.AsyncInMemoryStorage()) as cache_transport:
             request = httpcore.Request("GET", "https://www.example.com")
             # This should create a cache entry
             await cache_transport.handle_async_request(request)

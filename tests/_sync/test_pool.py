@@ -3,6 +3,7 @@ import typing as tp
 import httpcore
 import pytest
 import sniffio
+from freezegun import freeze_time
 from httpcore._models import Request, Response
 
 import hishel
@@ -162,11 +163,8 @@ def test_pool_with_only_if_cached_directive_with_stored_response():
 
 
 
+@freeze_time("Mon, 25 Aug 2015 12:00:01 GMT")
 def test_pool_with_cache_disabled_extension():
-    class MockedClock(BaseClock):
-        def now(self) -> int:
-            return 1440504001  # Mon, 25 Aug 2015 12:00:01 GMT
-
     cachable_response = httpcore.Response(
         200,
         headers=[
@@ -177,9 +175,7 @@ def test_pool_with_cache_disabled_extension():
 
     with hishel.MockConnectionPool() as pool:
         pool.add_responses([cachable_response, httpcore.Response(201)])
-        with hishel.CacheConnectionPool(
-            pool=pool, controller=hishel.Controller(clock=MockedClock()), storage=hishel.InMemoryStorage()
-        ) as cache_transport:
+        with hishel.CacheConnectionPool(pool=pool, storage=hishel.InMemoryStorage()) as cache_transport:
             request = httpcore.Request("GET", "https://www.example.com")
             # This should create a cache entry
             cache_transport.handle_request(request)
