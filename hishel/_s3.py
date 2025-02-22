@@ -75,7 +75,16 @@ class S3Manager:
             if not obj["Key"].startswith("hishel-"):  # pragma: no cover
                 continue
 
-            if get_timestamp_in_ms() - float(obj["Metadata"]["created_at"]) > ttl:
+            try:
+                metadata_obj = self._client.head_object(Bucket=self._bucket_name, Key=obj["Key"]).get("Metadata", {})
+            except ClientError as e:
+                if e.response["Error"]["Code"] == "404":
+                    continue
+
+            if not metadata_obj or "created_at" not in metadata_obj:
+                continue
+
+            if get_timestamp_in_ms() - float(metadata_obj["created_at"]) > ttl:
                 self._client.delete_object(Bucket=self._bucket_name, Key=obj["Key"])
 
     def remove_entry(self, key: str) -> None:
