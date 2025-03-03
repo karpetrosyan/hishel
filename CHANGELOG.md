@@ -8,7 +8,7 @@
 
 ## 0.1.2 (3rd Mar, 2025)
 
-- Fix for S3 Storage missing metadata in API request (#319)
+- Fix for S3 Storage missing metadata in API request (#320)
 
 ## 0.1.1 (2nd Nov, 2024)
 
