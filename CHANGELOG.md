@@ -5,6 +5,10 @@
 - Fix compatibility with httpx. (#291)
 - Use `SyncByteStream` instead of `ByteStream`. (#298)
 
+## 0.1.2 (3rd Mar, 2025)
+
+- Fix for S3 Storage missing metadata in API request (#319)
+
 ## 0.1.1 (2nd Nov, 2024)
 
 - Fix typing extensions not found. (#290)
