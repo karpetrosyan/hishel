@@ -1,22 +1,22 @@
 -e .[yaml,redis,sqlite,s3]
 
 # linting
-ruff==0.6.3
-mypy==1.14.1
+ruff==0.11.0
+mypy==1.15.0
 
 # docs
 mkdocs==1.6.1
-mkdocs-material==9.5.1
+mkdocs-material==9.6.9
 
 # tests
-pytest==8.3.4
-types-boto3==1.0.2
-types-redis==4.6.0.20240425
-anyio==4.7.0
-trio==0.28.0
-coverage==7.6.10
-types-PyYAML==6.0.12.20240311
+pytest==8.3.5
+types-boto3==1.37.14
+types-redis==4.6.0.20241004
+anyio==4.9.0
+trio==0.29.0
+coverage==7.7.0
+types-PyYAML==6.0.12.20241230
 
 # build
-hatch==1.9.3
+hatch==1.14.0
 zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
