@@ -6,7 +6,7 @@
 - Use `SyncByteStream` instead of `ByteStream`. (#298)
 - Don't raise exceptions if date-containing headers are invalid. (#318)
 
-## 0.1.2 (3rd Mar, 2025)
+## 0.1.2 (17th Mar, 2025)
 
 - Fix for S3 Storage missing metadata in API request (#320)
 
