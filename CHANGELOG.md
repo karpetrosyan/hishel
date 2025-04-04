@@ -6,10 +6,7 @@
 - Fix compatibility with httpx. (#291)
 - Use `SyncByteStream` instead of `ByteStream`. (#298)
 - Don't raise exceptions if date-containing headers are invalid. (#318)
-
-## 0.1.2 (4th April, 2025)
-
-- Fix for S3 Storage missing metadata in API request (#320)
+- Fix for S3 Storage missing metadata in API request. (#320)
 
 ## 0.1.1 (2nd Nov, 2024)
 
