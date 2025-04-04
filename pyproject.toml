@@ -122,3 +122,20 @@ select = [
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
+
+[dependency-groups]
+dev = [
+    "anyio==4.7.0",
+    "coverage==7.6.10",
+    "hatch==1.9.3",
+    "mkdocs==1.6.1",
+    "mkdocs-material==9.5.1",
+    "mypy==1.14.1",
+    "pytest==8.3.4",
+    "ruff==0.6.3",
+    "trio==0.28.0",
+    "types-boto3==1.0.2",
+    "types-pyyaml==6.0.12.20240311",
+    "types-redis==4.6.0.20240425",
+    "zipp>=3.19.1",
+]
