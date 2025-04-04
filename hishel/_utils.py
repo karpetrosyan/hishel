@@ -1,8 +1,8 @@
 import calendar
+import hashlib
 import time
 import typing as tp
 from email.utils import parsedate_tz
-from hashlib import blake2b
 
 import anyio
 import httpcore
@@ -49,10 +49,26 @@ def generate_key(request: httpcore.Request, body: bytes = b"") -> str:
 
     key_parts = [request.method, encoded_url, body]
 
-    key = blake2b(digest_size=16, usedforsecurity=False)
-    for part in key_parts:
-        key.update(part)
-    return key.hexdigest()
+    # FIPs mode disables blake2 algorithm, use sha256 instead when not found.
+    blake2b_hasher = None
+    sha256_hasher = hashlib.sha256(usedforsecurity=False)
+    try:
+        blake2b_hasher = hashlib.blake2b(digest_size=16, usedforsecurity=False)
+    except (ValueError, TypeError, AttributeError):
+        pass
+
+    hexdigest: str
+    if blake2b_hasher:
+        for part in key_parts:
+            blake2b_hasher.update(part)
+
+        hexdigest = blake2b_hasher.hexdigest()
+    else:
+        for part in key_parts:
+            sha256_hasher.update(part)
+
+        hexdigest = sha256_hasher.hexdigest()
+    return hexdigest
 
 
 def extract_header_values(
