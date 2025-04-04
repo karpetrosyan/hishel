@@ -2,6 +2,7 @@
 
 ## development
 
+- Add check for fips compliant python. (#325)
 - Fix compatibility with httpx. (#291)
 - Use `SyncByteStream` instead of `ByteStream`. (#298)
 - Don't raise exceptions if date-containing headers are invalid. (#318)
