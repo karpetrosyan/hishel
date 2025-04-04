@@ -1,3 +1,5 @@
+from unittest import mock
+
 import httpcore
 import pytest
 from httpcore import Request
@@ -20,6 +22,16 @@ def test_generate_key():
     key = generate_key(request)
 
     assert key == "bd152069787aaad359c85af6f2edbb25"
+
+
+def test_fips_generate_key():
+    request = Request(b"GET", "https://example.com", headers=[])
+
+    # Simulate FIPS mode by using sha256 instead of blake2b
+    with mock.patch("hashlib.blake2b", side_effect=AttributeError("ERROR")):
+        key = generate_key(request)
+
+    assert key == "ea96dc6995764a0e6cf26bd2550deb01c18f69c0e586aa1fe201683129b8c15a"
 
 
 def test_extract_header_values():
