@@ -242,10 +242,10 @@ def test_transport_with_wrong_type_of_storage():
 
     try:  # pragma: no cover
         sniffio.current_async_library()
-        error = "Expected subclass of `Async" "BaseStorage` but got `FileStorage`"
+        error = "Expected subclass of `BaseStorage` but got `FileStorage`"
         storage = hishel.FileStorage()
     except sniffio.AsyncLibraryNotFoundError:  # pragma: no cover
-        error = "Expected subclass of `BaseStorage` but got `Async" "FileStorage`"
+        error = "Expected subclass of `BaseStorage` but got `FileStorage`"
         storage = getattr(hishel, "Async" + "FileStorage")()
 
     with pytest.raises(TypeError, match=error):
