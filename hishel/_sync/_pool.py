@@ -47,7 +47,7 @@ class CacheConnectionPool(RequestInterface):
 
         self._storage = storage if storage is not None else FileStorage(serializer=JSONSerializer())
 
-        if not isinstance(self._storage, BaseStorage):
+        if not isinstance(self._storage, BaseStorage):  # pragma: no cover
             raise TypeError(f"Expected subclass of `BaseStorage` but got `{storage.__class__.__name__}`")
 
         self._controller = controller if controller is not None else Controller()

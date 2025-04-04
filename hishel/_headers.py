@@ -94,13 +94,13 @@ def parse_cache_control(cache_control_values: List[str]) -> "CacheControl":
                         for value_char in value:
                             if value_char not in tchar:
                                 raise ParseError(
-                                    f"The character '{value_char!r}' " "is not permitted for the unquoted values."
+                                    f"The character '{value_char!r}' is not permitted for the unquoted values."
                                 )
                     else:
                         for value_char in value[1:-1]:
                             if value_char not in qdtext:
                                 raise ParseError(
-                                    f"The character '{value_char!r}' " "is not permitted for the quoted values."
+                                    f"The character '{value_char!r}' is not permitted for the quoted values."
                                 )
                     break
 

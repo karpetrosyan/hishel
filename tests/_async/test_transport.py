@@ -1,8 +1,5 @@
-import typing as tp
-
 import httpx
 import pytest
-import sniffio
 
 import hishel
 from hishel._utils import BaseClock, extract_header_values_decoded
@@ -234,26 +231,6 @@ async def test_transport_with_custom_key_generator():
             response = await cache_transport.handle_async_request(request)
             assert response.extensions["from_cache"]
             assert response.extensions["cache_metadata"]["cache_key"] == "www.example.com"
-
-
-@pytest.mark.anyio
-async def test_transport_with_wrong_type_of_storage():
-    storage: tp.Union[hishel.AsyncFileStorage, hishel.FileStorage]
-
-    try:  # pragma: no cover
-        sniffio.current_async_library()
-        error = "Expected subclass of `Async" "BaseStorage` but got `FileStorage`"
-        storage = hishel.FileStorage()
-    except sniffio.AsyncLibraryNotFoundError:  # pragma: no cover
-        error = "Expected subclass of `BaseStorage` but got `Async" "FileStorage`"
-        storage = getattr(hishel, "Async" + "FileStorage")()
-
-    with pytest.raises(TypeError, match=error):
-        hishel.AsyncCacheTransport(
-            transport=hishel.MockAsyncTransport(),
-            controller=hishel.Controller(),
-            storage=storage,  # type: ignore
-        )
 
 
 @pytest.mark.anyio

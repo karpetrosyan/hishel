@@ -65,7 +65,7 @@ def test_time_field_with_quote():
     header = ['max-age="123"']
     with pytest.raises(
         ValidationError,
-        match="The argument 'max_age' should be an " "integer, but a quote was found.",
+        match="The argument 'max_age' should be an integer, but a quote was found.",
     ):
         parse_cache_control(header)
 

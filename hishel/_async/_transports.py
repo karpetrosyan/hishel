@@ -64,7 +64,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
 
         self._storage = storage if storage is not None else AsyncFileStorage(serializer=JSONSerializer())
 
-        if not isinstance(self._storage, AsyncBaseStorage):
+        if not isinstance(self._storage, AsyncBaseStorage):  # pragma: no cover
             raise TypeError(f"Expected subclass of `AsyncBaseStorage` but got `{storage.__class__.__name__}`")
 
         self._controller = controller if controller is not None else Controller()

@@ -30,7 +30,7 @@ def normalized_url(url: tp.Union[httpcore.URL, str, bytes]) -> str:
 
     if isinstance(url, httpcore.URL):
         port = f":{url.port}" if url.port is not None else ""
-        return f'{url.scheme.decode("ascii")}://{url.host.decode("ascii")}{port}{url.target.decode("ascii")}'
+        return f"{url.scheme.decode('ascii')}://{url.host.decode('ascii')}{port}{url.target.decode('ascii')}"
     assert False, "Invalid type for `normalized_url`"  # pragma: no cover
 
 
