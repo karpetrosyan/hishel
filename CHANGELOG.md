@@ -1,6 +1,6 @@
 # Changelog
 
-## development
+## 0.1.2 (5th April, 2025)
 
 - Add check for fips compliant python. (#325)
 - Fix compatibility with httpx. (#291)
