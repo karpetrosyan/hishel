@@ -24,12 +24,14 @@ jobs:
         with:
           python-version: "${{ matrix.python-version }}"
           allow-prereleases: true
-      - name: "Install dependencies"
-        run: scripts/install
       - name: Start Redis
         uses: supercharge/redis-github-action@1.8.0
         with:
           redis-version: ${{ matrix.redis-version }}
+      - name: "Setup uv"
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.12"
       - name: "Run tests"
         run: scripts/test
       - name: Upload coverage reports to Codecov
