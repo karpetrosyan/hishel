@@ -1,5 +1,9 @@
 # Changelog
 
+## development
+
+- Avoid race condition when unlinking files in `FileStorage`. (#334)  
+
 ## 0.1.2 (5th April, 2025)
 
 - Add check for fips compliant python. (#325)
