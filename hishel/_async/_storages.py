@@ -159,7 +159,7 @@ class AsyncFileStorage(AsyncBaseStorage):
 
         async with self._lock:
             if response_path.exists():
-                response_path.unlink()
+                response_path.unlink(missing_ok=True)
 
     async def update_metadata(self, key: str, response: Response, request: Request, metadata: Metadata) -> None:
         """
@@ -222,7 +222,7 @@ class AsyncFileStorage(AsyncBaseStorage):
             if response_path.is_file():
                 age = time.time() - response_path.stat().st_mtime
                 if age > self._ttl:
-                    response_path.unlink()
+                    response_path.unlink(missing_ok=True)
             return
 
         self._last_cleaned = time.monotonic()
