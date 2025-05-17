@@ -507,7 +507,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
         return self._serializer.loads(cached_response)
 
     async def aclose(self) -> None:  # pragma: no cover
-        await self._client.close()
+        await self._client.aclose()
 
 
 class AsyncInMemoryStorage(AsyncBaseStorage):

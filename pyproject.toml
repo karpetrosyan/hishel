@@ -39,7 +39,7 @@ yaml = [
 ]
 
 redis = [
-    "redis==5.0.4"
+    "redis==6.0.0"
 ]
 
 sqlite = [
@@ -92,7 +92,7 @@ filterwarnings = []
 
 [tool.coverage.run]
 omit = [
-    "venv/*", 
+    "venv/*",
     "hishel/_sync/*",
     "hishel/_s3.py"
 ]
@@ -136,6 +136,5 @@ dev = [
     "trio==0.28.0",
     "types-boto3==1.0.2",
     "types-pyyaml==6.0.12.20240311",
-    "types-redis==4.6.0.20240425",
     "zipp>=3.19.1",
 ]
