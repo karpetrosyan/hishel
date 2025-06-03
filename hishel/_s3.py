@@ -11,16 +11,22 @@ def get_timestamp_in_ms() -> float:
 
 class S3Manager:
     def __init__(
-        self, client: tp.Any, bucket_name: str, check_ttl_every: tp.Union[int, float], is_binary: bool = False
+        self,
+        client: tp.Any,
+        bucket_name: str,
+        check_ttl_every: tp.Union[int, float],
+        is_binary: bool = False,
+        path_prefix: str = "hishel-",
     ):
         self._client = client
         self._bucket_name = bucket_name
         self._is_binary = is_binary
         self._last_cleaned = time.monotonic()
         self._check_ttl_every = check_ttl_every
+        self._path_prefix = path_prefix
 
     def write_to(self, path: str, data: tp.Union[bytes, str], only_metadata: bool = False) -> None:
-        path = "hishel-" + path
+        path = self._path_prefix + path
         if isinstance(data, str):
             data = data.encode("utf-8")
 
@@ -43,7 +49,7 @@ class S3Manager:
         )
 
     def read_from(self, path: str) -> tp.Union[bytes, str]:
-        path = "hishel-" + path
+        path = self._path_prefix + path
         response = self._client.get_object(
             Bucket=self._bucket_name,
             Key=path,
@@ -57,7 +63,7 @@ class S3Manager:
         return tp.cast(str, content.decode("utf-8"))
 
     def remove_expired(self, ttl: int, key: str) -> None:
-        path = "hishel-" + key
+        path = self._path_prefix + key
 
         if time.monotonic() - self._last_cleaned < self._check_ttl_every:
             try:
@@ -72,7 +78,7 @@ class S3Manager:
 
         self._last_cleaned = time.monotonic()
         for obj in self._client.list_objects(Bucket=self._bucket_name).get("Contents", []):
-            if not obj["Key"].startswith("hishel-"):  # pragma: no cover
+            if not obj["Key"].startswith(self._path_prefix):  # pragma: no cover
                 continue
 
             try:
@@ -88,15 +94,20 @@ class S3Manager:
                 self._client.delete_object(Bucket=self._bucket_name, Key=obj["Key"])
 
     def remove_entry(self, key: str) -> None:
-        path = "hishel-" + key
+        path = self._path_prefix + key
         self._client.delete_object(Bucket=self._bucket_name, Key=path)
 
 
 class AsyncS3Manager:  # pragma: no cover
     def __init__(
-        self, client: tp.Any, bucket_name: str, check_ttl_every: tp.Union[int, float], is_binary: bool = False
+        self,
+        client: tp.Any,
+        bucket_name: str,
+        check_ttl_every: tp.Union[int, float],
+        is_binary: bool = False,
+        path_prefix: str = "hishel-",
     ):
-        self._sync_manager = S3Manager(client, bucket_name, check_ttl_every, is_binary)
+        self._sync_manager = S3Manager(client, bucket_name, check_ttl_every, is_binary, path_prefix)
 
     async def write_to(self, path: str, data: tp.Union[bytes, str], only_metadata: bool = False) -> None:
         return await to_thread.run_sync(self._sync_manager.write_to, path, data, only_metadata)
