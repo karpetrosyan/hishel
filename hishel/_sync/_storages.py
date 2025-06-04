@@ -654,6 +654,8 @@ class S3Storage(BaseStorage):  # pragma: no cover
     :type check_ttl_every: tp.Union[int, float]
     :param client: A client for S3, defaults to None
     :type client: tp.Optional[tp.Any], optional
+    :param path_prefix: A path prefix to use for S3 object keys, defaults to "hishel-"
+    :type path_prefix: str, optional
     """
 
     def __init__(
@@ -663,6 +665,7 @@ class S3Storage(BaseStorage):  # pragma: no cover
         ttl: tp.Optional[tp.Union[int, float]] = None,
         check_ttl_every: tp.Union[int, float] = 60,
         client: tp.Optional[tp.Any] = None,
+        path_prefix: str = "hishel-",
     ) -> None:
         super().__init__(serializer, ttl)
 
@@ -680,6 +683,7 @@ class S3Storage(BaseStorage):  # pragma: no cover
             bucket_name=bucket_name,
             is_binary=self._serializer.is_binary,
             check_ttl_every=check_ttl_every,
+            path_prefix=path_prefix,
         )
         self._lock = Lock()
 

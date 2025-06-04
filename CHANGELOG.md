@@ -5,6 +5,7 @@
 - Remove `types-redis` from dev dependencies (#336)
 - Bump redis to 6.0.0 and address async `.close()` deprecation warning (#336)
 - Avoid race condition when unlinking files in `FileStorage`. (#334)  
+- Allow prodiving a `path_prefix` in `S3Storage` and `AsyncS3Storage`. (#342)
 
 ## 0.1.2 (5th April, 2025)
 
