@@ -2,15 +2,23 @@ import typing as tp
 
 import httpx
 
+from hishel._sync._storages import BaseStorage
 from hishel._sync._transports import CacheTransport
+from hishel._controller import Controller
 
 __all__ = ("CacheClient",)
 
 
 class CacheClient(httpx.Client):
-    def __init__(self, *args: tp.Any, **kwargs: tp.Any):
-        self._storage = kwargs.pop("storage") if "storage" in kwargs else None
-        self._controller = kwargs.pop("controller") if "controller" in kwargs else None
+    def __init__(
+        self,
+        *args: tp.Any,
+        storage: tp.Optional[BaseStorage] = None,
+        contoller: tp.Optional[Controller] = None,
+        **kwargs: tp.Any,
+    ):
+        self._storage = storage
+        self._controller = contoller
         super().__init__(*args, **kwargs)
 
     def _init_transport(self, *args, **kwargs) -> CacheTransport:  # type: ignore
