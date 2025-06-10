@@ -14,11 +14,11 @@ class AsyncCacheClient(httpx.AsyncClient):
         self,
         *args: tp.Any,
         storage: tp.Optional[AsyncBaseStorage] = None,
-        contoller: tp.Optional[Controller] = None,
+        controller: tp.Optional[Controller] = None,
         **kwargs: tp.Any,
     ):
         self._storage = storage
-        self._controller = contoller
+        self._controller = controller
         super().__init__(*args, **kwargs)
 
     def _init_transport(self, *args, **kwargs) -> AsyncCacheTransport:  # type: ignore
