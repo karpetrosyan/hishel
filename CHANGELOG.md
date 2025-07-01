@@ -1,6 +1,6 @@
 # Changelog
 
-## development
+## 0.1.3 (1st July, 2025)
 
 - Remove `types-redis` from dev dependencies (#336)
 - Bump redis to 6.0.0 and address async `.close()` deprecation warning (#336)

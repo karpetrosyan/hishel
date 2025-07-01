@@ -30,6 +30,9 @@ classifiers = [
 ]
 dependencies = [
     "httpx>=0.28.0",
+    "httpx-aiohttp>=0.1.6",
+    "openai",
+    "requests>=2.32.3",
 ]
 
 [project.optional-dependencies]
@@ -117,11 +120,18 @@ select = [
     "E",
     "F",
     "W",
-    "I"
+    "I",
+    "TID251"
 ]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"hishel".msg = "The cgi module is deprecated, see https://peps.python.org/pep-0594/#cgi."
+
+[tool.uv.sources]
+openai = { git = "ssh://git@github.com/stainless-sdks/openai-python", branch = "stl-preview-head/robert/sdk-1337-customer-feature-request-python-support-for-httpx" }
 
 [dependency-groups]
 dev = [
