@@ -38,7 +38,6 @@ SUBS = [
         "from httpcore._async.interfaces import AsyncRequestInterface",
         "from httpcore._sync.interfaces import RequestInterface",
     ),
-    ("from hishel._async._transports", "from hishel._sync._transports"),
     ("AsyncRequestInterface", "RequestInterface"),
     ("__aenter__", "__enter__"),
     ("__aexit__", "__exit__"),

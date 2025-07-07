@@ -6,7 +6,7 @@ from datetime import datetime
 
 from httpcore import Request, Response
 
-from hishel._utils import normalized_url
+from ._utils import normalized_url
 
 try:
     import yaml

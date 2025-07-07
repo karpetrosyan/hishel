@@ -3,8 +3,7 @@ import typing as tp
 
 from httpcore import Request, Response
 
-from hishel._headers import Vary, parse_cache_control
-
+from ._headers import Vary, parse_cache_control
 from ._utils import (
     BaseClock,
     Clock,

@@ -2,7 +2,7 @@ import typing as tp
 
 import httpx
 
-from hishel._sync._transports import CacheTransport
+from ._transports import CacheTransport
 
 __all__ = ("CacheClient",)
 
