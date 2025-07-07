@@ -509,10 +509,11 @@ class Controller:
                 logger.debug(
                     (
                         f"Considering the resource located at {get_safe_url(request.url)} "
-                        "as invalid for cache use since the freshness lifetime has been exceeded more than max-stale."
+                        "as needing revalidation since the freshness lifetime has been exceeded more than max-stale."
                     )
                 )
-                return None
+                self._make_request_conditional(request=request, response=response)
+                return request
             else:
                 logger.debug(
                     (
@@ -532,10 +533,11 @@ class Controller:
                 logger.debug(
                     (
                         f"Considering the resource located at {get_safe_url(request.url)} "
-                        "as invalid for cache use since the age of the response exceeds the max-age directive."
+                        "as needing revalidation since the age of the response exceeds the max-age directive."
                     )
                 )
-                return None
+                self._make_request_conditional(request=request, response=response)
+                return request
 
         # the stored response is one of the following:
         #   fresh (see Section 4.2), or
