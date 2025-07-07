@@ -2,7 +2,7 @@ import typing as tp
 
 import httpx
 
-from hishel._async._transports import AsyncCacheTransport
+from ._transports import AsyncCacheTransport
 
 __all__ = ("AsyncCacheClient",)
 
