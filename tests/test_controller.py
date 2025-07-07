@@ -1007,10 +1007,10 @@ def test_min_fresh_request_directive(caplog):
         cached_response = controller.construct_response_from_cache(
             original_request=original_request, request=request, response=response
         )
-    assert cached_response is None
+    assert isinstance(cached_response, Request)
     assert caplog.messages == [
-        "Considering the resource located at https://example.com/ as invalid for cache"
-        " use since the time left for freshness is less than the min-fresh directive."
+        "Considering the resource located at https://example.com/ as needing revalidation "
+        "since the time left for freshness is less than the min-fresh directive."
     ]
 
 

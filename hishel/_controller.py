@@ -490,11 +490,12 @@ class Controller:
                 logger.debug(
                     (
                         f"Considering the resource located at {get_safe_url(request.url)} "
-                        "as invalid for cache use since the time left for "
+                        "as needing revalidation since the time left for "
                         "freshness is less than the min-fresh directive."
                     )
                 )
-                return None
+                self._make_request_conditional(request=request, response=response)
+                return request
 
         # The max-stale request directive indicates that the
         # client will accept a response that has exceeded its freshness lifetime.
@@ -509,7 +510,8 @@ class Controller:
                 logger.debug(
                     (
                         f"Considering the resource located at {get_safe_url(request.url)} "
-                        "as needing revalidation since the freshness lifetime has been exceeded more than max-stale."
+                        "as needing revalidation since the freshness lifetime "
+                        "has been exceeded more than max-stale."
                     )
                 )
                 self._make_request_conditional(request=request, response=response)
@@ -518,7 +520,8 @@ class Controller:
                 logger.debug(
                     (
                         f"Considering the resource located at {get_safe_url(request.url)} "
-                        "as valid for cache use since the freshness lifetime has been exceeded less than max-stale."
+                        "as valid for cache use since the freshness lifetime "
+                        "has been exceeded less than max-stale."
                     )
                 )
                 return response
