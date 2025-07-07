@@ -489,11 +489,12 @@ class Controller:
                 logger.debug(
                     (
                         f"Considering the resource located at {get_safe_url(request.url)} "
-                        "as invalid for cache use since the time left for "
+                        "as needing revalidation since the time left for "
                         "freshness is less than the min-fresh directive."
                     )
                 )
-                return None
+                self._make_request_conditional(request=request, response=response)
+                return request
 
         # The max-stale request directive indicates that the
         # client will accept a response that has exceeded its freshness lifetime.
@@ -508,15 +509,18 @@ class Controller:
                 logger.debug(
                     (
                         f"Considering the resource located at {get_safe_url(request.url)} "
-                        "as invalid for cache use since the freshness lifetime has been exceeded more than max-stale."
+                        "as needing revalidation since the freshness lifetime "
+                        "has been exceeded more than max-stale."
                     )
                 )
-                return None
+                self._make_request_conditional(request=request, response=response)
+                return request
             else:
                 logger.debug(
                     (
                         f"Considering the resource located at {get_safe_url(request.url)} "
-                        "as valid for cache use since the freshness lifetime has been exceeded less than max-stale."
+                        "as valid for cache use since the freshness lifetime "
+                        "has been exceeded less than max-stale."
                     )
                 )
                 return response
@@ -531,10 +535,11 @@ class Controller:
                 logger.debug(
                     (
                         f"Considering the resource located at {get_safe_url(request.url)} "
-                        "as invalid for cache use since the age of the response exceeds the max-age directive."
+                        "as needing revalidation since the age of the response exceeds the max-age directive."
                     )
                 )
-                return None
+                self._make_request_conditional(request=request, response=response)
+                return request
 
         # the stored response is one of the following:
         #   fresh (see Section 4.2), or
