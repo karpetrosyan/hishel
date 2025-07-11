@@ -103,8 +103,7 @@ class AsyncFileStorage(AsyncBaseStorage):
         self._base_path = Path(base_path) if base_path is not None else Path(".cache/hishel")
         self._gitignore_file = self._base_path / ".gitignore"
 
-        if not self._base_path.is_dir():
-            self._base_path.mkdir(parents=True)
+        self._base_path.mkdir(parents=True, exist_ok=True)
 
         if not self._gitignore_file.is_file():
             with open(self._gitignore_file, "w", encoding="utf-8") as f:
