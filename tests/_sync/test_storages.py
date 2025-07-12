@@ -2,13 +2,22 @@ import datetime
 import os
 from pathlib import Path
 
-import sqlite3
 import pytest
 from httpcore import Request, Response
 
 from hishel import FileStorage, InMemoryStorage, RedisStorage, SQLiteStorage
 from hishel._serializers import Metadata
 from hishel._utils import sleep, generate_key
+
+try:
+    import sqlite3
+except ImportError:  # pragma: no cover
+    sqlite3 = None  # type: ignore
+
+try:
+    import redis
+except ImportError:  # pragma: no cover
+    redis = None  # type: ignore
 
 dummy_metadata = Metadata(cache_key="test", number_of_uses=0, created_at=datetime.datetime.now(datetime.timezone.utc))
 
@@ -48,6 +57,8 @@ def test_filestorage(use_temp_dir):
 
 
 def test_redisstorage(anyio_backend):
+    if redis is None:  # pragma: no cover
+        pytest.skip("redis is not installed")
     if is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
     storage = RedisStorage()
@@ -73,6 +84,8 @@ def test_redisstorage(anyio_backend):
 
 
 def test_sqlitestorage():
+    if sqlite3 is None:  # pragma: no cover
+        pytest.skip("sqlite3 not installed")
     storage = SQLiteStorage(connection=sqlite3.connect(":memory:"))
 
     request = Request(b"GET", "https://example.com")
@@ -196,6 +209,8 @@ def test_filestorage_ttl_after_hits(use_temp_dir, anyio_backend):
 
 
 def test_redisstorage_expired(anyio_backend):
+    if redis is None:  # pragma: no cover
+        pytest.skip("redis is not installed")
     if is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
     storage = RedisStorage(ttl=0.1)
@@ -219,6 +234,10 @@ def test_redisstorage_expired(anyio_backend):
 
 
 def test_redis_ttl_after_hits(use_temp_dir, anyio_backend):
+    if redis is None:  # pragma: no cover
+        pytest.skip("redis not installed")
+    if is_redis_down():  # pragma: no cover
+        pytest.fail("Redis server was not found")
     storage = RedisStorage(ttl=0.2)
 
     request = Request(b"GET", "https://example.com")
@@ -249,6 +268,8 @@ def test_redis_ttl_after_hits(use_temp_dir, anyio_backend):
 
 
 def test_sqlite_expired(anyio_backend):
+    if sqlite3 is None:  # pragma: no cover
+        pytest.skip("sqlite3 not installed")
     storage = SQLiteStorage(ttl=0.1, connection=sqlite3.connect(":memory:"))
     first_request = Request(b"GET", "https://example.com")
     second_request = Request(b"GET", "https://anotherexample.com")
@@ -271,6 +292,8 @@ def test_sqlite_expired(anyio_backend):
 @pytest.mark.xfail
 
 def test_sqlite_ttl_after_hits(use_temp_dir, anyio_backend):
+    if sqlite3 is None:  # pragma: no cover
+        pytest.skip("sqlite3 not installed")
     storage = SQLiteStorage(ttl=0.2)
 
     request = Request(b"GET", "https://example.com")
@@ -390,6 +413,8 @@ def test_filestorage_remove(use_temp_dir):
 
 
 def test_redisstorage_remove(anyio_backend):
+    if redis is None:  # pragma: no cover
+        pytest.skip("redis not installed")
     if is_redis_down():  # pragma: no cover
         pytest.fail("Redis server was not found")
 
@@ -408,6 +433,8 @@ def test_redisstorage_remove(anyio_backend):
 
 
 def test_sqlitestorage_remove():
+    if sqlite3 is None:  # pragma: no cover
+        pytest.skip("sqlite3 not installed")
     storage = SQLiteStorage(connection=sqlite3.connect(":memory:"))
     request = Request(b"GET", "https://example.com")
 

@@ -1,5 +1,6 @@
 import datetime
 
+import pytest
 from httpcore import Request, Response
 
 from hishel._serializers import (
@@ -9,6 +10,11 @@ from hishel._serializers import (
     YAMLSerializer,
 )
 from hishel._utils import normalized_url
+
+try:
+    import yaml
+except ImportError:  # pragma: nocover
+    yaml = None  # type: ignore
 
 
 def test_pickle_serializer_dumps_and_loads():
@@ -192,6 +198,8 @@ def test_dict_serializer_loads():
 
 
 def test_yaml_serializer_dumps():
+    if yaml is None:  # pragma: no cover
+        pytest.skip("yaml not installed")
     request = Request(
         method="GET",
         url="https://example.com",
@@ -248,6 +256,8 @@ def test_yaml_serializer_dumps():
 
 
 def test_yaml_serializer_loads():
+    if yaml is None:  # pragma: no cover
+        pytest.skip("yaml not installed")
     raw_response = "\n".join(
         [
             "response:",
