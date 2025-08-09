@@ -380,7 +380,7 @@ class JSONByteSerializer(BaseSerializer):
             "metadata": metadata_dict,
         }
 
-        return  json.dumps(full_json, separators=(",", ":")).encode("utf-8") + b"\0" + response.content
+        return json.dumps(full_json, separators=(",", ":")).encode("utf-8") + b"\0" + response.content
 
     def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request, Metadata]:
         """
