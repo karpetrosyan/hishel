@@ -17,7 +17,14 @@ HEADERS_ENCODING = "iso-8859-1"
 KNOWN_RESPONSE_EXTENSIONS = ("http_version", "reason_phrase")
 KNOWN_REQUEST_EXTENSIONS = ("timeout", "sni_hostname")
 
-__all__ = ("PickleSerializer", "JSONSerializer", "YAMLSerializer", "BaseSerializer", "JSONByteSerializer", "clone_model")
+__all__ = (
+    "PickleSerializer",
+    "JSONSerializer",
+    "YAMLSerializer",
+    "BaseSerializer",
+    "JSONByteSerializer",
+    "clone_model",
+)
 
 T = tp.TypeVar("T", Request, Response)
 
@@ -391,8 +398,8 @@ class JSONByteSerializer(BaseSerializer):
         :return: HTTP response and its HTTP request
         :rtype: tp.Tuple[Response, Request, Metadata]
         """
-
-        full_json, body = data.split(b"\0", 1)
+        data_b: bytes = data.encode("utf-8") if isinstance(data, str) else data
+        full_json, body = data_b.split(b"\0", 1)
         full_json = json.loads(full_json.decode("utf-8"))
         response_dict = full_json["response"]
         request_dict = full_json["request"]
