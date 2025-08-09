@@ -443,5 +443,5 @@ class JSONByteSerializer(BaseSerializer):
         return response, request, metadata
 
     @property
-    def is_binary(self) -> bool:
+    def is_binary(self) -> bool:  # pragma: no cover
         return True
