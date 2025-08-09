@@ -328,7 +328,8 @@ def test_jsonbyte_serializer_dumps():
     )
 
     full = JSONByteSerializer().dumps(response=response, request=request, metadata=metadata)
-    meta_raw, body = full.split(b"\0", 1)
+    full_b: bytes = full if isinstance(full, bytes) else full.encode("utf-8")
+    meta_raw, body = full_b.split(b"\0", 1)
     meta = json.loads(meta_raw.decode("utf-8"))
 
     assert body == b"test"
