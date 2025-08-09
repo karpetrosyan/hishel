@@ -126,6 +126,7 @@ class Controller:
         always_revalidate: bool = False,
         force_cache: bool = False,
         key_generator: tp.Optional[tp.Callable[[Request, tp.Optional[bytes]], str]] = None,
+        update_metadata_on_hit: bool = False
     ):
         self._cacheable_methods = []
 
@@ -148,6 +149,7 @@ class Controller:
         self._always_revalidate = always_revalidate
         self._force_cache = force_cache
         self._key_generator = key_generator or generate_key
+        self._update_metadata_on_hit = update_metadata_on_hit
 
     def is_cachable(self, request: Request, response: Response) -> bool:
         """

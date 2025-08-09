@@ -245,11 +245,12 @@ class CacheTransport(httpx.BaseTransport):
         metadata: Metadata | None = None,
     ) -> Response:
         if cached:
-            assert metadata
-            metadata["number_of_uses"] += 1
-            self._storage.update_metadata(key=key, request=request, response=response, metadata=metadata)
-            response.extensions["from_cache"] = True  # type: ignore[index]
-            response.extensions["cache_metadata"] = metadata  # type: ignore[index]
+            if self._controller._update_metadata_on_hit:
+                assert metadata
+                metadata["number_of_uses"] += 1
+                self._storage.update_metadata(key=key, request=request, response=response, metadata=metadata)
+                response.extensions["from_cache"] = True  # type: ignore[index]
+                response.extensions["cache_metadata"] = metadata  # type: ignore[index]
         else:
             response.extensions["from_cache"] = False  # type: ignore[index]
         response.extensions["revalidated"] = revalidated  # type: ignore[index]
