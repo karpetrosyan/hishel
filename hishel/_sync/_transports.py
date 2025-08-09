@@ -5,7 +5,7 @@ import typing as tp
 
 import httpcore
 import httpx
-from httpx import SyncByteStream, Request, Response
+from httpx import Request, Response, SyncByteStream
 from httpx._exceptions import ConnectError
 
 from .._controller import Controller, allowed_stale

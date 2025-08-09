@@ -126,7 +126,7 @@ class Controller:
         always_revalidate: bool = False,
         force_cache: bool = False,
         key_generator: tp.Optional[tp.Callable[[Request, tp.Optional[bytes]], str]] = None,
-        update_metadata_on_hit: bool = False
+        update_metadata_on_hit: bool = False,
     ):
         self._cacheable_methods = []
 
