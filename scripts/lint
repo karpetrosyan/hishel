@@ -1,5 +1,7 @@
 #! /bin/bash -ex
 
+export SOURCE_FILES="hishel tests packages"
+
 uv run ruff check --fix $SOURCE_FILES
 uv run ruff format $SOURCE_FILES
 uv run python unasync.py

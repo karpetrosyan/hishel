@@ -1,8 +1,9 @@
 #! /bin/bash -ex
 
-export SOURCE_FILES="hishel tests"
+export SOURCE_FILES="hishel tests packages"
 
 uv run ruff format $SOURCE_FILES --diff
 uv run ruff check $SOURCE_FILES
-uv run --all-extras mypy $SOURCE_FILES
+uv run --all-extras mypy hishel tests
+uv run --all-extras mypy packages/kavo
 uv run python unasync.py --check
