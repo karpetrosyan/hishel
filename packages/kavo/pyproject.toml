@@ -1,0 +1,23 @@
+[project]
+name = "kavo"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["lmdb>=1.6.2", "msgpack>=1.1.1"]
+
+[tool.setuptools]
+py-modules = ["kavo"]
+
+[project.optional-dependencies]
+async = ["anyio>=4.9.0"]
+
+[dependency-groups]
+dev = [
+    "anyio>=4.9.0",
+    "mypy>=1.17.1",
+    "pytest>=8.4.1",
+    "ruff>=0.12.7",
+    "time-machine>=2.16.0",
+    "trio>=0.30.0",
+]

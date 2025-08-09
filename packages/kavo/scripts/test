@@ -1,0 +1,4 @@
+#! /bin/bash -e
+
+uv run pytest
+scripts/lint

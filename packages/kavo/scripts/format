@@ -1,0 +1,5 @@
+#! /bin/bash -e
+
+uv run ruff check --fix kavo tests
+uv run ruff format kavo tests
+uv run mypy kavo tests
