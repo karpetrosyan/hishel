@@ -1,3 +1,4 @@
+from pydoc import cli
 import threading
 import time
 import uuid
@@ -21,6 +22,7 @@ import msgpack
 
 from hishel._core._sync._storages._base import SyncBaseStorage
 from hishel._core.models import (
+    Headers,
     PairMeta,
     Request,
     RequestPair,
@@ -65,13 +67,13 @@ def pack(
                     "request": {
                         "method": value.request.method,
                         "url": value.request.url,
-                        "headers": value.request.headers,
-                        "extra": value.request.extra,
+                        "headers": value.request.headers._headers,
+                        "extra": {},
                     },
                     "response": {
                         "status_code": value.response.status_code,
-                        "headers": value.response.headers,
-                        "extra": value.response.extra,
+                        "headers": value.response.headers._headers,
+                        "extra": {},
                     }
                     if value.response
                     else None,
@@ -88,6 +90,7 @@ def unpack(
     value: bytes,
     /,
     kind: Literal["pair"],
+    client: "SyncLmdbStorage",
 ) -> RequestPair: ...
 
 
@@ -96,6 +99,7 @@ def unpack(
     value: bytes,
     /,
     kind: Literal["entry_db_key_index"],
+    client: Optional["SyncLmdbStorage"] = None,
 ) -> uuid.UUID: ...
 
 
@@ -135,14 +139,14 @@ def unpack(
             request=Request(
                 method=data["request"]["method"],
                 url=data["request"]["url"],
-                headers=data["request"]["headers"],
+                headers=Headers(data["request"]["headers"]),
                 extra=data["request"]["extra"],
                 stream=client._stream_data_from_cache(id.bytes, client.stream_db, "request"),
             ),
             response=(
                 Response(
                     status_code=data["response"]["status_code"],
-                    headers=data["response"]["headers"],
+                    headers=Headers(data["response"]["headers"]),
                     extra=data["response"]["extra"],
                     stream=client._stream_data_from_cache(id.bytes, client.stream_db, "response"),
                 )
@@ -227,7 +231,7 @@ class SyncLmdbStorage(SyncBaseStorage):
         response: Response,
     ) -> Response:
         with self.env.begin(write=True) as txn:
-            pair = unpack(txn.get(pair_id.bytes, db=self.entry_db), kind="pair")
+            pair = unpack(txn.get(pair_id.bytes, db=self.entry_db), kind="pair", client=self)
 
             if pair is None:
                 raise ValueError(f"Entry with ID {pair_id} not found.")
@@ -237,13 +241,13 @@ class SyncLmdbStorage(SyncBaseStorage):
             txn.put(pair_id.bytes, pack(pair, kind="pair"), db=self.entry_db)
 
             assert isinstance(response.stream, Iterable)
-            self._stream_data_to_cache(response.stream, pair_id.bytes, "response")
+        self._stream_data_to_cache(response.stream, pair_id.bytes, "response")
 
         return Response(
             status_code=response.status_code,
             headers=response.headers,
             extra=response.extra,
-            stream=self._stream_data_from_cache(pair_id.bytes, txn, self.stream_db, "request"),
+            stream=self._stream_data_from_cache(pair_id.bytes, self.stream_db, "request"),
         )
 
     def get_responses(self, key: str, /, complete_only: Optional[bool] = None) -> List[RequestPair]:
@@ -287,7 +291,8 @@ class SyncLmdbStorage(SyncBaseStorage):
         """
         Check if the pair is complete.
         """
-        return txn.get(b":".join([pair.id.bytes, b"complete"]), db=self.stream_db) is not None
+        return True
+        return txn.get(b":".join([b"response_complete", b"complete"]), db=self.stream_db) is not None
 
     def _mark_pair_as_deleted(self, pair: RequestPair, txn: "Transaction") -> None:
         """
@@ -324,6 +329,7 @@ class SyncLmdbStorage(SyncBaseStorage):
             cursor = txn.cursor(self.entry_db)
 
             for key, value in cursor:
+                assert isinstance(value, bytes)
                 pair = unpack(value, kind="pair", client=self)
                 if self._is_pair_expired(pair, txn) and not self._is_soft_deleted(pair):
                     should_mark_as_deleted.append(pair)
@@ -412,7 +418,7 @@ class SyncLmdbStorage(SyncBaseStorage):
         Stream data to the cache in chunks.
         """
 
-        suffix = f"request_chunk_{id}" if kind == "request" else f"response_chunk_{id}"
+        suffix = "request_chunk_{id}" if kind == "request" else "response_chunk_{id}"
         complete_suffix = b"request_complete" if kind == "request" else b"response_complete"
         i = 0
         for chunk in stream:
@@ -445,7 +451,7 @@ class SyncLmdbStorage(SyncBaseStorage):
         Stream data from the cache in chunks.
         """
 
-        suffix = f"request_chunk_{id}" if kind == "request" else f"response_chunk_{id}"
+        suffix = "request_chunk_{id}" if kind == "request" else "response_chunk_{id}"
         i = 0
 
         with self.env.begin(write=False) as txn:
@@ -460,3 +466,20 @@ class SyncLmdbStorage(SyncBaseStorage):
                     break
                 yield chunk
                 i += 1
+
+
+def print_env_state(client: SyncLmdbStorage) -> str:
+    known_dbs = [client.entry_db, client.stream_db]
+
+    state = ""
+
+    with client.env.begin() as txn:
+        for db in known_dbs:
+            if db is client.entry_db:
+                for key, value in txn.cursor(db):
+                    state += f"Entry DB - Key: {uuid.UUID(bytes=key)}, Value: ...\n"
+            elif db is client.stream_db:
+                for key, value in txn.cursor(db):
+                    id, rest = key.split(b":")
+                    state += f"Stream DB - Key: {uuid.UUID(bytes=id)} - {rest.decode('utf-8')}, Value: ...\n"
+    return state
