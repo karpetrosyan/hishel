@@ -17,7 +17,7 @@ HEADERS_ENCODING = "iso-8859-1"
 KNOWN_RESPONSE_EXTENSIONS = ("http_version", "reason_phrase")
 KNOWN_REQUEST_EXTENSIONS = ("timeout", "sni_hostname")
 
-__all__ = ("PickleSerializer", "JSONSerializer", "YAMLSerializer", "BaseSerializer", "clone_model")
+__all__ = ("Metadata", "PickleSerializer", "JSONSerializer", "YAMLSerializer", "BaseSerializer", "clone_model")
 
 T = tp.TypeVar("T", Request, Response)
 
