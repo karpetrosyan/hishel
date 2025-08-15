@@ -11,7 +11,7 @@ from httpx._exceptions import ConnectError
 from .._controller import Controller, allowed_stale
 from .._headers import parse_cache_control
 from .._serializers import JSONSerializer, Metadata
-from .._utils import extract_header_values_decoded, normalized_url
+from .._utils import extract_header_values_decoded, normalized_url, httpx_to_httpcore_request
 from ._storages import BaseStorage, FileStorage
 
 if tp.TYPE_CHECKING:  # pragma: no cover
@@ -96,18 +96,7 @@ class CacheTransport(httpx.BaseTransport):
             body_for_key = b""
 
         # Construct the HTTPCore request because Controllers and Storages work with HTTPCore requests.
-        httpcore_request = httpcore.Request(
-            method=request.method,
-            url=httpcore.URL(
-                scheme=request.url.raw_scheme,
-                host=request.url.raw_host,
-                port=request.url.port,
-                target=request.url.raw_path,
-            ),
-            headers=request.headers.raw,
-            content=request.stream,
-            extensions=request.extensions,
-        )
+        httpcore_request = httpx_to_httpcore_request(request)
 
         key = self._controller._key_generator(httpcore_request, body_for_key)
         stored_data = self._storage.retrieve(key)

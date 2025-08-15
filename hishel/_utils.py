@@ -207,3 +207,19 @@ async def sync_iterator_to_async(iterator: Iterator[bytes]) -> AsyncIterator[byt
             break
 
         yield chunk
+
+
+def httpx_to_httpcore_request(request: httpx.Request) -> httpcore.Request:
+    """Convert an httpx request into an httpcore request."""
+    return httpcore.Request(
+        method=request.method,
+        url=httpcore.URL(
+            scheme=request.url.raw_scheme,
+            host=request.url.raw_host,
+            port=request.url.port,
+            target=request.url.raw_path,
+        ),
+        headers=request.headers.raw,
+        content=request.stream,
+        extensions=request.extensions,
+    )
