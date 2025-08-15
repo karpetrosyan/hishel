@@ -2,6 +2,7 @@
 
 ## development
 
+- Refactored out `httpx_to_httpcore_request`. (#365)
 - Added `Metadata` to public API. (#363)
 - Fix race condition in FileStorage initialization. (#353)
 
