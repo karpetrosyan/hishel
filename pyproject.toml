@@ -117,7 +117,8 @@ select = [
     "E",
     "F",
     "W",
-    "I"
+    "I",
+    "RUF022"
 ]
 
 [tool.ruff.lint.isort]

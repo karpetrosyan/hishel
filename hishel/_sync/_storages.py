@@ -36,10 +36,10 @@ logger = logging.getLogger("hishel.storages")
 __all__ = (
     "BaseStorage",
     "FileStorage",
-    "RedisStorage",
-    "SQLiteStorage",
     "InMemoryStorage",
+    "RedisStorage",
     "S3Storage",
+    "SQLiteStorage",
 )
 
 StoredResponse: TypeAlias = tp.Tuple[Response, Request, Metadata]
