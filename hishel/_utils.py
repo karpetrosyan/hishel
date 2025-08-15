@@ -116,3 +116,19 @@ def sleep(seconds: tp.Union[int, float]) -> None:
 
 def float_seconds_to_int_milliseconds(seconds: float) -> int:
     return int(seconds * 1000)
+
+
+def httpx_to_httpcore_request(request: httpx.Request) -> httpcore.Request:
+    """Convert an httpx request into an httpcore request."""
+    return httpcore.Request(
+        method=request.method,
+        url=httpcore.URL(
+            scheme=request.url.raw_scheme,
+            host=request.url.raw_host,
+            port=request.url.port,
+            target=request.url.raw_path,
+        ),
+        headers=request.headers.raw,
+        content=request.stream,
+        extensions=request.extensions,
+    )
