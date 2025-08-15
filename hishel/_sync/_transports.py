@@ -11,7 +11,7 @@ from httpx._exceptions import ConnectError
 from .._controller import Controller, allowed_stale
 from .._headers import parse_cache_control
 from .._serializers import JSONSerializer, Metadata
-from .._utils import extract_header_values_decoded, normalized_url, httpx_to_httpcore_request
+from .._utils import extract_header_values_decoded, httpx_to_httpcore_request, normalized_url
 from ._storages import BaseStorage, FileStorage
 
 if tp.TYPE_CHECKING:  # pragma: no cover
