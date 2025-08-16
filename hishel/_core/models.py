@@ -1,5 +1,5 @@
 import uuid
-from dataclasses import dataclass
+from dataclasses import field, dataclass
 from typing import (
     Any,
     AsyncIterable,
@@ -104,6 +104,7 @@ class RequestPair:
     request: Request
     meta: PairMeta
     cache_key: str
+    extra: Mapping[str, Any] = field(default_factory=dict)
     """
     Cache key for the entry, if it is cached.
     """
