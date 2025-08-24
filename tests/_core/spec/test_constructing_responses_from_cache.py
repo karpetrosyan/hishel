@@ -135,7 +135,7 @@ class TestConstructingResponsesFromCache:
         assert isinstance(state, CacheMiss)
 
     @travel("2024-01-01 00:00:00")
-    def test_response_returned_from_cache_if_fresh(self):
+    def test_response_returned_from_cache_if_fresh(self) -> None:
         fresh_pair = create_fresh_pair(response_headers={"Cache-Control": "max-age=3600"})
 
         idle_state = IdleClient()
@@ -149,7 +149,7 @@ class TestConstructingResponsesFromCache:
         assert "age" in state.pair.response.headers
 
     @travel("2025-01-01 00:00:00")
-    def test_stale_response_returned_from_cache(self):
+    def test_stale_response_returned_from_cache(self) -> None:
         fresh_pair = create_fresh_pair(response_headers={"Cache-Control": "max-age=0"})
 
         idle_state = IdleClient(options=CacheOptions(allow_stale=True))
@@ -162,7 +162,7 @@ class TestConstructingResponsesFromCache:
         assert isinstance(state, FromCache)
 
     @travel("2025-01-01 00:00:00")
-    def test_response_needs_revalidation_if_not_fresh(self):
+    def test_response_needs_revalidation_if_not_fresh(self) -> None:
         fresh_pair = create_fresh_pair(response_headers={"Cache-Control": "max-age=0"})
 
         idle_state = IdleClient()
