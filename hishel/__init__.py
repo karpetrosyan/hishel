@@ -8,6 +8,8 @@ from ._serializers import *
 from ._sync import *
 from ._lfu_cache import *
 
+from ._core._spec import IdleClient, CacheMiss, FromCache, NeedRevalidation, AnyState, CacheOptions,  NeedToBeUpdated, State, StoreAndUse, CouldNotBeStored
+
 
 def install_cache() -> None:  # pragma: no cover
     httpx.AsyncClient = AsyncCacheClient  # type: ignore
@@ -15,3 +17,16 @@ def install_cache() -> None:  # pragma: no cover
 
 
 __version__ = "0.1.3"
+
+__all__ = [
+    "AnyState",
+    "State",
+    "IdleClient",
+    "CacheMiss",
+    "FromCache",
+    "NeedRevalidation",
+    "CacheOptions",
+    "NeedToBeUpdated",
+    "StoreAndUse",
+    "CouldNotBeStored"
+]
