@@ -82,7 +82,7 @@ exclude = ['venv', '.venv']
 
 [[tool.mypy.overrides]]
 module = "time_machine.*"
-follow_untyped_imports = True
+follow_untyped_imports = true
 
 [[tool.mypy.overrides]]
 module = "tests.*"
