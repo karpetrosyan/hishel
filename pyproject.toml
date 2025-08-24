@@ -83,8 +83,11 @@ exclude = ['venv', '.venv']
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
-check_untyped_defs = true
 
+check_untyped_defs = true
+[[tool.mypy.overrides]]
+module = ["time_machine.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = ["-rxXs", "--strict-config", "--strict-markers"]
@@ -134,6 +137,7 @@ dev = [
     "mypy==1.17.1",
     "pytest==8.4.1",
     "ruff==0.12.7",
+    "time-machine>=2.19.0",
     "trio==0.30.0",
     "types-boto3==1.40.0",
     "types-pyyaml==6.0.12.20250516",
