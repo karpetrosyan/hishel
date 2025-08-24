@@ -81,6 +81,10 @@ warn_unused_ignores = false
 exclude = ['venv', '.venv']
 
 [[tool.mypy.overrides]]
+module = "time_machine.*"
+follow_untyped_imports = True
+
+[[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
 check_untyped_defs = true
