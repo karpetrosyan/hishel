@@ -4,7 +4,7 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING, Any, Dict, TypeAlias, Union
+from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Union
 
 from hishel._core._headers import Vary, parse_cache_control
 from hishel._utils import parse_date
@@ -24,9 +24,9 @@ class CacheOptions:
     allow_stale: bool = False
 
 
-@dataclass(kw_only=True)
+@dataclass
 class State(ABC):
-    options: CacheOptions = field(default_factory=CacheOptions)
+    options: CacheOptions
 
     @abstractmethod
     def next(self, *args: Any, **kwargs: Any) -> Union["State", None]:
@@ -237,7 +237,7 @@ def refresh_response_headers(
     )
 
 
-AnyState: TypeAlias = Union[
+AnyState = Union[
     "CacheMiss",
     "StoreAndUse",
     "CouldNotBeStored",
@@ -249,6 +249,12 @@ AnyState: TypeAlias = Union[
 
 # Defined in https://www.rfc-editor.org/rfc/rfc9110#name-safe-methods
 SAFE_METHODS = frozenset(["GET", "HEAD", "OPTIONS", "TRACE"])
+
+
+def create_idle_state(role: Literal["client", "server"], options: Optional[CacheOptions] = None) -> IdleClient:
+    if role == "server":
+        raise NotImplementedError("Server role is not implemented yet.")
+    return IdleClient(options=options or CacheOptions())
 
 
 @dataclass
@@ -267,7 +273,7 @@ class IdleClient(State):
         # to the origin server; i.e., a cache is not allowed to generate a reply to such a request
         # before having forwarded the request and having received a corresponding response.
         if request.method.upper() not in SAFE_METHODS:
-            return CacheMiss(request=request)
+            return CacheMiss(request=request, options=self.options)
 
         # When presented with a request, a cache MUST NOT reuse a stored response unless:
 
@@ -319,7 +325,7 @@ class IdleClient(State):
                 need_revalidation.append(pair)
 
         if not ready_to_use and not need_revalidation:
-            return CacheMiss(request=request)
+            return CacheMiss(request=request, options=self.options)
 
         if ready_to_use:
             # When a stored response is used to satisfy a request without validation,
@@ -335,12 +341,14 @@ class IdleClient(State):
                             "age": str(get_age(ready_to_use[-1].response)),
                         },
                     ),
-                )
+                ),
+                options=self.options,
             )
         else:
             return NeedRevalidation(
                 request=make_conditional_request(need_revalidation[-1].request, need_revalidation[-1].response),
                 revalidating_pairs=filtered_pairs,
+                options=self.options,
             )
 
 
@@ -374,7 +382,7 @@ class CouldNotBeStored(State):
         return None
 
 
-@dataclass(kw_only=True)
+@dataclass
 class CacheMiss(State):
     """
     Storing Responses in Caches
@@ -479,12 +487,14 @@ class CacheMiss(State):
                         "See: https://www.rfc-editor.org/rfc/rfc9111.html#section-3-2.7.1"
                     )
 
-            return CouldNotBeStored(pair=pair)
+            return CouldNotBeStored(pair=pair, options=self.options)
 
-        return StoreAndUse(pair=replace(pair, response=exclude_unstorable_headers(response, self.options.shared)))
+        return StoreAndUse(
+            pair=replace(pair, response=exclude_unstorable_headers(response, self.options.shared)), options=self.options
+        )
 
 
-@dataclass(kw_only=True)
+@dataclass
 class FromCache(State):
     pair: CompletePair
 
@@ -492,15 +502,15 @@ class FromCache(State):
         return None
 
 
-@dataclass(kw_only=True)
+@dataclass
 class NeedToBeUpdated(State):
     updating_pairs: list[CompletePair]
 
     def next(self) -> FromCache:
-        return FromCache(pair=self.updating_pairs[-1])
+        return FromCache(pair=self.updating_pairs[-1], options=self.options)
 
 
-@dataclass(kw_only=True)
+@dataclass()
 class NeedRevalidation(State):
     """
     4.3.3 Handling a validation response.
@@ -531,14 +541,14 @@ class NeedRevalidation(State):
             # responses nominated in the conditional request are suitable. Instead, the cache
             # MUST use the full response to satisfy the request. The cache MAY store such a full
             # response, subject to its constraints (see Section 3).
-            return CacheMiss(request=revalidation_pair.request)
+            return CacheMiss(request=revalidation_pair.request, options=self.options)
         elif revalidation_response.status_code // 100 == 5:
             # However, if a cache receives a 5xx (Server Error) response while attempting to
             # validate a response, it can either forward this response to the requesting client
             # or act as if the server failed to respond. In the latter case, the cache can send
             # a previously stored response, subject to its constraints on doing so
             # (see Section 4.2.4),or retry the validation request.
-            return CacheMiss(request=revalidation_pair.request)
+            return CacheMiss(request=revalidation_pair.request, options=self.options)
         raise RuntimeError(f"Unexpected response status code during revalidation: {revalidation_response.status_code}")
 
     def freshening_stored_responses(self, revalidation_response: Response) -> NeedToBeUpdated:
@@ -567,5 +577,6 @@ class NeedRevalidation(State):
                     response=refresh_response_headers(pair.response, revalidation_response),
                 )
                 for pair in identified_for_revalidation
-            ]
+            ],
+            options=self.options,
         )

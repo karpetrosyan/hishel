@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from dataclasses import InitVar, dataclass, field
 from typing import (
@@ -7,17 +9,11 @@ from typing import (
     Mapping,
     MutableMapping,
     Optional,
-    TypeAlias,
     Union,
     overload,
 )
 
 from hishel._core._headers import Headers
-
-AnyMapping: TypeAlias = Union[
-    Mapping[str, Union[str, bytes]],
-    MutableMapping[str, Union[str, bytes]],
-]
 
 
 @overload
@@ -90,7 +86,6 @@ class Pair:
     request: Request
     meta: PairMeta
     cache_key: str
-    extra: Mapping[str, Any] = field(default_factory=dict)
     """
     Cache key for the entry, if it is cached.
     """
@@ -99,9 +94,10 @@ class Pair:
 # class used by storage
 @dataclass
 class IncompletePair(Pair):
-    pass
+    extra: Mapping[str, Any] = field(default_factory=dict)
 
 
-@dataclass(kw_only=True)
+@dataclass
 class CompletePair(Pair):
     response: Response
+    extra: Mapping[str, Any] = field(default_factory=dict)

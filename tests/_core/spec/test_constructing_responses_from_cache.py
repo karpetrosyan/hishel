@@ -22,6 +22,7 @@ from hishel import (
     Request,
     Response,
 )
+from hishel._core._spec import create_idle_state
 from hishel._core.models import PairMeta
 
 
@@ -68,7 +69,7 @@ class TestConstructingResponsesFromCache:
         """
         fresh_pair = create_fresh_pair()
 
-        idle_state = IdleClient()
+        idle_state = create_idle_state("client")
 
         state = idle_state.next(
             request=replace(fresh_pair.request, url="https://example.com/other"),
@@ -86,7 +87,7 @@ class TestConstructingResponsesFromCache:
         """
         fresh_pair = create_fresh_pair()
 
-        idle_state = IdleClient()
+        idle_state = create_idle_state("client")
 
         state = idle_state.next(
             request=replace(fresh_pair.request, method="HEAD"),
@@ -106,7 +107,7 @@ class TestConstructingResponsesFromCache:
             response_headers={"Vary": "Accept-Encoding"}, request_headers={"Accept-Encoding": "gzip"}
         )
 
-        idle_state = IdleClient()
+        idle_state = create_idle_state("client")
 
         state = idle_state.next(
             request=replace(fresh_pair.request, raw_headers={"Accept-Encoding": "br"}),
@@ -125,7 +126,7 @@ class TestConstructingResponsesFromCache:
         """
         fresh_pair = create_fresh_pair(response_headers={"Cache-Control": "no-cache"})
 
-        idle_state = IdleClient()
+        idle_state = create_idle_state("client")
 
         state = idle_state.next(
             request=fresh_pair.request,
@@ -138,7 +139,7 @@ class TestConstructingResponsesFromCache:
     def test_response_returned_from_cache_if_fresh(self) -> None:
         fresh_pair = create_fresh_pair(response_headers={"Cache-Control": "max-age=3600"})
 
-        idle_state = IdleClient()
+        idle_state = create_idle_state("client")
 
         state = idle_state.next(
             request=fresh_pair.request,
@@ -165,7 +166,7 @@ class TestConstructingResponsesFromCache:
     def test_response_needs_revalidation_if_not_fresh(self) -> None:
         fresh_pair = create_fresh_pair(response_headers={"Cache-Control": "max-age=0"})
 
-        idle_state = IdleClient()
+        idle_state = create_idle_state("client")
 
         state = idle_state.next(
             request=fresh_pair.request,
@@ -186,11 +187,13 @@ class TestHandlingRevalidationResponse:
     @travel("2024-01-01 00:00:00")
     def test_304_handled_correctly(self) -> None:
         fresh_pair = create_fresh_pair(response_headers={"etag": "12345"})
-        state = NeedRevalidation(request=fresh_pair.request, revalidating_pairs=[fresh_pair]).next(
+        state = NeedRevalidation(
+            request=fresh_pair.request, revalidating_pairs=[fresh_pair], options=CacheOptions()
+        ).next(
             replace(
                 fresh_pair,
                 response=replace(fresh_pair.response, status_code=304, raw_headers={"X-SomeHeader": "somevalue"}),
-            )
+            ),
         )
 
         assert isinstance(state, NeedToBeUpdated)
@@ -210,7 +213,9 @@ class TestHandlingRevalidationResponse:
 
     def test_2xx_handled_correctly(self):
         fresh_pair = create_fresh_pair(response_headers={"etag": "12345"})
-        state = NeedRevalidation(request=fresh_pair.request, revalidating_pairs=[fresh_pair]).next(
+        state = NeedRevalidation(
+            request=fresh_pair.request, revalidating_pairs=[fresh_pair], options=CacheOptions()
+        ).next(
             replace(
                 fresh_pair,
                 response=replace(fresh_pair.response, status_code=200),
@@ -221,7 +226,9 @@ class TestHandlingRevalidationResponse:
 
     def test_5xx_handled_correctly(self):
         fresh_pair = create_fresh_pair(response_headers={"etag": "12345"})
-        state = NeedRevalidation(request=fresh_pair.request, revalidating_pairs=[fresh_pair]).next(
+        state = NeedRevalidation(
+            request=fresh_pair.request, revalidating_pairs=[fresh_pair], options=CacheOptions()
+        ).next(
             replace(
                 fresh_pair,
                 response=replace(fresh_pair.response, status_code=500),

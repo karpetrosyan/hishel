@@ -52,6 +52,7 @@ class TestStoringResponsesInCaches:
 
         state = CacheMiss(
             request=fresh_pair.request,
+            options=CacheOptions(),
         ).next(
             pair=fresh_pair,
         )
@@ -88,6 +89,7 @@ class TestStoringResponsesInCaches:
         with caplog.at_level("DEBUG"):
             state = CacheMiss(
                 request=fresh_pair.request,
+                options=CacheOptions(),
             ).next(
                 pair=replace(fresh_pair, response=replace(fresh_pair.response, status_code=101)),
             )
@@ -108,6 +110,7 @@ class TestStoringResponsesInCaches:
         with caplog.at_level("DEBUG"):
             state = CacheMiss(
                 request=fresh_pair.request,
+                options=CacheOptions(),
             ).next(
                 pair=replace(fresh_pair, response=replace(fresh_pair.response, status_code=304)),
             )
@@ -128,6 +131,7 @@ class TestStoringResponsesInCaches:
         with caplog.at_level("DEBUG"):
             state = CacheMiss(
                 request=fresh_pair.request,
+                options=CacheOptions(),
             ).next(
                 pair=replace(
                     fresh_pair, response=replace(fresh_pair.response, raw_headers={"Cache-Control": "no-store"})
@@ -254,6 +258,7 @@ class TestStoringResponsesInCaches:
         with caplog.at_level("DEBUG"):
             state = CacheMiss(
                 request=fresh_pair.request,
+                options=CacheOptions(),
             ).next(
                 pair=replace(fresh_pair, response=replace(fresh_pair.response, raw_headers={})),
             )
@@ -278,6 +283,7 @@ class TestStoringResponsesInCaches:
 
         state = CacheMiss(
             request=fresh_pair.request,
+            options=CacheOptions(),
         ).next(
             pair=with_required_component,
         )
@@ -307,7 +313,7 @@ def test_storing_header_and_trailer_fields() -> None:
         }
     )
 
-    state = CacheMiss(request=fresh_pair.request).next(pair=fresh_pair)
+    state = CacheMiss(request=fresh_pair.request, options=CacheOptions()).next(pair=fresh_pair)
 
     assert isinstance(state, StoreAndUse)
     assert "keep-alive" not in state.pair.response.headers
@@ -330,7 +336,7 @@ def test_storing_header_and_trailer_fields() -> None:
         }
     )
 
-    state = CacheMiss(request=fresh_pair.request).next(pair=fresh_pair)
+    state = CacheMiss(request=fresh_pair.request, options=CacheOptions()).next(pair=fresh_pair)
 
     assert isinstance(state, StoreAndUse)
     assert "content-type" not in state.pair.response.headers

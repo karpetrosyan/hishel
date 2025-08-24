@@ -22,9 +22,9 @@ graph LR
 As a client, start with an idle state and check the next method’s signature to understand what comes next.
 
 ```python
-from hishel import IdleClient
+from hishel import create_idle_state
 
-state = IdleClient()
+state = create_idle_state("client")  # client or server (server still in development)
 
 # signature will look like:
 #   (method) def next(
