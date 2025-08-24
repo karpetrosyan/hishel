@@ -22,6 +22,7 @@ from hishel import (
     Request,
     Response,
 )
+from hishel._core.models import PairMeta
 
 
 def create_fresh_pair(
@@ -46,7 +47,7 @@ def create_fresh_pair(
             else {**default_response_headers, **response_headers},
             stream=[],
         ),
-        meta={"created_at": time.time()},
+        meta=PairMeta(created_at=time.time()),
         cache_key="example.com",
     )
 
@@ -203,7 +204,7 @@ class TestHandlingRevalidationResponse:
             response=replace(
                 fresh_pair.response, raw_headers={**fresh_pair.response.headers, "X-SomeHeader": "somevalue"}
             ),
-            meta={"created_at": ANY},
+            meta=PairMeta(created_at=ANY),
             cache_key="example.com",
         )
 

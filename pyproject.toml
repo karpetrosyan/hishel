@@ -81,14 +81,13 @@ warn_unused_ignores = false
 exclude = ['venv', '.venv']
 
 [[tool.mypy.overrides]]
-module = ["time_machine.*"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
-check_untyped_defs = true
 
+check_untyped_defs = true
+[[tool.mypy.overrides]]
+module = ["time_machine.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = ["-rxXs", "--strict-config", "--strict-markers"]

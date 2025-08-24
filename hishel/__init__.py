@@ -9,7 +9,7 @@ from ._sync import *
 from ._lfu_cache import *
 
 from ._core._spec import IdleClient, CacheMiss, FromCache, NeedRevalidation, AnyState, CacheOptions,  NeedToBeUpdated, State, StoreAndUse, CouldNotBeStored
-from ._core.models import Request, Response, Pair, IncompletePair, CompletePair
+from ._core.models import Request, Response, Pair, IncompletePair, CompletePair, PairMeta
 from ._core._headers import Headers
 
 def install_cache() -> None:  # pragma: no cover
@@ -35,6 +35,7 @@ __all__ = [
     "Request",
     "Response",
     "Pair",
+    "PairMeta",
     "IncompletePair",
     "CompletePair",
 

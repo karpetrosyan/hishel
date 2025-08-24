@@ -7,9 +7,7 @@ from typing import (
     Mapping,
     MutableMapping,
     Optional,
-    Required,
     TypeAlias,
-    TypedDict,
     Union,
     overload,
 )
@@ -78,11 +76,12 @@ class Response:
         self.headers = Headers(raw_headers) if raw_headers is not None else Headers({})
 
 
-class PairMeta(TypedDict, total=False):
-    created_at: Required[float]
-    deleted_at: float
-    ttl: float
-    refresh_ttl_on_access: bool
+@dataclass
+class PairMeta:
+    created_at: float
+    deleted_at: Optional[float] = None
+    ttl: Optional[float] = None
+    refresh_ttl_on_access: Optional[bool] = None
 
 
 @dataclass

@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 
 import pytest
 
-from hishel import CacheMiss, CacheOptions, CompletePair, CouldNotBeStored, Request, Response, StoreAndUse
+from hishel import CacheMiss, CacheOptions, CompletePair, CouldNotBeStored, PairMeta, Request, Response, StoreAndUse
 
 
 def create_fresh_pair(
@@ -35,9 +35,7 @@ def create_fresh_pair(
             else {**default_response_headers, **response_headers},
             stream=[],
         ),
-        meta={
-            "created_at": time.time(),
-        },
+        meta=PairMeta(created_at=time.time()),
         cache_key="example.com",
     )
 
