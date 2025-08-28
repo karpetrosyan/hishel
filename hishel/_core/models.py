@@ -101,3 +101,4 @@ class IncompletePair(Pair):
 class CompletePair(Pair):
     response: Response
     extra: Mapping[str, Any] = field(default_factory=dict)
+    complete_stream: bool = True

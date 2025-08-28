@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import string
-from typing import Any, Dict, Iterator, List, Mapping, MutableMapping, Optional, Union
+from dataclasses import dataclass
+from typing import Any, Dict, Iterator, List, Literal, Mapping, MutableMapping, Optional, Union, cast
 
 from .._exceptions import ParseError, ValidationError
 
@@ -125,6 +128,59 @@ class Vary:
         return Vary(values)
 
 
+@dataclass
+class ContentRange:
+    unit: Literal["bytes"]
+    range: tuple[int, int] | None
+    size: int | None
+
+    @classmethod
+    def from_str(cls, content_range: str) -> "ContentRange":
+        words = [word for word in content_range.split(" ") if word != ""]
+
+        unit = words[0]
+        range, size = words[1].split("/")
+
+        splited_range = range.split("-")
+
+        return cls(
+            unit=cast(Literal["bytes"], unit),
+            range=None if range == "*" else (int(splited_range[0]), int(splited_range[1])),
+            size=None if size == "*" else int(size),
+        )
+
+
+@dataclass
+class Range:
+    unit: Literal["bytes"]
+    range: tuple[int | None, int | None]
+
+    @classmethod
+    def try_from_str(cls, range_header: str) -> "Range" | None:
+        # Example: "bytes=0-99,200-299,-500,100-"
+        unit, values = range_header.split("=")
+        unit = unit.strip()
+        parts = [p.strip() for p in values.split(",")]
+
+        parsed: list[tuple[int | None, int | None]] = []
+        for part in parts:
+            if "-" not in part:
+                raise ValueError(f"Invalid range part: {part}")
+            start_str, end_str = part.split("-", 1)
+            start = int(start_str) if start_str else None
+            end = int(end_str) if end_str else None
+            parsed.append((start, end))
+
+        if len(parsed) != 1:
+            # we don't support multiple ranges
+            return None
+
+        return cls(
+            unit=cast(Literal["bytes"], unit),
+            range=parsed[0],
+        )
+
+
 class CacheControl:
     def __init__(
         self,
@@ -235,5 +291,11 @@ class Headers(MutableMapping[str, str]):
     def __len__(self) -> int:
         return len(self._headers)
 
+    def __repr__(self) -> str:
+        return repr(self._headers)
+
+    def __str__(self) -> str:
+        return str(self._headers)
+
     def __eq__(self, other_headers: Any) -> bool:
-        return self._headers == other_headers._headers  # type: ignore
+        return isinstance(other_headers, Headers) and self._headers == other_headers._headers  # type: ignore

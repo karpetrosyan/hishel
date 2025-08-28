@@ -3,14 +3,18 @@ This module contains tests for Section 3 of RFC 9111
 (Storing responses in caches) and all its sub-sections (3.x.x).
 """
 
+from __future__ import annotations
+
 import time
 import uuid
 from dataclasses import replace
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterable, Optional
 
 import pytest
+from inline_snapshot import snapshot
 
 from hishel import CacheMiss, CacheOptions, CompletePair, CouldNotBeStored, PairMeta, Request, Response, StoreAndUse
+from hishel._core._spec import combine_partial_content
 
 
 def create_fresh_pair(
@@ -18,8 +22,11 @@ def create_fresh_pair(
     url: str = "https://example.com",
     response_headers: Optional[dict[str, str]] = None,
     request_headers: Optional[dict[str, str]] = None,
+    response_status_code: int = 200,
+    response_stream: Optional[Iterable[bytes]] = None,
 ) -> CompletePair:
     default_response_headers = {"Date": "Mon, 01 Jan 2024 00:00:00 GMT"}
+
     return CompletePair(
         id=uuid.uuid4(),
         request=Request(
@@ -29,14 +36,16 @@ def create_fresh_pair(
             stream=[],
         ),
         response=Response(
-            status_code=200,
+            status_code=response_status_code,
             raw_headers=default_response_headers
             if response_headers is None
             else {**default_response_headers, **response_headers},
-            stream=[],
+            stream=response_stream or [],
         ),
         meta=PairMeta(created_at=time.time()),
         cache_key="example.com",
+        extra={},
+        complete_stream=True,
     )
 
 
@@ -115,14 +124,15 @@ class TestStoringResponsesInCaches:
                 pair=replace(fresh_pair, response=replace(fresh_pair.response, status_code=304)),
             )
 
-        assert caplog.record_tuples == [
-            (
-                "hishel.core.spec",
-                10,
-                "Cannot store the response because the cache does not understand "
-                "how to cache the response.See: https://www.rfc-editor.org/rfc/rfc9111.html#section-3-2.3.2",
-            )
-        ]
+        assert caplog.record_tuples == snapshot(
+            [
+                (
+                    "hishel.core.spec",
+                    10,
+                    "Cannot store the response because the cache does not understand how to cache the response.See: https://www.rfc-editor.org/rfc/rfc9111.html#section-3-2.3.2",
+                )
+            ]
+        )
         assert isinstance(state, CouldNotBeStored)
 
     def test_no_store(self, caplog: Any) -> None:
@@ -289,6 +299,135 @@ class TestStoringResponsesInCaches:
         )
 
         assert isinstance(state, StoreAndUse)
+
+
+class TestCombiningPartialResponses:
+    def test_basic_combine(self) -> None:
+        combined = combine_partial_content(
+            partial_pairs=[
+                create_fresh_pair(
+                    response_status_code=206,
+                    response_headers={
+                        "Content-Range": "bytes 0-499/1234",
+                        "ETag": "abc123",
+                    },
+                    response_stream=range(500),  # type: ignore
+                ),
+                create_fresh_pair(
+                    response_status_code=206,
+                    response_headers={
+                        "Content-Range": "bytes 500-999/1234",
+                        "ETag": "abc123",
+                    },
+                    response_stream=range(500, 1000),  # type: ignore
+                ),
+            ]
+        )
+
+        assert len(combined) == 1
+
+        assert combined[0][0].response.headers._headers == snapshot(
+            {"date": ["Mon, 01 Jan 2024 00:00:00 GMT"], "content-range": ["bytes 0-999/1234"], "etag": ["abc123"]}
+        )
+        assert list(combined[0][0].response.stream) == list(range(1000))  # type: ignore
+
+    def test_basic_combine_to_complete_response(self) -> None:
+        combined = combine_partial_content(
+            partial_pairs=[
+                create_fresh_pair(
+                    response_status_code=206,
+                    response_headers={
+                        "Content-Range": "bytes 0-499/1234",
+                        "ETag": "abc123",
+                    },
+                    response_stream=range(500),  # type: ignore
+                ),
+                create_fresh_pair(
+                    response_status_code=206,
+                    response_headers={
+                        "Content-Range": "bytes 500-1233/1234",
+                        "ETag": "abc123",
+                    },
+                    response_stream=range(500, 1000),  # type: ignore
+                ),
+            ]
+        )
+
+        assert len(combined) == 1
+
+        assert combined[0][0].response.status_code == 200
+        assert combined[0][0].response.headers._headers == snapshot(
+            {"date": ["Mon, 01 Jan 2024 00:00:00 GMT"], "etag": ["abc123"], "content-length": ["1234"]}
+        )
+
+    def test_with_different_validators(self) -> None:
+        combined = combine_partial_content(
+            partial_pairs=[
+                create_fresh_pair(
+                    response_status_code=206,
+                    response_headers={
+                        "Content-Range": "bytes 0-499/1234",
+                        "ETag": "abc1234",
+                    },
+                    response_stream=range(500),  # type: ignore
+                ),
+                create_fresh_pair(
+                    response_status_code=206,
+                    response_headers={
+                        "Content-Range": "bytes 500-999/1234",
+                        "ETag": "abc123",
+                    },
+                    response_stream=range(500, 1000),  # type: ignore
+                ),
+            ]
+        )
+
+        assert len(combined) == 2
+
+        assert combined[0][0].response.headers._headers == snapshot(
+            {"date": ["Mon, 01 Jan 2024 00:00:00 GMT"], "content-range": ["bytes 0-499/1234"], "etag": ["abc1234"]}
+        )
+        assert list(combined[0][0].response.stream) == list(range(500))  # type: ignore
+        assert combined[1][0].response.headers._headers == snapshot(
+            {"date": ["Mon, 01 Jan 2024 00:00:00 GMT"], "content-range": ["bytes 500-999/1234"], "etag": ["abc123"]}
+        )
+        assert list(combined[1][0].response.stream) == list(range(500, 1000))  # type: ignore
+
+    def test_only_206_combined_headers(self) -> None:
+        combined = combine_partial_content(
+            partial_pairs=[
+                create_fresh_pair(
+                    response_status_code=206,
+                    response_headers={
+                        "Content-Range": "bytes 0-499/1234",
+                        "ETag": "abc123",
+                        "X-SomeHeader": "somevalue",
+                        "Date": "Mon, 01 Jan 2024 00:00:00 GMT",
+                    },
+                    response_stream=range(500),  # type: ignore
+                ),
+                create_fresh_pair(
+                    response_status_code=206,
+                    response_headers={
+                        "Content-Range": "bytes 500-999/1234",
+                        "ETag": "abc123",
+                        "X-SomeHeader": "othervalue",
+                        "Date": "Mon, 01 Jan 2024 00:00:05 GMT",  # more fresh
+                    },
+                    response_stream=range(500, 1000),  # type: ignore
+                ),
+            ]
+        )
+        assert len(combined) == 1
+
+        assert combined[0][0].response.headers._headers == snapshot(
+            {
+                "date": ["Mon, 01 Jan 2024 00:00:05 GMT"],
+                "etag": ["abc123"],
+                "x-someheader": ["othervalue"],
+                "content-range": ["bytes 0-999/1234"],
+            }
+        )
 
 
 def test_storing_header_and_trailer_fields() -> None:

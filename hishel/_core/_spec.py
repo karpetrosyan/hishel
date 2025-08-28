@@ -2,17 +2,20 @@ from __future__ import annotations
 
 import logging
 import time
+import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Union
+from itertools import groupby
+from typing import TYPE_CHECKING, Any, AsyncIterable, Dict, Generic, Iterable, Literal, Optional, TypeVar, Union
 
-from hishel._core._headers import Vary, parse_cache_control
-from hishel._utils import parse_date
+from hishel._core._headers import ContentRange, Range, Vary, parse_cache_control
+from hishel._utils import aislice, chain, islice, parse_date, partition
 
 if TYPE_CHECKING:
     from hishel import CompletePair, Request, Response
 
 
+TState = TypeVar("TState", bound="State")
 HEURISTICALLY_CACHEABLE_STATUS_CODES = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
 logger = logging.getLogger("hishel.core.spec")
 
@@ -33,10 +36,19 @@ class State(ABC):
         raise NotImplementedError("Subclasses must implement this method")
 
 
+def is_partial(pair: CompletePair) -> bool:
+    return pair.response.status_code == 206 or pair.complete_stream is False
+
+
 def vary_headers_match(
     original_request: Request,
     associated_pair: CompletePair,
 ) -> bool:
+    """
+    4.1 Calculating cache key with the vary header value
+
+    see: https://www.rfc-editor.org/rfc/rfc9111.html#caching.negotiated.responses
+    """
     vary_header = associated_pair.response.headers.get("vary")
     if not vary_header:
         return True
@@ -45,7 +57,7 @@ def vary_headers_match(
 
     for vary_header in vary.values:
         if vary_header == "*":
-            return True
+            return False
 
         if original_request.headers.get(vary_header) != associated_pair.request.headers.get(vary_header):
             return False
@@ -53,7 +65,7 @@ def vary_headers_match(
     return True
 
 
-def get_freshness_lifetime(response: Response, is_cache_shared: bool) -> int:
+def get_freshness_lifetime(response: Response, is_cache_shared: bool) -> Optional[int]:
     """
     Get the freshness lifetime of a response.
 
@@ -67,28 +79,40 @@ def get_freshness_lifetime(response: Response, is_cache_shared: bool) -> int:
     if response_cache_control.max_age is not None:
         return response_cache_control.max_age
 
-    expires_list = response.headers.get_list("expires")
-    if expires_list is not None:
-        expires = expires_list[0]
-        expires_timestamp = parse_date(expires)
-        if expires_timestamp is None:
-            return get_heuristic_freshness(response)
-        date = response.headers.get("date")
+    if "expires" in response.headers:
+        expires_timestamp = parse_date(response.headers["expires"])
 
-        if date:
-            date_timestamp = parse_date(date)
-        else:
-            date_timestamp = None
+        if expires_timestamp is None:
+            raise RuntimeError("Cannot parse Expires header")  # pragma: nocover
+
+        date_timestamp = parse_date(response.headers["date"]) if "date" in response.headers else time.time()
+
+        if date_timestamp is None:  # pragma: nocover
+            # if the Date header is invalid, we use the current time as the date
+            date_timestamp = time.time()
 
         return int(expires_timestamp - (time.time() if date_timestamp is None else date_timestamp))
+    heuristic_freshness = get_heuristic_freshness(response)
 
+    if heuristic_freshness is None:
+        return None
     return get_heuristic_freshness(response)
 
 
 def allowed_stale(response: Response, allow_stale_option: bool) -> bool:
+    """
+    4.2.4 Serving stale responses
+
+    RFC Reference: https://www.rfc-editor.org/rfc/rfc9111.html#name-serving-stale-responses
+    """
+
     if not allow_stale_option:
         return False
-    response_cache_control = parse_cache_control(response.headers["Cache-Control"])
+    response_cache_control = parse_cache_control(
+        response.headers.get(
+            "Cache-Control",
+        )
+    )
 
     if response_cache_control.no_cache:
         return False
@@ -99,33 +123,42 @@ def allowed_stale(response: Response, allow_stale_option: bool) -> bool:
     return True
 
 
-def get_heuristic_freshness(response: Response) -> int:
+def get_heuristic_freshness(response: Response) -> int | None:
+    """
+    4.2.2. Calculating Heuristic Freshness
+
+    RFC reference: https://www.rfc-editor.org/rfc/rfc9111.html#name-calculating-heuristic-fresh
+    """
     last_modified = response.headers.get("last-modified")
 
     if last_modified:
-        last_modified_timestamp = parse_date(last_modified[0])
-        if last_modified_timestamp is not None:
-            now = time.time()
+        last_modified_timestamp = parse_date(last_modified)
+        if last_modified_timestamp is None:  # pragma: nocover
+            return None
+        now = time.time()
 
-            ONE_WEEK = 604_800
+        ONE_WEEK = 604_800
 
-            return min(ONE_WEEK, int((now - last_modified_timestamp) * 0.1))
+        return min(ONE_WEEK, int((now - last_modified_timestamp) * 0.1))
 
-    ONE_DAY = 86_400
-    return ONE_DAY
+    return None
 
 
 def get_age(response: Response) -> int:
+    """
+    4.2.3. Calculating Age
+
+    RFC reference: https://www.rfc-editor.org/rfc/rfc9111.html#name-calculating-age
+    """
+
+    # A recipient with a clock that receives a response with an invalid Date header
+    # field value MAY replace that value with the time that response was received.
+    # See: https://www.rfc-editor.org/rfc/rfc9110#name-date
     if "date" not in response.headers:
-        # If the response does not have a date header, then it is impossible to calculate the age.
-        # Instead of raising an exception, we return infinity to be sure that the response is not considered fresh.
         return 0
 
     date = parse_date(response.headers["date"])
-    if date is None:
-        # A recipient with a clock that receives a response message without a
-        # Date header field MUST record the time it was received and append a corresponding
-        # Date header field to the message's header section if it is cached or forwarded downstream.
+    if date is None:  # pragma: nocover
         return 0
 
     now = time.time()
@@ -135,6 +168,7 @@ def get_age(response: Response) -> int:
 
 def make_conditional_request(request: Request, response: Response) -> Request:
     """
+    4.3.1 Sending a Validation Request
     Adds the precondition headers needed for response validation.
 
     This method will use the "Last-Modified" or "Etag" headers
@@ -154,10 +188,20 @@ def make_conditional_request(request: Request, response: Response) -> Request:
         etag = None
 
     precondition_headers: Dict[str, str] = {}
+
+    # When generating a conditional request for validation, a cache:
+
+    # MUST send the relevant entity tags (using If-Match, If-None-Match, or If-Range)
+    # if the entity tags were provided in the stored response(s) being validated.
+    if etag is not None:
+        precondition_headers["If-None-Match"] = etag
+
+    # SHOULD send the Last-Modified value (using If-Modified-Since)
+    # if the request is not for a subrange, a single stored response
+    # is being validated, and that response contains a Last-Modified value.
+
     if last_modified:
         precondition_headers["If-Modified-Since"] = last_modified
-    if etag:
-        precondition_headers["If-None-Match"] = etag
 
     return replace(
         request,
@@ -237,6 +281,175 @@ def refresh_response_headers(
     )
 
 
+@dataclass
+class Merged:
+    range: tuple[int, int]
+    combined_stream: Iterable[bytes] | AsyncIterable[bytes]
+    combined_pairs: list[CompletePair]
+
+
+def merge_pairs(partial_pairs: list[CompletePair]) -> list[Merged]:
+    def _sort_func(pair: CompletePair) -> int:
+        if "content-range" not in pair.response.headers:
+            raise RuntimeError("Cannot merge pairs without Content-Range header")  # pragma: nocover
+
+        content_range = ContentRange.from_str(pair.response.headers["content-range"])
+
+        if not content_range.range:
+            raise RuntimeError("Cannot merge pairs without Content-Range header")
+
+        return content_range.range[0]
+
+    sorted_pairs = sorted(partial_pairs, key=_sort_func)
+    merged: list[Merged] = []
+    for pair in sorted_pairs:
+        current_content_range = ContentRange.from_str(pair.response.headers["content-range"])
+        if not current_content_range.range:
+            raise RuntimeError("Cannot merge pairs without range information")
+
+        if not merged:
+            merged.append(
+                Merged(range=current_content_range.range, combined_stream=pair.response.stream, combined_pairs=[pair])
+            )
+            continue
+
+        last_merged = merged[-1]
+
+        if (
+            current_content_range.range[0] <= last_merged.range[1] + 1
+            and current_content_range.range[1] > last_merged.range[1]
+        ):
+            if isinstance(pair.response.stream, Iterable):
+                assert isinstance(last_merged.combined_stream, Iterable)
+                overlapping_bytes = last_merged.range[1] - current_content_range.range[0] + 1
+
+                last_merged.combined_stream = chain(
+                    last_merged.combined_stream, islice(pair.response.stream, start=overlapping_bytes, stop=None)
+                )
+                last_merged.combined_pairs.append(pair)
+                last_merged.range = (last_merged.range[0], current_content_range.range[1])
+
+    return list(merged)
+
+
+def combine_partial_content(partial_pairs: list[CompletePair]) -> list[tuple[CompletePair, list[CompletePair]]]:
+    """
+    3.4 Combining Partial Content Responses
+
+    Given partial pairs, it merges all responses that share the same
+    strong validator and overlap with each other. It then builds a
+    merged pair using a modified content iterator that combines multiple
+    contents into one, and returns a mapping of the final pair
+    (which cannot be merged further) along with a list of pairs it invalidates.
+    RFC reference: https://www.rfc-editor.org/rfc/rfc9111.html#name-combining-partial-content
+    """
+    from hishel import CompletePair, Response
+
+    # Map of newly created pair and pairs we are invalidating
+    merged_pairs: list[tuple[CompletePair, list[CompletePair]]] = []
+    sorted_pairs = sorted(
+        partial_pairs, key=lambda pair: pair.response.headers.get("date", str(int(time.time()))), reverse=True
+    )
+
+    # A client that has received multiple partial responses
+    # to GET requests on a target resource MAY combine those
+    # responses into a larger continuous range if they share
+    # the same strong validator.
+    grouped_by_strong_validator = groupby(sorted_pairs, key=lambda pair: pair.response.headers.get("etag"))
+
+    for validator, pairs_iter in grouped_by_strong_validator:
+        if validator is None:
+            continue
+
+        pairs = list(pairs_iter)
+
+        if not pairs:
+            continue
+
+        recent_pair = pairs[0]
+
+        empty_response = Response(
+            status_code=200,
+            stream=[],
+        )
+
+        # If the most recent response is an incomplete 200 (OK)
+        # response, then the header fields of that response are
+        # used for any combined response and replace those
+        # of the matching stored responses.
+        if recent_pair.response.status_code == 200:
+            headers = recent_pair.response.headers
+        # If the most recent response is a 206 (Partial Content) response
+        # and at least one of the matching stored responses is a 200 (OK),
+        # then the combined response header fields consist of
+        # the most recent 200 response's header fields.
+        elif with_ok_status := list(filter(lambda pair: pair.response.status_code == 200, pairs)):
+            headers = with_ok_status[0].response.headers
+        # If all of the matching stored responses are 206 responses,
+        # then the stored response with the most recent header fields
+        # is used as the source of header fields for the combined response,
+        # except that the client MUST use other header fields provided in
+        # the new response, aside from Content-Range, to replace all instances
+        # of the corresponding header fields in the stored response.
+        else:
+            headers = recent_pair.response.headers
+
+        with_updated_headers = refresh_response_headers(
+            empty_response,
+            Response(
+                status_code=200,
+                raw_headers=headers,
+                stream=[],
+            ),
+        )
+
+        for merged in merge_pairs(pairs):
+            if len(merged.combined_pairs) > 1:
+                original_content_range = ContentRange.from_str(headers["content-range"])
+
+                if merged.range[1] - merged.range[0] + 1 == (original_content_range.size or None):
+                    response = Response(
+                        status_code=200,
+                        raw_headers={
+                            **with_updated_headers.headers,
+                            **(
+                                {"Content-Length": str(original_content_range.size)}
+                                if original_content_range.size
+                                else {}
+                            ),
+                        },
+                        stream=merged.combined_stream,
+                        extra=merged.combined_pairs[0].response.extra,
+                    )
+                else:
+                    response = Response(
+                        status_code=206,
+                        raw_headers={
+                            **with_updated_headers.headers,
+                            "Content-Range": f"bytes {merged.range[0]}-"
+                            f"{merged.range[1]}/{original_content_range.size or '*'}",
+                        },
+                        stream=merged.combined_stream,
+                        extra=merged.combined_pairs[0].response.extra,
+                    )
+
+                merged_pair = CompletePair(
+                    id=uuid.uuid4(),
+                    request=merged.combined_pairs[0].request,
+                    meta=merged.combined_pairs[0].meta,
+                    cache_key=merged.combined_pairs[0].cache_key,
+                    response=response,
+                    extra=merged.combined_pairs[0].extra,
+                    complete_stream=True,
+                )
+                merged_pairs.append((merged_pair, merged.combined_pairs))
+            else:
+                merged_pair = merged.combined_pairs[0]
+                merged_pairs.append((merged_pair, []))
+
+    return merged_pairs
+
+
 AnyState = Union[
     "CacheMiss",
     "StoreAndUse",
@@ -258,6 +471,23 @@ def create_idle_state(role: Literal["client", "server"], options: Optional[Cache
 
 
 @dataclass
+class UpdatePartials(Generic[TState], State):
+    """
+    The state that indicates that the client needs to update the partial content.
+    """
+
+    merged_pairs: list[tuple[CompletePair, list[CompletePair]]]
+    """
+    Mapping of pairs that we created from multiple partial pairs to the list of pairs we are invalidating.
+    """
+
+    next_state: TState
+
+    def next(self) -> TState:
+        return self.next_state
+
+
+@dataclass
 class IdleClient(State):
     """
     The class that represents the idle state of the client, which wants to send a
@@ -268,7 +498,9 @@ class IdleClient(State):
 
     def next(
         self, request: Request, associated_pairs: list[CompletePair]
-    ) -> Union["CacheMiss", "FromCache", "NeedRevalidation"]:
+    ) -> Union[UpdatePartials["CacheMiss" | "FromCache" | "NeedRevalidation"], CacheMiss]:
+        request_range = Range.try_from_str(request.headers["range"]) if "range" in request.headers else None
+
         # A cache MUST write through requests with methods that are unsafe (Section 9.2.1 of [HTTP])
         # to the origin server; i.e., a cache is not allowed to generate a reply to such a request
         # before having forwarded the request and having received a corresponding response.
@@ -284,6 +516,13 @@ class IdleClient(State):
         # 2. the request method associated with the stored response
         # allows it to be used for the presented request, and
         method_matches = lambda pair: pair.request.method == request.method  # noqa: E731
+
+        # 2.5 This step is specific to our implementation, in this
+        # step we need to merge incomplete responses into a single one
+        partial_pairs, complete_pairs = partition(associated_pairs, is_partial)
+
+        merged_pairs = combine_partial_content(partial_pairs)
+        associated_pairs = complete_pairs + [new_pair for new_pair, _ in merged_pairs]
 
         # 3. request header fields nominated by the stored response
         # (if any) match those presented (see Section 4.1), and
@@ -301,7 +540,8 @@ class IdleClient(State):
         def fresh_or_allowed_stale(pair: CompletePair) -> bool:
             freshness_lifetime = get_freshness_lifetime(pair.response, is_cache_shared=True)
             age = get_age(pair.response)
-            return age < freshness_lifetime or allowed_stale(pair.response, allow_stale_option=self.options.allow_stale)
+            is_fresh = False if freshness_lifetime is None else age < freshness_lifetime
+            return is_fresh or allowed_stale(pair.response, allow_stale_option=self.options.allow_stale)
 
         # Filtering by 1-4 conditions, skip 5
         filtered_pairs = [
@@ -314,7 +554,11 @@ class IdleClient(State):
         # (as determined by the Date header field). It can also forward the request with
         # "Cache-Control: max-age=0" or "Cache-Control: no-cache" to disambiguate which response to use.
         filtered_pairs.sort(
-            key=lambda pair: parse_date(pair.response.headers.get("date", "0")) or 0,
+            key=lambda pair: parse_date(
+                pair.response.headers.get("date", str(int(time.time()))),
+            )
+            or int(time.time()),
+            reverse=True,
         )
 
         ready_to_use, need_revalidation = [], []
@@ -324,30 +568,166 @@ class IdleClient(State):
             else:
                 need_revalidation.append(pair)
 
-        if not ready_to_use and not need_revalidation:
-            return CacheMiss(request=request, options=self.options)
+        if request_range is None:
+            next_state = self._handle_non_range_request(
+                request,
+                ready_to_use,
+                need_revalidation,
+            )
+        else:
+            next_state = self._handle_range_request(
+                request,
+                request_range,
+                ready_to_use,
+                need_revalidation,
+            )
+        return UpdatePartials(merged_pairs=merged_pairs, next_state=next_state, options=self.options)
 
-        if ready_to_use:
+    def _try_take_subrange(
+        self,
+        response: Response,
+        request_range: Range,
+    ) -> Response | None:
+        """
+        Given a response and a request range, builds a new response with that range
+        if the response content fully covers it; otherwise, returns None.
+        """
+
+        if "content-range" not in response.headers:
+            return None
+
+        content_range = ContentRange.from_str(response.headers["content-range"])
+
+        if content_range.range is None:
+            return None
+
+        start_range = request_range.range[0] if request_range.range[0] is not None else 0
+        end_range = (
+            request_range.range[1]
+            if request_range.range[1] is not None
+            else (content_range.size if content_range.size is not None else float("+inf"))
+        )
+
+        lower_bound = start_range >= content_range.range[0]
+        upper_bound = end_range <= content_range.range[1]
+
+        if not lower_bound and upper_bound:
+            return None
+
+        lower_skip = lower_bound - content_range.range[0]
+        take = upper_bound - lower_bound + 1
+        new_stream: Iterable[bytes] | AsyncIterable[bytes]
+        if isinstance(response.stream, Iterable):
+            new_stream = islice(response.stream, start=lower_skip, stop=take)
+        elif isinstance(response.stream, AsyncIterable):
+            new_stream = aislice(response.stream, start=lower_skip, stop=take)
+
+        assert content_range.size
+        return replace(
+            response,
+            stream=new_stream,
+            status_code=206,
+            raw_headers={
+                **response.headers,
+                "Content-Range": f"bytes {start_range}-{end_range}/{content_range.size}",
+                "Content-Length": str(take),
+            },
+        )
+
+    def _handle_range_request(
+        self,
+        request: Request,
+        request_range: Range,
+        ready_to_use: list[CompletePair],
+        need_revalidation: list[CompletePair],
+    ) -> Union["FromCache", "NeedRevalidation", "CacheMiss"]:
+        partial_ready_to_use, complete_ready_to_use = partition(
+            ready_to_use,
+            is_partial,
+        )
+
+        if complete_ready_to_use:
+            for pair in complete_ready_to_use:
+                maybe_subrange_response = self._try_take_subrange(pair.response, request_range)
+
+                if maybe_subrange_response:
+                    return FromCache(
+                        pair=replace(
+                            pair,
+                            response=replace(
+                                maybe_subrange_response,
+                                raw_headers={
+                                    **maybe_subrange_response.headers,
+                                    "age": str(get_age(maybe_subrange_response)),
+                                },
+                            ),
+                        ),
+                        options=self.options,
+                    )
+
+        for partial_pair in partial_ready_to_use:
+            maybe_subrange_response = self._try_take_subrange(partial_pair.response, request_range)
+
+            if maybe_subrange_response:
+                return FromCache(
+                    pair=replace(
+                        partial_pair,
+                        response=replace(
+                            partial_pair.response,
+                            raw_headers={
+                                **partial_pair.response.headers,
+                                "age": str(get_age(maybe_subrange_response)),
+                            },
+                        ),
+                    ),
+                    options=self.options,
+                )
+
+        if need_revalidation:
+            return NeedRevalidation(
+                request=make_conditional_request(request, need_revalidation[-1].response),
+                revalidating_pairs=need_revalidation,
+                options=self.options,
+            )
+        return CacheMiss(
+            request=request,
+            options=self.options,
+        )
+
+    def _handle_non_range_request(
+        self,
+        request: Request,
+        ready_to_use: list[CompletePair],
+        need_revalidation: list[CompletePair],
+    ) -> FromCache | NeedRevalidation | CacheMiss:
+        complete_ready_to_use = [pair for pair in ready_to_use if not is_partial(pair)]
+        if complete_ready_to_use:
             # When a stored response is used to satisfy a request without validation,
             # a cache MUST generate an Age header field (Section 5.1), replacing any present
             # in the response with a value equal to the stored response's current_age; see Section 4.2.3.
             return FromCache(
                 pair=replace(
-                    ready_to_use[-1],
+                    complete_ready_to_use[0],
                     response=replace(
-                        ready_to_use[-1].response,
+                        complete_ready_to_use[0].response,
                         raw_headers={
-                            **ready_to_use[-1].response.headers,
-                            "age": str(get_age(ready_to_use[-1].response)),
+                            **complete_ready_to_use[0].response.headers,
+                            "age": str(get_age(complete_ready_to_use[0].response)),
                         },
                     ),
                 ),
                 options=self.options,
             )
-        else:
+
+        elif need_revalidation:
             return NeedRevalidation(
-                request=make_conditional_request(need_revalidation[-1].request, need_revalidation[-1].response),
-                revalidating_pairs=filtered_pairs,
+                request=make_conditional_request(request, need_revalidation[-1].response),
+                revalidating_pairs=need_revalidation,
+                options=self.options,
+            )
+        else:
+            return CacheMiss(
+                request=request,
                 options=self.options,
             )
 
@@ -411,7 +791,14 @@ class CacheMiss(State):
 
         # if the response status code is 206 or 304, or the must-understand cache directive
         # (see Section 5.2.2.3) is present: the cache understands the response status code;
-        understands_how_to_cache = True if response.status_code != 304 else False
+        def is_multipart_byterange(pair: CompletePair) -> bool:
+            # We don't support 206 responses that are multipart/byteranges
+            return pair.response.headers.get("content-type") == "multipart/byteranges"
+
+        if pair.response.status_code in (206, 304):
+            understands_how_to_cache = False if response.status_code == 304 or is_multipart_byterange(pair) else True
+        else:
+            understands_how_to_cache = True
 
         # the no-store cache directive is not present in the response (see Section 5.2.2.5);
         no_store_is_not_present = not response_cache_control.no_store
@@ -497,6 +884,9 @@ class CacheMiss(State):
 @dataclass
 class FromCache(State):
     pair: CompletePair
+    """
+    List of pairs that can be used to satisfy the request.
+    """
 
     def next(self) -> None:
         return None
