@@ -49,12 +49,16 @@ def ensure_decoded(
     return value
 
 
-class AnyIterable:
+class EmptyIterable:
     def __iter__(self) -> Iterator[bytes]:
-        yield b""
+        yield from []
 
     async def __aiter__(self) -> AsyncIterable[bytes]:
-        yield b""
+        for item in []:
+            yield item
+
+    def __eq__(self, value: Any) -> bool:
+        return isinstance(value, EmptyIterable)
 
 
 @dataclass
@@ -62,7 +66,7 @@ class Request:
     method: str
     url: str
     headers: Headers = field(init=False)
-    stream: Iterable[bytes] | AsyncIterable[bytes] = field(default_factory=AnyIterable)
+    stream: Iterable[bytes] | AsyncIterable[bytes] = field(default_factory=EmptyIterable)
     extra: Mapping[str, Any] = field(default_factory=dict)
     raw_headers: InitVar[Optional[Mapping[str, str | list[str]]]] = None
 
@@ -74,7 +78,7 @@ class Request:
 class Response:
     status_code: int
     headers: Headers = field(init=False)
-    stream: Iterable[bytes] | AsyncIterable[bytes] = field(default_factory=AnyIterable)
+    stream: Iterable[bytes] | AsyncIterable[bytes] = field(default_factory=EmptyIterable)
     extra: Mapping[str, Any] = field(default_factory=dict)
     raw_headers: InitVar[Optional[Mapping[str, str | list[str]]]] = None
 

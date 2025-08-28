@@ -48,14 +48,12 @@ def create_fresh_pair(
             method=method,
             url=url,
             raw_headers=request_headers if request_headers is not None else {},
-            stream=[],
         ),
         response=Response(
             status_code=200,
             raw_headers=default_response_headers
             if response_headers is None
             else {**default_response_headers, **response_headers},
-            stream=[],
         ),
         meta=PairMeta(created_at=time.time()),
         complete_stream=True,
