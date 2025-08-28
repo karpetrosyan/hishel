@@ -12,6 +12,7 @@ from typing import (
     MutableMapping,
     Optional,
     Union,
+    cast,
     overload,
 )
 
@@ -55,7 +56,7 @@ class EmptyIterable:
 
     async def __aiter__(self) -> AsyncIterable[bytes]:
         for item in []:
-            yield item
+            yield cast(bytes, item)
 
     def __eq__(self, value: Any) -> bool:
         return isinstance(value, EmptyIterable)
