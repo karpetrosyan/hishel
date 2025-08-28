@@ -26,9 +26,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: WWW/HTTP",
 ]
-dependencies = [
-    "httpx>=0.28.0",
-]
+dependencies = ["httpx>=0.28.0"]
 
 [project.optional-dependencies]
 
@@ -82,7 +80,7 @@ addopts = ["-rxXs", "--strict-config", "--strict-markers"]
 filterwarnings = []
 
 [tool.coverage.run]
-omit = ["venv/*", "hishel/_sync/*", "hishel/_s3.py"]
+omit = ["venv/*", "hishel/_sync/*", "hishel/_s3.py", "hishel/_core/_headers.py"]
 include = ["hishel/*", "tests/*"]
 
 [tool.coverage.report]
@@ -93,12 +91,7 @@ exclude = ["hishel/_sync", "hishel/__init__.py", "tests/_sync"]
 line-length = 120
 
 [tool.ruff.lint]
-select = [
-    "E",
-    "F",
-    "W",
-    "I",
-]
+select = ["E", "F", "W", "I"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true

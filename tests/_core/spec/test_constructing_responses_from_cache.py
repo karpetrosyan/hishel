@@ -8,9 +8,10 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import replace
-from typing import Optional
+from typing import Iterable, Optional
 from unittest.mock import ANY
 
+from inline_snapshot import snapshot
 from time_machine import travel
 
 from hishel import (
@@ -30,6 +31,7 @@ from hishel._core._spec import (
     create_idle_state,
     get_age,
     get_freshness_lifetime,
+    make_conditional_request,
     vary_headers_match,
 )
 from hishel._core.models import PairMeta
@@ -40,6 +42,8 @@ def create_fresh_pair(
     url: str = "https://example.com",
     response_headers: Optional[dict[str, str]] = None,
     request_headers: Optional[dict[str, str]] = None,
+    response_stream: Optional[Iterable[bytes]] = None,
+    response_status_code: int = 200,
 ) -> CompletePair:
     default_response_headers = {"Date": "Mon, 01 Jan 2024 00:00:00 GMT"}
     return CompletePair(
@@ -50,10 +54,11 @@ def create_fresh_pair(
             raw_headers=request_headers if request_headers is not None else {},
         ),
         response=Response(
-            status_code=200,
+            status_code=response_status_code,
             raw_headers=default_response_headers
             if response_headers is None
             else {**default_response_headers, **response_headers},
+            stream=response_stream or [],
         ),
         meta=PairMeta(created_at=time.time()),
         complete_stream=True,
@@ -178,7 +183,7 @@ class TestConstructingResponsesFromCache:
 
     @travel("2025-01-01 00:00:00")
     def test_response_needs_revalidation_if_not_fresh(self) -> None:
-        fresh_pair = create_fresh_pair(response_headers={"Cache-Control": "max-age=0"})
+        fresh_pair = create_fresh_pair(response_headers={"Cache-Control": "max-age=0"}, response_stream=range(500))  # type: ignore
 
         idle_state = create_idle_state("client")
 
@@ -191,6 +196,68 @@ class TestConstructingResponsesFromCache:
         next_state = state.next()
         assert isinstance(next_state, NeedRevalidation)
         assert next_state.request == fresh_pair.request
+
+    @travel("2024-01-01 00:00:00")
+    def test_partial_request(self) -> None:
+        fresh_pair = create_fresh_pair(
+            response_headers={"Cache-Control": "max-age=3600", "content-length": "999"},
+            response_stream=range(1000),  # type: ignore
+        )
+
+        idle_state = create_idle_state("client")
+
+        state = idle_state.next(
+            request=replace(fresh_pair.request, raw_headers={**fresh_pair.request.headers, "range": "bytes=0-99"}),
+            associated_pairs=[fresh_pair],
+        )
+        assert isinstance(state, UpdatePartials)
+        next_state: CacheMiss | FromCache | NeedRevalidation = state.next()
+        assert isinstance(next_state, FromCache)
+        assert "age" in next_state.pair.response.headers
+        assert next_state.pair.response.status_code == 206
+        assert list(next_state.pair.response.stream) == list(range(100))  # type: ignore
+
+    @travel("2024-01-01 00:00:00")
+    def test_partial_request_with_partial_response(self) -> None:
+        fresh_pair = create_fresh_pair(
+            response_headers={"Cache-Control": "max-age=3600", "content-range": "bytes 100-300/1000", "etag": "abc"},
+            response_stream=range(100, 301),  # type: ignore
+            response_status_code=206,
+        )
+
+        idle_state = create_idle_state("client")
+
+        state = idle_state.next(
+            request=replace(fresh_pair.request, raw_headers={**fresh_pair.request.headers, "range": "bytes=100-300"}),
+            associated_pairs=[fresh_pair],
+        )
+        assert isinstance(state, UpdatePartials)
+        next_state: CacheMiss | FromCache | NeedRevalidation = state.next()
+        assert isinstance(next_state, FromCache)
+        assert "age" in next_state.pair.response.headers
+        assert next_state.pair.response.status_code == 206
+        assert list(next_state.pair.response.stream) == list(range(100, 301))  # type: ignore
+
+    @travel("2024-01-01 00:00:00")
+    def test_partial_request_within_response_range(self) -> None:
+        fresh_pair = create_fresh_pair(
+            response_headers={"Cache-Control": "max-age=3600", "content-range": "bytes 100-300/1000", "etag": "abc"},
+            response_stream=range(100, 300),  # type: ignore
+            response_status_code=206,
+        )
+
+        idle_state = create_idle_state("client")
+
+        state = idle_state.next(
+            request=replace(fresh_pair.request, raw_headers={**fresh_pair.request.headers, "range": "bytes=150-160"}),
+            associated_pairs=[fresh_pair],
+        )
+        assert isinstance(state, UpdatePartials)
+        next_state: CacheMiss | FromCache | NeedRevalidation = state.next()
+        assert isinstance(next_state, FromCache)
+        assert "age" in next_state.pair.response.headers
+        assert next_state.pair.response.status_code == 206
+        assert list(next_state.pair.response.stream) == list(range(150, 161))  # type: ignore
 
 
 class TestCalculatingFreshnessLifetime:
@@ -398,6 +465,44 @@ class TestGetAge:
         )
 
         assert get_age(response) == 3600
+
+
+def test_making_conditional_request() -> None:
+    """
+    Tests for 4.3.1 Sending a Validation Request
+    """
+
+    request = make_conditional_request(
+        Request(
+            method="GET",
+            url="https://example.com",
+        ),
+        Response(
+            status_code=200,
+        ),
+    )
+
+    assert request.headers._headers == snapshot({})
+
+    request = make_conditional_request(
+        Request(
+            method="GET",
+            url="https://example.com",
+        ),
+        Response(status_code=200, raw_headers={"etag": "abc"}),
+    )
+
+    assert request.headers._headers == snapshot({"if-none-match": ["abc"]})
+
+    request = make_conditional_request(
+        Request(
+            method="GET",
+            url="https://example.com",
+        ),
+        Response(status_code=200, raw_headers={"last-modified": "Wed, 21 Oct 2015 08:00:00 GMT"}),
+    )
+
+    assert request.headers._headers == snapshot({"if-modified-since": ["Wed, 21 Oct 2015 08:00:00 GMT"]})
 
 
 def test_allowed_stale() -> None:

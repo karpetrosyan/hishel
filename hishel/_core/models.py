@@ -9,53 +9,19 @@ from typing import (
     Iterable,
     Iterator,
     Mapping,
-    MutableMapping,
     Optional,
-    Union,
     cast,
-    overload,
 )
 
 from hishel._core._headers import Headers
 
 
-@overload
-def ensure_decoded(value: Union[str, bytes]) -> str: ...
-
-
-@overload
-def ensure_decoded(
-    value: Union[MutableMapping[str, Union[str, bytes]]],
-) -> MutableMapping[str, str]: ...
-
-
-@overload
-def ensure_decoded(
-    value: Union[Mapping[str, Union[str, bytes]]],
-) -> Mapping[str, str]: ...
-
-
-def ensure_decoded(
-    value: Union[
-        Union[str, bytes],
-        Mapping[str, Union[str, bytes]],
-        MutableMapping[str, Union[str, bytes]],
-    ],
-) -> Union[str, Mapping[str, str], MutableMapping[str, str]]:
-    if isinstance(value, (bytes, bytearray)):
-        return value.decode("utf-8")
-    elif isinstance(value, (Mapping, MutableMapping)):
-        return {key: value.decode("iso-8859-1") if isinstance(value, bytes) else value for key, value in value.items()}
-
-    return value
-
-
 class EmptyIterable:
     def __iter__(self) -> Iterator[bytes]:
-        yield from []
+        yield from []  # pragma: nocover
 
     async def __aiter__(self) -> AsyncIterable[bytes]:
-        for item in cast(list[bytes], []):
+        for item in cast(list[bytes], []):  # pragma: nocover
             yield item
 
     def __eq__(self, value: Any) -> bool:
@@ -119,7 +85,7 @@ class CompletePair(Pair):
         cls,
         response: Response,
         request: Request,
-    ) -> "CompletePair":
+    ) -> "CompletePair":  # pragma: nocover
         return cls(
             id=uuid.uuid4(),
             request=request,

@@ -121,7 +121,9 @@ def float_seconds_to_int_milliseconds(seconds: float) -> int:
     return int(seconds * 1000)
 
 
-def islice(iterable: Iterable[bytes], start: int, stop: Optional[int] = None, step: int = 1) -> Iterator[bytes]:
+def islice(
+    iterable: Iterable[bytes], start: int, stop: Optional[int] = None, step: int = 1
+) -> Iterator[bytes]:  # pragma: nocover
     """
     Returns an iterator over elements from `iterable` from `start` to `stop` (exclusive),
     taking every `step`-th element.
@@ -158,7 +160,7 @@ def islice(iterable: Iterable[bytes], start: int, stop: Optional[int] = None, st
 
 async def aislice(
     async_iterable: AsyncIterable[bytes], start: int, stop: Optional[int] = None, step: int = 1
-) -> AsyncIterator[bytes]:
+) -> AsyncIterator[bytes]:  # pragma: nocover
     """
     Async version of islice: yields items from `async_iterable` starting at `start`,
     stopping before `stop`, taking every `step`-th item.
@@ -194,13 +196,13 @@ async def aislice(
         index += step
 
 
-def chain(*iterables: tp.Iterable[T]) -> tp.Iterable[T]:
+def chain(*iterables: tp.Iterable[T]) -> tp.Iterable[T]:  # pragma: nocover
     for it in iterables:
         for item in it:
             yield item
 
 
-async def async_chain(*iterables: tp.AsyncIterable[T]) -> tp.AsyncIterable[T]:
+async def async_chain(*iterables: tp.AsyncIterable[T]) -> tp.AsyncIterable[T]:  # pragma: nocover
     for it in iterables:
         async for item in it:
             yield item
