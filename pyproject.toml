@@ -93,7 +93,12 @@ exclude = ["hishel/_sync", "hishel/__init__.py", "tests/_sync"]
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
+select = [
+    "E",
+    "F",
+    "W",
+    "I",
+]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true

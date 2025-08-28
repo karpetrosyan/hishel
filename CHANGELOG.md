@@ -2,6 +2,7 @@
 
 ## development
 
+- Added `Metadata` to public API. (#363)
 - Fix race condition in FileStorage initialization. (#353)
 
 ## 0.1.3 (1st July, 2025)
