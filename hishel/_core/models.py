@@ -55,8 +55,8 @@ class EmptyIterable:
         yield from []
 
     async def __aiter__(self) -> AsyncIterable[bytes]:
-        for item in []:
-            yield cast(bytes, item)
+        for item in cast(list[bytes], []):
+            yield item
 
     def __eq__(self, value: Any) -> bool:
         return isinstance(value, EmptyIterable)
