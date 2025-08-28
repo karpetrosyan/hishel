@@ -43,7 +43,6 @@ def create_fresh_pair(
             stream=response_stream or [],
         ),
         meta=PairMeta(created_at=time.time()),
-        cache_key="example.com",
         extra={},
         complete_stream=True,
     )

@@ -58,7 +58,6 @@ def create_fresh_pair(
             stream=[],
         ),
         meta=PairMeta(created_at=time.time()),
-        cache_key="example.com",
         complete_stream=True,
     )
 
@@ -284,13 +283,11 @@ class TestHandlingRevalidationResponse:
             request=Request(
                 method="GET",
                 url="https://example.com",
-                stream=[],
             ),
             response=replace(
                 fresh_pair.response, raw_headers={**fresh_pair.response.headers, "X-SomeHeader": "somevalue"}
             ),
             meta=PairMeta(created_at=ANY),
-            cache_key="example.com",
             extra={},
             complete_stream=True,
         )

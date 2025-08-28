@@ -6,7 +6,18 @@ import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, replace
 from itertools import groupby
-from typing import TYPE_CHECKING, Any, AsyncIterable, Dict, Generic, Iterable, Literal, Optional, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncIterable,
+    Dict,
+    Generic,
+    Iterable,
+    Literal,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 from hishel._core._headers import ContentRange, Range, Vary, parse_cache_control
 from hishel._utils import aislice, chain, islice, parse_date, partition
@@ -16,7 +27,20 @@ if TYPE_CHECKING:
 
 
 TState = TypeVar("TState", bound="State")
-HEURISTICALLY_CACHEABLE_STATUS_CODES = (200, 203, 204, 206, 300, 301, 308, 404, 405, 410, 414, 501)
+HEURISTICALLY_CACHEABLE_STATUS_CODES = (
+    200,
+    203,
+    204,
+    206,
+    300,
+    301,
+    308,
+    404,
+    405,
+    410,
+    414,
+    501,
+)
 logger = logging.getLogger("hishel.core.spec")
 
 
@@ -309,7 +333,11 @@ def merge_pairs(partial_pairs: list[CompletePair]) -> list[Merged]:
 
         if not merged:
             merged.append(
-                Merged(range=current_content_range.range, combined_stream=pair.response.stream, combined_pairs=[pair])
+                Merged(
+                    range=current_content_range.range,
+                    combined_stream=pair.response.stream,
+                    combined_pairs=[pair],
+                )
             )
             continue
 
@@ -324,15 +352,21 @@ def merge_pairs(partial_pairs: list[CompletePair]) -> list[Merged]:
                 overlapping_bytes = last_merged.range[1] - current_content_range.range[0] + 1
 
                 last_merged.combined_stream = chain(
-                    last_merged.combined_stream, islice(pair.response.stream, start=overlapping_bytes, stop=None)
+                    last_merged.combined_stream,
+                    islice(pair.response.stream, start=overlapping_bytes, stop=None),
                 )
                 last_merged.combined_pairs.append(pair)
-                last_merged.range = (last_merged.range[0], current_content_range.range[1])
+                last_merged.range = (
+                    last_merged.range[0],
+                    current_content_range.range[1],
+                )
 
     return list(merged)
 
 
-def combine_partial_content(partial_pairs: list[CompletePair]) -> list[tuple[CompletePair, list[CompletePair]]]:
+def combine_partial_content(
+    partial_pairs: list[CompletePair],
+) -> list[tuple[CompletePair, list[CompletePair]]]:
     """
     3.4 Combining Partial Content Responses
 
@@ -348,7 +382,9 @@ def combine_partial_content(partial_pairs: list[CompletePair]) -> list[tuple[Com
     # Map of newly created pair and pairs we are invalidating
     merged_pairs: list[tuple[CompletePair, list[CompletePair]]] = []
     sorted_pairs = sorted(
-        partial_pairs, key=lambda pair: pair.response.headers.get("date", str(int(time.time()))), reverse=True
+        partial_pairs,
+        key=lambda pair: pair.response.headers.get("date", str(int(time.time()))),
+        reverse=True,
     )
 
     # A client that has received multiple partial responses
@@ -437,7 +473,6 @@ def combine_partial_content(partial_pairs: list[CompletePair]) -> list[tuple[Com
                     id=uuid.uuid4(),
                     request=merged.combined_pairs[0].request,
                     meta=merged.combined_pairs[0].meta,
-                    cache_key=merged.combined_pairs[0].cache_key,
                     response=response,
                     extra=merged.combined_pairs[0].extra,
                     complete_stream=True,
@@ -498,7 +533,10 @@ class IdleClient(State):
 
     def next(
         self, request: Request, associated_pairs: list[CompletePair]
-    ) -> Union[UpdatePartials["CacheMiss" | "FromCache" | "NeedRevalidation"], CacheMiss]:
+    ) -> Union[
+        UpdatePartials["CacheMiss" | "FromCache" | "NeedRevalidation"],
+        CacheMiss,
+    ]:
         request_range = Range.try_from_str(request.headers["range"]) if "range" in request.headers else None
 
         # A cache MUST write through requests with methods that are unsafe (Section 9.2.1 of [HTTP])
@@ -581,7 +619,11 @@ class IdleClient(State):
                 ready_to_use,
                 need_revalidation,
             )
-        return UpdatePartials(merged_pairs=merged_pairs, next_state=next_state, options=self.options)
+        return UpdatePartials(
+            merged_pairs=merged_pairs,
+            next_state=next_state,
+            options=self.options,
+        )
 
     def _try_take_subrange(
         self,
@@ -877,7 +919,11 @@ class CacheMiss(State):
             return CouldNotBeStored(pair=pair, options=self.options)
 
         return StoreAndUse(
-            pair=replace(pair, response=exclude_unstorable_headers(response, self.options.shared)), options=self.options
+            pair=replace(
+                pair,
+                response=exclude_unstorable_headers(response, self.options.shared),
+            ),
+            options=self.options,
         )
 
 

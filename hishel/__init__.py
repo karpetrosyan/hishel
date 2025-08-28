@@ -8,7 +8,7 @@ from ._serializers import *
 from ._sync import *
 from ._lfu_cache import *
 
-from ._core._spec import IdleClient, CacheMiss, FromCache, NeedRevalidation, AnyState, CacheOptions,  NeedToBeUpdated, State, StoreAndUse, CouldNotBeStored, create_idle_state
+from ._core._spec import IdleClient, CacheMiss, FromCache, NeedRevalidation, AnyState, CacheOptions,  NeedToBeUpdated, State, StoreAndUse, CouldNotBeStored, create_idle_state, UpdatePartials
 from ._core.models import Request, Response, Pair, IncompletePair, CompletePair, PairMeta
 from ._core._headers import Headers
 
@@ -30,6 +30,7 @@ __all__ = [
     "NeedToBeUpdated",
     "StoreAndUse",
     "CouldNotBeStored",
+    "UpdatePartials",
     "create_idle_state",
 
     # from _core.models

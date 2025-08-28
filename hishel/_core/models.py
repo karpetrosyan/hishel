@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import time
 import uuid
 from dataclasses import InitVar, dataclass, field
 from typing import (
     Any,
     AsyncIterable,
     Iterable,
+    Iterator,
     Mapping,
     MutableMapping,
     Optional,
@@ -47,12 +49,20 @@ def ensure_decoded(
     return value
 
 
+class AnyIterable:
+    def __iter__(self) -> Iterator[bytes]:
+        yield b""
+
+    async def __aiter__(self) -> AsyncIterable[bytes]:
+        yield b""
+
+
 @dataclass
 class Request:
     method: str
     url: str
     headers: Headers = field(init=False)
-    stream: Iterable[bytes] | AsyncIterable[bytes]
+    stream: Iterable[bytes] | AsyncIterable[bytes] = field(default_factory=AnyIterable)
     extra: Mapping[str, Any] = field(default_factory=dict)
     raw_headers: InitVar[Optional[Mapping[str, str | list[str]]]] = None
 
@@ -64,7 +74,7 @@ class Request:
 class Response:
     status_code: int
     headers: Headers = field(init=False)
-    stream: Iterable[bytes] | AsyncIterable[bytes]
+    stream: Iterable[bytes] | AsyncIterable[bytes] = field(default_factory=AnyIterable)
     extra: Mapping[str, Any] = field(default_factory=dict)
     raw_headers: InitVar[Optional[Mapping[str, str | list[str]]]] = None
 
@@ -74,7 +84,7 @@ class Response:
 
 @dataclass
 class PairMeta:
-    created_at: float
+    created_at: float = field(default_factory=time.time)
     deleted_at: Optional[float] = None
     ttl: Optional[float] = None
     refresh_ttl_on_access: Optional[bool] = None
@@ -85,10 +95,6 @@ class Pair:
     id: uuid.UUID
     request: Request
     meta: PairMeta
-    cache_key: str
-    """
-    Cache key for the entry, if it is cached.
-    """
 
 
 # class used by storage
@@ -102,3 +108,16 @@ class CompletePair(Pair):
     response: Response
     extra: Mapping[str, Any] = field(default_factory=dict)
     complete_stream: bool = True
+
+    @classmethod
+    def create(
+        cls,
+        response: Response,
+        request: Request,
+    ) -> "CompletePair":
+        return cls(
+            id=uuid.uuid4(),
+            request=request,
+            response=response,
+            meta=PairMeta(),
+        )
