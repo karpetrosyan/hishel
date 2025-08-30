@@ -3,13 +3,10 @@
 set -e
 
 echo "==> Running ruff"
-uv run ruff check src tests
-
-echo "==> Running pyright"
-uv run pyright src tests
+uv run ruff check hishel tests
 
 echo "==> Running mypy"
-uv run mypy src tests
+uv run --all-extras mypy hishel tests
 
 echo "==> Making sure it imports"
 uv run --with-editable . python -c 'import hishel'

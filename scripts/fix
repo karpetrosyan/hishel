@@ -3,6 +3,6 @@
 set -e
 
 echo "==> Running ruff"
-uv run ruff check --fix src tests
-uv run ruff format src tests
+uv run ruff check --fix hishel tests
+uv run ruff format hishel tests
 
