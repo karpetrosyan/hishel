@@ -3,12 +3,15 @@ import hashlib
 import time
 import typing as tp
 from email.utils import parsedate_tz
+from typing import AsyncIterable, AsyncIterator, Iterable, Iterator, Optional
 
 import anyio
 import httpcore
 import httpx
 
 HEADERS_ENCODING = "iso-8859-1"
+
+T = tp.TypeVar("T")
 
 
 class BaseClock:
@@ -116,3 +119,100 @@ def sleep(seconds: tp.Union[int, float]) -> None:
 
 def float_seconds_to_int_milliseconds(seconds: float) -> int:
     return int(seconds * 1000)
+
+
+def islice(
+    iterable: Iterable[bytes], start: int, stop: Optional[int] = None, step: int = 1
+) -> Iterator[bytes]:  # pragma: nocover
+    """
+    Returns an iterator over elements from `iterable` from `start` to `stop` (exclusive),
+    taking every `step`-th element.
+    """
+    if start < 0 or (stop is not None and stop < 0):
+        raise ValueError("Negative indices not supported in this simple islice")
+    if step <= 0:
+        raise ValueError("Step must be positive")
+
+    it = iter(iterable)
+
+    # Skip until start
+    for _ in range(start):
+        try:
+            next(it)
+        except StopIteration:
+            return  # iterable shorter than start, nothing to yield
+
+    index = start
+    while stop is None or index < stop:
+        try:
+            value = next(it)
+        except StopIteration:
+            return
+        yield value
+        # Skip `step-1` items
+        for _ in range(step - 1):
+            try:
+                next(it)
+            except StopIteration:
+                return
+        index += step
+
+
+async def aislice(
+    async_iterable: AsyncIterable[bytes], start: int, stop: Optional[int] = None, step: int = 1
+) -> AsyncIterator[bytes]:  # pragma: nocover
+    """
+    Async version of islice: yields items from `async_iterable` starting at `start`,
+    stopping before `stop`, taking every `step`-th item.
+    """
+    if start < 0 or (stop is not None and stop < 0):
+        raise ValueError("Negative indices not supported")
+    if step <= 0:
+        raise ValueError("Step must be positive")
+
+    it = async_iterable.__aiter__()
+
+    # Skip first `start` items
+    for _ in range(start):
+        try:
+            await it.__anext__()
+        except StopAsyncIteration:
+            return  # iterable shorter than start
+
+    index = start
+    while stop is None or index < stop:
+        try:
+            value = await it.__anext__()
+        except StopAsyncIteration:
+            return
+        yield value
+
+        # Skip step-1 items
+        for _ in range(step - 1):
+            try:
+                await it.__anext__()
+            except StopAsyncIteration:
+                return
+        index += step
+
+
+def chain(*iterables: tp.Iterable[T]) -> tp.Iterable[T]:  # pragma: nocover
+    for it in iterables:
+        for item in it:
+            yield item
+
+
+async def async_chain(*iterables: tp.AsyncIterable[T]) -> tp.AsyncIterable[T]:  # pragma: nocover
+    for it in iterables:
+        async for item in it:
+            yield item
+
+
+def partition(iterable: tp.Iterable[T], predicate: tp.Callable[[T], bool]) -> tp.Tuple[tp.List[T], tp.List[T]]:
+    matching, non_matching = [], []
+    for item in iterable:
+        if predicate(item):
+            matching.append(item)
+        else:
+            non_matching.append(item)
+    return matching, non_matching
