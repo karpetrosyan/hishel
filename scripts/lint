@@ -1,5 +1,15 @@
-#! /bin/bash -ex
+#!/usr/bin/env bash
 
-uv run ruff check --fix $SOURCE_FILES
-uv run ruff format $SOURCE_FILES
-uv run python unasync.py
+set -e
+
+echo "==> Running ruff"
+uv run ruff check src tests
+
+echo "==> Running pyright"
+uv run pyright src tests
+
+echo "==> Running mypy"
+uv run mypy src tests
+
+echo "==> Making sure it imports"
+uv run --with-editable . python -c 'import hishel'
