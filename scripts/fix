@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -e
+
+echo "==> Running ruff"
+uv run ruff check --fix src tests
+uv run ruff format src tests
+

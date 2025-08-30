@@ -1,6 +1,6 @@
-#! /bin/bash -ex
+#!/usr/bin/env bash
 
-./scripts/check
-uv run coverage run -m pytest tests
+set -e
 
-uv run coverage report --show-missing --skip-covered --fail-under=100
+echo "==> Running tests"
+uv run pytest --cov=./ --cov-report=xml tests "$@"

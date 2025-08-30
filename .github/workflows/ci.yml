@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: ["ubuntu-latest"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout (official GitHub action)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv (official Astral action)
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.8.9"
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up Python (using uv)
+        run: uv python install
+
+      - name: Install all dependencies
+        run: uv sync --all-extras
+
+      - name: Run linting
+        run: scripts/lint
+
+      - name: Run tests
+        run: scripts/test
+
+      - name: Upload Coverage
+        if: runner.os != 'macOS'
+        uses: coverallsapp/github-action@v2
+        with:
+          parallel: true
+          file: coverage.xml
+
+    coveralls:
+      name: Finish Coveralls
+      needs: test
+      runs-on: ubuntu-latest
+      steps:
+        - name: Finished
+          uses: coverallsapp/github-action@v2
+          with:
+            parallel-finished: true
