@@ -40,6 +40,9 @@ jobs:
       - name: Run linting
         run: scripts/lint
 
+      - name: Start Redis
+        uses: supercharge/redis-github-action@1.8.0
+
       - name: Run tests
         run: scripts/test
 
