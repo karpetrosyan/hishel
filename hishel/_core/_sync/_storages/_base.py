@@ -3,35 +3,82 @@ import typing as tp
 import uuid
 from abc import ABC
 
-from ...models import Request, RequestPair, Response
+from ...models import CompletePair, IncompletePair, Request, RequestPair, Response
 
 RemoveTypes: tp.TypeAlias = tp.Union[str, Response]
 
 
 class SyncBaseStorage(ABC):
     @abc.abstractmethod
-    def store_request(
+    def create_pair(
         self,
         key: str,
         request: Request,
         /,
         ttl: tp.Optional[float] = None,
         refresh_ttl_on_access: tp.Optional[bool] = None,
-    ) -> tuple[uuid.UUID, Request]:
+    ) -> IncompletePair:
+        """
+        Store a request in the backend under the given key.
+
+        Args:
+            key: Unique identifier for grouping or looking up stored requests.
+            request: The request object to store.
+            ttl: Optional time-to-live (in seconds). If set, the entry expires after
+                the given duration.
+            refresh_ttl_on_access: If True, accessing this entry refreshes its TTL.
+                If False, the TTL is fixed. If None, uses the backend's default behavior.
+
+        Returns:
+            The created IncompletePair object representing the stored request.
+
+        Raises:
+            NotImplementedError: Must be implemented in subclasses.
+        """
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def store_response(self, pair_id: uuid.UUID, response: Response) -> Response:
+    def add_response(self, pair_id: uuid.UUID, response: Response) -> CompletePair:
+        """
+        Add a response to an existing request pair.
+
+        Args:
+            pair_id: The unique identifier of the request pair.
+            response: The response object to add.
+
+        Returns:
+            The updated response object.
+
+        Raises:
+            NotImplementedError: Must be implemented in subclasses.
+        """
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_responses(self, key: str, /, complete_only: tp.Optional[bool] = None) -> tp.List[RequestPair]:
+    def get_pairs(self, key: str, /, complete_only: tp.Optional[bool] = None) -> tp.List[CompletePair]:
+        """
+        Retrieve all responses associated with a given key.
+
+        Args:
+            key: The unique identifier for the request pairs.
+            complete_only: If True, only return pairs with responses. If False,
+                only return pairs without responses. If None, return all pairs.
+        """
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def update_entry_extra(
+    def update_pair(
         self,
-        key: str,
-        extra: tp.Union[tp.Mapping[str, tp.Any], tp.MutableMapping[str, tp.Any]],
-    ) -> None:
+        id: uuid.UUID,
+        new_pair: tp.Union[CompletePair, tp.Callable[[CompletePair], CompletePair]],
+    ) -> tp.Optional[CompletePair]:
+
+        """
+        Update an existing request pair.
+
+        Args:
+            id: The unique identifier of the request pair to update.
+            new_pair: The new pair data or a callable that takes the current pair
+                and returns the updated pair.
+        """
         raise NotImplementedError()

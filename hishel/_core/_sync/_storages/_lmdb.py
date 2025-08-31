@@ -1,17 +1,6 @@
-"""
-This module provides a class for storing request/response pairs and their streams (the actual body) in a simple way.
-It currently supports...
+from __future__ import annotations
 
-# This feature list will be referenced in this file using feature#feature_number (e.g., feature#1).
-
-1. Storing request and response without reading the fully body (via streams).
-2. Self-cleanup of expired/corrupted pairs.
-3. Lazy expiration of pairs.
-4. Thread/Process safe.
-5. Configurable per pair TTL and refresh on access setting.
-"""
-
-from hmac import new
+from dataclasses import replace
 import threading
 import time
 import uuid
@@ -21,6 +10,7 @@ from typing import (
     Any,
     Callable,
     Iterable,
+    Iterator,
     List,
     Literal,
     Mapping,
@@ -36,7 +26,9 @@ import msgpack
 
 from hishel._core._sync._storages._base import SyncBaseStorage
 from hishel._core.models import (
-    Headers,
+    CompletePair,
+    IncompletePair,
+    Pair,
     PairMeta,
     Request,
     RequestPair,
@@ -49,7 +41,7 @@ if TYPE_CHECKING:
 
 @overload
 def pack(
-    value: RequestPair,
+    value: CompletePair,
     /,
     kind: Literal["pair"],
 ) -> bytes: ...
@@ -64,7 +56,7 @@ def pack(
 
 
 def pack(
-    value: Union[RequestPair, uuid.UUID],
+    value: Union[CompletePair, IncompletePair, uuid.UUID],
     /,
     kind: Literal["pair", "entry_db_key_index"],
 ) -> bytes:
@@ -72,7 +64,7 @@ def pack(
         assert isinstance(value, uuid.UUID)
         return value.bytes
     elif kind == "pair":
-        assert isinstance(value, RequestPair)
+        assert isinstance(value, (CompletePair, IncompletePair))
         return cast(
             bytes,
             msgpack.packb(
@@ -92,7 +84,6 @@ def pack(
                     if value.response
                     else None,
                     "meta": value.meta,
-                    "cache_key": value.cache_key,
                 }
             ),
         )
@@ -104,8 +95,7 @@ def unpack(
     value: bytes,
     /,
     kind: Literal["pair"],
-    client: "SyncLmdbStorage",
-) -> RequestPair: ...
+) -> Union[CompletePair, IncompletePair]: ...
 
 
 @overload
@@ -123,7 +113,7 @@ def unpack(
     /,
     kind: Literal["pair"],
     client: "SyncLmdbStorage",
-) -> Optional[RequestPair]: ...
+) -> Optional[Union[CompletePair, IncompletePair]]: ...
 
 
 @overload
@@ -139,7 +129,7 @@ def unpack(
     /,
     kind: Literal["pair", "entry_db_key_index"],
     client: Optional["SyncLmdbStorage"] = None,
-) -> Union[RequestPair, uuid.UUID, None]:
+) -> Union[CompletePair, IncompletePair, uuid.UUID, None]:
     if value is None:
         return None
     if kind == "entry_db_key_index":
@@ -148,94 +138,53 @@ def unpack(
         assert client is not None
         data = msgpack.unpackb(value)
         id = uuid.UUID(bytes=data["id"])
-        return RequestPair(
-            id=id,
-            request=Request(
-                method=data["request"]["method"],
-                url=data["request"]["url"],
-                headers=Headers(data["request"]["headers"]),
-                extra=data["request"]["extra"],
-                stream=client._stream_data_from_cache(id.bytes, client.stream_db, "request"),
-            ),
-            response=(
-                Response(
-                    status_code=data["response"]["status_code"],
-                    headers=Headers(data["response"]["headers"]),
-                    extra=data["response"]["extra"],
-                    stream=client._stream_data_from_cache(id.bytes, client.stream_db, "response"),
-                )
-                if data.get("response") is not None
-                else None
-            ),
-            meta=data["meta"],
-            cache_key=data["cache_key"],
-        )
-
-
-class CacheStream:
-    """
-    Lazily writes the stream to the cache.
-    Instead of writing it to the cache first and then streaming it to the application,
-    we use lazy streaming so the developer does not have to wait until everything is written.
-    """
-
-    def __init__(
-        self,
-        stream: Iterable[bytes],
-        entry_id: bytes,
-        kind: Literal["response", "request"],
-        env: "Environment",
-        stream_db: "Database",
-    ) -> None:
-        self.stream = stream
-        self.entry_id = entry_id
-        self.kind = kind
-        self.env = env
-        self.stream_db = stream_db
-
-    def __iter__(self) -> Iterable[bytes]:
-        suffix = "request_chunk_{id}" if self.kind == "request" else "response_chunk_{id}"
-        complete_suffix = b"request_complete" if self.kind == "request" else b"response_complete"
-        i = 0
-        for chunk in self.stream:
-            with self.env.begin(write=True) as txn:
-                txn.put(
-                    b":".join([self.entry_id, suffix.format(id=i).encode("utf-8")]),
-                    chunk,
-                    db=self.stream_db,
-                )
-                i += 1
-            yield chunk
-
-        with self.env.begin(write=True) as txn:
-            # add empty chunk to indicate end of stream
-            txn.put(
-                b":".join([self.entry_id, suffix.format(id=i).encode("utf-8")]),
-                b"",
-                db=self.stream_db,
+        if "response" in data:
+            return CompletePair(
+                id=id,
+                request=Request(
+                    method=data["request"]["method"],
+                    url=data["request"]["url"],
+                    headers=data["request"]["headers"],
+                    extra=data["request"]["extra"],
+                    stream=client._stream_data_from_cache(id.bytes, client.stream_db, "request"),
+                ),
+                response=(
+                    Response(
+                        status_code=data["response"]["status_code"],
+                        headers=data["response"]["headers"],
+                        extra=data["response"]["extra"],
+                        stream=client._stream_data_from_cache(id.bytes, client.stream_db, "response"),
+                    )
+                ),
+                meta=data["meta"],
             )
-
-            # add flag to indicate that the request is complete
-            txn.put(b":".join([self.entry_id, complete_suffix]), b"", db=self.stream_db)
-
-
+        else:
+            return IncompletePair(
+                id=id,
+                request=Request(
+                    method=data["request"]["method"],
+                    url=data["request"]["url"],
+                    headers=data["request"]["headers"],
+                    extra=data["request"]["extra"],
+                    stream=client._stream_data_from_cache(id.bytes, client.stream_db, "request"),
+                ),
+                meta=data["meta"],
+            )
+    
 class SyncLmdbStorage(SyncBaseStorage):
-    """
-    Synchronous LMDB storage that implements all the features listed at the beginning of this file.
-
-    Args:
-        env: The LMDB environment.
-        entry_db_name: The name of the database for storing request/response pairs.
-        stream_db_name: The name of the database for storing streams.
-        entry_db_key_index_db_name: The name of the database for storing request/response pair keys.
-        default_ttl: Default time-to-live for entries.
-        refresh_ttl_on_access: Whether to refresh the TTL on access.
-        complete_only: Whether to return only complete pairs.
-    """
+    _CHUNK_SUFFIX = {
+        "request": "request_chunk_{id}",
+        "response": "response_chunk_{id}"
+    }
+    _COMPLETE_CHUNK_SUFFIX = {
+        "request": b"request_complete",
+        "response": b"response_complete"
+    }
 
     def __init__(
         self,
         env: "Environment",
+        *,
         entry_db_name: str = "hishel_entries",
         stream_db_name: str = "hishel_streams",
         entry_db_key_index_db_name: str = "hishel_entry_key_index",
@@ -256,147 +205,97 @@ class SyncLmdbStorage(SyncBaseStorage):
         self.complete_only = complete_only
         self.last_cleanup = float("-inf")
 
-    def store_request(
+    def create_pair(
         self,
         key: str,
         request: Request,
         /,
         ttl: Optional[float] = None,
         refresh_ttl_on_access: Optional[bool] = None,
-        pair_extra: Optional[Mapping[str, Any]] = None,
-    ) -> tuple[uuid.UUID, Request]:
-        """
-        Creates a new pair in the database and adds the request property to it.
-
-        This is the entry point for creating pairs. When you want to send a request,
-        you first need to create a new pair and cache the request stream so you can use
-        it later—for example, if you want to retry the exact same request or inspect the body you sent.
-
-        Args:
-            key: The cache key for the request.
-            request: The request to store.
-            ttl: Time-to-live for the entry. If not provided, uses the default TTL.
-            refresh_ttl_on_access: Whether to refresh the TTL on access. Defaults to the class setting.
-            pair_extra: Additional metadata to store with the pair.
-
-        Returns:
-            A tuple containing the UUID of the request and the request object with a stream that can be iterated over.
-        """
-        request_id = uuid.uuid4()
+    ) -> IncompletePair:
+        pair_id = uuid.uuid4()
         pair_meta = PairMeta(created_at=time.time())
 
-        ttl = ttl or self.default_ttl
+        ttl = self.default_ttl if ttl is None else ttl
         if ttl is not None:
             pair_meta["ttl"] = ttl
 
-        pair_meta["refresh_ttl_on_access"] = refresh_ttl_on_access or self.refresh_ttl_on_access
+        pair_meta["refresh_ttl_on_access"] = self.refresh_ttl_on_access if refresh_ttl_on_access is None else refresh_ttl_on_access
 
-        pair = RequestPair(
-            id=request_id,
+        pair = IncompletePair(
+            id=pair_id,
             request=request,
             meta=pair_meta,
-            cache_key=key,
-            extra=pair_extra or {},
+            cache_key=key
         )
         with self.env.begin(write=True) as txn:
             txn.put(
                 key.encode("utf-8"),
-                pack(request_id, kind="entry_db_key_index"),
+                pack(pair_id, kind="entry_db_key_index"),
                 db=self.entry_key_index_db,
                 dupdata=True,
             )
-            txn.put(request_id.bytes, pack(pair, kind="pair"), db=self.entry_db)
+            txn.put(pair_id.bytes, pack(pair, kind="pair"), db=self.entry_db)
 
         assert isinstance(request.stream, Iterable)
 
-        return request_id, Request(
+        request = Request(
             method=request.method,
             url=request.url,
             headers=request.headers,
             extra=request.extra,
-            stream=CacheStream(
-                request.stream,
-                request_id.bytes,
-                "request",
-                self.env,
-                self.stream_db,
-            ),
-        )
+            stream=self._stream_data_to_cache(
+                request.stream, pair_id.bytes, "request"
+            ))
+        
+        return replace(pair, request=request)
 
-    def store_response(
+    def add_response(
         self,
         pair_id: uuid.UUID,
         response: Response,
-    ) -> Response:
-        """
-        Stores the response in the database for the given pair ID.
-
-        This method is called after the request has been sent and you have received a response.
-        When you have a pair with a request and then receive a response, you may want to add that
-        response to the pair so you end up with a complete request/response pair you can query later.
-
-        Args:
-            pair_id: The ID of the request/response pair to store the response for.
-            response: The response to store.
-
-        Returns:
-            The stored response with a stream that can be iterated over.
-        """
+    ) -> CompletePair:
         with self.env.begin(write=True) as txn:
             pair = unpack(txn.get(pair_id.bytes, db=self.entry_db), kind="pair", client=self)
 
             if pair is None:
                 raise ValueError(f"Entry with ID {pair_id} not found.")
 
-            pair.response = response
+            response = replace(response, stream=self._stream_data_to_cache(response.stream, pair_id.bytes, "response"))
 
-            txn.put(pair_id.bytes, pack(pair, kind="pair"), db=self.entry_db)
+            complete_pair = CompletePair(
+                id=pair.id,
+                request=pair.request,
+                response=response,
+                meta=pair.meta,
+            )
+            txn.put(pair_id.bytes, pack(complete_pair, kind="pair"), db=self.entry_db)
 
-            assert isinstance(response.stream, Iterable)
+        return complete_pair
 
-        return Response(
-            status_code=response.status_code,
-            headers=response.headers,
-            extra=response.extra,
-            stream=CacheStream(
-                response.stream,
-                pair_id.bytes,
-                "response",
-                self.env,
-                self.stream_db,
-            ),
-        )
-
-    def get_responses(self, key: str, /, complete_only: Optional[bool] = None) -> List[RequestPair]:
-        """
-        Retrieves all request/response pairs associated with the given key.
-
-        This method also handles expired pairs. It lazily checks if a pair has expired and,
-        if so, soft deletes it and excludes it from the return list. It also filters out all soft-deleted responses.
-
-        Args:
-            key: The cache key to search for.
-            complete_only: If True, only returns pairs that are complete (have both request and response streams).
-
-        Returns:
-            A list of RequestPair objects that match the given key.
-        """
+    def get_pairs(self, key: str) -> List[CompletePair]:
         if self.last_cleanup + 1800 < time.time():
             self.last_cleanup = time.time()
             threading.Thread(target=self._batch_cleanup, daemon=True).start()
 
-        final_pairs: List[RequestPair] = []
+        final_pairs: List[CompletePair] = []
         with self.env.begin(write=True) as txn:
             pair_ids = self._get_pair_ids_by_key(key, txn)
 
-            if not pair_ids:
-                return []
-
-            for pair in pair_ids:
-                pair_data = unpack(txn.get(pair.bytes, db=self.entry_db), kind="pair", client=self)
-
+            for pair_id in pair_ids:
+                pair_data = unpack(txn.get(pair_id.bytes, db=self.entry_db), kind="pair", client=self)
+                
                 if pair_data is None:
-                    warning(f"Pair with ID {pair} not found in the database.")
+                    warning(f"Pair key index pointing to non-existing pair ID {pair_id}.")
+                    continue
+                
+                if isinstance(pair_data, IncompletePair):
+                    continue
+
+                if self._is_soft_deleted(pair_data, txn):
+                    continue
+
+                if self._is_corrupted(pair=pair_data, txn=txn):
                     continue
 
                 if self._is_soft_deleted(pair_data):
@@ -404,59 +303,51 @@ class SyncLmdbStorage(SyncBaseStorage):
 
                 if self._is_pair_expired(pair_data, txn):
                     self._mark_pair_as_deleted(pair_data, txn)
-
-                complete_only = complete_only if complete_only is not None else self.complete_only
-                if complete_only:
-                    if not self._check_pair_complete(pair_data, txn):
-                        continue
-
-                final_pairs.append(pair_data)
+                elif not self._is_stream_complete("response", pair_data.id, txn):
+                    final_pairs.append(
+                        replace(pair_data, complete_stream=False)
+                    )
+                else:
+                    final_pairs.append(pair_data)
         return final_pairs
 
-    def set_pair(
+    def update_pair(
         self,
         id: uuid.UUID,
-        new_pair: RequestPair | Callable[[RequestPair], RequestPair],
-    ) -> RequestPair | None:
-        """
-        Sets a new pair in the database. If a callable is provided, it will be called with the existing pair
-        (if it exists) to modify it before storing.
-
-        Args:
-            new_pair: A RequestPair object or a callable that takes an existing RequestPair and returns a modified one.
-
-        Returns:
-            The stored RequestPair.
-        """
-
-        if id != new_pair.id:
-            raise ValueError("The ID of the new pair must match the provided ID.")
-
+        new_pair: Union[CompletePair,Callable[[CompletePair], CompletePair]],
+    ) -> Optional[CompletePair]:
         with self.env.begin(write=True) as txn:
-            existing_pair_data = txn.get(id.bytes, db=self.entry_db)
-            if existing_pair_data is None:
+            pair = unpack(txn.get(id.bytes, db=self.entry_db), kind="pair")
+
+            if pair is None:
+                return None
+            
+            if isinstance(pair, IncompletePair):
                 return None
 
-            existing_pair = unpack(existing_pair_data, kind="pair", client=self)
+            if isinstance(new_pair, CompletePair):
+                complete_pair = new_pair
+            else:
+                complete_pair = new_pair(pair)
 
-            if callable(new_pair):
-                new_pair = new_pair(existing_pair)
+            if pair.id != complete_pair.id:
+                raise ValueError("Pair ID mismatch")
 
-            txn.put(
-                id.bytes,
-                pack(new_pair, kind="pair"),
-                db=self.entry_db,
-            )
+            txn.put(id.bytes, pack(complete_pair, kind="pair"), db=self.entry_db)
 
-            # Update the key index if the cache key has changed
-            if existing_pair.cache_key != new_pair.cache_key:
-                self._delete_single_pair_from_key_index(existing_pair.cache_key, id, txn)
+            if pair.cache_key != complete_pair.cache_key:
+                self._delete_key_index(pair, txn)
                 txn.put(
-                    new_pair.cache_key.encode("utf-8"),
-                    pack(id, kind="entry_db_key_index"),
+                    complete_pair.cache_key.encode("utf-8"),
+                    pack(complete_pair.id, kind="entry_db_key_index"),
                     db=self.entry_key_index_db,
                     dupdata=True,
                 )
+
+        return complete_pair
+
+    def _is_stream_complete(self, kind: Literal["request", "response"], pair_id: uuid.UUID, txn: "Transaction") -> bool:
+        return txn.get(b":".join([pair_id.bytes, self._COMPLETE_CHUNK_SUFFIX[kind]]), db=self.stream_db) is not None
 
     def _check_pair_complete(self, pair: RequestPair, txn: "Transaction") -> bool:
         """
@@ -477,15 +368,15 @@ class SyncLmdbStorage(SyncBaseStorage):
             db=self.entry_db,
         )
 
-    def _is_pair_expired(self, pair: RequestPair, txn: "Transaction") -> bool:
+    def _is_pair_expired(self, pair: Pair, txn: "Transaction") -> bool:
         """
         Check if the pair is expired.
         """
-        if "ttl" not in pair.meta:
+        if pair.meta.ttl is None:
             return False
 
-        created_at = pair.meta["created_at"]
-        ttl = pair.meta["ttl"]
+        created_at = pair.meta.created_at
+        ttl = pair.meta.ttl
         return created_at + ttl < time.time()
 
     def _batch_cleanup(
@@ -503,6 +394,8 @@ class SyncLmdbStorage(SyncBaseStorage):
             for key, value in cursor:
                 assert isinstance(value, bytes)
                 pair = unpack(value, kind="pair", client=self)
+                if pair is None:
+                    continue
                 if self._is_pair_expired(pair, txn) and not self._is_soft_deleted(pair):
                     should_mark_as_deleted.append(pair)
 
@@ -518,35 +411,46 @@ class SyncLmdbStorage(SyncBaseStorage):
             for pair in should_hard_delete:
                 self._hard_delete_pair(pair, txn)
 
-    def _is_soft_deleted(self, pair: RequestPair) -> bool:
+    def _is_soft_deleted(self, pair: Pair) -> bool:
         """
         Check if the pair is soft deleted.
         """
-        return "deleted_at" in pair.meta
+        return pair.meta.deleted_at is not None and pair.meta.deleted_at > 0
 
-    def _is_safe_to_hard_delete(self, pair: RequestPair) -> bool:
+    def _is_safe_to_hard_delete(self, pair: Pair) -> bool:
         # if pair was deleted more than one hour ago we assume it's sage to remove
-        if "deleted_at" in pair.meta and (pair.meta["deleted_at"] + 3600 < time.time()):
-            return True
-        return False
+        return bool(pair.meta.deleted_at is not None and (pair.meta.deleted_at + 3600 < time.time()))
 
-    def _is_corrupted(self, pair: RequestPair, txn: "Transaction") -> bool:
+    def _is_corrupted(self, pair: IncompletePair | CompletePair, txn: "Transaction") -> bool:
         # if pair was created more than 1 hour ago and still not completed
-        if pair.meta["created_at"] + 3600 < time.time() and not self._check_pair_complete(pair, txn):
+        if pair.meta.created_at + 3600 < time.time() and isinstance(pair, IncompletePair):
+            return True
+        
+        if isinstance(pair, CompletePair) and not self._is_stream_complete("request", pair.id, txn):
             return True
         return False
 
-    def _hard_delete_pair(self, pair: RequestPair, txn: "Transaction") -> None:
+    def _delete_key_index(self, pair: Pair, txn: "Transaction") -> None:
+
+        cursor = txn.cursor(self.entry_key_index_db)
+        if cursor.set_key(pair.cache_key.encode("utf-8")):
+            for value in cursor.iternext_dup():
+                if unpack(value, kind="entry_db_key_index") == pair.id:
+                    cursor.delete()
+                    break
+        return None
+
+    def _hard_delete_pair(self, pair: CompletePair | IncompletePair, txn: "Transaction") -> None:
         """
         Permanently delete the pair from the database.
         """
 
         txn.delete(pair.id.bytes, db=self.entry_db)
-        self._delete_single_pair_from_key_index(pair.cache_key, pair.id, txn)
 
-        # delete the streams
-        self._delete_stream(pair.id.bytes, txn, "response")
-        self._delete_stream(pair.id.bytes, txn, "request")
+        self._delete_key_index(pair, txn)
+
+        self._delete_stream(pair.id.bytes, txn, kind="request")
+        self._delete_stream(pair.id.bytes, txn, kind="response")
 
     def _get_pair_ids_by_key(self, key: str, txn: "Transaction") -> List[uuid.UUID]:
         """
@@ -598,17 +502,51 @@ class SyncLmdbStorage(SyncBaseStorage):
         # delete the complete flag
         txn.delete(b":".join([entry_id, complete_suffix]), db=self.stream_db)
 
+    def _stream_data_to_cache(
+        self,
+        stream: Iterable[bytes],
+        entry_id: bytes,
+        kind: Literal["response", "request"],
+    ) -> Iterator[bytes]:
+        """
+        Wrapper around an iterator that also saves the data to the cache in chunks.
+        """
+
+        suffix = self._CHUNK_SUFFIX[kind]
+        complete_suffix = self._COMPLETE_CHUNK_SUFFIX[kind]
+        i = 0
+        for chunk in stream:
+            with self.env.begin(write=True) as txn:
+                txn.put(
+                    b":".join([entry_id, suffix.format(id=i).encode("utf-8")]),
+                    chunk,
+                    db=self.stream_db,
+                )
+                i += 1
+            yield chunk
+
+        with self.env.begin(write=True) as txn:
+            # add empty chunk to indicate end of stream
+            txn.put(
+                b":".join([entry_id, suffix.format(id=i).encode("utf-8")]),
+                b"",
+                db=self.stream_db,
+            )
+
+            # add flag to indicate that the request is complete
+            txn.put(b":".join([entry_id, complete_suffix]), b"", db=self.stream_db)
+
     def _stream_data_from_cache(
         self,
         entry_id: bytes,
         db: "Database",
         kind: Literal["response", "request"],
-    ) -> Iterable[bytes]:
+    ) -> Iterator[bytes]:
         """
-        Stream data from the cache in chunks.
+        Get an iterator that yields the stream data from the cache.
         """
 
-        suffix = "request_chunk_{id}" if kind == "request" else "response_chunk_{id}"
+        suffix = self._CHUNK_SUFFIX[kind]
         i = 0
 
         with self.env.begin(write=False) as txn:
