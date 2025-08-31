@@ -4,6 +4,7 @@ from typing import (
     Any,
     AsyncIterable,
     Iterable,
+    Iterator,
     Mapping,
     MutableMapping,
     Optional,
@@ -15,8 +16,6 @@ from typing import (
 )
 
 import httpx
-
-from hishel._core._headers import Headers
 
 AnyMapping: TypeAlias = Union[
     Mapping[str, Union[str, bytes]],
@@ -55,21 +54,41 @@ def ensure_decoded(
     return value
 
 
+class Headers(MutableMapping[str, str]):
+    def __init__(self, headers: Mapping[str, str]) -> None:
+        self._headers = {k.lower(): v for k, v in headers.items()}
+
+    def __getitem__(self, key: str) -> str:
+        return self._headers[key.lower()]
+
+    def __setitem__(self, key: str, value: str) -> None:
+        self._headers[key.lower()] = value
+
+    def __delitem__(self, key: str) -> None:
+        del self._headers[key.lower()]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._headers)
+
+    def __len__(self) -> int:
+        return len(self._headers)
+
+
 @dataclass
 class Request:
     method: str
     url: str
     headers: Headers
+    extra: Mapping[str, Any]
     stream: Iterable[bytes] | AsyncIterable[bytes]
-    extra: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class Response:
     status_code: int
     headers: Headers
+    extra: Mapping[str, Any]
     stream: Iterable[bytes] | AsyncIterable[bytes]
-    extra: Mapping[str, Any] = field(default_factory=dict)
 
 
 class PairMeta(TypedDict, total=False):
