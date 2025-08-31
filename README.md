@@ -31,6 +31,10 @@
   </a>
 </p>
 
+<p align="center">
+    <a href="https://buymeacoffee.com/karpetrosyan" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
+</p>
+
 -----
 
 **Hishel (հիշել, remember)** is a library that implements HTTP Caching for [HTTPX](https://github.com/encode/httpx) and [HTTP Core](https://github.com/encode/httpcore) libraries in accordance with [**RFC 9111**](https://www.rfc-editor.org/rfc/rfc9111.html), the most recent caching specification.

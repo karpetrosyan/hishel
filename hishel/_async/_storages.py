@@ -36,10 +36,10 @@ logger = logging.getLogger("hishel.storages")
 __all__ = (
     "AsyncBaseStorage",
     "AsyncFileStorage",
-    "AsyncRedisStorage",
-    "AsyncSQLiteStorage",
     "AsyncInMemoryStorage",
+    "AsyncRedisStorage",
     "AsyncS3Storage",
+    "AsyncSQLiteStorage",
 )
 
 StoredResponse: TypeAlias = tp.Tuple[Response, Request, Metadata]

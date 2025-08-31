@@ -8,9 +8,7 @@ dynamic = ["readme", "version"]
 description = "Persistent cache implementation for httpx and httpcore"
 license = "BSD-3-Clause"
 requires-python = ">=3.9"
-authors = [
-    { name = "Kar Petrosyan", email = "kar.petrosyanpy@gmail.com" },
-]
+authors = [{ name = "Kar Petrosyan", email = "kar.petrosyanpy@gmail.com" }]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Web Environment",
@@ -28,27 +26,19 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: WWW/HTTP",
 ]
-dependencies = [
-    "httpx>=0.28.0",
-]
+dependencies = ["httpx>=0.28.0"]
 
 [project.optional-dependencies]
 
-yaml = [
-    "pyyaml==6.0.2",
-]
+yaml = ["pyyaml==6.0.2"]
 
-redis = [
-    "redis==6.2.0"
-]
+redis = ["redis==6.2.0"]
 
-sqlite = [
-    "anysqlite>=0.0.5"
-]
+sqlite = ["anysqlite>=0.0.5"]
 
 s3 = [
     "boto3>=1.15.0,<=1.15.3; python_version < '3.12'",
-    "boto3>=1.15.3; python_version >= '3.12'"
+    "boto3>=1.15.3; python_version >= '3.12'",
 ]
 
 [project.urls]
@@ -59,11 +49,7 @@ Source = "https://github.com/karpetrosyan/hishel"
 path = "hishel/__init__.py"
 
 [tool.hatch.build.targets.sdist]
-include = [
-    "/hishel",
-    "/CHANGELOG.md",
-    "/README.md",
-]
+include = ["/hishel", "/CHANGELOG.md", "/README.md"]
 
 [tool.hatch.metadata.hooks.fancy-pypi-readme]
 content-type = "text/markdown"
@@ -83,42 +69,29 @@ exclude = ['venv', '.venv']
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
-check_untyped_defs = true
 
+check_untyped_defs = true
+[[tool.mypy.overrides]]
+module = ["time_machine.*", "msgpack.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = ["-rxXs", "--strict-config", "--strict-markers"]
 filterwarnings = []
 
 [tool.coverage.run]
-omit = [
-    "venv/*",
-    "hishel/_sync/*",
-    "hishel/_s3.py"
-]
+omit = ["venv/*", "hishel/_sync/*", "hishel/_s3.py", "hishel/_core/_headers.py"]
 include = ["hishel/*", "tests/*"]
 
 [tool.coverage.report]
-exclude_also = [
-  '__repr__',
-  'raise NotImplementedError()'
-]
+exclude_also = ['__repr__', 'raise NotImplementedError()']
 
 [tool.ruff]
-exclude = [
-    "hishel/_sync",
-    "hishel/__init__.py",
-    "tests/_sync",
-]
+exclude = ["hishel/_sync", "hishel/__init__.py", "tests/_sync"]
 line-length = 120
 
 [tool.ruff.lint]
-select = [
-    "E",
-    "F",
-    "W",
-    "I"
-]
+select = ["E", "F", "W", "I"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
@@ -128,11 +101,15 @@ dev = [
     "anyio==4.9.0",
     "coverage==7.10.1",
     "hatch==1.14.1",
+    "inline-snapshot>=0.28.0",
     "mkdocs==1.6.1",
     "mkdocs-material==9.6.16",
     "mypy==1.17.1",
+    "pyright>=1.1.404",
     "pytest==8.4.1",
+    "pytest-cov>=6.2.1",
     "ruff==0.12.7",
+    "time-machine>=2.19.0",
     "trio==0.30.0",
     "types-boto3==1.40.0",
     "types-pyyaml==6.0.12.20250516",

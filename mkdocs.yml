@@ -33,6 +33,11 @@ markdown_extensions:
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - admonition
@@ -49,6 +54,7 @@ nav:
       - "Storages": advanced/storages.md
       - Serializers: advanced/serializers.md
       - Controllers: advanced/controllers.md
+      - Specification (Beta): advanced/specification.md
       - HTTP Headers: advanced/http_headers.md
       - Extensions: advanced/extensions.md
       - Logging: advanced/logging.md
