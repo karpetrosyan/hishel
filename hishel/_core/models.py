@@ -2,55 +2,60 @@ from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass, field
 from typing import (
     Any,
-    AsyncIterable,
-    Iterable,
+    AsyncIterator,
     Iterator,
     Mapping,
     Optional,
-    cast,
 )
 
 from hishel._core._headers import Headers
 
 
-class EmptyIterable:
-    def __iter__(self) -> Iterator[bytes]:
-        yield from []  # pragma: nocover
+class AnyIterable:
+    def __init__(self, content: bytes | None = None) -> None:
+        self.consumed = False
+        self.content = content
 
-    async def __aiter__(self) -> AsyncIterable[bytes]:
-        for item in cast(list[bytes], []):  # pragma: nocover
-            yield item
+    def __next__(self) -> bytes:
+        if self.content is not None and not self.consumed:
+            self.consumed = True
+            return self.content
+        raise StopIteration()
+
+    def __iter__(self) -> Iterator[bytes]:
+        return self
+
+    async def __anext__(self) -> bytes:
+        if self.content is not None and not self.consumed:
+            self.consumed = True
+            return self.content
+        raise StopAsyncIteration()
+
+    def __aiter__(self) -> AsyncIterator[bytes]:
+        return self
 
     def __eq__(self, value: Any) -> bool:
-        return isinstance(value, EmptyIterable)
+        return isinstance(value, AnyIterable)
 
 
 @dataclass
 class Request:
     method: str
     url: str
-    headers: Headers = field(init=False)
-    stream: Iterable[bytes] | AsyncIterable[bytes] = field(default_factory=EmptyIterable)
+    headers: Headers = field(default_factory=lambda: Headers({}))
+    stream: Iterator[bytes] | AsyncIterator[bytes] = field(default_factory=lambda: iter(AnyIterable()))
     extra: Mapping[str, Any] = field(default_factory=dict)
-    raw_headers: InitVar[Optional[Mapping[str, str | list[str]]]] = None
-
-    def __post_init__(self, raw_headers: Optional[Mapping[str, str | list[str]]]) -> None:
-        self.headers = Headers(raw_headers) if raw_headers is not None else Headers({})
 
 
 @dataclass
 class Response:
     status_code: int
-    headers: Headers = field(init=False)
-    stream: Iterable[bytes] | AsyncIterable[bytes] = field(default_factory=EmptyIterable)
+    headers: Headers = field(default_factory=lambda: Headers({}))
+    stream: Iterator[bytes] | AsyncIterator[bytes] = field(default_factory=lambda: iter(AnyIterable()))
     extra: Mapping[str, Any] = field(default_factory=dict)
-    raw_headers: InitVar[Optional[Mapping[str, str | list[str]]]] = None
-
-    def __post_init__(self, raw_headers: Optional[Mapping[str, str | list[str]]]) -> None:
-        self.headers = Headers(raw_headers) if raw_headers is not None else Headers({})
 
 
 @dataclass
@@ -66,6 +71,7 @@ class Pair:
     id: uuid.UUID
     request: Request
     meta: PairMeta
+    cache_key: str
 
 
 # class used by storage
@@ -86,9 +92,4 @@ class CompletePair(Pair):
         response: Response,
         request: Request,
     ) -> "CompletePair":  # pragma: nocover
-        return cls(
-            id=uuid.uuid4(),
-            request=request,
-            response=response,
-            meta=PairMeta(),
-        )
+        return cls(id=uuid.uuid4(), request=request, response=response, meta=PairMeta(), cache_key="")

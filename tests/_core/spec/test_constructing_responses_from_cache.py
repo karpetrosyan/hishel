@@ -8,7 +8,7 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import replace
-from typing import Iterable, Optional
+from typing import Iterator, Optional
 from unittest.mock import ANY
 
 from inline_snapshot import snapshot
@@ -25,8 +25,8 @@ from hishel import (
     Request,
     Response,
 )
+from hishel._core._headers import Headers
 from hishel._core._spec import (
-    UpdatePartials,
     allowed_stale,
     create_idle_state,
     get_age,
@@ -34,7 +34,7 @@ from hishel._core._spec import (
     make_conditional_request,
     vary_headers_match,
 )
-from hishel._core.models import PairMeta
+from hishel._core.models import IncompletePair, PairMeta
 
 
 def create_fresh_pair(
@@ -42,7 +42,7 @@ def create_fresh_pair(
     url: str = "https://example.com",
     response_headers: Optional[dict[str, str]] = None,
     request_headers: Optional[dict[str, str]] = None,
-    response_stream: Optional[Iterable[bytes]] = None,
+    response_stream: Optional[Iterator[bytes]] = None,
     response_status_code: int = 200,
 ) -> CompletePair:
     default_response_headers = {"Date": "Mon, 01 Jan 2024 00:00:00 GMT"}
@@ -51,17 +51,27 @@ def create_fresh_pair(
         request=Request(
             method=method,
             url=url,
-            raw_headers=request_headers if request_headers is not None else {},
+            headers=Headers(request_headers) if request_headers is not None else Headers({}),
         ),
         response=Response(
             status_code=response_status_code,
-            raw_headers=default_response_headers
+            headers=Headers(default_response_headers)
             if response_headers is None
-            else {**default_response_headers, **response_headers},
-            stream=response_stream or [],
+            else Headers({**default_response_headers, **response_headers}),
+            stream=response_stream or iter([]),
         ),
         meta=PairMeta(created_at=time.time()),
         complete_stream=True,
+        cache_key="test",
+    )
+
+
+def to_incomplete(complete_pair: CompletePair) -> IncompletePair:
+    return IncompletePair(
+        id=complete_pair.id,
+        request=complete_pair.request,
+        meta=complete_pair.meta,
+        cache_key=complete_pair.cache_key,
     )
 
 
@@ -84,12 +94,13 @@ class TestConstructingResponsesFromCache:
         idle_state = create_idle_state("client")
 
         state = idle_state.next(
-            request=replace(fresh_pair.request, url="https://example.com/other"),
+            incomplete_pair=replace(
+                to_incomplete(fresh_pair), request=replace(fresh_pair.request, url="https://example.com/other")
+            ),
             associated_pairs=[fresh_pair],
         )
 
-        assert isinstance(state, UpdatePartials)
-        assert isinstance(state.next(), CacheMiss)
+        assert isinstance(state, CacheMiss)
 
     @travel("2024-01-01 00:00:00")
     def test_different_methods_are_filtered_out(self) -> None:
@@ -103,12 +114,11 @@ class TestConstructingResponsesFromCache:
         idle_state = create_idle_state("client")
 
         state = idle_state.next(
-            request=replace(fresh_pair.request, method="HEAD"),
+            incomplete_pair=replace(to_incomplete(fresh_pair), request=replace(fresh_pair.request, method="HEAD")),
             associated_pairs=[fresh_pair],
         )
 
-        assert isinstance(state, UpdatePartials)
-        assert isinstance(state.next(), CacheMiss)
+        assert isinstance(state, CacheMiss)
 
     @travel("2024-01-01 00:00:00")
     def test_different_vary_headers_are_filtered_out(self) -> None:
@@ -124,12 +134,14 @@ class TestConstructingResponsesFromCache:
         idle_state = create_idle_state("client")
 
         state = idle_state.next(
-            request=replace(fresh_pair.request, raw_headers={"Accept-Encoding": "br"}),
+            incomplete_pair=replace(
+                to_incomplete(fresh_pair),
+                request=replace(fresh_pair.request, headers=Headers({"Accept-Encoding": "br"})),
+            ),
             associated_pairs=[fresh_pair],
         )
 
-        assert isinstance(state, UpdatePartials)
-        assert isinstance(state.next(), CacheMiss)
+        assert isinstance(state, CacheMiss)
 
     @travel("2024-01-01 00:00:00")
     def test_response_with_no_cache_control_is_filtered_out(self) -> None:
@@ -144,12 +156,11 @@ class TestConstructingResponsesFromCache:
         idle_state = create_idle_state("client")
 
         state = idle_state.next(
-            request=fresh_pair.request,
+            incomplete_pair=to_incomplete(fresh_pair),
             associated_pairs=[fresh_pair],
         )
 
-        assert isinstance(state, UpdatePartials)
-        assert isinstance(state.next(), CacheMiss)
+        assert isinstance(state, CacheMiss)
 
     @travel("2024-01-01 00:00:00")
     def test_response_returned_from_cache_if_fresh(self) -> None:
@@ -158,13 +169,11 @@ class TestConstructingResponsesFromCache:
         idle_state = create_idle_state("client")
 
         state = idle_state.next(
-            request=fresh_pair.request,
+            incomplete_pair=to_incomplete(fresh_pair),
             associated_pairs=[fresh_pair],
         )
-        assert isinstance(state, UpdatePartials)
-        next_state: CacheMiss | FromCache | NeedRevalidation = state.next()
-        assert isinstance(next_state, FromCache)
-        assert "age" in next_state.pair.response.headers
+        assert isinstance(state, FromCache)
+        assert "age" in state.pair.response.headers
 
     @travel("2025-01-01 00:00:00")
     def test_stale_response_returned_from_cache(self) -> None:
@@ -173,13 +182,11 @@ class TestConstructingResponsesFromCache:
         idle_state = IdleClient(options=CacheOptions(allow_stale=True))
 
         state = idle_state.next(
-            request=fresh_pair.request,
+            incomplete_pair=to_incomplete(fresh_pair),
             associated_pairs=[fresh_pair],
         )
 
-        assert isinstance(state, UpdatePartials)
-        next_state = state.next()
-        assert isinstance(next_state, FromCache)
+        assert isinstance(state, FromCache)
 
     @travel("2025-01-01 00:00:00")
     def test_response_needs_revalidation_if_not_fresh(self) -> None:
@@ -188,76 +195,12 @@ class TestConstructingResponsesFromCache:
         idle_state = create_idle_state("client")
 
         state = idle_state.next(
-            request=fresh_pair.request,
+            incomplete_pair=to_incomplete(fresh_pair),
             associated_pairs=[fresh_pair],
         )
 
-        assert isinstance(state, UpdatePartials)
-        next_state = state.next()
-        assert isinstance(next_state, NeedRevalidation)
-        assert next_state.request == fresh_pair.request
-
-    @travel("2024-01-01 00:00:00")
-    def test_partial_request(self) -> None:
-        fresh_pair = create_fresh_pair(
-            response_headers={"Cache-Control": "max-age=3600", "content-length": "999"},
-            response_stream=range(1000),  # type: ignore
-        )
-
-        idle_state = create_idle_state("client")
-
-        state = idle_state.next(
-            request=replace(fresh_pair.request, raw_headers={**fresh_pair.request.headers, "range": "bytes=0-99"}),
-            associated_pairs=[fresh_pair],
-        )
-        assert isinstance(state, UpdatePartials)
-        next_state: CacheMiss | FromCache | NeedRevalidation = state.next()
-        assert isinstance(next_state, FromCache)
-        assert "age" in next_state.pair.response.headers
-        assert next_state.pair.response.status_code == 206
-        assert list(next_state.pair.response.stream) == list(range(100))  # type: ignore
-
-    @travel("2024-01-01 00:00:00")
-    def test_partial_request_with_partial_response(self) -> None:
-        fresh_pair = create_fresh_pair(
-            response_headers={"Cache-Control": "max-age=3600", "content-range": "bytes 100-300/1000", "etag": "abc"},
-            response_stream=range(100, 301),  # type: ignore
-            response_status_code=206,
-        )
-
-        idle_state = create_idle_state("client")
-
-        state = idle_state.next(
-            request=replace(fresh_pair.request, raw_headers={**fresh_pair.request.headers, "range": "bytes=100-300"}),
-            associated_pairs=[fresh_pair],
-        )
-        assert isinstance(state, UpdatePartials)
-        next_state: CacheMiss | FromCache | NeedRevalidation = state.next()
-        assert isinstance(next_state, FromCache)
-        assert "age" in next_state.pair.response.headers
-        assert next_state.pair.response.status_code == 206
-        assert list(next_state.pair.response.stream) == list(range(100, 301))  # type: ignore
-
-    @travel("2024-01-01 00:00:00")
-    def test_partial_request_within_response_range(self) -> None:
-        fresh_pair = create_fresh_pair(
-            response_headers={"Cache-Control": "max-age=3600", "content-range": "bytes 100-300/1000", "etag": "abc"},
-            response_stream=range(100, 300),  # type: ignore
-            response_status_code=206,
-        )
-
-        idle_state = create_idle_state("client")
-
-        state = idle_state.next(
-            request=replace(fresh_pair.request, raw_headers={**fresh_pair.request.headers, "range": "bytes=150-160"}),
-            associated_pairs=[fresh_pair],
-        )
-        assert isinstance(state, UpdatePartials)
-        next_state: CacheMiss | FromCache | NeedRevalidation = state.next()
-        assert isinstance(next_state, FromCache)
-        assert "age" in next_state.pair.response.headers
-        assert next_state.pair.response.status_code == 206
-        assert list(next_state.pair.response.stream) == list(range(150, 161))  # type: ignore
+        assert isinstance(state, NeedRevalidation)
+        assert state.request == fresh_pair.request
 
 
 class TestCalculatingFreshnessLifetime:
@@ -268,23 +211,22 @@ class TestCalculatingFreshnessLifetime:
     """
 
     def test_shared_with_s_maxage(self) -> None:
-        response = Response(status_code=200, stream=[], raw_headers={"Cache-Control": "s-maxage=3600"})
-
+        response = Response(status_code=200, headers=Headers({"Cache-Control": "s-maxage=3600"}))
         assert get_freshness_lifetime(response, True) == 3600
 
     def test_shared_with_max_age(self) -> None:
-        response = Response(status_code=200, stream=[], raw_headers={"Cache-Control": "max-age=3600"})
-
+        response = Response(status_code=200, headers=Headers({"Cache-Control": "max-age=3600"}))
         assert get_freshness_lifetime(response, True) == 3600
 
     def test_with_expires_and_date(self) -> None:
         response = Response(
             status_code=200,
-            stream=[],
-            raw_headers={
-                "Expires": "Wed, 21 Oct 2015 08:28:00 GMT",
-                "Date": "Wed, 21 Oct 2015 07:28:00 GMT",
-            },
+            headers=Headers(
+                {
+                    "Expires": "Wed, 21 Oct 2015 08:28:00 GMT",
+                    "Date": "Wed, 21 Oct 2015 07:28:00 GMT",
+                }
+            ),
         )
 
         assert get_freshness_lifetime(response, True) == 3600
@@ -293,10 +235,11 @@ class TestCalculatingFreshnessLifetime:
     def test_with_expires_without_date(self) -> None:
         response = Response(
             status_code=200,
-            stream=[],
-            raw_headers={
-                "Expires": "Wed, 21 Oct 2015 7:00:00 GMT",
-            },
+            headers=Headers(
+                {
+                    "Expires": "Wed, 21 Oct 2015 7:00:00 GMT",
+                }
+            ),
         )
 
         assert get_freshness_lifetime(response, True) == 3600
@@ -304,11 +247,12 @@ class TestCalculatingFreshnessLifetime:
     def test_heuristic(self) -> None:
         response = Response(
             status_code=200,
-            stream=[],
-            raw_headers={
-                "Last-Modified": "Wed, 21 Oct 2015 07:00:00 GMT",
-                "Date": "Wed, 21 Oct 2015 08:00:00 GMT",
-            },
+            headers=Headers(
+                {
+                    "Last-Modified": "Wed, 21 Oct 2015 07:00:00 GMT",
+                    "Date": "Wed, 21 Oct 2015 08:00:00 GMT",
+                }
+            ),
         )
 
         assert isinstance(get_freshness_lifetime(response, True), int)
@@ -316,8 +260,6 @@ class TestCalculatingFreshnessLifetime:
     def test_no_freshness_info(self) -> None:
         response = Response(
             status_code=200,
-            stream=[],
-            raw_headers={},
         )
 
         assert get_freshness_lifetime(response, True) is None
@@ -334,11 +276,11 @@ class TestHandlingRevalidationResponse:
     def test_304_handled_correctly(self) -> None:
         fresh_pair = create_fresh_pair(response_headers={"etag": "12345"})
         state = NeedRevalidation(
-            request=fresh_pair.request, revalidating_pairs=[fresh_pair], options=CacheOptions()
+            pair_id=fresh_pair.id, request=fresh_pair.request, revalidating_pairs=[fresh_pair], options=CacheOptions()
         ).next(
             replace(
                 fresh_pair,
-                response=replace(fresh_pair.response, status_code=304, raw_headers={"X-SomeHeader": "somevalue"}),
+                response=replace(fresh_pair.response, status_code=304, headers=Headers({"X-SomeHeader": "somevalue"})),
             ),
         )
 
@@ -350,17 +292,18 @@ class TestHandlingRevalidationResponse:
                 url="https://example.com",
             ),
             response=replace(
-                fresh_pair.response, raw_headers={**fresh_pair.response.headers, "X-SomeHeader": "somevalue"}
+                fresh_pair.response, headers=Headers({**fresh_pair.response.headers, "X-SomeHeader": "somevalue"})
             ),
             meta=PairMeta(created_at=ANY),
             extra={},
             complete_stream=True,
+            cache_key=ANY,
         )
 
     def test_2xx_handled_correctly(self):
         fresh_pair = create_fresh_pair(response_headers={"etag": "12345"})
         state = NeedRevalidation(
-            request=fresh_pair.request, revalidating_pairs=[fresh_pair], options=CacheOptions()
+            pair_id=fresh_pair.id, request=fresh_pair.request, revalidating_pairs=[fresh_pair], options=CacheOptions()
         ).next(
             replace(
                 fresh_pair,
@@ -373,7 +316,7 @@ class TestHandlingRevalidationResponse:
     def test_5xx_handled_correctly(self):
         fresh_pair = create_fresh_pair(response_headers={"etag": "12345"})
         state = NeedRevalidation(
-            request=fresh_pair.request, revalidating_pairs=[fresh_pair], options=CacheOptions()
+            pair_id=fresh_pair.id, request=fresh_pair.request, revalidating_pairs=[fresh_pair], options=CacheOptions()
         ).next(
             replace(
                 fresh_pair,
@@ -416,8 +359,7 @@ class TestVaryHeadersMatch:
         original_request = Request(
             method="GET",
             url="https://example.com",
-            raw_headers={"Accept-Encoding": "gzip", "User-Agent": "my-agent"},
-            stream=[],
+            headers=Headers({"Accept-Encoding": "gzip", "User-Agent": "my-agent"}),
         )
 
         assert vary_headers_match(original_request, associated_pair=fresh_pair) is True
@@ -431,8 +373,7 @@ class TestVaryHeadersMatch:
         original_request = Request(
             method="GET",
             url="https://example.com",
-            raw_headers={"Accept-Encoding": "gzip", "User-Agent": "my-agent"},
-            stream=[],
+            headers=Headers({"Accept-Encoding": "gzip", "User-Agent": "my-agent"}),
         )
 
         assert vary_headers_match(original_request, associated_pair=fresh_pair) is False
@@ -448,8 +389,6 @@ class TestGetAge:
     def test_without_date(self) -> None:
         response = Response(
             status_code=200,
-            stream=[],
-            raw_headers={},
         )
 
         assert get_age(response) == 0
@@ -458,10 +397,11 @@ class TestGetAge:
     def test_with_date(self) -> None:
         response = Response(
             status_code=200,
-            stream=[],
-            raw_headers={
-                "Date": "Wed, 21 Oct 2015 08:00:00 GMT",
-            },
+            headers=Headers(
+                {
+                    "Date": "Wed, 21 Oct 2015 08:00:00 GMT",
+                }
+            ),
         )
 
         assert get_age(response) == 3600
@@ -489,7 +429,10 @@ def test_making_conditional_request() -> None:
             method="GET",
             url="https://example.com",
         ),
-        Response(status_code=200, raw_headers={"etag": "abc"}),
+        Response(
+            status_code=200,
+            headers=Headers({"etag": "abc"}),
+        ),
     )
 
     assert request.headers._headers == snapshot({"if-none-match": ["abc"]})
@@ -499,7 +442,7 @@ def test_making_conditional_request() -> None:
             method="GET",
             url="https://example.com",
         ),
-        Response(status_code=200, raw_headers={"last-modified": "Wed, 21 Oct 2015 08:00:00 GMT"}),
+        Response(status_code=200, headers=Headers({"last-modified": "Wed, 21 Oct 2015 08:00:00 GMT"})),
     )
 
     assert request.headers._headers == snapshot({"if-modified-since": ["Wed, 21 Oct 2015 08:00:00 GMT"]})
@@ -511,20 +454,18 @@ def test_allowed_stale() -> None:
 
     RFC reference: https://www.rfc-editor.org/rfc/rfc9111.html#name-serving-stale-responses
     """
-    assert allowed_stale(response=Response(status_code=200, stream=[], raw_headers={}), allow_stale_option=True) is True
-    assert (
-        allowed_stale(response=Response(status_code=200, stream=[], raw_headers={}), allow_stale_option=False) is False
-    )
+    assert allowed_stale(response=Response(status_code=200), allow_stale_option=True) is True
+    assert allowed_stale(response=Response(status_code=200), allow_stale_option=False) is False
     assert (
         allowed_stale(
-            response=Response(status_code=200, stream=[], raw_headers={"Cache-Control": "no-cache"}),
+            response=Response(status_code=200, headers=Headers({"Cache-Control": "no-cache"})),
             allow_stale_option=True,
         )
         is False
     )
     assert (
         allowed_stale(
-            response=Response(status_code=200, stream=[], raw_headers={"Cache-Control": "must-revalidate"}),
+            response=Response(status_code=200, headers=Headers({"Cache-Control": "must-revalidate"})),
             allow_stale_option=True,
         )
         is False

@@ -8,13 +8,13 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import replace
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterator, Optional
 
 import pytest
 from inline_snapshot import snapshot
 
 from hishel import CacheMiss, CacheOptions, CompletePair, CouldNotBeStored, PairMeta, Request, Response, StoreAndUse
-from hishel._core._spec import combine_partial_content
+from hishel._core._headers import Headers
 
 
 def create_fresh_pair(
@@ -23,7 +23,7 @@ def create_fresh_pair(
     response_headers: Optional[dict[str, str]] = None,
     request_headers: Optional[dict[str, str]] = None,
     response_status_code: int = 200,
-    response_stream: Optional[Iterable[bytes]] = None,
+    response_stream: Optional[Iterator[bytes]] = None,
 ) -> CompletePair:
     default_response_headers = {"Date": "Mon, 01 Jan 2024 00:00:00 GMT"}
 
@@ -32,19 +32,19 @@ def create_fresh_pair(
         request=Request(
             method=method,
             url=url,
-            raw_headers=request_headers if request_headers is not None else {},
-            stream=[],
+            headers=Headers(request_headers) if request_headers is not None else Headers({}),
         ),
         response=Response(
             status_code=response_status_code,
-            raw_headers=default_response_headers
+            headers=Headers(default_response_headers)
             if response_headers is None
-            else {**default_response_headers, **response_headers},
-            stream=response_stream or [],
+            else Headers({**default_response_headers, **response_headers}),
+            stream=response_stream or iter([]),
         ),
         meta=PairMeta(created_at=time.time()),
         extra={},
         complete_stream=True,
+        cache_key="test",
     )
 
 
@@ -59,6 +59,7 @@ class TestStoringResponsesInCaches:
         fresh_pair = create_fresh_pair()
 
         state = CacheMiss(
+            pair_id=fresh_pair.id,
             request=fresh_pair.request,
             options=CacheOptions(),
         ).next(
@@ -72,6 +73,7 @@ class TestStoringResponsesInCaches:
 
         with caplog.at_level("DEBUG"):
             state = CacheMiss(
+                pair_id=fresh_pair.id,
                 options=CacheOptions(
                     supported_methods=["OPTIONS"],
                 ),
@@ -96,6 +98,7 @@ class TestStoringResponsesInCaches:
 
         with caplog.at_level("DEBUG"):
             state = CacheMiss(
+                pair_id=fresh_pair.id,
                 request=fresh_pair.request,
                 options=CacheOptions(),
             ).next(
@@ -117,6 +120,7 @@ class TestStoringResponsesInCaches:
 
         with caplog.at_level("DEBUG"):
             state = CacheMiss(
+                pair_id=fresh_pair.id,
                 request=fresh_pair.request,
                 options=CacheOptions(),
             ).next(
@@ -139,11 +143,12 @@ class TestStoringResponsesInCaches:
 
         with caplog.at_level("DEBUG"):
             state = CacheMiss(
+                pair_id=fresh_pair.id,
                 request=fresh_pair.request,
                 options=CacheOptions(),
             ).next(
                 pair=replace(
-                    fresh_pair, response=replace(fresh_pair.response, raw_headers={"Cache-Control": "no-store"})
+                    fresh_pair, response=replace(fresh_pair.response, headers=Headers({"Cache-Control": "no-store"}))
                 ),
             )
 
@@ -162,11 +167,12 @@ class TestStoringResponsesInCaches:
 
         with caplog.at_level("DEBUG"):
             state = CacheMiss(
+                pair_id=fresh_pair.id,
                 options=CacheOptions(shared=True),
                 request=fresh_pair.request,
             ).next(
                 pair=replace(
-                    fresh_pair, response=replace(fresh_pair.response, raw_headers={"Cache-Control": "private"})
+                    fresh_pair, response=replace(fresh_pair.response, headers=Headers({"Cache-Control": "private"}))
                 ),
             )
 
@@ -185,11 +191,12 @@ class TestStoringResponsesInCaches:
 
         with caplog.at_level("DEBUG"):
             state = CacheMiss(
+                pair_id=fresh_pair.id,
                 options=CacheOptions(shared=True),
                 request=fresh_pair.request,
             ).next(
                 pair=replace(
-                    fresh_pair, request=replace(fresh_pair.request, raw_headers={"Authorization": "Bearer 12345"})
+                    fresh_pair, request=replace(fresh_pair.request, headers=Headers({"Authorization": "Bearer 12345"}))
                 ),
             )
 
@@ -209,35 +216,35 @@ class TestStoringResponsesInCaches:
             pytest.param(
                 False,
                 {
-                    "raw_headers": {"Cache-Control": "public"},
+                    "headers": Headers({"Cache-Control": "public"}),
                 },
                 id="contains a public response directive",
             ),
             pytest.param(
                 False,
                 {
-                    "raw_headers": {"Cache-Control": "public"},
+                    "headers": Headers({"Cache-Control": "public"}),
                 },
                 id="a private response directive, if the cache is not shared",
             ),
             pytest.param(
                 False,
                 {
-                    "raw_headers": {"Expires": str(int(time.time()))},
+                    "headers": Headers({"Expires": str(int(time.time()))}),
                 },
                 id="an Expires header field",
             ),
             pytest.param(
                 False,
                 {
-                    "raw_headers": {"Cache-Control": "max-age=3600"},
+                    "headers": Headers({"Cache-Control": "max-age=3600"}),
                 },
                 id="a max-age response directive",
             ),
             pytest.param(
                 True,
                 {
-                    "raw_headers": {"Cache-Control": "s-maxage=3600"},
+                    "headers": Headers({"Cache-Control": "s-maxage=3600"}),
                 },
                 id="a s-maxage response directive with shared cache",
             ),
@@ -266,10 +273,11 @@ class TestStoringResponsesInCaches:
 
         with caplog.at_level("DEBUG"):
             state = CacheMiss(
+                pair_id=fresh_pair.id,
                 request=fresh_pair.request,
                 options=CacheOptions(),
             ).next(
-                pair=replace(fresh_pair, response=replace(fresh_pair.response, raw_headers={})),
+                pair=replace(fresh_pair, response=replace(fresh_pair.response, headers=Headers({}))),
             )
 
         assert caplog.record_tuples == [
@@ -291,6 +299,7 @@ class TestStoringResponsesInCaches:
         )
 
         state = CacheMiss(
+            pair_id=fresh_pair.id,
             request=fresh_pair.request,
             options=CacheOptions(),
         ).next(
@@ -298,135 +307,6 @@ class TestStoringResponsesInCaches:
         )
 
         assert isinstance(state, StoreAndUse)
-
-
-class TestCombiningPartialResponses:
-    def test_basic_combine(self) -> None:
-        combined = combine_partial_content(
-            partial_pairs=[
-                create_fresh_pair(
-                    response_status_code=206,
-                    response_headers={
-                        "Content-Range": "bytes 0-499/1234",
-                        "ETag": "abc123",
-                    },
-                    response_stream=range(500),  # type: ignore
-                ),
-                create_fresh_pair(
-                    response_status_code=206,
-                    response_headers={
-                        "Content-Range": "bytes 500-999/1234",
-                        "ETag": "abc123",
-                    },
-                    response_stream=range(500, 1000),  # type: ignore
-                ),
-            ]
-        )
-
-        assert len(combined) == 1
-
-        assert combined[0][0].response.headers._headers == snapshot(
-            {"date": ["Mon, 01 Jan 2024 00:00:00 GMT"], "content-range": ["bytes 0-999/1234"], "etag": ["abc123"]}
-        )
-        assert list(combined[0][0].response.stream) == list(range(1000))  # type: ignore
-
-    def test_basic_combine_to_complete_response(self) -> None:
-        combined = combine_partial_content(
-            partial_pairs=[
-                create_fresh_pair(
-                    response_status_code=206,
-                    response_headers={
-                        "Content-Range": "bytes 0-499/1234",
-                        "ETag": "abc123",
-                    },
-                    response_stream=range(500),  # type: ignore
-                ),
-                create_fresh_pair(
-                    response_status_code=206,
-                    response_headers={
-                        "Content-Range": "bytes 500-1233/1234",
-                        "ETag": "abc123",
-                    },
-                    response_stream=range(500, 1000),  # type: ignore
-                ),
-            ]
-        )
-
-        assert len(combined) == 1
-
-        assert combined[0][0].response.status_code == 200
-        assert combined[0][0].response.headers._headers == snapshot(
-            {"date": ["Mon, 01 Jan 2024 00:00:00 GMT"], "etag": ["abc123"], "content-length": ["1234"]}
-        )
-
-    def test_with_different_validators(self) -> None:
-        combined = combine_partial_content(
-            partial_pairs=[
-                create_fresh_pair(
-                    response_status_code=206,
-                    response_headers={
-                        "Content-Range": "bytes 0-499/1234",
-                        "ETag": "abc1234",
-                    },
-                    response_stream=range(500),  # type: ignore
-                ),
-                create_fresh_pair(
-                    response_status_code=206,
-                    response_headers={
-                        "Content-Range": "bytes 500-999/1234",
-                        "ETag": "abc123",
-                    },
-                    response_stream=range(500, 1000),  # type: ignore
-                ),
-            ]
-        )
-
-        assert len(combined) == 2
-
-        assert combined[0][0].response.headers._headers == snapshot(
-            {"date": ["Mon, 01 Jan 2024 00:00:00 GMT"], "content-range": ["bytes 0-499/1234"], "etag": ["abc1234"]}
-        )
-        assert list(combined[0][0].response.stream) == list(range(500))  # type: ignore
-        assert combined[1][0].response.headers._headers == snapshot(
-            {"date": ["Mon, 01 Jan 2024 00:00:00 GMT"], "content-range": ["bytes 500-999/1234"], "etag": ["abc123"]}
-        )
-        assert list(combined[1][0].response.stream) == list(range(500, 1000))  # type: ignore
-
-    def test_only_206_combined_headers(self) -> None:
-        combined = combine_partial_content(
-            partial_pairs=[
-                create_fresh_pair(
-                    response_status_code=206,
-                    response_headers={
-                        "Content-Range": "bytes 0-499/1234",
-                        "ETag": "abc123",
-                        "X-SomeHeader": "somevalue",
-                        "Date": "Mon, 01 Jan 2024 00:00:00 GMT",
-                    },
-                    response_stream=range(500),  # type: ignore
-                ),
-                create_fresh_pair(
-                    response_status_code=206,
-                    response_headers={
-                        "Content-Range": "bytes 500-999/1234",
-                        "ETag": "abc123",
-                        "X-SomeHeader": "othervalue",
-                        "Date": "Mon, 01 Jan 2024 00:00:05 GMT",  # more fresh
-                    },
-                    response_stream=range(500, 1000),  # type: ignore
-                ),
-            ]
-        )
-        assert len(combined) == 1
-
-        assert combined[0][0].response.headers._headers == snapshot(
-            {
-                "date": ["Mon, 01 Jan 2024 00:00:05 GMT"],
-                "etag": ["abc123"],
-                "x-someheader": ["othervalue"],
-                "content-range": ["bytes 0-999/1234"],
-            }
-        )
 
 
 def test_storing_header_and_trailer_fields() -> None:
@@ -451,7 +331,7 @@ def test_storing_header_and_trailer_fields() -> None:
         }
     )
 
-    state = CacheMiss(request=fresh_pair.request, options=CacheOptions()).next(pair=fresh_pair)
+    state = CacheMiss(pair_id=fresh_pair.id, request=fresh_pair.request, options=CacheOptions()).next(pair=fresh_pair)
 
     assert isinstance(state, StoreAndUse)
     assert "keep-alive" not in state.pair.response.headers
@@ -474,7 +354,7 @@ def test_storing_header_and_trailer_fields() -> None:
         }
     )
 
-    state = CacheMiss(request=fresh_pair.request, options=CacheOptions()).next(pair=fresh_pair)
+    state = CacheMiss(pair_id=fresh_pair.id, request=fresh_pair.request, options=CacheOptions()).next(pair=fresh_pair)
 
     assert isinstance(state, StoreAndUse)
     assert "content-type" not in state.pair.response.headers
@@ -491,7 +371,9 @@ def test_storing_header_and_trailer_fields() -> None:
         }
     )
 
-    state = CacheMiss(request=fresh_pair.request, options=CacheOptions(shared=True)).next(pair=fresh_pair)
+    state = CacheMiss(pair_id=fresh_pair.id, request=fresh_pair.request, options=CacheOptions(shared=True)).next(
+        pair=fresh_pair
+    )
 
     assert isinstance(state, StoreAndUse)
     assert "set-cookie" not in state.pair.response.headers
