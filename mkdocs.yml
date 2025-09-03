@@ -55,6 +55,7 @@ nav:
       - Serializers: advanced/serializers.md
       - Controllers: advanced/controllers.md
       - Specification (Beta): advanced/specification.md
+      - New Storages (Beta): advanced/new_storages.md
       - HTTP Headers: advanced/http_headers.md
       - Extensions: advanced/extensions.md
       - Logging: advanced/logging.md

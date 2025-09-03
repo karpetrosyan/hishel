@@ -26,7 +26,13 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: WWW/HTTP",
 ]
-dependencies = ["httpx>=0.28.0"]
+dependencies = [
+    "anyio>=4.9.0",
+    "httpx>=0.28.0",
+    "lmdb>=1.7.3",
+    "msgpack>=1.1.1",
+    "typing-extensions>=4.14.1",
+]
 
 [project.optional-dependencies]
 
@@ -72,7 +78,7 @@ disallow_untyped_defs = false
 
 check_untyped_defs = true
 [[tool.mypy.overrides]]
-module = ["time_machine.*", "msgpack.*"]
+module = ["time_machine.*", "msgpack.*", "lmdb.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

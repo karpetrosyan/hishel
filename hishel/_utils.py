@@ -3,11 +3,12 @@ import hashlib
 import time
 import typing as tp
 from email.utils import parsedate_tz
-from typing import AsyncIterable, AsyncIterator, Iterable, Iterator, Optional
+from typing import AsyncIterator, Iterator
 
 import anyio
 import httpcore
 import httpx
+from anyio import from_thread, to_thread
 
 HEADERS_ENCODING = "iso-8859-1"
 
@@ -121,94 +122,24 @@ def float_seconds_to_int_milliseconds(seconds: float) -> int:
     return int(seconds * 1000)
 
 
-def islice(
-    iterable: Iterable[bytes], start: int, stop: Optional[int] = None, step: int = 1
-) -> Iterator[bytes]:  # pragma: nocover
-    """
-    Returns an iterator over elements from `iterable` from `start` to `stop` (exclusive),
-    taking every `step`-th element.
-    """
-    if start < 0 or (stop is not None and stop < 0):
-        raise ValueError("Negative indices not supported in this simple islice")
-    if step <= 0:
-        raise ValueError("Step must be positive")
-
-    it = iter(iterable)
-
-    # Skip until start
-    for _ in range(start):
-        try:
-            next(it)
-        except StopIteration:
-            return  # iterable shorter than start, nothing to yield
-
-    index = start
-    while stop is None or index < stop:
-        try:
-            value = next(it)
-        except StopIteration:
-            return
-        yield value
-        # Skip `step-1` items
-        for _ in range(step - 1):
-            try:
-                next(it)
-            except StopIteration:
-                return
-        index += step
-
-
-async def aislice(
-    async_iterable: AsyncIterable[bytes], start: int, stop: Optional[int] = None, step: int = 1
-) -> AsyncIterator[bytes]:  # pragma: nocover
-    """
-    Async version of islice: yields items from `async_iterable` starting at `start`,
-    stopping before `stop`, taking every `step`-th item.
-    """
-    if start < 0 or (stop is not None and stop < 0):
-        raise ValueError("Negative indices not supported")
-    if step <= 0:
-        raise ValueError("Step must be positive")
-
-    it = async_iterable.__aiter__()
-
-    # Skip first `start` items
-    for _ in range(start):
-        try:
-            await it.__anext__()
-        except StopAsyncIteration:
-            return  # iterable shorter than start
-
-    index = start
-    while stop is None or index < stop:
-        try:
-            value = await it.__anext__()
-        except StopAsyncIteration:
-            return
-        yield value
-
-        # Skip step-1 items
-        for _ in range(step - 1):
-            try:
-                await it.__anext__()
-            except StopAsyncIteration:
-                return
-        index += step
-
-
-def chain(*iterables: tp.Iterable[T]) -> tp.Iterable[T]:  # pragma: nocover
-    for it in iterables:
-        for item in it:
-            yield item
-
-
-async def async_chain(*iterables: tp.AsyncIterable[T]) -> tp.AsyncIterable[T]:  # pragma: nocover
-    for it in iterables:
-        async for item in it:
-            yield item
-
-
 def partition(iterable: tp.Iterable[T], predicate: tp.Callable[[T], bool]) -> tp.Tuple[tp.List[T], tp.List[T]]:
+    """
+    Partition an iterable into two lists: one for matching items and one for non-matching items.
+
+    Args:
+        iterable (tp.Iterable[T]): The input iterable to partition.
+        predicate (tp.Callable[[T], bool]): A function that evaluates each item in the iterable.
+
+    Returns:
+        tp.Tuple[tp.List[T], tp.List[T]]: A tuple containing two lists: the first for matching items,
+        and the second for non-matching items.
+    Example:
+        ```
+        iterable = [1, 2, 3, 4, 5]
+        is_even = lambda x: x % 2 == 0
+        evens, odds = partition(iterable, is_even)
+        ```
+    """
     matching, non_matching = [], []
     for item in iterable:
         if predicate(item):
@@ -216,3 +147,63 @@ def partition(iterable: tp.Iterable[T], predicate: tp.Callable[[T], bool]) -> tp
         else:
             non_matching.append(item)
     return matching, non_matching
+
+
+def async_iterator_to_sync(iterator: AsyncIterator[bytes]) -> Iterator[bytes]:
+    """
+    Convert an asynchronous byte iterator to a synchronous one.
+    This function takes an asynchronous iterator that yields bytes and converts it into
+    a synchronous iterator.
+
+    Args:
+        iterator (AsyncIterator[bytes]): The asynchronous byte iterator to be converted.
+    Returns:
+        Iterator[bytes]: A synchronous iterator that yields the same byte chunks as the input iterator.
+    Example:
+        ```python
+        async_iter = some_async_byte_stream()
+        sync_iter = async_iterator_to_sync(async_iter)
+        for chunk in sync_iter:
+            process_bytes(chunk)
+        ```
+    """
+
+    while True:
+        try:
+            chunk = from_thread.run(iterator.__anext__)
+        except StopAsyncIteration:
+            break
+        yield chunk
+
+
+def _call_next(iterator: Iterator[bytes]) -> bytes:
+    try:
+        return iterator.__next__()
+    except StopIteration:
+        raise StopAsyncIteration
+
+
+async def sync_iterator_to_async(iterator: Iterator[bytes]) -> AsyncIterator[bytes]:
+    """
+    Converts a synchronous bytes iterator to an asynchronous one.
+    This function takes a synchronous iterator that yields bytes and converts it into an
+    asynchronous iterator, allowing it to be used in async contexts without blocking.
+    Args:
+        iterator (Iterator[bytes]): A synchronous iterator yielding bytes objects.
+    Returns:
+        AsyncIterator[bytes]: An asynchronous iterator yielding the same bytes objects.
+    Example:
+        ```
+        sync_iter = iter([b'data1', b'data2'])
+        async for chunk in sync_iterator_to_async(sync_iter):
+            await process_chunk(chunk)
+        ```
+    """
+
+    while True:
+        try:
+            chunk = await to_thread.run_sync(_call_next, iterator)
+        except StopAsyncIteration:
+            break
+
+        yield chunk

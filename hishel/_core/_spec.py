@@ -5,22 +5,21 @@ import time
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, replace
-from itertools import groupby
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncIterable,
+    AsyncIterator,
     Dict,
-    Generic,
-    Iterable,
+    Iterator,
     Literal,
     Optional,
     TypeVar,
     Union,
 )
 
-from hishel._core._headers import ContentRange, Range, Vary, parse_cache_control
-from hishel._utils import aislice, chain, islice, parse_date, partition
+from hishel._core._headers import Headers, Range, Vary, parse_cache_control
+from hishel._core.models import IncompletePair
+from hishel._utils import parse_date, partition
 
 if TYPE_CHECKING:
     from hishel import CompletePair, Request, Response
@@ -42,6 +41,38 @@ HEURISTICALLY_CACHEABLE_STATUS_CODES = (
     501,
 )
 logger = logging.getLogger("hishel.core.spec")
+
+
+class UnknownStream:
+    def __iter__(self) -> Iterator[bytes]:
+        return self
+
+    def __next__(self) -> bytes:
+        raise RuntimeError("Stream is not known yet")
+
+    def __aiter__(self) -> AsyncIterator[bytes]:
+        return self
+
+    async def __anext__(self) -> bytes:
+        raise RuntimeError("Stream is not known yet")
+
+
+@dataclass
+class TakeRangeInfo:
+    response: Response
+    """
+    The response that was used to take the ranged content from.
+    """
+
+    lower_skip: int
+    """
+    The number of bytes to skip from the start of the response stream.
+    """
+
+    take: int
+    """
+    The number of bytes to take from the response stream.
+    """
 
 
 @dataclass
@@ -223,16 +254,17 @@ def make_conditional_request(request: Request, response: Response) -> Request:
     # SHOULD send the Last-Modified value (using If-Modified-Since)
     # if the request is not for a subrange, a single stored response
     # is being validated, and that response contains a Last-Modified value.
-
     if last_modified:
         precondition_headers["If-Modified-Since"] = last_modified
 
     return replace(
         request,
-        raw_headers={
-            **request.headers,
-            **precondition_headers,
-        },
+        headers=Headers(
+            {
+                **request.headers,
+                **precondition_headers,
+            }
+        ),
     )
 
 
@@ -268,10 +300,12 @@ def exclude_unstorable_headers(response: Response, is_cache_shared: bool) -> Res
         for field in cache_control.private:
             need_to_be_excluded.add(field.lower())
 
-    new_headers = {key: value for key, value in response.headers.items() if key.lower() not in need_to_be_excluded}
+    new_headers = Headers(
+        {key: value for key, value in response.headers.items() if key.lower() not in need_to_be_excluded}
+    )
     return replace(
         response,
-        raw_headers=new_headers,
+        headers=new_headers,
     )
 
 
@@ -299,190 +333,10 @@ def refresh_response_headers(
     return exclude_unstorable_headers(
         replace(
             stored_response,
-            raw_headers=new_headers,
+            headers=Headers(new_headers),
         ),
         is_cache_shared=True,
     )
-
-
-@dataclass
-class Merged:
-    range: tuple[int, int]
-    combined_stream: Iterable[bytes] | AsyncIterable[bytes]
-    combined_pairs: list[CompletePair]
-
-
-def merge_pairs(partial_pairs: list[CompletePair]) -> list[Merged]:
-    def _sort_func(pair: CompletePair) -> int:
-        if "content-range" not in pair.response.headers:
-            raise RuntimeError("Cannot merge pairs without Content-Range header")  # pragma: nocover
-
-        content_range = ContentRange.from_str(pair.response.headers["content-range"])
-
-        if not content_range.range:
-            raise RuntimeError("Cannot merge pairs without Content-Range header")  # pragma: nocover
-
-        return content_range.range[0]
-
-    sorted_pairs = sorted(partial_pairs, key=_sort_func)
-    merged: list[Merged] = []
-    for pair in sorted_pairs:
-        current_content_range = ContentRange.from_str(pair.response.headers["content-range"])
-        if not current_content_range.range:
-            raise RuntimeError("Cannot merge pairs without range information")  # pragma: nocover
-
-        if not merged:
-            merged.append(
-                Merged(
-                    range=current_content_range.range,
-                    combined_stream=pair.response.stream,
-                    combined_pairs=[pair],
-                )
-            )
-            continue
-
-        last_merged = merged[-1]
-
-        if (
-            current_content_range.range[0] <= last_merged.range[1] + 1
-            and current_content_range.range[1] > last_merged.range[1]
-        ):
-            if isinstance(pair.response.stream, Iterable):
-                assert isinstance(last_merged.combined_stream, Iterable)
-                overlapping_bytes = last_merged.range[1] - current_content_range.range[0] + 1
-
-                last_merged.combined_stream = chain(
-                    last_merged.combined_stream,
-                    islice(pair.response.stream, start=overlapping_bytes, stop=None),
-                )
-                last_merged.combined_pairs.append(pair)
-                last_merged.range = (
-                    last_merged.range[0],
-                    current_content_range.range[1],
-                )
-
-    return list(merged)
-
-
-def combine_partial_content(
-    partial_pairs: list[CompletePair],
-) -> list[tuple[CompletePair, list[CompletePair]]]:
-    """
-    3.4 Combining Partial Content Responses
-
-    Given partial pairs, it merges all responses that share the same
-    strong validator and overlap with each other. It then builds a
-    merged pair using a modified content iterator that combines multiple
-    contents into one, and returns a mapping of the final pair
-    (which cannot be merged further) along with a list of pairs it invalidates.
-    RFC reference: https://www.rfc-editor.org/rfc/rfc9111.html#name-combining-partial-content
-    """
-    from hishel import CompletePair, Response
-
-    # Map of newly created pair and pairs we are invalidating
-    merged_pairs: list[tuple[CompletePair, list[CompletePair]]] = []
-    sorted_pairs = sorted(
-        partial_pairs,
-        key=lambda pair: pair.response.headers.get("date", str(int(time.time()))),
-        reverse=True,
-    )
-
-    # A client that has received multiple partial responses
-    # to GET requests on a target resource MAY combine those
-    # responses into a larger continuous range if they share
-    # the same strong validator.
-    grouped_by_strong_validator = groupby(sorted_pairs, key=lambda pair: pair.response.headers.get("etag"))
-
-    for validator, pairs_iter in grouped_by_strong_validator:
-        if validator is None:
-            continue  # pragma: nocover
-
-        pairs = list(pairs_iter)
-
-        if not pairs:
-            continue  # pragma: nocover
-
-        recent_pair = pairs[0]
-
-        empty_response = Response(
-            status_code=200,
-            stream=[],
-        )
-
-        # If the most recent response is an incomplete 200 (OK)
-        # response, then the header fields of that response are
-        # used for any combined response and replace those
-        # of the matching stored responses.
-        if recent_pair.response.status_code == 200:
-            headers = recent_pair.response.headers  # pragma: nocover
-        # If the most recent response is a 206 (Partial Content) response
-        # and at least one of the matching stored responses is a 200 (OK),
-        # then the combined response header fields consist of
-        # the most recent 200 response's header fields.
-        elif with_ok_status := list(filter(lambda pair: pair.response.status_code == 200, pairs)):
-            headers = with_ok_status[0].response.headers  # pragma: nocover
-        # If all of the matching stored responses are 206 responses,
-        # then the stored response with the most recent header fields
-        # is used as the source of header fields for the combined response,
-        # except that the client MUST use other header fields provided in
-        # the new response, aside from Content-Range, to replace all instances
-        # of the corresponding header fields in the stored response.
-        else:
-            headers = recent_pair.response.headers
-
-        with_updated_headers = refresh_response_headers(
-            empty_response,
-            Response(
-                status_code=200,
-                raw_headers=headers,
-                stream=[],
-            ),
-        )
-
-        for merged in merge_pairs(pairs):
-            if len(merged.combined_pairs) > 1:
-                original_content_range = ContentRange.from_str(headers["content-range"])
-
-                if merged.range[1] - merged.range[0] + 1 == (original_content_range.size or None):
-                    response = Response(
-                        status_code=200,
-                        raw_headers={
-                            **with_updated_headers.headers,
-                            **(
-                                {"Content-Length": str(original_content_range.size)}
-                                if original_content_range.size
-                                else {}
-                            ),
-                        },
-                        stream=merged.combined_stream,
-                        extra=merged.combined_pairs[0].response.extra,
-                    )
-                else:
-                    response = Response(
-                        status_code=206,
-                        raw_headers={
-                            **with_updated_headers.headers,
-                            "Content-Range": f"bytes {merged.range[0]}-"
-                            f"{merged.range[1]}/{original_content_range.size or '*'}",
-                        },
-                        stream=merged.combined_stream,
-                        extra=merged.combined_pairs[0].response.extra,
-                    )
-
-                merged_pair = CompletePair(
-                    id=uuid.uuid4(),
-                    request=merged.combined_pairs[0].request,
-                    meta=merged.combined_pairs[0].meta,
-                    response=response,
-                    extra=merged.combined_pairs[0].extra,
-                    complete_stream=True,
-                )
-                merged_pairs.append((merged_pair, merged.combined_pairs))
-            else:
-                merged_pair = merged.combined_pairs[0]
-                merged_pairs.append((merged_pair, []))
-
-    return merged_pairs
 
 
 AnyState = Union[
@@ -506,23 +360,6 @@ def create_idle_state(role: Literal["client", "server"], options: Optional[Cache
 
 
 @dataclass
-class UpdatePartials(Generic[TState], State):
-    """
-    The state that indicates that the client needs to update the partial content.
-    """
-
-    merged_pairs: list[tuple[CompletePair, list[CompletePair]]]
-    """
-    Mapping of pairs that we created from multiple partial pairs to the list of pairs we are invalidating.
-    """
-
-    next_state: TState
-
-    def next(self) -> TState:
-        return self.next_state
-
-
-@dataclass
 class IdleClient(State):
     """
     The class that represents the idle state of the client, which wants to send a
@@ -532,18 +369,21 @@ class IdleClient(State):
     """
 
     def next(
-        self, request: Request, associated_pairs: list[CompletePair]
-    ) -> Union[
-        UpdatePartials["CacheMiss" | "FromCache" | "NeedRevalidation"],
-        CacheMiss,
-    ]:
+        self, incomplete_pair: IncompletePair, associated_pairs: list[CompletePair]
+    ) -> Union["CacheMiss" | "FromCache" | "NeedRevalidation"]:
+        request = incomplete_pair.request
         request_range = Range.try_from_str(request.headers["range"]) if "range" in request.headers else None
+
+        if request_range is not None:
+            return CacheMiss(options=self.options, pair_id=incomplete_pair.id, request=request)
 
         # A cache MUST write through requests with methods that are unsafe (Section 9.2.1 of [HTTP])
         # to the origin server; i.e., a cache is not allowed to generate a reply to such a request
         # before having forwarded the request and having received a corresponding response.
         if request.method.upper() not in SAFE_METHODS:
-            return CacheMiss(request=request, options=self.options)  # pragma: nocover
+            return CacheMiss(
+                pair_id=incomplete_pair.id, request=incomplete_pair.request, options=self.options
+            )  # pragma: nocover
 
         # When presented with a request, a cache MUST NOT reuse a stored response unless:
 
@@ -554,13 +394,6 @@ class IdleClient(State):
         # 2. the request method associated with the stored response
         # allows it to be used for the presented request, and
         method_matches = lambda pair: pair.request.method == request.method  # noqa: E731
-
-        # 2.5 This step is specific to our implementation, in this
-        # step we need to merge incomplete responses into a single one
-        partial_pairs, complete_pairs = partition(associated_pairs, is_partial)
-
-        merged_pairs = combine_partial_content(partial_pairs)
-        associated_pairs = complete_pairs + [new_pair for new_pair, _ in merged_pairs]
 
         # 3. request header fields nominated by the stored response
         # (if any) match those presented (see Section 4.1), and
@@ -599,170 +432,23 @@ class IdleClient(State):
             reverse=True,
         )
 
-        ready_to_use, need_revalidation = [], []
-        for pair in filtered_pairs:
-            if fresh_or_allowed_stale(pair):
-                ready_to_use.append(pair)
-            else:
-                need_revalidation.append(pair)
+        ready_to_use, need_revalidation = partition(filtered_pairs, fresh_or_allowed_stale)
 
-        if request_range is None:
-            next_state = self._handle_non_range_request(
-                request,
-                ready_to_use,
-                need_revalidation,
-            )
-        else:
-            next_state = self._handle_range_request(
-                request,
-                request_range,
-                ready_to_use,
-                need_revalidation,
-            )
-        return UpdatePartials(
-            merged_pairs=merged_pairs,
-            next_state=next_state,
-            options=self.options,
-        )
-
-    def _try_take_subrange(
-        self,
-        response: Response,
-        request_range: Range,
-    ) -> Response | None:
-        """
-        Given a response and a request range, builds a new response with that range
-        if the response content fully covers it; otherwise, returns None.
-        """
-
-        if "content-range" not in response.headers:
-            content_range = None
-        else:
-            content_range = ContentRange.from_str(response.headers["content-range"])
-
-        normalized_content_range_start = content_range.range[0] if content_range and content_range.range else 0
-        normalized_content_length = (
-            content_range.size
-            if content_range is not None and content_range.size is not None
-            else response.headers.get("content-length")
-        )
-
-        if normalized_content_length is None:
-            return None  # pragma: nocover
-
-        normalized_content_length = int(normalized_content_length)
-        normalized_request_range = (
-            request_range.range[0] if request_range.range[0] is not None else 0,
-            request_range.range[1] if request_range.range[1] is not None else normalized_content_length,
-        )
-
-        if content_range is not None and content_range.range is not None:
-            lower_bound = normalized_request_range[0] >= content_range.range[0]
-            upper_bound = normalized_request_range[1] <= content_range.range[1]
-
-            if not lower_bound and upper_bound:
-                return None  # pragma: nocover
-
-        lower_skip = normalized_request_range[0] - normalized_content_range_start
-        take = normalized_request_range[1] - normalized_request_range[0] + 1
-        new_stream: Iterable[bytes] | AsyncIterable[bytes]
-        if isinstance(response.stream, Iterable):
-            new_stream = islice(response.stream, start=lower_skip, stop=lower_skip + take)
-        elif isinstance(response.stream, AsyncIterable):  # pragma: nocover
-            new_stream = aislice(response.stream, start=lower_skip, stop=lower_skip + take)
-
-        return replace(
-            response,
-            stream=new_stream,
-            status_code=206,
-            raw_headers={
-                **response.headers,
-                "Content-Range": f"bytes {normalized_request_range[0]}-"
-                f"{normalized_request_range[1]}/{normalized_content_length}",
-                "Content-Length": str(take),
-            },
-        )
-
-    def _handle_range_request(
-        self,
-        request: Request,
-        request_range: Range,
-        ready_to_use: list[CompletePair],
-        need_revalidation: list[CompletePair],
-    ) -> Union["FromCache", "NeedRevalidation", "CacheMiss"]:
-        partial_ready_to_use, complete_ready_to_use = partition(
-            ready_to_use,
-            is_partial,
-        )
-
-        if complete_ready_to_use:
-            for pair in complete_ready_to_use:
-                maybe_subrange_response = self._try_take_subrange(pair.response, request_range)
-
-                if maybe_subrange_response:
-                    return FromCache(
-                        pair=replace(
-                            pair,
-                            response=replace(
-                                maybe_subrange_response,
-                                raw_headers={
-                                    **maybe_subrange_response.headers,
-                                    "age": str(get_age(maybe_subrange_response)),
-                                },
-                            ),
-                        ),
-                        options=self.options,
-                    )
-
-        for partial_pair in partial_ready_to_use:
-            maybe_subrange_response = self._try_take_subrange(partial_pair.response, request_range)
-
-            if maybe_subrange_response:
-                return FromCache(
-                    pair=replace(
-                        partial_pair,
-                        response=replace(
-                            maybe_subrange_response,
-                            raw_headers={
-                                **maybe_subrange_response.headers,
-                                "age": str(get_age(maybe_subrange_response)),
-                            },
-                        ),
-                    ),
-                    options=self.options,
-                )
-
-        if need_revalidation:  # pragma: nocover
-            return NeedRevalidation(
-                request=make_conditional_request(request, need_revalidation[-1].response),
-                revalidating_pairs=need_revalidation,
-                options=self.options,
-            )
-        return CacheMiss(  # pragma: nocover
-            request=request,
-            options=self.options,
-        )
-
-    def _handle_non_range_request(
-        self,
-        request: Request,
-        ready_to_use: list[CompletePair],
-        need_revalidation: list[CompletePair],
-    ) -> FromCache | NeedRevalidation | CacheMiss:
-        complete_ready_to_use = [pair for pair in ready_to_use if not is_partial(pair)]
-        if complete_ready_to_use:
+        if ready_to_use:
             # When a stored response is used to satisfy a request without validation,
             # a cache MUST generate an Age header field (Section 5.1), replacing any present
             # in the response with a value equal to the stored response's current_age; see Section 4.2.3.
             return FromCache(
                 pair=replace(
-                    complete_ready_to_use[0],
+                    ready_to_use[0],
                     response=replace(
-                        complete_ready_to_use[0].response,
-                        raw_headers={
-                            **complete_ready_to_use[0].response.headers,
-                            "age": str(get_age(complete_ready_to_use[0].response)),
-                        },
+                        ready_to_use[0].response,
+                        headers=Headers(
+                            {
+                                **ready_to_use[0].response.headers,
+                                "age": str(get_age(ready_to_use[0].response)),
+                            }
+                        ),
                     ),
                 ),
                 options=self.options,
@@ -770,13 +456,15 @@ class IdleClient(State):
 
         elif need_revalidation:
             return NeedRevalidation(
-                request=make_conditional_request(request, need_revalidation[-1].response),
+                pair_id=incomplete_pair.id,
+                request=make_conditional_request(incomplete_pair.request, need_revalidation[-1].response),
                 revalidating_pairs=need_revalidation,
                 options=self.options,
             )
         else:
             return CacheMiss(
-                request=request,
+                pair_id=incomplete_pair.id,
+                request=incomplete_pair.request,
                 options=self.options,
             )
 
@@ -819,9 +507,17 @@ class CacheMiss(State):
     RFC reference: https://www.rfc-editor.org/rfc/rfc9111.html#name-storing-responses-in-caches
     """
 
+    pair_id: uuid.UUID
+    """
+    The id of the pair that missed the cache.
+    """
+
     request: Request
     """
     The request that missed the cache.
+
+    Note that this has a type of Requet and not IncompletePair because
+    when moving to this state from `NeedRevalidation` we don't have incomplete pair
     """
 
     def next(self, pair: CompletePair) -> Union["StoreAndUse", "CouldNotBeStored"]:
@@ -840,12 +536,8 @@ class CacheMiss(State):
 
         # if the response status code is 206 or 304, or the must-understand cache directive
         # (see Section 5.2.2.3) is present: the cache understands the response status code;
-        def is_multipart_byterange(pair: CompletePair) -> bool:
-            # We don't support 206 responses that are multipart/byteranges
-            return pair.response.headers.get("content-type") == "multipart/byteranges"  # pragma: nocover
-
         if pair.response.status_code in (206, 304):
-            understands_how_to_cache = False if response.status_code == 304 or is_multipart_byterange(pair) else True
+            understands_how_to_cache = False
         else:
             understands_how_to_cache = True
 
@@ -953,13 +645,15 @@ class NeedToBeUpdated(State):
         return FromCache(pair=self.updating_pairs[-1], options=self.options)  # pragma: nocover
 
 
-@dataclass()
+@dataclass
 class NeedRevalidation(State):
     """
     4.3.3 Handling a validation response.
 
     RFC reference: https://www.rfc-editor.org/rfc/rfc9111.html#name-handling-a-validation-respo
     """
+
+    pair_id: uuid.UUID
 
     request: Request
     """
@@ -984,14 +678,14 @@ class NeedRevalidation(State):
             # responses nominated in the conditional request are suitable. Instead, the cache
             # MUST use the full response to satisfy the request. The cache MAY store such a full
             # response, subject to its constraints (see Section 3).
-            return CacheMiss(request=revalidation_pair.request, options=self.options)
+            return CacheMiss(pair_id=revalidation_pair.id, request=revalidation_pair.request, options=self.options)
         elif revalidation_response.status_code // 100 == 5:
             # However, if a cache receives a 5xx (Server Error) response while attempting to
             # validate a response, it can either forward this response to the requesting client
             # or act as if the server failed to respond. In the latter case, the cache can send
             # a previously stored response, subject to its constraints on doing so
             # (see Section 4.2.4),or retry the validation request.
-            return CacheMiss(request=revalidation_pair.request, options=self.options)
+            return CacheMiss(pair_id=revalidation_pair.id, request=revalidation_pair.request, options=self.options)
         raise RuntimeError(
             f"Unexpected response status code during revalidation: {revalidation_response.status_code}"
         )  # pragma: nocover
