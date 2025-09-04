@@ -38,7 +38,7 @@ dependencies = [
 
 yaml = ["pyyaml==6.0.2"]
 
-redis = ["redis==6.2.0"]
+redis = ["redis==6.4.0"]
 
 sqlite = ["anysqlite>=0.0.5"]
 
@@ -104,20 +104,20 @@ combine-as-imports = true
 
 [dependency-groups]
 dev = [
-    "anyio==4.9.0",
-    "coverage==7.10.1",
+    "anyio==4.10.0",
+    "coverage==7.10.6",
     "hatch==1.14.1",
     "inline-snapshot>=0.28.0",
     "mkdocs==1.6.1",
-    "mkdocs-material==9.6.16",
+    "mkdocs-material==9.6.18",
     "mypy==1.17.1",
     "pyright>=1.1.404",
     "pytest==8.4.1",
     "pytest-cov>=6.2.1",
-    "ruff==0.12.7",
+    "ruff==0.12.11",
     "time-machine>=2.19.0",
     "trio==0.30.0",
-    "types-boto3==1.40.0",
-    "types-pyyaml==6.0.12.20250516",
+    "types-boto3==1.40.23",
+    "types-pyyaml==6.0.12.20250822",
     "zipp>=3.19.1",
 ]
