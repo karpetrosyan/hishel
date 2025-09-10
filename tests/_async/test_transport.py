@@ -1,3 +1,5 @@
+from typing import AsyncIterator
+
 import httpx
 import pytest
 
@@ -405,3 +407,62 @@ async def test_transport_revalidation_forward_extensions():
             )
             assert response.extensions["revalidated"] is True
             assert transport.last_request_extensions["foo"] == "baz"
+
+
+@pytest.mark.anyio
+async def test_transport_already_consumed_stream():
+    class MockedClock(BaseClock):
+        def now(self) -> int:
+            return 1440504000  # Mon, 25 Aug 2015 12:00:00 GMT
+
+    class PreReadTransport(hishel.MockAsyncTransport):
+        """A transport that consumes the stream before returning."""
+
+        async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+            response = await super().handle_async_request(request)
+            await response.aread()
+            return response
+
+    class OneShotAsyncStream(httpx.AsyncByteStream):
+        """An async byte stream that can only be consumed once, for testing purposes."""
+
+        def __init__(self, data: bytes) -> None:
+            self._data = data
+            self._consumed = False
+
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            if not self._consumed:
+                self._consumed = True
+                yield self._data
+
+    async with PreReadTransport() as transport:
+        transport.add_responses(
+            [
+                httpx.Response(
+                    200,
+                    headers=[
+                        (b"Cache-Control", b"max-age=1"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+                    ],
+                    stream=OneShotAsyncStream(b"already-read"),
+                )
+            ]
+        )
+        async with hishel.AsyncCacheTransport(
+            transport=transport,
+            controller=hishel.Controller(clock=MockedClock()),
+            storage=hishel.AsyncInMemoryStorage(),
+        ) as cache_transport:
+            request = httpx.Request("GET", "https://www.example.com")
+
+            # First request should work, even though the stream was already consumed
+            response = await cache_transport.handle_async_request(request)
+            assert response.status_code == 200
+            assert await response.aread() == b"already-read"
+            assert not response.extensions["from_cache"]
+
+            # Second request should come from cache as usual
+            response2 = await cache_transport.handle_async_request(request)
+            assert response2.status_code == 200
+            assert await response2.aread() == b"already-read"
+            assert response2.extensions["from_cache"]
