@@ -210,11 +210,17 @@ class CacheTransport(httpx.BaseTransport):
                 )
 
         regular_response = self._transport.handle_request(request)
-        assert isinstance(regular_response.stream, tp.Iterable)
+        try:
+            # Prefer already-read content, if available
+            stream = fake_stream(regular_response.content)
+        except httpx.ResponseNotRead:
+            # Fall back to stream if not yet read
+            assert isinstance(regular_response.stream, tp.Iterable)
+            stream = regular_response.stream
         httpcore_regular_response = httpcore.Response(
             status=regular_response.status_code,
             headers=regular_response.headers.raw,
-            content=CacheStream(regular_response.stream),
+            content=CacheStream(stream),
             extensions=regular_response.extensions,
         )
         httpcore_regular_response.read()
