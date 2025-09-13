@@ -210,11 +210,17 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
                 )
 
         regular_response = await self._transport.handle_async_request(request)
-        assert isinstance(regular_response.stream, tp.AsyncIterable)
+        try:
+            # Prefer already-read content, if available
+            stream = fake_stream(regular_response.content)
+        except httpx.ResponseNotRead:
+            # Fall back to stream if not yet read
+            assert isinstance(regular_response.stream, tp.AsyncIterable)
+            stream = regular_response.stream
         httpcore_regular_response = httpcore.Response(
             status=regular_response.status_code,
             headers=regular_response.headers.raw,
-            content=AsyncCacheStream(regular_response.stream),
+            content=AsyncCacheStream(stream),
             extensions=regular_response.extensions,
         )
         await httpcore_regular_response.aread()

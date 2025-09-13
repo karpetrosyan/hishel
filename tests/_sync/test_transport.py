@@ -1,3 +1,5 @@
+from typing import Iterator
+
 import httpx
 import pytest
 
@@ -405,3 +407,62 @@ def test_transport_revalidation_forward_extensions():
             )
             assert response.extensions["revalidated"] is True
             assert transport.last_request_extensions["foo"] == "baz"
+
+
+
+def test_transport_already_consumed_stream():
+    class MockedClock(BaseClock):
+        def now(self) -> int:
+            return 1440504000  # Mon, 25 Aug 2015 12:00:00 GMT
+
+    class PreReadTransport(hishel.MockTransport):
+        """A transport that consumes the stream before returning."""
+
+        def handle_request(self, request: httpx.Request) -> httpx.Response:
+            response = super().handle_request(request)
+            response.read()
+            return response
+
+    class OneShotAsyncStream(httpx.SyncByteStream):
+        """An async byte stream that can only be consumed once, for testing purposes."""
+
+        def __init__(self, data: bytes) -> None:
+            self._data = data
+            self._consumed = False
+
+        def __iter__(self) -> Iterator[bytes]:
+            if not self._consumed:
+                self._consumed = True
+                yield self._data
+
+    with PreReadTransport() as transport:
+        transport.add_responses(
+            [
+                httpx.Response(
+                    200,
+                    headers=[
+                        (b"Cache-Control", b"max-age=1"),
+                        (b"Date", b"Mon, 25 Aug 2015 12:00:00 GMT"),
+                    ],
+                    stream=OneShotAsyncStream(b"already-read"),
+                )
+            ]
+        )
+        with hishel.CacheTransport(
+            transport=transport,
+            controller=hishel.Controller(clock=MockedClock()),
+            storage=hishel.InMemoryStorage(),
+        ) as cache_transport:
+            request = httpx.Request("GET", "https://www.example.com")
+
+            # First request should work, even though the stream was already consumed
+            response = cache_transport.handle_request(request)
+            assert response.status_code == 200
+            assert response.read() == b"already-read"
+            assert not response.extensions["from_cache"]
+
+            # Second request should come from cache as usual
+            response2 = cache_transport.handle_request(request)
+            assert response2.status_code == 200
+            assert response2.read() == b"already-read"
+            assert response2.extensions["from_cache"]
