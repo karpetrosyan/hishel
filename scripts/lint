@@ -11,3 +11,6 @@ uv run --all-extras mypy hishel tests
 
 echo "==> Making sure it imports"
 uv run --with-editable . python -c 'import hishel'
+
+echo "==> Confirming uv.lock is up-to-date"
+uv lock && git diff --exit-code
