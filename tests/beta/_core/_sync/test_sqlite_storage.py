@@ -1,0 +1,434 @@
+import uuid
+from dataclasses import replace
+from typing import Any
+
+from inline_snapshot import snapshot
+from time_machine import travel
+
+from hishel._utils import print_sqlite_state
+from hishel.beta import Request, Response
+from hishel.beta._core._sync._storages._sqlite import SyncSqliteStorage
+
+
+@travel("2024-01-01 00:00:00")
+def test_create_pair(use_temp_dir: Any):
+    storage = SyncSqliteStorage()
+
+    storage.create_pair(
+        id=uuid.UUID(int=0),
+        request=Request(
+            method="GET",
+            url="https://example.com",
+        ),
+    )
+
+    assert print_sqlite_state(storage.connection) == snapshot("""\
+================================================================================
+DATABASE SNAPSHOT
+================================================================================
+
+TABLE: entries
+--------------------------------------------------------------------------------
+Rows: 1
+
+  Row 1:
+    id              = (bytes) 0x00000000000000000000000000000000 (16 bytes)
+    cache_key       = NULL
+    data            = (bytes) 0x84a26964c41000000000000000000000000000000000a772657175657374... (130 bytes)
+    created_at      = 2024-01-01
+    deleted_at      = NULL
+
+TABLE: streams
+--------------------------------------------------------------------------------
+Rows: 0
+
+  (empty)
+
+================================================================================\
+""")
+
+
+@travel("2024-01-01 00:00:00")
+def test_create_pair_with_stream(use_temp_dir: Any):
+    """Test creating a pair with a streaming request body."""
+    storage = SyncSqliteStorage()
+
+    pair_id = uuid.UUID(int=1)
+    incomplete_pair = storage.create_pair(
+        id=pair_id,
+        request=Request(
+            method="POST",
+            url="https://example.com/upload",
+            stream=iter([b"chunk1", b"chunk2"]),
+        ),
+    )
+
+    for _ in incomplete_pair.request.stream:
+        ...
+
+    # Verify the pair was created with cache_key = NULL
+    assert print_sqlite_state(storage.connection) == snapshot("""\
+================================================================================
+DATABASE SNAPSHOT
+================================================================================
+
+TABLE: entries
+--------------------------------------------------------------------------------
+Rows: 1
+
+  Row 1:
+    id              = (bytes) 0x00000000000000000000000000000001 (16 bytes)
+    cache_key       = NULL
+    data            = (bytes) 0x84a26964c41000000000000000000000000000000001a772657175657374... (138 bytes)
+    created_at      = 2024-01-01
+    deleted_at      = NULL
+
+TABLE: streams
+--------------------------------------------------------------------------------
+Rows: 4
+
+  Row 1:
+    entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
+    chunk_key       = 'request_chunk_0'
+    chunk_data      = (str) 'chunk1'
+
+  Row 2:
+    entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
+    chunk_key       = 'request_chunk_1'
+    chunk_data      = (str) 'chunk2'
+
+  Row 3:
+    entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
+    chunk_key       = 'request_chunk_2'
+    chunk_data      = (str) ''
+
+  Row 4:
+    entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
+    chunk_key       = 'request_complete'
+    chunk_data      = (str) ''
+
+================================================================================\
+""")
+
+
+@travel("2024-01-01 00:00:00")
+def test_add_response(use_temp_dir: Any):
+    """Test adding a response to an existing pair."""
+    storage = SyncSqliteStorage()
+
+    pair_id = uuid.UUID(int=2)
+    inc_pair = storage.create_pair(
+        id=pair_id,
+        request=Request(
+            method="GET",
+            url="https://example.com/api",
+        ),
+    )
+
+    for _ in inc_pair.request.stream:
+        ...
+
+    comp_pair = storage.add_response(
+        pair_id=pair_id,
+        response=Response(
+            status_code=200,
+            stream=iter([b"response data"]),
+        ),
+        key="test_key",
+    )
+
+    for _ in comp_pair.response.stream:
+        ...
+
+    # Verify cache_key is now set and response is added
+    assert print_sqlite_state(storage.connection) == snapshot("""\
+================================================================================
+DATABASE SNAPSHOT
+================================================================================
+
+TABLE: entries
+--------------------------------------------------------------------------------
+Rows: 1
+
+  Row 1:
+    id              = (bytes) 0x00000000000000000000000000000002 (16 bytes)
+    cache_key       = (str) 'test_key'
+    data            = (bytes) 0x85a26964c41000000000000000000000000000000002a772657175657374... (184 bytes)
+    created_at      = 2024-01-01
+    deleted_at      = NULL
+
+TABLE: streams
+--------------------------------------------------------------------------------
+Rows: 5
+
+  Row 1:
+    entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
+    chunk_key       = 'request_chunk_0'
+    chunk_data      = (str) ''
+
+  Row 2:
+    entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
+    chunk_key       = 'request_complete'
+    chunk_data      = (str) ''
+
+  Row 3:
+    entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
+    chunk_key       = 'response_chunk_0'
+    chunk_data      = (str) 'response data'
+
+  Row 4:
+    entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
+    chunk_key       = 'response_chunk_1'
+    chunk_data      = (str) ''
+
+  Row 5:
+    entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
+    chunk_key       = 'response_complete'
+    chunk_data      = (str) ''
+
+================================================================================\
+""")
+
+
+@travel("2024-01-01 00:00:00")
+def test_get_pairs(use_temp_dir: Any):
+    """Test retrieving pairs by cache key."""
+    storage = SyncSqliteStorage()
+
+    # Create two pairs with the same cache key
+    pair_id_1 = uuid.UUID(int=3)
+    storage.create_pair(
+        id=pair_id_1,
+        request=Request(method="GET", url="https://example.com/1"),
+    )
+    storage.add_response(
+        pair_id=pair_id_1,
+        response=Response(status_code=200, stream=iter([b"response1"])),
+        key="shared_key",
+    )
+
+    pair_id_2 = uuid.UUID(int=4)
+    storage.create_pair(
+        id=pair_id_2,
+        request=Request(method="GET", url="https://example.com/2"),
+    )
+    storage.add_response(
+        pair_id=pair_id_2,
+        response=Response(status_code=200, stream=iter([b"response2"])),
+        key="shared_key",
+    )
+
+    # Retrieve pairs
+    pairs = storage.get_pairs("shared_key")
+    assert len(pairs) == 2
+    assert all(pair.cache_key == b"shared_key" for pair in pairs)
+
+
+@travel("2024-01-01 00:00:00")
+def test_get_pairs_filters_incomplete(use_temp_dir: Any):
+    """Test that get_pairs filters out incomplete pairs."""
+    storage = SyncSqliteStorage()
+
+    # Create a complete pair
+    complete_id = uuid.UUID(int=5)
+    storage.create_pair(
+        id=complete_id,
+        request=Request(method="GET", url="https://example.com/complete"),
+    )
+    storage.add_response(
+        pair_id=complete_id,
+        response=Response(status_code=200, stream=iter([b"data"])),
+        key="test_key",
+    )
+
+    # Create an incomplete pair with the same key (shouldn't be returned)
+    incomplete_id = uuid.UUID(int=6)
+    storage.create_pair(
+        id=incomplete_id,
+        request=Request(method="GET", url="https://example.com/incomplete"),
+    )
+    # Update cache_key manually without adding response
+    with storage._lock:
+        cursor = storage.connection.cursor()
+        cursor.execute("UPDATE entries SET cache_key = ? WHERE id = ?", (b"test_key", incomplete_id.bytes))
+        storage.connection.commit()
+
+    # Should only return the complete pair
+    pairs = storage.get_pairs("test_key")
+    assert len(pairs) == 1
+    assert pairs[0].id == complete_id
+
+
+@travel("2024-01-01 00:00:00")
+def test_update_pair(use_temp_dir: Any):
+    """Test updating an existing pair."""
+    storage = SyncSqliteStorage()
+
+    pair_id = uuid.UUID(int=7)
+    storage.create_pair(
+        id=pair_id,
+        request=Request(method="GET", url="https://example.com"),
+    )
+    storage.add_response(
+        pair_id=pair_id,
+        response=Response(status_code=200, stream=iter([b"original"])),
+        key="original_key",
+    )
+
+    # Update with a callable
+    def updater(pair):
+        return replace(pair, cache_key=b"updated_key")
+
+    result = storage.update_pair(pair_id, updater)
+    assert result is not None
+    assert result.cache_key == b"updated_key"
+
+    # Verify the update persisted
+    pairs = storage.get_pairs("updated_key")
+    assert len(pairs) == 1
+    assert pairs[0].cache_key == b"updated_key"
+
+
+@travel("2024-01-01 00:00:00")
+def test_update_pair_with_new_pair(use_temp_dir: Any):
+    """Test updating a pair by providing a new pair directly."""
+    storage = SyncSqliteStorage()
+
+    pair_id = uuid.UUID(int=8)
+    storage.create_pair(
+        id=pair_id,
+        request=Request(method="GET", url="https://example.com"),
+    )
+    complete_pair = storage.add_response(
+        pair_id=pair_id,
+        response=Response(status_code=200, stream=iter([b"data"])),
+        key="key1",
+    )
+
+    # Update with a new pair object
+    new_pair = replace(complete_pair, cache_key=b"key2")
+    result = storage.update_pair(pair_id, new_pair)
+
+    assert result is not None
+    assert result.cache_key == b"key2"
+
+
+@travel("2024-01-01 00:00:00")
+def test_remove_pair(use_temp_dir: Any):
+    """Test soft-deleting a pair."""
+    storage = SyncSqliteStorage()
+
+    pair_id = uuid.UUID(int=9)
+    storage.create_pair(
+        id=pair_id,
+        request=Request(method="GET", url="https://example.com"),
+    )
+    storage.add_response(
+        pair_id=pair_id,
+        response=Response(status_code=200, stream=iter([b"data"])),
+        key="test_key",
+    )
+
+    # Remove the pair
+    storage.remove(pair_id)
+
+    # Verify deleted_at is set
+    with storage._lock:
+        cursor = storage.connection.cursor()
+        cursor.execute("SELECT deleted_at FROM entries WHERE id = ?", (pair_id.bytes,))
+        result = cursor.fetchone()
+        assert result is not None
+        assert result[0] is not None  # deleted_at should be set
+
+
+@travel("2024-01-01 00:00:00")
+def test_stream_persistence(use_temp_dir: Any):
+    """Test that streams are properly saved and retrieved."""
+    storage = SyncSqliteStorage()
+
+    pair_id = uuid.UUID(int=10)
+    request_chunks = [b"req1", b"req2", b"req3"]
+    response_chunks = [b"resp1", b"resp2"]
+
+    storage.create_pair(
+        id=pair_id,
+        request=Request(
+            method="POST",
+            url="https://example.com",
+            stream=iter(request_chunks),
+        ),
+    )
+    storage.add_response(
+        pair_id=pair_id,
+        response=Response(status_code=200, stream=iter(response_chunks)),
+        key="stream_test",
+    )
+
+    # Retrieve and verify streams
+    pairs = storage.get_pairs("stream_test")
+    assert len(pairs) == 1
+
+    retrieved_request_chunks = list(pairs[0].request.stream)
+    retrieved_response_chunks = list(pairs[0].response.stream)
+
+    assert retrieved_request_chunks == request_chunks
+    assert retrieved_response_chunks == response_chunks
+
+
+@travel("2024-01-01 00:00:00")
+def test_multiple_pairs_different_keys(use_temp_dir: Any):
+    """Test that pairs with different keys are properly isolated."""
+    storage = SyncSqliteStorage()
+
+    # Create pairs with different keys
+    for i in range(3):
+        pair_id = uuid.UUID(int=100 + i)
+        storage.create_pair(
+            id=pair_id,
+            request=Request(method="GET", url=f"https://example.com/{i}"),
+        )
+        storage.add_response(
+            pair_id=pair_id,
+            response=Response(status_code=200, stream=iter([f"data{i}".encode()])),
+            key=f"key_{i}",
+        )
+
+    # Verify each key returns only its own pair
+    for i in range(3):
+        pairs = storage.get_pairs(f"key_{i}")
+        assert len(pairs) == 1
+        assert pairs[0].request.url == f"https://example.com/{i}"
+
+
+@travel("2024-01-01 00:00:00")
+def test_remove_nonexistent_pair(use_temp_dir: Any):
+    """Test that removing a non-existent pair doesn't raise an error."""
+    storage = SyncSqliteStorage()
+
+    # Should not raise
+    storage.remove(uuid.UUID(int=999))
+
+
+@travel("2024-01-01 00:00:00")
+def test_update_nonexistent_pair(use_temp_dir: Any):
+    """Test that updating a non-existent pair returns None."""
+    storage = SyncSqliteStorage()
+
+    result = storage.update_pair(uuid.UUID(int=999), lambda p: replace(p, cache_key=b"new_key"))
+    assert result is None
+
+
+@travel("2024-01-01 00:00:00")
+def test_add_response_to_nonexistent_pair(use_temp_dir: Any):
+    """Test that adding a response to non-existent pair raises an error."""
+    storage = SyncSqliteStorage()
+
+    try:
+        storage.add_response(
+            pair_id=uuid.UUID(int=999),
+            response=Response(status_code=200, stream=iter([b"data"])),
+            key="test_key",
+        )
+        assert False, "Expected ValueError"
+    except ValueError as e:
+        assert "not found" in str(e)
