@@ -1,31 +1,25 @@
+from __future__ import annotations
+
 import abc
+import time
 import typing as tp
 import uuid
 from abc import ABC
 
-from hishel._core.models import CompletePair, IncompletePair, Request, Response
+from hishel.beta._core.models import CompletePair, IncompletePair, Request, Response
 
 
 class SyncBaseStorage(ABC):
     @abc.abstractmethod
     def create_pair(
         self,
-        key: str,
         request: Request,
-        /,
-        ttl: tp.Optional[float] = None,
-        refresh_ttl_on_access: tp.Optional[bool] = None,
     ) -> IncompletePair:
         """
         Store a request in the backend under the given key.
 
         Args:
-            key: Unique identifier for grouping or looking up stored requests.
             request: The request object to store.
-            ttl: Optional time-to-live (in seconds). If set, the entry expires after
-                the given duration.
-            refresh_ttl_on_access: If True, accessing this entry refreshes its TTL.
-                If False, the TTL is fixed. If None, uses the backend's default behavior.
 
         Returns:
             The created IncompletePair object representing the stored request.
@@ -36,13 +30,14 @@ class SyncBaseStorage(ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def add_response(self, pair_id: uuid.UUID, response: Response) -> CompletePair:
+    def add_response(self, pair_id: uuid.UUID, response: Response, key: str | bytes) -> CompletePair:
         """
         Add a response to an existing request pair.
 
         Args:
             pair_id: The unique identifier of the request pair.
             response: The response object to add.
+            key: The cache key associated with the request pair.
 
         Returns:
             The updated response object.
@@ -90,27 +85,60 @@ class SyncBaseStorage(ABC):
         """
         raise NotImplementedError()
 
+    def is_soft_deleted(self, pair: IncompletePair | CompletePair) -> bool:
+        """
+        Check if a pair is soft deleted based on its metadata.
+
+        Args:
+            pair: The request pair to check.
+
+        Returns:
+            True if the pair is soft deleted, False otherwise.
+        """
+        return pair.meta.deleted_at is not None and pair.meta.deleted_at > 0
+
+    def is_safe_to_hard_delete(self, pair: IncompletePair | CompletePair) -> bool:
+        """
+        Check if a pair is safe to hard delete based on its metadata.
+
+        If the pair has been soft deleted for more than 1 hour, it is considered safe to hard delete.
+
+        Args:
+            pair: The request pair to check.
+
+        Returns:
+            True if the pair is safe to hard delete, False otherwise.
+        """
+        return bool(pair.meta.deleted_at is not None and (pair.meta.deleted_at + 3600 < time.time()))
+
+    @tp.overload
+    def mark_pair_as_deleted(self, pair: CompletePair) -> CompletePair: ...
+    @tp.overload
+    def mark_pair_as_deleted(self, pair: IncompletePair) -> IncompletePair: ...
+    def mark_pair_as_deleted(self, pair: CompletePair | IncompletePair) -> CompletePair | IncompletePair:
+        """
+        Mark a pair as soft deleted by setting its deleted_at timestamp.
+
+        Args:
+            pair: The request pair to mark as deleted.
+        Returns:
+            The updated request pair with the deleted_at timestamp set.
+        """
+        pair.meta.deleted_at = time.time()
+        return pair
+
 
 class AsyncBaseStorage(ABC):
     @abc.abstractmethod
     async def create_pair(
         self,
-        key: str,
         request: Request,
-        /,
-        ttl: tp.Optional[float] = None,
-        refresh_ttl_on_access: tp.Optional[bool] = None,
     ) -> IncompletePair:
         """
         Store a request in the backend under the given key.
 
         Args:
-            key: Unique identifier for grouping or looking up stored requests.
             request: The request object to store.
-            ttl: Optional time-to-live (in seconds). If set, the entry expires after
-                the given duration.
-            refresh_ttl_on_access: If True, accessing this entry refreshes its TTL.
-                If False, the TTL is fixed. If None, uses the backend's default behavior.
 
         Returns:
             The created IncompletePair object representing the stored request.
@@ -121,13 +149,14 @@ class AsyncBaseStorage(ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    async def add_response(self, pair_id: uuid.UUID, response: Response) -> CompletePair:
+    async def add_response(self, pair_id: uuid.UUID, response: Response, key: str | bytes) -> CompletePair:
         """
         Add a response to an existing request pair.
 
         Args:
             pair_id: The unique identifier of the request pair.
             response: The response object to add.
+            key: The cache key associated with the request pair.
 
         Returns:
             The updated response object.
@@ -144,8 +173,6 @@ class AsyncBaseStorage(ABC):
 
         Args:
             key: The unique identifier for the request pairs.
-            complete_only: If True, only return pairs with responses. If False,
-                only return pairs without responses. If None, return all pairs.
         """
         raise NotImplementedError()
 
@@ -174,3 +201,45 @@ class AsyncBaseStorage(ABC):
             id: The unique identifier of the request pair to remove.
         """
         raise NotImplementedError()
+
+    def is_soft_deleted(self, pair: IncompletePair | CompletePair) -> bool:
+        """
+        Check if a pair is soft deleted based on its metadata.
+
+        Args:
+            pair: The request pair to check.
+
+        Returns:
+            True if the pair is soft deleted, False otherwise.
+        """
+        return pair.meta.deleted_at is not None and pair.meta.deleted_at > 0
+
+    def is_safe_to_hard_delete(self, pair: IncompletePair | CompletePair) -> bool:
+        """
+        Check if a pair is safe to hard delete based on its metadata.
+
+        If the pair has been soft deleted for more than 1 hour, it is considered safe to hard delete.
+
+        Args:
+            pair: The request pair to check.
+
+        Returns:
+            True if the pair is safe to hard delete, False otherwise.
+        """
+        return bool(pair.meta.deleted_at is not None and (pair.meta.deleted_at + 3600 < time.time()))
+
+    @tp.overload
+    def mark_pair_as_deleted(self, pair: CompletePair) -> CompletePair: ...
+    @tp.overload
+    def mark_pair_as_deleted(self, pair: IncompletePair) -> IncompletePair: ...
+    def mark_pair_as_deleted(self, pair: CompletePair | IncompletePair) -> CompletePair | IncompletePair:
+        """
+        Mark a pair as soft deleted by setting its deleted_at timestamp.
+
+        Args:
+            pair: The request pair to mark as deleted.
+        Returns:
+            The updated request pair with the deleted_at timestamp set.
+        """
+        pair.meta.deleted_at = time.time()
+        return pair

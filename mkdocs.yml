@@ -54,8 +54,6 @@ nav:
       - "Storages": advanced/storages.md
       - Serializers: advanced/serializers.md
       - Controllers: advanced/controllers.md
-      - Specification (Beta): advanced/specification.md
-      - New Storages (Beta): advanced/new_storages.md
       - HTTP Headers: advanced/http_headers.md
       - Extensions: advanced/extensions.md
       - Logging: advanced/logging.md
@@ -63,4 +61,10 @@ nav:
       - GitHub: examples/github.md
       - FastAPI: examples/fastapi.md
       - Flask: examples/flask.md
+  - Beta:
+      - Specification: beta/specification.md
+      - Storages: beta/storages.md
+      - Metadata: beta/metadata.md
+      - Integrations:
+          - Httpx: beta/integrations/httpx.md
   - Contributing: contributing.md

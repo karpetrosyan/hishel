@@ -25,8 +25,8 @@ from hishel import (
     Request,
     Response,
 )
-from hishel._core._headers import Headers
-from hishel._core._spec import (
+from hishel.beta._core._headers import Headers
+from hishel.beta._core._spec import (
     allowed_stale,
     create_idle_state,
     get_age,
@@ -34,7 +34,7 @@ from hishel._core._spec import (
     make_conditional_request,
     vary_headers_match,
 )
-from hishel._core.models import IncompletePair, PairMeta
+from hishel.beta._core.models import IncompletePair, PairMeta
 
 
 def create_fresh_pair(
@@ -61,8 +61,7 @@ def create_fresh_pair(
             stream=response_stream or iter([]),
         ),
         meta=PairMeta(created_at=time.time()),
-        complete_stream=True,
-        cache_key="test",
+        cache_key=b"test",
     )
 
 
@@ -71,7 +70,6 @@ def to_incomplete(complete_pair: CompletePair) -> IncompletePair:
         id=complete_pair.id,
         request=complete_pair.request,
         meta=complete_pair.meta,
-        cache_key=complete_pair.cache_key,
     )
 
 
@@ -296,7 +294,6 @@ class TestHandlingRevalidationResponse:
             ),
             meta=PairMeta(created_at=ANY),
             extra={},
-            complete_stream=True,
             cache_key=ANY,
         )
 

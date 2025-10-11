@@ -14,7 +14,7 @@ import pytest
 from inline_snapshot import snapshot
 
 from hishel import CacheMiss, CacheOptions, CompletePair, CouldNotBeStored, PairMeta, Request, Response, StoreAndUse
-from hishel._core._headers import Headers
+from hishel.beta._core._headers import Headers
 
 
 def create_fresh_pair(
@@ -43,8 +43,7 @@ def create_fresh_pair(
         ),
         meta=PairMeta(created_at=time.time()),
         extra={},
-        complete_stream=True,
-        cache_key="test",
+        cache_key=b"test",
     )
 
 
@@ -63,7 +62,7 @@ class TestStoringResponsesInCaches:
             request=fresh_pair.request,
             options=CacheOptions(),
         ).next(
-            pair=fresh_pair,
+            response=fresh_pair.response,
         )
 
         assert isinstance(state, StoreAndUse)
@@ -79,7 +78,7 @@ class TestStoringResponsesInCaches:
                 ),
                 request=fresh_pair.request,
             ).next(
-                pair=fresh_pair,
+                response=fresh_pair.response,
             )
 
         assert caplog.record_tuples == [
@@ -102,7 +101,7 @@ class TestStoringResponsesInCaches:
                 request=fresh_pair.request,
                 options=CacheOptions(),
             ).next(
-                pair=replace(fresh_pair, response=replace(fresh_pair.response, status_code=101)),
+                response=replace(fresh_pair, response=replace(fresh_pair.response, status_code=101)).response,
             )
 
         assert caplog.record_tuples == [
@@ -124,7 +123,7 @@ class TestStoringResponsesInCaches:
                 request=fresh_pair.request,
                 options=CacheOptions(),
             ).next(
-                pair=replace(fresh_pair, response=replace(fresh_pair.response, status_code=304)),
+                response=replace(fresh_pair, response=replace(fresh_pair.response, status_code=304)).response,
             )
 
         assert caplog.record_tuples == snapshot(
@@ -147,9 +146,9 @@ class TestStoringResponsesInCaches:
                 request=fresh_pair.request,
                 options=CacheOptions(),
             ).next(
-                pair=replace(
+                response=replace(
                     fresh_pair, response=replace(fresh_pair.response, headers=Headers({"Cache-Control": "no-store"}))
-                ),
+                ).response,
             )
 
         assert caplog.record_tuples == [
@@ -171,9 +170,9 @@ class TestStoringResponsesInCaches:
                 options=CacheOptions(shared=True),
                 request=fresh_pair.request,
             ).next(
-                pair=replace(
+                response=replace(
                     fresh_pair, response=replace(fresh_pair.response, headers=Headers({"Cache-Control": "private"}))
-                ),
+                ).response,
             )
 
         assert caplog.record_tuples == [
@@ -193,21 +192,19 @@ class TestStoringResponsesInCaches:
             state = CacheMiss(
                 pair_id=fresh_pair.id,
                 options=CacheOptions(shared=True),
-                request=fresh_pair.request,
-            ).next(
-                pair=replace(
-                    fresh_pair, request=replace(fresh_pair.request, headers=Headers({"Authorization": "Bearer 12345"}))
-                ),
-            )
+                request=replace(fresh_pair.request, headers=Headers({"Authorization": "Bearer 12345"})),
+            ).next(fresh_pair.response)
 
-        assert caplog.record_tuples == [
-            (
-                "hishel.core.spec",
-                10,
-                "Cannot store the response because the cache is shared and the request contains an Authorization "
-                "header field. See: https://www.rfc-editor.org/rfc/rfc9111.html#section-3-2.6.1",
-            )
-        ]
+        assert caplog.record_tuples == snapshot(
+            [
+                (
+                    "hishel.core.spec",
+                    10,
+                    "Cannot store the response because the cache is shared and the request contains an Authorization "
+                    "header field. See: https://www.rfc-editor.org/rfc/rfc9111.html#section-3-2.6.1",
+                )
+            ]
+        )
         assert isinstance(state, CouldNotBeStored)
 
     @pytest.mark.parametrize(
@@ -277,7 +274,7 @@ class TestStoringResponsesInCaches:
                 request=fresh_pair.request,
                 options=CacheOptions(),
             ).next(
-                pair=replace(fresh_pair, response=replace(fresh_pair.response, headers=Headers({}))),
+                response=replace(fresh_pair, response=replace(fresh_pair.response, headers=Headers({}))).response,
             )
 
         assert caplog.record_tuples == [
@@ -303,7 +300,7 @@ class TestStoringResponsesInCaches:
             request=fresh_pair.request,
             options=CacheOptions(),
         ).next(
-            pair=with_required_component,
+            response=with_required_component.response,
         )
 
         assert isinstance(state, StoreAndUse)
@@ -331,18 +328,20 @@ def test_storing_header_and_trailer_fields() -> None:
         }
     )
 
-    state = CacheMiss(pair_id=fresh_pair.id, request=fresh_pair.request, options=CacheOptions()).next(pair=fresh_pair)
+    state = CacheMiss(pair_id=fresh_pair.id, request=fresh_pair.request, options=CacheOptions()).next(
+        response=fresh_pair.response
+    )
 
     assert isinstance(state, StoreAndUse)
-    assert "keep-alive" not in state.pair.response.headers
-    assert "te" not in state.pair.response.headers
-    assert "transfer-encoding" not in state.pair.response.headers
-    assert "upgrade" not in state.pair.response.headers
-    assert "proxy-connection" not in state.pair.response.headers
-    assert "proxy-authenticate" not in state.pair.response.headers
-    assert "proxy-authorization" not in state.pair.response.headers
-    assert "content-type" in state.pair.response.headers
-    assert "cache-control" in state.pair.response.headers
+    assert "keep-alive" not in state.response.headers
+    assert "te" not in state.response.headers
+    assert "transfer-encoding" not in state.response.headers
+    assert "upgrade" not in state.response.headers
+    assert "proxy-connection" not in state.response.headers
+    assert "proxy-authenticate" not in state.response.headers
+    assert "proxy-authorization" not in state.response.headers
+    assert "content-type" in state.response.headers
+    assert "cache-control" in state.response.headers
 
     # Test excluding no-cache fields
     fresh_pair = create_fresh_pair(
@@ -354,12 +353,14 @@ def test_storing_header_and_trailer_fields() -> None:
         }
     )
 
-    state = CacheMiss(pair_id=fresh_pair.id, request=fresh_pair.request, options=CacheOptions()).next(pair=fresh_pair)
+    state = CacheMiss(pair_id=fresh_pair.id, request=fresh_pair.request, options=CacheOptions()).next(
+        response=fresh_pair.response
+    )
 
     assert isinstance(state, StoreAndUse)
-    assert "content-type" not in state.pair.response.headers
-    assert "etag" not in state.pair.response.headers
-    assert "last-modified" in state.pair.response.headers
+    assert "content-type" not in state.response.headers
+    assert "etag" not in state.response.headers
+    assert "last-modified" in state.response.headers
 
     # Test excluding private fields in shared cache
     fresh_pair = create_fresh_pair(
@@ -372,10 +373,10 @@ def test_storing_header_and_trailer_fields() -> None:
     )
 
     state = CacheMiss(pair_id=fresh_pair.id, request=fresh_pair.request, options=CacheOptions(shared=True)).next(
-        pair=fresh_pair
+        response=fresh_pair.response
     )
 
     assert isinstance(state, StoreAndUse)
-    assert "set-cookie" not in state.pair.response.headers
-    assert "authorization" not in state.pair.response.headers
-    assert "content-type" in state.pair.response.headers
+    assert "set-cookie" not in state.response.headers
+    assert "authorization" not in state.response.headers
+    assert "content-type" in state.response.headers

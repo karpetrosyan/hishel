@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Optional, Union, overload
+from typing import Any, Mapping, Optional, Union, overload
 
 import msgpack
 from typing_extensions import Literal, cast
 
 from hishel import CompletePair, IncompletePair
-from hishel._core._headers import Headers
-from hishel._core.models import PairMeta, Request, Response
+from hishel.beta._core._headers import Headers
+from hishel.beta._core.models import PairMeta, Request, Response
 
-if TYPE_CHECKING:
-    from hishel._core._sync._storages._lmdb import SyncLmdbStorage
+
+def filter_out_hishel_metadata(data: Mapping[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in data.items() if not k.startswith("hishel_")}
 
 
 @overload
@@ -40,6 +41,7 @@ def pack(
         return value.bytes
     elif kind == "pair":
         assert isinstance(value, (CompletePair, IncompletePair))
+        cache_key_dict = {"cache_key": value.cache_key} if isinstance(value, CompletePair) else {}
         return cast(
             bytes,
             msgpack.packb(
@@ -49,13 +51,13 @@ def pack(
                         "method": value.request.method,
                         "url": value.request.url,
                         "headers": value.request.headers._headers,
-                        "extra": value.request.extra,
+                        "extra": filter_out_hishel_metadata(value.request.metadata),
                     },
                     "response": (
                         {
                             "status_code": value.response.status_code,
                             "headers": value.response.headers._headers,
-                            "extra": value.response.extra,
+                            "extra": filter_out_hishel_metadata(value.response.metadata),
                         }
                     )
                     if isinstance(value, CompletePair)
@@ -63,10 +65,8 @@ def pack(
                     "meta": {
                         "created_at": value.meta.created_at,
                         "deleted_at": value.meta.deleted_at,
-                        "refresh_ttl_on_access": value.meta.refresh_ttl_on_access,
-                        "ttl": value.meta.ttl,
                     },
-                    "cache_key": value.cache_key,
+                    **cache_key_dict,
                 }
             ),
         )
@@ -78,7 +78,6 @@ def unpack(
     value: bytes,
     /,
     kind: Literal["pair"],
-    client: "SyncLmdbStorage",
 ) -> Union[CompletePair, IncompletePair]: ...
 
 
@@ -87,7 +86,6 @@ def unpack(
     value: bytes,
     /,
     kind: Literal["entry_db_key_index"],
-    client: Optional["SyncLmdbStorage"] = None,
 ) -> uuid.UUID: ...
 
 
@@ -96,7 +94,6 @@ def unpack(
     value: Optional[bytes],
     /,
     kind: Literal["pair"],
-    client: "SyncLmdbStorage",
 ) -> Optional[Union[CompletePair, IncompletePair]]: ...
 
 
@@ -112,14 +109,12 @@ def unpack(
     value: Optional[bytes],
     /,
     kind: Literal["pair", "entry_db_key_index"],
-    client: Optional["SyncLmdbStorage"] = None,
 ) -> Union[CompletePair, IncompletePair, uuid.UUID, None]:
     if value is None:
         return None
     if kind == "entry_db_key_index":
         return uuid.UUID(bytes=value)
     elif kind == "pair":
-        assert client is not None
         data = msgpack.unpackb(value)
         id = uuid.UUID(bytes=data["id"])
         if data.get("response"):
@@ -129,22 +124,20 @@ def unpack(
                     method=data["request"]["method"],
                     url=data["request"]["url"],
                     headers=Headers(data["request"]["headers"]),
-                    extra=data["request"]["extra"],
-                    stream=client._stream_data_from_cache(id.bytes, client.stream_db, "request"),
+                    metadata=data["request"]["extra"],
+                    stream=iter([]),
                 ),
                 response=(
                     Response(
                         status_code=data["response"]["status_code"],
                         headers=Headers(data["response"]["headers"]),
-                        extra=data["response"]["extra"],
-                        stream=client._stream_data_from_cache(id.bytes, client.stream_db, "response"),
+                        metadata=data["response"]["extra"],
+                        stream=iter([]),
                     )
                 ),
                 meta=PairMeta(
                     created_at=data["meta"]["created_at"],
                     deleted_at=data["meta"]["deleted_at"],
-                    ttl=data["meta"]["ttl"],
-                    refresh_ttl_on_access=data["meta"]["refresh_ttl_on_access"],
                 ),
                 cache_key=data["cache_key"],
             )
@@ -155,14 +148,11 @@ def unpack(
                     method=data["request"]["method"],
                     url=data["request"]["url"],
                     headers=Headers(data["request"]["headers"]),
-                    extra=data["request"]["extra"],
-                    stream=client._stream_data_from_cache(id.bytes, client.stream_db, "request"),
+                    metadata=data["request"]["extra"],
+                    stream=iter([]),
                 ),
                 meta=PairMeta(
                     created_at=data["meta"]["created_at"],
                     deleted_at=data["meta"]["deleted_at"],
-                    ttl=data["meta"]["ttl"],
-                    refresh_ttl_on_access=data["meta"]["refresh_ttl_on_access"],
                 ),
-                cache_key=data["cache_key"],
             )

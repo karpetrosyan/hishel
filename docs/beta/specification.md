@@ -15,11 +15,8 @@ This design allows you to build HTTP caches that are correct, testable, and deco
 ```mermaid
 graph LR
   IdleClient --> CacheMiss;
-  IdleClient --> PartialUpdate;
-
-  PartialUpdate --> CacheMiss;
-  PartialUpdate --> FromCache;
-  PartialUpdate --> NeedRevalidation;
+  IdleClient --> FromCache;
+  IdleClient --> NeedRevalidation;
 
   CacheMiss --> StoreAndUse;
   CacheMiss --> CouldNotBeStored;
@@ -31,7 +28,7 @@ graph LR
 As a client, start with an idle state and check the next method’s signature to understand what comes next.
 
 ```python
-from hishel import create_idle_state
+from hishel.beta import create_idle_state
 
 state = create_idle_state("client")  # client or server (server still in development)
 
@@ -51,72 +48,9 @@ In this example, `next_state` will be one of `CacheMiss`, `FromCache`, or `NeedR
 
 This represents the state of an idle client that wants to reuse any stored responses whenever possible. The transition from this state follows the logic described in [section 4, Constructing Responses from Caches, of RFC 9111](https://www.rfc-editor.org/rfc/rfc9111.html#name-constructing-responses-from).
 
-Here’s a simple example:
-
-```python
-from hishel import (
-    CacheMiss,
-    FromCache,
-    NeedRevalidation,
-    Request,
-    UpdatePartials,
-    create_idle_state,
-)
-
-state = create_idle_state("client")
-
-next_state: (
-    UpdatePartials[CacheMiss | FromCache | NeedRevalidation] | CacheMiss
-) = state.next(
-    Request(
-        method="GET",
-        url="https://example.com/resource",
-    ),
-    associated_pairs=[],
-)
-```
-
-To move from the `IdleClient` state, we need the `request` for which we want to find a cached response, along with the list of `associated_pairs` that we have stored earlier and could potentially use for this request.
-
 ### CacheMiss
 
-`CacheMiss` is the state that indicates the `associated_pairs` could not be used at all, even with revalidation. The transition logic for this state is described in section [3, Storing Responses in Caches, of RFC9111](https://www.rfc-editor.org/rfc/rfc9111.html#section-3). Here is a simple example of its usage:
-
-```python
-from hishel import (
-    CacheMiss,
-    CacheOptions,
-    CompletePair,
-    CouldNotBeStored,
-    Response,
-    StoreAndUse,
-)
-from hishel._core.models import Request
-
-cache_miss = CacheMiss(
-    request=Request(
-        method="GET",
-        url="https://example.com/resource",
-    ),  # Request that missed the cache
-    options=CacheOptions(),
-)
-
-next_state: StoreAndUse | CouldNotBeStored = cache_miss.next(
-    pair=CompletePair.create(
-        response=Response(
-            status_code=200,
-        ),
-        request=Request(
-            method="GET",
-            url="https://example.com",
-        ),
-    )
-)
-```
-
-### PartialUpdate
-
-`PartialUpdate` is an intermediary state that indicates which responses from `associated_pairs` provided earlier can be merged into a single one. The transition logic for this state is described in [section 3.4, Combining Partial Content, of RFC9111](https://www.rfc-editor.org/rfc/rfc9111.html#name-combining-partial-content).
+`CacheMiss` is the state that indicates the stored responses could not be used at all, even with revalidation. The transition logic for this state is described in section [3, Storing Responses in Caches, of RFC9111](https://www.rfc-editor.org/rfc/rfc9111.html#section-3). Here is a simple example of its usage:
 
 ### NeedRevalidation
 
@@ -124,7 +58,7 @@ next_state: StoreAndUse | CouldNotBeStored = cache_miss.next(
 
 ### FromCache
 
-The `FromCache` state indicates that an `associated_pair` was found for the request and can be used without revalidation.
+The `FromCache` state indicates that a stores response was found for the request and can be used without revalidation.
 
 ### NeedToBeUpdated
 
@@ -145,7 +79,7 @@ You can pass an options parameter to any state to control how it behaves in cert
 Import the CacheOptions class and pass it to the State, like so:
 
 ```python
-from hishel import IdleClient, CacheOptions
+from hishel.beta import IdleClient, CacheOptions
 
 state = IdleClient(
   options=CacheOptions(

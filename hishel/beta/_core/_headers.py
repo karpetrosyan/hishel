@@ -4,7 +4,7 @@ import string
 from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Literal, Mapping, MutableMapping, Optional, Union, cast
 
-from .._exceptions import ParseError, ValidationError
+from hishel._exceptions import ParseError, ValidationError
 
 ## Grammar
 

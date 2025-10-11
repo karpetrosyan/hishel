@@ -1,21 +1,17 @@
 from __future__ import annotations
 
+import sqlite3
 import uuid
 from dataclasses import replace
 from functools import partial
-from typing import TYPE_CHECKING, AsyncIterator, Callable, Iterator, Optional, TypeVar, cast
+from typing import AsyncIterator, Callable, Iterator, Optional, TypeVar
 
 from anyio import to_thread
 
-from hishel._core._base._storages._base import AsyncBaseStorage
-from hishel._core._sync._storages._lmdb import SyncLmdbStorage
-from hishel._core.models import CompletePair, IncompletePair, Request, Response
 from hishel._utils import async_iterator_to_sync, sync_iterator_to_async
-
-if TYPE_CHECKING:
-    from ...._lmdb_types_ import Environment
-
-import lmdb
+from hishel.beta._core._base._storages._base import AsyncBaseStorage
+from hishel.beta._core._sync._storages._sqlite import SyncSqliteStorage
+from hishel.beta._core.models import CompletePair, IncompletePair, Request, Response
 
 T = TypeVar("T", CompletePair, IncompletePair)
 
@@ -50,55 +46,36 @@ def ensure_async(pair: T) -> T:
     return async_pair
 
 
-class AsyncLmdbStorage(AsyncBaseStorage):
+class AsyncSqliteStorage(AsyncBaseStorage):
     def __init__(
         self,
         *,
-        env: Optional["Environment"] = None,
-        entry_db_name: str = "hishel_entries",
-        stream_db_name: str = "hishel_streams",
-        entry_db_key_index_db_name: str = "hishel_entry_key_index",
+        connection: Optional[sqlite3.Connection] = None,
+        database_path: str = "hishel_cache.db",
         default_ttl: Optional[float] = None,
         refresh_ttl_on_access: bool = True,
     ) -> None:
-        self.env = env if env is not None else cast("Environment", lmdb.open("hishel_cache", max_dbs=100))
-
-        self.entry_db = self.env.open_db(entry_db_name.encode("utf-8"))
-        self.stream_db = self.env.open_db(stream_db_name.encode("utf-8"))
-        self.entry_key_index_db = self.env.open_db(
-            entry_db_key_index_db_name.encode("utf-8"),
-            dupsort=True,
-        )
+        self.connection = connection
+        self.database_path = database_path
         self.default_ttl = default_ttl
         self.refresh_ttl_on_access = refresh_ttl_on_access
-        self.last_cleanup = float("-inf")
-        self._sync_lmdb_storage = SyncLmdbStorage(
-            env=self.env,
-            entry_db_name=entry_db_name,
-            stream_db_name=stream_db_name,
-            entry_db_key_index_db_name=entry_db_key_index_db_name,
+
+        self._sync_sqlite_storage = SyncSqliteStorage(
+            connection=connection,
+            database_path=database_path,
             default_ttl=default_ttl,
             refresh_ttl_on_access=refresh_ttl_on_access,
         )
 
     async def create_pair(
         self,
-        key: str,
         request: Request,
-        /,
-        ttl: Optional[float] = None,
-        refresh_ttl_on_access: Optional[bool] = None,
     ) -> IncompletePair:
         """
         Store a request in the backend under the given key.
 
         Args:
-            key: Unique identifier for grouping or looking up stored requests.
             request: The request object to store.
-            ttl: Optional time-to-live (in seconds). If set, the entry expires after
-                the given duration.
-            refresh_ttl_on_access: If True, accessing this entry refreshes its TTL.
-                If False, the TTL is fixed. If None, uses the backend's default behavior.
 
         Returns:
             The created IncompletePair object representing the stored request.
@@ -106,27 +83,25 @@ class AsyncLmdbStorage(AsyncBaseStorage):
         Raises:
             NotImplementedError: Must be implemented in subclasses.
         """
-        assert isinstance(request.stream, AsyncIterator), "Response stream must be an AsyncIterator"
+        assert isinstance(request.stream, AsyncIterator), "Request stream must be an AsyncIterator"
 
         return ensure_async(
             await to_thread.run_sync(
                 partial(
-                    self._sync_lmdb_storage.create_pair,
-                    key,
+                    self._sync_sqlite_storage.create_pair,
                     replace(request, stream=async_iterator_to_sync(request.stream)),
-                    ttl=ttl,
-                    refresh_ttl_on_access=refresh_ttl_on_access,
                 )
             )
         )
 
-    async def add_response(self, pair_id: uuid.UUID, response: Response) -> CompletePair:
+    async def add_response(self, pair_id: uuid.UUID, response: Response, key: str | bytes) -> CompletePair:
         """
         Add a response to an existing request pair.
 
         Args:
             pair_id: The unique identifier of the request pair.
             response: The response object to add.
+            key: The cache key associated with the request pair.
 
         Returns:
             The updated response object.
@@ -138,9 +113,10 @@ class AsyncLmdbStorage(AsyncBaseStorage):
 
         return ensure_async(
             await to_thread.run_sync(
-                self._sync_lmdb_storage.add_response,
+                self._sync_sqlite_storage.add_response,
                 pair_id,
                 replace(response, stream=async_iterator_to_sync(response.stream)),
+                key,
             )
         )
 
@@ -153,7 +129,7 @@ class AsyncLmdbStorage(AsyncBaseStorage):
             complete_only: If True, only return pairs with responses. If False,
                 only return pairs without responses. If None, return all pairs.
         """
-        return [ensure_async(pair) for pair in await to_thread.run_sync(self._sync_lmdb_storage.get_pairs, key)]
+        return [ensure_async(pair) for pair in await to_thread.run_sync(self._sync_sqlite_storage.get_pairs, key)]
 
     async def update_pair(
         self,
@@ -168,7 +144,7 @@ class AsyncLmdbStorage(AsyncBaseStorage):
             new_pair: The new pair data or a callable that takes the current pair
                 and returns the updated pair.
         """
-        updated_pair = await to_thread.run_sync(self._sync_lmdb_storage.update_pair, id, new_pair)
+        updated_pair = await to_thread.run_sync(self._sync_sqlite_storage.update_pair, id, new_pair)
         if updated_pair is not None:
             return ensure_async(updated_pair)
         return None
@@ -180,4 +156,4 @@ class AsyncLmdbStorage(AsyncBaseStorage):
         Args:
             id: The unique identifier of the request pair to remove.
         """
-        await to_thread.run_sync(self._sync_lmdb_storage.remove, id)
+        await to_thread.run_sync(self._sync_sqlite_storage.remove, id)

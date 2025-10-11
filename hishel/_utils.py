@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import calendar
 import hashlib
 import time
 import typing as tp
 from email.utils import parsedate_tz
-from typing import AsyncIterator, Iterator
+from typing import AsyncIterator, Generator, Iterable, Iterator, TypeVar
 
 import anyio
 import httpcore
@@ -207,3 +209,49 @@ async def sync_iterator_to_async(iterator: Iterator[bytes]) -> AsyncIterator[byt
             break
 
         yield chunk
+
+
+async def iterable_to_async_iterator(iterable: Iterable[bytes]) -> AsyncIterator[bytes]:
+    for item in iterable:
+        yield item
+
+
+_T = TypeVar("_T")
+
+
+class GeneratorWithReturnValue:
+    def __init__(
+        self, gen: Generator[None, bytes | None, bytes], stream: AsyncIterator[bytes] | Iterator[bytes]
+    ) -> None:
+        self.gen = gen
+        self.stream = stream
+        self.value: bytes | None = None
+
+    def __iter__(self) -> Iterator[bytes]:
+        return self
+
+    def __next__(self) -> bytes:
+        assert isinstance(self.stream, Iterator)
+
+        try:
+            chunk = next(self.stream)
+            self.gen.send(chunk)
+        except StopIteration as exc:
+            self.gen.send(None)
+            self.value = exc.value
+            raise
+        return chunk
+
+    def __aiter__(self) -> AsyncIterator[bytes]:
+        return self
+
+    async def __anext__(self) -> bytes:
+        assert isinstance(self.stream, AsyncIterator)
+        try:
+            chunk = await self.stream.__anext__()
+            self.gen.send(chunk)
+        except StopIteration as exc:
+            self.gen.send(None)
+            self.value = exc.value
+            raise
+        return chunk

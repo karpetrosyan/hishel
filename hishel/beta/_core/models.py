@@ -9,9 +9,10 @@ from typing import (
     Iterator,
     Mapping,
     Optional,
+    TypedDict,
 )
 
-from hishel._core._headers import Headers
+from hishel.beta._core._headers import Headers
 
 
 class AnyIterable:
@@ -41,13 +42,44 @@ class AnyIterable:
         return isinstance(value, AnyIterable)
 
 
+class RequestMetadata(TypedDict, total=False):
+    # All the names here should be prefixed with "hishel_" to avoid collisions with user data
+    hishel_ttl: float | None
+    """When specified, hishel will remove the cached response after specified number of seconds."""
+
+    hishel_refresh_ttl_on_access: bool | None
+    """
+    When True, accessing this entry refreshes its TTL. When False, the TTL remains fixed (default).
+    """
+
+    hishel_spec_ignore: bool | None
+    """
+    When True, hishel will ignore the caching specification for this request.
+    """
+
+
 @dataclass
 class Request:
     method: str
     url: str
     headers: Headers = field(default_factory=lambda: Headers({}))
     stream: Iterator[bytes] | AsyncIterator[bytes] = field(default_factory=lambda: iter(AnyIterable()))
-    extra: Mapping[str, Any] = field(default_factory=dict)
+    metadata: RequestMetadata | Mapping[str, Any] = field(default_factory=dict)
+
+
+class ResponseMetadata(TypedDict, total=False):
+    # All the names here should be prefixed with "hishel_" to avoid collisions with user data
+    hishel_from_cache: bool | None
+    """Indicates whether the response was served from cache."""
+
+    hishel_revalidated: bool | None
+    """Indicates whether the response was revalidated with the origin server."""
+
+    hishel_spec_ignored: bool | None
+    """Indicates whether the caching specification was ignored for this response."""
+
+    hishel_stored: bool | None
+    """Indicates whether the response was stored in cache."""
 
 
 @dataclass
@@ -55,15 +87,13 @@ class Response:
     status_code: int
     headers: Headers = field(default_factory=lambda: Headers({}))
     stream: Iterator[bytes] | AsyncIterator[bytes] = field(default_factory=lambda: iter(AnyIterable()))
-    extra: Mapping[str, Any] = field(default_factory=dict)
+    metadata: ResponseMetadata | Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class PairMeta:
     created_at: float = field(default_factory=time.time)
     deleted_at: Optional[float] = None
-    ttl: Optional[float] = None
-    refresh_ttl_on_access: Optional[bool] = None
 
 
 @dataclass
@@ -71,7 +101,6 @@ class Pair:
     id: uuid.UUID
     request: Request
     meta: PairMeta
-    cache_key: str
 
 
 # class used by storage
@@ -83,8 +112,8 @@ class IncompletePair(Pair):
 @dataclass
 class CompletePair(Pair):
     response: Response
+    cache_key: bytes
     extra: Mapping[str, Any] = field(default_factory=dict)
-    complete_stream: bool = True
 
     @classmethod
     def create(
@@ -92,4 +121,4 @@ class CompletePair(Pair):
         response: Response,
         request: Request,
     ) -> "CompletePair":  # pragma: nocover
-        return cls(id=uuid.uuid4(), request=request, response=response, meta=PairMeta(), cache_key="")
+        return cls(id=uuid.uuid4(), request=request, response=response, meta=PairMeta(), cache_key=b"")

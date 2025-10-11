@@ -1,5 +1,5 @@
 ---
-icon: material/robot
+icon: material/database
 ---
 
 `Hishel` has beta storages that are meant to be the default in the future, and the reason is the limitations of the current storages.
@@ -7,9 +7,9 @@ icon: material/robot
 Create an instance of a storage like this.
 
 ```python
-from hishel import SyncLmdbStorage, Request
+from hishel.beta import SyncSqliteStorage, Request
 
-storage = SyncLmdbStorage()
+storage = SyncSqliteStorage()
 ```
 
 Create a new pair by calling the `create_pair` function, providing a key to group multiple pairs together, and the request you want to include in that pair.
@@ -17,7 +17,6 @@ Create a new pair by calling the `create_pair` function, providing a key to grou
 ```python
 
 incomplete_pair = storage.create_pair(
-    "my_key",
     Request(
         method="GET",
         url="https://example.org"
@@ -29,13 +28,14 @@ It returns an incomplete pair, which means you only have part of it (just the re
 Later, if you receive a response and want to complete the pair, you can call `add_response` like this.
 
 ```python
-from hishel import Response
+from hishel.beta import Response
 
 complete_pair = storage.add_response(
     incomplete_pair.id,
     Response(
         status_code=200,
     ),
+    "test_key",
 )
 ```
 

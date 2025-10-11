@@ -8,18 +8,18 @@ from dataclasses import dataclass, field, replace
 from typing import (
     TYPE_CHECKING,
     Any,
-    AsyncIterator,
+    Callable,
     Dict,
-    Iterator,
     Literal,
     Optional,
     TypeVar,
     Union,
 )
 
-from hishel._core._headers import Headers, Range, Vary, parse_cache_control
-from hishel._core.models import IncompletePair
 from hishel._utils import parse_date, partition
+from hishel.beta._core._headers import Headers, Range, Vary, parse_cache_control
+from hishel.beta._core._keygen import KeyGen
+from hishel.beta._core.models import IncompletePair
 
 if TYPE_CHECKING:
     from hishel import CompletePair, Request, Response
@@ -43,43 +43,12 @@ HEURISTICALLY_CACHEABLE_STATUS_CODES = (
 logger = logging.getLogger("hishel.core.spec")
 
 
-class UnknownStream:
-    def __iter__(self) -> Iterator[bytes]:
-        return self
-
-    def __next__(self) -> bytes:
-        raise RuntimeError("Stream is not known yet")
-
-    def __aiter__(self) -> AsyncIterator[bytes]:
-        return self
-
-    async def __anext__(self) -> bytes:
-        raise RuntimeError("Stream is not known yet")
-
-
-@dataclass
-class TakeRangeInfo:
-    response: Response
-    """
-    The response that was used to take the ranged content from.
-    """
-
-    lower_skip: int
-    """
-    The number of bytes to skip from the start of the response stream.
-    """
-
-    take: int
-    """
-    The number of bytes to take from the response stream.
-    """
-
-
 @dataclass
 class CacheOptions:
     shared: bool = True
     supported_methods: list[str] = field(default_factory=lambda: ["GET", "HEAD"])
     allow_stale: bool = False
+    keygen: Optional[Callable[[Request], str | bytes] | KeyGen] = None
 
 
 @dataclass
@@ -89,10 +58,6 @@ class State(ABC):
     @abstractmethod
     def next(self, *args: Any, **kwargs: Any) -> Union["State", None]:
         raise NotImplementedError("Subclasses must implement this method")
-
-
-def is_partial(pair: CompletePair) -> bool:
-    return pair.response.status_code == 206 or pair.complete_stream is False
 
 
 def vary_headers_match(
@@ -438,6 +403,10 @@ class IdleClient(State):
             # When a stored response is used to satisfy a request without validation,
             # a cache MUST generate an Age header field (Section 5.1), replacing any present
             # in the response with a value equal to the stored response's current_age; see Section 4.2.3.
+
+            for pair in ready_to_use:
+                pair.response.metadata["hishel_from_cache"] = True  # type: ignore
+
             return FromCache(
                 pair=replace(
                     ready_to_use[0],
@@ -475,10 +444,9 @@ class StoreAndUse(State):
     The state that indicates that the response can be stored in the cache and used.
     """
 
-    pair: CompletePair
-    """
-    The pair that according to 3 (Storing Responses in Caches) of RFC 9111 can be stored in the cache.
-    """
+    pair_id: uuid.UUID
+
+    response: Response
 
     def next(self) -> None:
         return None  # pragma: nocover
@@ -490,10 +458,7 @@ class CouldNotBeStored(State):
     The state that indicates that the response could not be stored in the cache.
     """
 
-    pair: CompletePair
-    """
-    The pair that could not be stored in the cache.
-    """
+    response: Response
 
     def next(self) -> None:
         return None  # pragma: nocover
@@ -516,13 +481,23 @@ class CacheMiss(State):
     """
     The request that missed the cache.
 
-    Note that this has a type of Requet and not IncompletePair because
+    Note that this has a type of Request and not IncompletePair because
     when moving to this state from `NeedRevalidation` we don't have incomplete pair
     """
 
-    def next(self, pair: CompletePair) -> Union["StoreAndUse", "CouldNotBeStored"]:
-        request = pair.request
-        response = pair.response
+    after_revalidation: bool = False
+    """
+    Indicates whether the cache miss occurred after a revalidation attempt.
+    """
+
+    def next(self, response: Response) -> Union["StoreAndUse", "CouldNotBeStored"]:
+        response.metadata["hishel_spec_ignored"] = False  # type: ignore
+        response.metadata["hishel_from_cache"] = False  # type: ignore
+
+        if self.after_revalidation:
+            response.metadata["hishel_revalidated"] = True  # type: ignore
+
+        request = self.request
         response_cache_control = parse_cache_control(
             response.headers.get(
                 "cache-control",
@@ -536,7 +511,7 @@ class CacheMiss(State):
 
         # if the response status code is 206 or 304, or the must-understand cache directive
         # (see Section 5.2.2.3) is present: the cache understands the response status code;
-        if pair.response.status_code in (206, 304):
+        if response.status_code in (206, 304):
             understands_how_to_cache = False
         else:
             understands_how_to_cache = True
@@ -615,13 +590,14 @@ class CacheMiss(State):
                         "See: https://www.rfc-editor.org/rfc/rfc9111.html#section-3-2.7.1"
                     )
 
-            return CouldNotBeStored(pair=pair, options=self.options)
+            response.metadata["hishel_stored"] = False  # type: ignore
+            return CouldNotBeStored(response=response, options=self.options)
 
+        logger.debug("Storing response in cache")
+        response.metadata["hishel_stored"] = True  # type: ignore
         return StoreAndUse(
-            pair=replace(
-                pair,
-                response=exclude_unstorable_headers(response, self.options.shared),
-            ),
+            pair_id=self.pair_id,
+            response=exclude_unstorable_headers(response, self.options.shared),
             options=self.options,
         )
 
@@ -678,14 +654,24 @@ class NeedRevalidation(State):
             # responses nominated in the conditional request are suitable. Instead, the cache
             # MUST use the full response to satisfy the request. The cache MAY store such a full
             # response, subject to its constraints (see Section 3).
-            return CacheMiss(pair_id=revalidation_pair.id, request=revalidation_pair.request, options=self.options)
+            return CacheMiss(
+                pair_id=revalidation_pair.id,
+                request=revalidation_pair.request,
+                options=self.options,
+                after_revalidation=True,
+            )
         elif revalidation_response.status_code // 100 == 5:
             # However, if a cache receives a 5xx (Server Error) response while attempting to
             # validate a response, it can either forward this response to the requesting client
             # or act as if the server failed to respond. In the latter case, the cache can send
             # a previously stored response, subject to its constraints on doing so
             # (see Section 4.2.4),or retry the validation request.
-            return CacheMiss(pair_id=revalidation_pair.id, request=revalidation_pair.request, options=self.options)
+            return CacheMiss(
+                pair_id=revalidation_pair.id,
+                request=revalidation_pair.request,
+                options=self.options,
+                after_revalidation=True,
+            )
         raise RuntimeError(
             f"Unexpected response status code during revalidation: {revalidation_response.status_code}"
         )  # pragma: nocover
