@@ -84,9 +84,10 @@ class SyncSqliteStorage(SyncBaseStorage):
 
     def create_pair(
         self,
+        id: uuid.UUID,
         request: Request,
     ) -> IncompletePair:
-        pair_id = uuid.uuid4()
+        pair_id = id if id is not None else uuid.uuid4()
         pair_meta = PairMeta(
             created_at=time.time(),
         )
