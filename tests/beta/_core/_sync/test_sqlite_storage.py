@@ -11,7 +11,7 @@ from hishel.beta._core._sync._storages._sqlite import SyncSqliteStorage
 
 
 @travel("2024-01-01 00:00:00")
-def test_create_pair(use_temp_dir: Any):
+def test_create_pair(use_temp_dir: Any) -> None:
     storage = SyncSqliteStorage()
 
     storage.create_pair(
@@ -49,7 +49,7 @@ Rows: 0
 
 
 @travel("2024-01-01 00:00:00")
-def test_create_pair_with_stream(use_temp_dir: Any):
+def test_create_pair_with_stream(use_temp_dir: Any) -> None:
     """Test creating a pair with a streaming request body."""
     storage = SyncSqliteStorage()
 
@@ -63,7 +63,7 @@ def test_create_pair_with_stream(use_temp_dir: Any):
         ),
     )
 
-    for _ in incomplete_pair.request.stream:
+    for _ in incomplete_pair.request.iter_stream():
         ...
 
     # Verify the pair was created with cache_key = NULL
@@ -112,7 +112,7 @@ Rows: 4
 
 
 @travel("2024-01-01 00:00:00")
-def test_add_response(use_temp_dir: Any):
+def test_add_response(use_temp_dir: Any) -> None:
     """Test adding a response to an existing pair."""
     storage = SyncSqliteStorage()
 
@@ -125,7 +125,7 @@ def test_add_response(use_temp_dir: Any):
         ),
     )
 
-    for _ in inc_pair.request.stream:
+    for _ in inc_pair.request.iter_stream():
         ...
 
     comp_pair = storage.add_response(
@@ -137,7 +137,7 @@ def test_add_response(use_temp_dir: Any):
         key="test_key",
     )
 
-    for _ in comp_pair.response.stream:
+    for _ in comp_pair.response.iter_stream():
         ...
 
     # Verify cache_key is now set and response is added
@@ -191,7 +191,7 @@ Rows: 5
 
 
 @travel("2024-01-01 00:00:00")
-def test_get_pairs(use_temp_dir: Any):
+def test_get_pairs(use_temp_dir: Any) -> None:
     """Test retrieving pairs by cache key."""
     storage = SyncSqliteStorage()
 
@@ -225,7 +225,7 @@ def test_get_pairs(use_temp_dir: Any):
 
 
 @travel("2024-01-01 00:00:00")
-def test_get_pairs_filters_incomplete(use_temp_dir: Any):
+def test_get_pairs_filters_incomplete(use_temp_dir: Any) -> None:
     """Test that get_pairs filters out incomplete pairs."""
     storage = SyncSqliteStorage()
 
@@ -260,7 +260,7 @@ def test_get_pairs_filters_incomplete(use_temp_dir: Any):
 
 
 @travel("2024-01-01 00:00:00")
-def test_update_pair(use_temp_dir: Any):
+def test_update_pair(use_temp_dir: Any) -> None:
     """Test updating an existing pair."""
     storage = SyncSqliteStorage()
 
@@ -290,7 +290,7 @@ def test_update_pair(use_temp_dir: Any):
 
 
 @travel("2024-01-01 00:00:00")
-def test_update_pair_with_new_pair(use_temp_dir: Any):
+def test_update_pair_with_new_pair(use_temp_dir: Any) -> None:
     """Test updating a pair by providing a new pair directly."""
     storage = SyncSqliteStorage()
 
@@ -314,7 +314,7 @@ def test_update_pair_with_new_pair(use_temp_dir: Any):
 
 
 @travel("2024-01-01 00:00:00")
-def test_remove_pair(use_temp_dir: Any):
+def test_remove_pair(use_temp_dir: Any) -> None:
     """Test soft-deleting a pair."""
     storage = SyncSqliteStorage()
 
@@ -342,7 +342,7 @@ def test_remove_pair(use_temp_dir: Any):
 
 
 @travel("2024-01-01 00:00:00")
-def test_stream_persistence(use_temp_dir: Any):
+def test_stream_persistence(use_temp_dir: Any) -> None:
     """Test that streams are properly saved and retrieved."""
     storage = SyncSqliteStorage()
 
@@ -368,15 +368,15 @@ def test_stream_persistence(use_temp_dir: Any):
     pairs = storage.get_pairs("stream_test")
     assert len(pairs) == 1
 
-    retrieved_request_chunks = list(pairs[0].request.stream)
-    retrieved_response_chunks = list(pairs[0].response.stream)
+    retrieved_request_chunks = list(pairs[0].request.iter_stream())
+    retrieved_response_chunks = list(pairs[0].response.iter_stream())
 
     assert retrieved_request_chunks == request_chunks
     assert retrieved_response_chunks == response_chunks
 
 
 @travel("2024-01-01 00:00:00")
-def test_multiple_pairs_different_keys(use_temp_dir: Any):
+def test_multiple_pairs_different_keys(use_temp_dir: Any) -> None:
     """Test that pairs with different keys are properly isolated."""
     storage = SyncSqliteStorage()
 
@@ -401,7 +401,7 @@ def test_multiple_pairs_different_keys(use_temp_dir: Any):
 
 
 @travel("2024-01-01 00:00:00")
-def test_remove_nonexistent_pair(use_temp_dir: Any):
+def test_remove_nonexistent_pair(use_temp_dir: Any) -> None:
     """Test that removing a non-existent pair doesn't raise an error."""
     storage = SyncSqliteStorage()
 
@@ -410,7 +410,7 @@ def test_remove_nonexistent_pair(use_temp_dir: Any):
 
 
 @travel("2024-01-01 00:00:00")
-def test_update_nonexistent_pair(use_temp_dir: Any):
+def test_update_nonexistent_pair(use_temp_dir: Any) -> None:
     """Test that updating a non-existent pair returns None."""
     storage = SyncSqliteStorage()
 
@@ -419,7 +419,7 @@ def test_update_nonexistent_pair(use_temp_dir: Any):
 
 
 @travel("2024-01-01 00:00:00")
-def test_add_response_to_nonexistent_pair(use_temp_dir: Any):
+def test_add_response_to_nonexistent_pair(use_temp_dir: Any) -> None:
     """Test that adding a response to non-existent pair raises an error."""
     storage = SyncSqliteStorage()
 

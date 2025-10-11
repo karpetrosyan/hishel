@@ -70,6 +70,7 @@ class AsyncSqliteStorage(AsyncBaseStorage):
     async def create_pair(
         self,
         request: Request,
+        id: uuid.UUID | None = None,
     ) -> IncompletePair:
         """
         Store a request in the backend under the given key.
@@ -90,6 +91,7 @@ class AsyncSqliteStorage(AsyncBaseStorage):
                 partial(
                     self._sync_sqlite_storage.create_pair,
                     replace(request, stream=async_iterator_to_sync(request.stream)),
+                    id,
                 )
             )
         )

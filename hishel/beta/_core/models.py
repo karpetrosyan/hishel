@@ -66,6 +66,16 @@ class Request:
     stream: Iterator[bytes] | AsyncIterator[bytes] = field(default_factory=lambda: iter(AnyIterable()))
     metadata: RequestMetadata | Mapping[str, Any] = field(default_factory=dict)
 
+    def iter_stream(self) -> Iterator[bytes]:
+        if isinstance(self.stream, Iterator):
+            return self.stream
+        raise TypeError("Request stream is not an Iterator")
+
+    async def aiter_stream(self) -> AsyncIterator[bytes]:
+        if isinstance(self.stream, AsyncIterator):
+            return self.stream
+        raise TypeError("Request stream is not an AsyncIterator")
+
 
 class ResponseMetadata(TypedDict, total=False):
     # All the names here should be prefixed with "hishel_" to avoid collisions with user data
@@ -88,6 +98,16 @@ class Response:
     headers: Headers = field(default_factory=lambda: Headers({}))
     stream: Iterator[bytes] | AsyncIterator[bytes] = field(default_factory=lambda: iter(AnyIterable()))
     metadata: ResponseMetadata | Mapping[str, Any] = field(default_factory=dict)
+
+    def iter_stream(self) -> Iterator[bytes]:
+        if isinstance(self.stream, Iterator):
+            return self.stream
+        raise TypeError("Response stream is not an Iterator")
+
+    async def aiter_stream(self) -> AsyncIterator[bytes]:
+        if isinstance(self.stream, AsyncIterator):
+            return self.stream
+        raise TypeError("Response stream is not an AsyncIterator")
 
 
 @dataclass

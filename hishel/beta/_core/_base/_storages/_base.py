@@ -14,6 +14,7 @@ class SyncBaseStorage(ABC):
     def create_pair(
         self,
         request: Request,
+        id: uuid.UUID | None = None,
     ) -> IncompletePair:
         """
         Store a request in the backend under the given key.
@@ -133,6 +134,7 @@ class AsyncBaseStorage(ABC):
     async def create_pair(
         self,
         request: Request,
+        id: uuid.UUID | None = None,
     ) -> IncompletePair:
         """
         Store a request in the backend under the given key.
