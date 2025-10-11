@@ -96,8 +96,23 @@ class PickleSerializer(BaseSerializer):
         return True
 
 
+class JSONLikeImplementation(tp.Protocol):
+    def dumps(self, obj: tp.Any) -> tp.Union[str, bytes]: ...
+    def loads(self, data: tp.Union[str, bytes]) -> tp.Any: ...
+
+
+class JSONImplementation:
+    def dumps(self, obj: tp.Any) -> tp.Union[str, bytes]:
+        return json.dumps(obj, indent=4)
+
+    def loads(self, data: tp.Union[str, bytes]) -> tp.Any:
+        return json.loads(data)
+
+
 class JSONSerializer(BaseSerializer):
     """A simple json-based serializer."""
+
+    implementation: JSONLikeImplementation = JSONImplementation()
 
     def dumps(self, response: Response, request: Request, metadata: Metadata) -> tp.Union[str, bytes]:
         """
@@ -146,7 +161,7 @@ class JSONSerializer(BaseSerializer):
             "metadata": metadata_dict,
         }
 
-        return json.dumps(full_json, indent=4)
+        return self.implementation.dumps(full_json)
 
     def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request, Metadata]:
         """
@@ -158,7 +173,7 @@ class JSONSerializer(BaseSerializer):
         :rtype: tp.Tuple[Response, Request, Metadata]
         """
 
-        full_json = json.loads(data)
+        full_json = self.implementation.loads(data)
 
         response_dict = full_json["response"]
         request_dict = full_json["request"]
@@ -206,124 +221,27 @@ class JSONSerializer(BaseSerializer):
         return False
 
 
-class YAMLSerializer(BaseSerializer):
+class YAMLImplementation:
+    def dumps(self, obj: tp.Any) -> tp.Union[str, bytes]:
+        if yaml is None:  # pragma: no cover
+            raise RuntimeError(
+                f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                "Check that you have `Hishel` installed with the `yaml` extension as shown.\n"
+                "```pip install hishel[yaml]```"
+            )
+        return yaml.safe_dump(obj, sort_keys=False)
+
+    def loads(self, data: tp.Union[str, bytes]) -> tp.Any:
+        if yaml is None:  # pragma: no cover
+            raise RuntimeError(
+                f"The `{type(self).__name__}` was used, but the required packages were not found. "
+                "Check that you have `Hishel` installed with the `yaml` extension as shown.\n"
+                "```pip install hishel[yaml]```"
+            )
+        return yaml.safe_load(data)
+
+
+class YAMLSerializer(JSONSerializer):
     """A simple yaml-based serializer."""
 
-    def dumps(self, response: Response, request: Request, metadata: Metadata) -> tp.Union[str, bytes]:
-        """
-        Dumps the HTTP response and its HTTP request.
-
-        :param response: An HTTP response
-        :type response: Response
-        :param request: An HTTP request
-        :type request: Request
-        :param metadata: Additional information about the stored response
-        :type metadata: Metadata
-        :return: Serialized response
-        :rtype: tp.Union[str, bytes]
-        """
-        if yaml is None:  # pragma: no cover
-            raise RuntimeError(
-                f"The `{type(self).__name__}` was used, but the required packages were not found. "
-                "Check that you have `Hishel` installed with the `yaml` extension as shown.\n"
-                "```pip install hishel[yaml]```"
-            )
-        response_dict = {
-            "status": response.status,
-            "headers": [
-                (key.decode(HEADERS_ENCODING), value.decode(HEADERS_ENCODING)) for key, value in response.headers
-            ],
-            "content": base64.b64encode(response.content).decode("ascii"),
-            "extensions": {
-                key: value.decode("ascii")
-                for key, value in response.extensions.items()
-                if key in KNOWN_RESPONSE_EXTENSIONS
-            },
-        }
-
-        request_dict = {
-            "method": request.method.decode("ascii"),
-            "url": normalized_url(request.url),
-            "headers": [
-                (key.decode(HEADERS_ENCODING), value.decode(HEADERS_ENCODING)) for key, value in request.headers
-            ],
-            "extensions": {key: value for key, value in request.extensions.items() if key in KNOWN_REQUEST_EXTENSIONS},
-        }
-
-        metadata_dict = {
-            "cache_key": metadata["cache_key"],
-            "number_of_uses": metadata["number_of_uses"],
-            "created_at": metadata["created_at"].strftime("%a, %d %b %Y %H:%M:%S GMT"),
-        }
-
-        full_json = {
-            "response": response_dict,
-            "request": request_dict,
-            "metadata": metadata_dict,
-        }
-
-        return yaml.safe_dump(full_json, sort_keys=False)
-
-    def loads(self, data: tp.Union[str, bytes]) -> tp.Tuple[Response, Request, Metadata]:
-        """
-        Loads the HTTP response and its HTTP request from serialized data.
-
-        :param data: Serialized data
-        :type data: tp.Union[str, bytes]
-        :raises RuntimeError: When used without the `yaml` extension installed
-        :return: HTTP response and its HTTP request
-        :rtype: tp.Tuple[Response, Request, Metadata]
-        """
-        if yaml is None:  # pragma: no cover
-            raise RuntimeError(
-                f"The `{type(self).__name__}` was used, but the required packages were not found. "
-                "Check that you have `Hishel` installed with the `yaml` extension as shown.\n"
-                "```pip install hishel[yaml]```"
-            )
-
-        full_json = yaml.safe_load(data)
-
-        response_dict = full_json["response"]
-        request_dict = full_json["request"]
-        metadata_dict = full_json["metadata"]
-        metadata_dict["created_at"] = datetime.strptime(
-            metadata_dict["created_at"],
-            "%a, %d %b %Y %H:%M:%S GMT",
-        )
-
-        response = Response(
-            status=response_dict["status"],
-            headers=[
-                (key.encode(HEADERS_ENCODING), value.encode(HEADERS_ENCODING))
-                for key, value in response_dict["headers"]
-            ],
-            content=base64.b64decode(response_dict["content"].encode("ascii")),
-            extensions={
-                key: value.encode("ascii")
-                for key, value in response_dict["extensions"].items()
-                if key in KNOWN_RESPONSE_EXTENSIONS
-            },
-        )
-
-        request = Request(
-            method=request_dict["method"],
-            url=request_dict["url"],
-            headers=[
-                (key.encode(HEADERS_ENCODING), value.encode(HEADERS_ENCODING)) for key, value in request_dict["headers"]
-            ],
-            extensions={
-                key: value for key, value in request_dict["extensions"].items() if key in KNOWN_REQUEST_EXTENSIONS
-            },
-        )
-
-        metadata = Metadata(
-            cache_key=metadata_dict["cache_key"],
-            created_at=metadata_dict["created_at"],
-            number_of_uses=metadata_dict["number_of_uses"],
-        )
-
-        return response, request, metadata
-
-    @property
-    def is_binary(self) -> bool:  # pragma: no cover
-        return False
+    implementation = YAMLImplementation()
