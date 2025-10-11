@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import sqlite3
-import threading
 import time
 import uuid
 from dataclasses import replace
@@ -45,42 +44,40 @@ class SyncSqliteStorage(SyncBaseStorage):
         self.default_ttl = default_ttl
         self.refresh_ttl_on_access = refresh_ttl_on_access
         self.last_cleanup = float("-inf")
-        self._lock = threading.Lock()
         self._initialize_database()
 
     def _initialize_database(self) -> None:
         """Initialize the database schema."""
-        with self._lock:
-            cursor = self.connection.cursor()
+        cursor = self.connection.cursor()
 
-            # Table for storing request/response pairs
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS entries (
-                    id BLOB PRIMARY KEY,
-                    cache_key BLOB,
-                    data BLOB NOT NULL,
-                    created_at REAL NOT NULL,
-                    deleted_at REAL
-                )
-            """)
+        # Table for storing request/response pairs
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS entries (
+                id BLOB PRIMARY KEY,
+                cache_key BLOB,
+                data BLOB NOT NULL,
+                created_at REAL NOT NULL,
+                deleted_at REAL
+            )
+        """)
 
-            # Table for storing stream chunks
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS streams (
-                    entry_id BLOB NOT NULL,
-                    chunk_key TEXT NOT NULL,
-                    chunk_data BLOB NOT NULL,
-                    PRIMARY KEY (entry_id, chunk_key),
-                    FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
-                )
-            """)
+        # Table for storing stream chunks
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS streams (
+                entry_id BLOB NOT NULL,
+                chunk_key TEXT NOT NULL,
+                chunk_data BLOB NOT NULL,
+                PRIMARY KEY (entry_id, chunk_key),
+                FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
+            )
+        """)
 
-            # Indexes for performance
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_deleted_at ON entries(deleted_at)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_cache_key ON entries(cache_key)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_streams_entry_id ON streams(entry_id)")
+        # Indexes for performance
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_deleted_at ON entries(deleted_at)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_cache_key ON entries(cache_key)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_streams_entry_id ON streams(entry_id)")
 
-            self.connection.commit()
+        self.connection.commit()
 
     def create_pair(
         self,
@@ -96,13 +93,12 @@ class SyncSqliteStorage(SyncBaseStorage):
 
         packed_pair = pack(pair, kind="pair")
 
-        with self._lock:
-            cursor = self.connection.cursor()
-            cursor.execute(
-                "INSERT INTO entries (id, cache_key, data, created_at, deleted_at) VALUES (?, ?, ?, ?, ?)",
-                (pair_id.bytes, None, packed_pair, pair_meta.created_at, None),
-            )
-            self.connection.commit()
+        cursor = self.connection.cursor()
+        cursor.execute(
+            "INSERT INTO entries (id, cache_key, data, created_at, deleted_at) VALUES (?, ?, ?, ?, ?)",
+            (pair_id.bytes, None, packed_pair, pair_meta.created_at, None),
+        )
+        self.connection.commit()
 
         assert isinstance(request.stream, Iterable), "Request stream must be an Iterable, not AsyncIterable"
 
@@ -125,50 +121,46 @@ class SyncSqliteStorage(SyncBaseStorage):
         if isinstance(key, str):
             key = key.encode("utf-8")
 
-        with self._lock:
-            cursor = self.connection.cursor()
+        cursor = self.connection.cursor()
 
-            # Get the existing pair
-            cursor.execute("SELECT data FROM entries WHERE id = ?", (pair_id.bytes,))
-            result = cursor.fetchone()
+        # Get the existing pair
+        cursor.execute("SELECT data FROM entries WHERE id = ?", (pair_id.bytes,))
+        result = cursor.fetchone()
 
-            if result is None:
-                raise ValueError(f"Entry with ID {pair_id} not found.")
+        if result is None:
+            raise ValueError(f"Entry with ID {pair_id} not found.")
 
-            pair = unpack(result[0], kind="pair")
+        pair = unpack(result[0], kind="pair")
 
-            assert isinstance(response.stream, (Iterator, Iterable))
-            response = replace(response, stream=self._save_stream(response.stream, pair_id.bytes, "response"))
+        assert isinstance(response.stream, (Iterator, Iterable))
+        response = replace(response, stream=self._save_stream(response.stream, pair_id.bytes, "response"))
 
-            assert isinstance(pair, IncompletePair)
-            complete_pair = CompletePair(
-                id=pair.id, request=pair.request, response=response, meta=pair.meta, cache_key=key
-            )
+        assert isinstance(pair, IncompletePair)
+        complete_pair = CompletePair(id=pair.id, request=pair.request, response=response, meta=pair.meta, cache_key=key)
 
-            # Update the entry with the complete pair and set cache_key
-            cursor.execute(
-                "UPDATE entries SET data = ?, cache_key = ? WHERE id = ?",
-                (pack(complete_pair, kind="pair"), key, pair_id.bytes),
-            )
-            self.connection.commit()
+        # Update the entry with the complete pair and set cache_key
+        cursor.execute(
+            "UPDATE entries SET data = ?, cache_key = ? WHERE id = ?",
+            (pack(complete_pair, kind="pair"), key, pair_id.bytes),
+        )
+        self.connection.commit()
 
         return complete_pair
 
     def get_pairs(self, key: str) -> List[CompletePair]:
         final_pairs: List[CompletePair] = []
 
-        with self._lock:
-            cursor = self.connection.cursor()
-            # Query entries directly by cache_key
-            cursor.execute("SELECT id, data FROM entries WHERE cache_key = ?", (key.encode("utf-8"),))
+        cursor = self.connection.cursor()
+        # Query entries directly by cache_key
+        cursor.execute("SELECT id, data FROM entries WHERE cache_key = ?", (key.encode("utf-8"),))
 
-            for row in cursor.fetchall():
-                pair_data = unpack(row[1], kind="pair")
+        for row in cursor.fetchall():
+            pair_data = unpack(row[1], kind="pair")
 
-                if isinstance(pair_data, IncompletePair):
-                    continue
+            if isinstance(pair_data, IncompletePair):
+                continue
 
-                final_pairs.append(pair_data)
+            final_pairs.append(pair_data)
 
         pairs_with_streams: List[CompletePair] = []
 
@@ -193,51 +185,49 @@ class SyncSqliteStorage(SyncBaseStorage):
         id: uuid.UUID,
         new_pair: Union[CompletePair, Callable[[CompletePair], CompletePair]],
     ) -> Optional[CompletePair]:
-        with self._lock:
-            cursor = self.connection.cursor()
-            cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
-            result = cursor.fetchone()
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
+        result = cursor.fetchone()
 
-            if result is None:
-                return None
+        if result is None:
+            return None
 
-            pair = unpack(result[0], kind="pair")
+        pair = unpack(result[0], kind="pair")
 
-            if isinstance(pair, IncompletePair):
-                return None
+        if isinstance(pair, IncompletePair):
+            return None
 
-            if isinstance(new_pair, CompletePair):
-                complete_pair = new_pair
-            else:
-                complete_pair = new_pair(pair)
+        if isinstance(new_pair, CompletePair):
+            complete_pair = new_pair
+        else:
+            complete_pair = new_pair(pair)
 
-            if pair.id != complete_pair.id:
-                raise ValueError("Pair ID mismatch")
+        if pair.id != complete_pair.id:
+            raise ValueError("Pair ID mismatch")
 
-            cursor.execute("UPDATE entries SET data = ? WHERE id = ?", (pack(complete_pair, kind="pair"), id.bytes))
+        cursor.execute("UPDATE entries SET data = ? WHERE id = ?", (pack(complete_pair, kind="pair"), id.bytes))
 
-            if pair.cache_key != complete_pair.cache_key:
-                cursor.execute(
-                    "UPDATE entries SET cache_key = ? WHERE id = ?",
-                    (complete_pair.cache_key, complete_pair.id.bytes),
-                )
+        if pair.cache_key != complete_pair.cache_key:
+            cursor.execute(
+                "UPDATE entries SET cache_key = ? WHERE id = ?",
+                (complete_pair.cache_key, complete_pair.id.bytes),
+            )
 
-            self.connection.commit()
+        self.connection.commit()
 
         return complete_pair
 
     def remove(self, id: uuid.UUID) -> None:
-        with self._lock:
-            cursor = self.connection.cursor()
-            cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
-            result = cursor.fetchone()
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
+        result = cursor.fetchone()
 
-            if result is None:
-                return None
+        if result is None:
+            return None
 
-            pair = unpack(result[0], kind="pair")
-            self._soft_delete_pair(pair, cursor)
-            self.connection.commit()
+        pair = unpack(result[0], kind="pair")
+        self._soft_delete_pair(pair, cursor)
+        self.connection.commit()
 
     def _is_stream_complete(
         self, kind: Literal["request", "response"], pair_id: uuid.UUID, cursor: sqlite3.Cursor
@@ -275,29 +265,26 @@ class SyncSqliteStorage(SyncBaseStorage):
         should_mark_as_deleted: List[Union[CompletePair, IncompletePair]] = []
         should_hard_delete: List[Union[CompletePair, IncompletePair]] = []
 
-        with self._lock:
-            cursor = self.connection.cursor()
-            cursor.execute("SELECT id, data FROM entries")
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT id, data FROM entries")
 
-            for row in cursor.fetchall():
-                pair = unpack(row[1], kind="pair")
-                if pair is None:
-                    continue
-                if self._is_pair_expired(pair, cursor) and not self.is_soft_deleted(pair):
-                    should_mark_as_deleted.append(pair)
+        for row in cursor.fetchall():
+            pair = unpack(row[1], kind="pair")
+            if pair is None:
+                continue
+            if self._is_pair_expired(pair, cursor) and not self.is_soft_deleted(pair):
+                should_mark_as_deleted.append(pair)
 
-                if (self.is_soft_deleted(pair) and self.is_safe_to_hard_delete(pair)) or self._is_corrupted(
-                    pair, cursor
-                ):
-                    should_hard_delete.append(pair)
+            if (self.is_soft_deleted(pair) and self.is_safe_to_hard_delete(pair)) or self._is_corrupted(pair, cursor):
+                should_hard_delete.append(pair)
 
-            for pair in should_mark_as_deleted:
-                self._soft_delete_pair(pair, cursor)
+        for pair in should_mark_as_deleted:
+            self._soft_delete_pair(pair, cursor)
 
-            for pair in should_hard_delete:
-                self._hard_delete_pair(pair, cursor)
+        for pair in should_hard_delete:
+            self._hard_delete_pair(pair, cursor)
 
-            self.connection.commit()
+        self.connection.commit()
 
     def _is_corrupted(self, pair: IncompletePair | CompletePair, cursor: sqlite3.Cursor) -> bool:
         # if pair was created more than 1 hour ago and still not completed
@@ -346,32 +333,30 @@ class SyncSqliteStorage(SyncBaseStorage):
         i = 0
         for chunk in stream:
             chunk_key = suffix.format(id=i)
-            with self._lock:
-                cursor = self.connection.cursor()
-                cursor.execute(
-                    "INSERT INTO streams (entry_id, chunk_key, chunk_data) VALUES (?, ?, ?)",
-                    (entry_id, chunk_key, chunk),
-                )
-                self.connection.commit()
+            cursor = self.connection.cursor()
+            cursor.execute(
+                "INSERT INTO streams (entry_id, chunk_key, chunk_data) VALUES (?, ?, ?)",
+                (entry_id, chunk_key, chunk),
+            )
+            self.connection.commit()
             i += 1
             yield chunk
 
         # Mark end of stream
         empty_chunk_key = suffix.format(id=i)
         complete_chunk_key = complete_suffix
-        with self._lock:
-            cursor = self.connection.cursor()
-            # add empty chunk to indicate end of stream
-            cursor.execute(
-                "INSERT INTO streams (entry_id, chunk_key, chunk_data) VALUES (?, ?, ?)",
-                (entry_id, empty_chunk_key, b""),
-            )
-            # add flag to indicate that the stream is complete
-            cursor.execute(
-                "INSERT INTO streams (entry_id, chunk_key, chunk_data) VALUES (?, ?, ?)",
-                (entry_id, complete_chunk_key, b""),
-            )
-            self.connection.commit()
+        cursor = self.connection.cursor()
+        # add empty chunk to indicate end of stream
+        cursor.execute(
+            "INSERT INTO streams (entry_id, chunk_key, chunk_data) VALUES (?, ?, ?)",
+            (entry_id, empty_chunk_key, b""),
+        )
+        # add flag to indicate that the stream is complete
+        cursor.execute(
+            "INSERT INTO streams (entry_id, chunk_key, chunk_data) VALUES (?, ?, ?)",
+            (entry_id, complete_chunk_key, b""),
+        )
+        self.connection.commit()
 
     def _stream_data_from_cache(
         self,
@@ -386,12 +371,9 @@ class SyncSqliteStorage(SyncBaseStorage):
 
         while True:
             chunk_key = suffix.format(id=i)
-            with self._lock:
-                cursor = self.connection.cursor()
-                cursor.execute(
-                    "SELECT chunk_data FROM streams WHERE entry_id = ? AND chunk_key = ?", (entry_id, chunk_key)
-                )
-                result = cursor.fetchone()
+            cursor = self.connection.cursor()
+            cursor.execute("SELECT chunk_data FROM streams WHERE entry_id = ? AND chunk_key = ?", (entry_id, chunk_key))
+            result = cursor.fetchone()
 
             if result is None:
                 break
@@ -406,23 +388,22 @@ def get_storage_state(storage: SyncSqliteStorage) -> str:
     """Get a string representation of the storage state for debugging."""
     state = ""
 
-    with storage._lock:
-        cursor = storage.connection.cursor()
+    cursor = storage.connection.cursor()
 
-        # Entry table
-        cursor.execute("SELECT id, data FROM entries")
-        for row in cursor.fetchall():
-            pair_id = uuid.UUID(bytes=row[0])
-            pair = unpack(row[1], "pair")
-            pair_kind = "complete" if isinstance(pair, CompletePair) else "incomplete"
-            state += f"Pair DB - Key: {pair_id} [{pair_kind}], Value: ...\n"
+    # Entry table
+    cursor.execute("SELECT id, data FROM entries")
+    for row in cursor.fetchall():
+        pair_id = uuid.UUID(bytes=row[0])
+        pair = unpack(row[1], "pair")
+        pair_kind = "complete" if isinstance(pair, CompletePair) else "incomplete"
+        state += f"Pair DB - Key: {pair_id} [{pair_kind}], Value: ...\n"
 
-        # Stream table
-        cursor.execute("SELECT entry_id, chunk_key, LENGTH(chunk_data) FROM streams")
-        for row in cursor.fetchall():
-            pair_id = uuid.UUID(bytes=row[0])
-            chunk_key = row[1]
-            length = row[2]
-            state += f"Stream DB - Key: {pair_id} - {chunk_key}, Length: [{length}] Value: ...\n"
+    # Stream table
+    cursor.execute("SELECT entry_id, chunk_key, LENGTH(chunk_data) FROM streams")
+    for row in cursor.fetchall():
+        pair_id = uuid.UUID(bytes=row[0])
+        chunk_key = row[1]
+        length = row[2]
+        state += f"Stream DB - Key: {pair_id} - {chunk_key}, Length: [{length}] Value: ...\n"
 
     return state
