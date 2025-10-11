@@ -350,7 +350,7 @@ def test_stream_persistence(use_temp_dir: Any) -> None:
     request_chunks = [b"req1", b"req2", b"req3"]
     response_chunks = [b"resp1", b"resp2"]
 
-    storage.create_pair(
+    inc_pair = storage.create_pair(
         id=pair_id,
         request=Request(
             method="POST",
@@ -358,11 +358,18 @@ def test_stream_persistence(use_temp_dir: Any) -> None:
             stream=iter(request_chunks),
         ),
     )
-    storage.add_response(
+
+    for _ in inc_pair.request.iter_stream():
+        ...
+
+    cmp_pair = storage.add_response(
         pair_id=pair_id,
         response=Response(status_code=200, stream=iter(response_chunks)),
         key="stream_test",
     )
+
+    for _ in cmp_pair.response.iter_stream():
+        ...
 
     # Retrieve and verify streams
     pairs = storage.get_pairs("stream_test")
