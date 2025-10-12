@@ -22,7 +22,7 @@ from hishel.beta._core._keygen import KeyGen
 from hishel.beta._core.models import IncompletePair
 
 if TYPE_CHECKING:
-    from hishel import CompletePair, Request, Response
+    from hishel.beta import CompletePair, Request, Response
 
 
 TState = TypeVar("TState", bound="State")

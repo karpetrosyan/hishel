@@ -14,7 +14,7 @@ from unittest.mock import ANY
 from inline_snapshot import snapshot
 from time_machine import travel
 
-from hishel import (
+from hishel.beta import (
     CacheMiss,
     CacheOptions,
     CompletePair,

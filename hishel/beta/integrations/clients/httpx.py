@@ -6,7 +6,7 @@ from typing import AsyncIterator, Iterator, Union, overload
 
 import httpx
 
-from hishel import Headers, Request, Response
+from hishel.beta import Headers, Request, Response
 from hishel.beta._core._base._storages._base import AsyncBaseStorage, SyncBaseStorage
 from hishel.beta._core._spec import (
     CacheOptions,

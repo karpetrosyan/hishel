@@ -13,7 +13,16 @@ from typing import Any, Dict, Iterator, Optional
 import pytest
 from inline_snapshot import snapshot
 
-from hishel import CacheMiss, CacheOptions, CompletePair, CouldNotBeStored, PairMeta, Request, Response, StoreAndUse
+from hishel.beta import (
+    CacheMiss,
+    CacheOptions,
+    CompletePair,
+    CouldNotBeStored,
+    PairMeta,
+    Request,
+    Response,
+    StoreAndUse,
+)
 from hishel.beta._core._headers import Headers
 
 

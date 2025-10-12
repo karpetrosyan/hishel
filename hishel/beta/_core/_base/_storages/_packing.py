@@ -15,7 +15,7 @@ def filter_out_hishel_metadata(data: Mapping[str, Any]) -> dict[str, Any]:
 
 
 if TYPE_CHECKING:
-    from hishel import CompletePair, IncompletePair
+    from hishel.beta import CompletePair, IncompletePair
 
 
 @overload
