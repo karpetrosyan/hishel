@@ -15,7 +15,7 @@ from typing import (
 
 import sqlite3
 
-from hishel.beta._core._base._storages._base import SyncBaseStorage
+from hishel.beta._core._base._storages._base import SyncBaseStorage, ensure_cache_dict
 from hishel.beta._core._base._storages._packing import pack, unpack
 from hishel.beta._core.models import (
     CompletePair,
@@ -39,8 +39,10 @@ class SyncSqliteStorage(SyncBaseStorage):
         default_ttl: Optional[float] = None,
         refresh_ttl_on_access: bool = True,
     ) -> None:
+        base_path = ensure_cache_dict()
+
         self.connection = connection
-        self.database_path = database_path
+        self.database_path = base_path / database_path
         self.default_ttl = default_ttl
         self.refresh_ttl_on_access = refresh_ttl_on_access
         self.last_cleanup = float("-inf")
@@ -49,7 +51,7 @@ class SyncSqliteStorage(SyncBaseStorage):
     def _ensure_connection(self) -> sqlite3.Connection:
         """Ensure connection is established and database is initialized."""
         if self.connection is None:
-            self.connection = sqlite3.connect(self.database_path)
+            self.connection = sqlite3.connect(str(self.database_path))
         if not self._initialized:
             self._initialize_database()
             self._initialized = True
@@ -86,7 +88,8 @@ class SyncSqliteStorage(SyncBaseStorage):
         # Indexes for performance
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_deleted_at ON entries(deleted_at)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_cache_key ON entries(cache_key)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_streams_entry_kind ON streams(entry_id, kind)")
+        # Note: PRIMARY KEY (entry_id, kind, chunk_number) already provides an index
+        # for queries like: entry_id = ? AND kind = ? AND chunk_number = ?
 
         self.connection.commit()
 
