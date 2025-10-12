@@ -215,7 +215,12 @@ async def sync_iterator_to_async(iterator: Iterator[bytes]) -> AsyncIterator[byt
         yield chunk
 
 
-async def iterable_to_async_iterator(iterable: Iterable[bytes]) -> AsyncIterator[bytes]:
+async def make_async_iterator(iterable: Iterable[bytes]) -> AsyncIterator[bytes]:
+    for item in iterable:
+        yield item
+
+
+def make_sync_iterator(iterable: Iterable[bytes]) -> Iterator[bytes]:
     for item in iterable:
         yield item
 

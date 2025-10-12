@@ -94,7 +94,7 @@ include = ["hishel/*", "tests/*"]
 exclude_also = ['__repr__', 'raise NotImplementedError()']
 
 [tool.ruff]
-exclude = ["hishel/_sync", "hishel/__init__.py", "tests/_sync"]
+exclude = ["hishel/_sync", "hishel/__init__.py", "tests/_sync", "hishel/beta/_core/_sync", "tests/beta/_core/_sync"]
 line-length = 120
 
 [tool.ruff.lint]

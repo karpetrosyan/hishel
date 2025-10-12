@@ -2,12 +2,13 @@ import uuid
 from dataclasses import replace
 from typing import Any
 
+import pytest
 from inline_snapshot import snapshot
 from time_machine import travel
 
-from hishel._utils import print_sqlite_state
-from hishel.beta import Request, Response
-from hishel.beta._core._sync._storages._sqlite import SyncSqliteStorage
+from hishel._utils import print_sqlite_state, make_sync_iterator
+from hishel.beta import SyncSqliteStorage, Request, Response
+
 
 
 @travel("2024-01-01 00:00:00")
@@ -22,7 +23,8 @@ def test_create_pair(use_temp_dir: Any) -> None:
         ),
     )
 
-    assert print_sqlite_state(storage.connection) == snapshot("""\
+    conn = storage._ensure_connection()
+    assert print_sqlite_state(conn) == snapshot("""\
 ================================================================================
 DATABASE SNAPSHOT
 ================================================================================
@@ -48,6 +50,7 @@ Rows: 0
 """)
 
 
+
 @travel("2024-01-01 00:00:00")
 def test_create_pair_with_stream(use_temp_dir: Any) -> None:
     """Test creating a pair with a streaming request body."""
@@ -59,7 +62,7 @@ def test_create_pair_with_stream(use_temp_dir: Any) -> None:
         request=Request(
             method="POST",
             url="https://example.com/upload",
-            stream=iter([b"chunk1", b"chunk2"]),
+            stream=make_sync_iterator([b"chunk1", b"chunk2"]),
         ),
     )
 
@@ -67,7 +70,8 @@ def test_create_pair_with_stream(use_temp_dir: Any) -> None:
         ...
 
     # Verify the pair was created with cache_key = NULL
-    assert print_sqlite_state(storage.connection) == snapshot("""\
+    conn = storage._ensure_connection()
+    assert print_sqlite_state(conn) == snapshot("""\
 ================================================================================
 DATABASE SNAPSHOT
 ================================================================================
@@ -85,30 +89,29 @@ Rows: 1
 
 TABLE: streams
 --------------------------------------------------------------------------------
-Rows: 4
+Rows: 3
 
   Row 1:
     entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
-    chunk_key       = 'request_chunk_0'
+    kind            = 0
+    chunk_number    = 0
     chunk_data      = (str) 'chunk1'
 
   Row 2:
     entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
-    chunk_key       = 'request_chunk_1'
+    kind            = 0
+    chunk_number    = 1
     chunk_data      = (str) 'chunk2'
 
   Row 3:
     entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
-    chunk_key       = 'request_chunk_2'
-    chunk_data      = (str) ''
-
-  Row 4:
-    entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
-    chunk_key       = 'request_complete'
+    kind            = 0
+    chunk_number    = -1
     chunk_data      = (str) ''
 
 ================================================================================\
 """)
+
 
 
 @travel("2024-01-01 00:00:00")
@@ -132,7 +135,7 @@ def test_add_response(use_temp_dir: Any) -> None:
         pair_id=pair_id,
         response=Response(
             status_code=200,
-            stream=iter([b"response data"]),
+            stream=make_sync_iterator([b"response data"]),
         ),
         key="test_key",
     )
@@ -141,7 +144,8 @@ def test_add_response(use_temp_dir: Any) -> None:
         ...
 
     # Verify cache_key is now set and response is added
-    assert print_sqlite_state(storage.connection) == snapshot("""\
+    conn = storage._ensure_connection()
+    assert print_sqlite_state(conn) == snapshot("""\
 ================================================================================
 DATABASE SNAPSHOT
 ================================================================================
@@ -159,35 +163,29 @@ Rows: 1
 
 TABLE: streams
 --------------------------------------------------------------------------------
-Rows: 5
+Rows: 3
 
   Row 1:
     entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
-    chunk_key       = 'request_chunk_0'
+    kind            = 0
+    chunk_number    = -1
     chunk_data      = (str) ''
 
   Row 2:
     entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
-    chunk_key       = 'request_complete'
-    chunk_data      = (str) ''
+    kind            = 1
+    chunk_number    = 0
+    chunk_data      = (str) 'response data'
 
   Row 3:
     entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
-    chunk_key       = 'response_chunk_0'
-    chunk_data      = (str) 'response data'
-
-  Row 4:
-    entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
-    chunk_key       = 'response_chunk_1'
-    chunk_data      = (str) ''
-
-  Row 5:
-    entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
-    chunk_key       = 'response_complete'
+    kind            = 1
+    chunk_number    = -1
     chunk_data      = (str) ''
 
 ================================================================================\
 """)
+
 
 
 @travel("2024-01-01 00:00:00")
@@ -203,7 +201,7 @@ def test_get_pairs(use_temp_dir: Any) -> None:
     )
     storage.add_response(
         pair_id=pair_id_1,
-        response=Response(status_code=200, stream=iter([b"response1"])),
+        response=Response(status_code=200, stream=make_sync_iterator([b"response1"])),
         key="shared_key",
     )
 
@@ -214,7 +212,7 @@ def test_get_pairs(use_temp_dir: Any) -> None:
     )
     storage.add_response(
         pair_id=pair_id_2,
-        response=Response(status_code=200, stream=iter([b"response2"])),
+        response=Response(status_code=200, stream=make_sync_iterator([b"response2"])),
         key="shared_key",
     )
 
@@ -222,6 +220,7 @@ def test_get_pairs(use_temp_dir: Any) -> None:
     pairs = storage.get_pairs("shared_key")
     assert len(pairs) == 2
     assert all(pair.cache_key == b"shared_key" for pair in pairs)
+
 
 
 @travel("2024-01-01 00:00:00")
@@ -237,7 +236,7 @@ def test_get_pairs_filters_incomplete(use_temp_dir: Any) -> None:
     )
     storage.add_response(
         pair_id=complete_id,
-        response=Response(status_code=200, stream=iter([b"data"])),
+        response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
         key="test_key",
     )
 
@@ -248,14 +247,16 @@ def test_get_pairs_filters_incomplete(use_temp_dir: Any) -> None:
         request=Request(method="GET", url="https://example.com/incomplete"),
     )
     # Update cache_key manually without adding response
-    cursor = storage.connection.cursor()
+    conn = storage._ensure_connection()
+    cursor = conn.cursor()
     cursor.execute("UPDATE entries SET cache_key = ? WHERE id = ?", (b"test_key", incomplete_id.bytes))
-    storage.connection.commit()
+    conn.commit()
 
     # Should only return the complete pair
     pairs = storage.get_pairs("test_key")
     assert len(pairs) == 1
     assert pairs[0].id == complete_id
+
 
 
 @travel("2024-01-01 00:00:00")
@@ -270,7 +271,7 @@ def test_update_pair(use_temp_dir: Any) -> None:
     )
     storage.add_response(
         pair_id=pair_id,
-        response=Response(status_code=200, stream=iter([b"original"])),
+        response=Response(status_code=200, stream=make_sync_iterator([b"original"])),
         key="original_key",
     )
 
@@ -288,6 +289,7 @@ def test_update_pair(use_temp_dir: Any) -> None:
     assert pairs[0].cache_key == b"updated_key"
 
 
+
 @travel("2024-01-01 00:00:00")
 def test_update_pair_with_new_pair(use_temp_dir: Any) -> None:
     """Test updating a pair by providing a new pair directly."""
@@ -300,7 +302,7 @@ def test_update_pair_with_new_pair(use_temp_dir: Any) -> None:
     )
     complete_pair = storage.add_response(
         pair_id=pair_id,
-        response=Response(status_code=200, stream=iter([b"data"])),
+        response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
         key="key1",
     )
 
@@ -310,6 +312,7 @@ def test_update_pair_with_new_pair(use_temp_dir: Any) -> None:
 
     assert result is not None
     assert result.cache_key == b"key2"
+
 
 
 @travel("2024-01-01 00:00:00")
@@ -324,7 +327,7 @@ def test_remove_pair(use_temp_dir: Any) -> None:
     )
     storage.add_response(
         pair_id=pair_id,
-        response=Response(status_code=200, stream=iter([b"data"])),
+        response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
         key="test_key",
     )
 
@@ -332,11 +335,13 @@ def test_remove_pair(use_temp_dir: Any) -> None:
     storage.remove(pair_id)
 
     # Verify deleted_at is set
-    cursor = storage.connection.cursor()
+    conn = storage._ensure_connection()
+    cursor = conn.cursor()
     cursor.execute("SELECT deleted_at FROM entries WHERE id = ?", (pair_id.bytes,))
     result = cursor.fetchone()
     assert result is not None
     assert result[0] is not None  # deleted_at should be set
+
 
 
 @travel("2024-01-01 00:00:00")
@@ -353,7 +358,7 @@ def test_stream_persistence(use_temp_dir: Any) -> None:
         request=Request(
             method="POST",
             url="https://example.com",
-            stream=iter(request_chunks),
+            stream=make_sync_iterator(request_chunks),
         ),
     )
 
@@ -362,7 +367,7 @@ def test_stream_persistence(use_temp_dir: Any) -> None:
 
     cmp_pair = storage.add_response(
         pair_id=pair_id,
-        response=Response(status_code=200, stream=iter(response_chunks)),
+        response=Response(status_code=200, stream=make_sync_iterator(response_chunks)),
         key="stream_test",
     )
 
@@ -373,11 +378,17 @@ def test_stream_persistence(use_temp_dir: Any) -> None:
     pairs = storage.get_pairs("stream_test")
     assert len(pairs) == 1
 
-    retrieved_request_chunks = list(pairs[0].request.iter_stream())
-    retrieved_response_chunks = list(pairs[0].response.iter_stream())
+    retrieved_request_chunks = []
+    for chunk in pairs[0].request.iter_stream():
+        retrieved_request_chunks.append(chunk)
+
+    retrieved_response_chunks = []
+    for chunk in pairs[0].response.iter_stream():
+        retrieved_response_chunks.append(chunk)
 
     assert retrieved_request_chunks == request_chunks
     assert retrieved_response_chunks == response_chunks
+
 
 
 @travel("2024-01-01 00:00:00")
@@ -394,7 +405,7 @@ def test_multiple_pairs_different_keys(use_temp_dir: Any) -> None:
         )
         storage.add_response(
             pair_id=pair_id,
-            response=Response(status_code=200, stream=iter([f"data{i}".encode()])),
+            response=Response(status_code=200, stream=make_sync_iterator([f"data{i}".encode()])),
             key=f"key_{i}",
         )
 
@@ -403,6 +414,7 @@ def test_multiple_pairs_different_keys(use_temp_dir: Any) -> None:
         pairs = storage.get_pairs(f"key_{i}")
         assert len(pairs) == 1
         assert pairs[0].request.url == f"https://example.com/{i}"
+
 
 
 @travel("2024-01-01 00:00:00")
@@ -414,6 +426,7 @@ def test_remove_nonexistent_pair(use_temp_dir: Any) -> None:
     storage.remove(uuid.UUID(int=999))
 
 
+
 @travel("2024-01-01 00:00:00")
 def test_update_nonexistent_pair(use_temp_dir: Any) -> None:
     """Test that updating a non-existent pair returns None."""
@@ -421,6 +434,7 @@ def test_update_nonexistent_pair(use_temp_dir: Any) -> None:
 
     result = storage.update_pair(uuid.UUID(int=999), lambda p: replace(p, cache_key=b"new_key"))
     assert result is None
+
 
 
 @travel("2024-01-01 00:00:00")
@@ -431,7 +445,7 @@ def test_add_response_to_nonexistent_pair(use_temp_dir: Any) -> None:
     try:
         storage.add_response(
             pair_id=uuid.UUID(int=999),
-            response=Response(status_code=200, stream=iter([b"data"])),
+            response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
             key="test_key",
         )
         assert False, "Expected ValueError"

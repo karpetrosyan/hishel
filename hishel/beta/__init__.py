@@ -1,3 +1,4 @@
+from hishel.beta._core._async._storages._sqlite import AsyncSqliteStorage
 from hishel.beta._core._base._storages._base import (
     AsyncBaseStorage as AsyncBaseStorage,
     SyncBaseStorage as SyncBaseStorage,
@@ -17,6 +18,7 @@ from hishel.beta._core._spec import (
     StoreAndUse as StoreAndUse,
     create_idle_state as create_idle_state,
 )
+from hishel.beta._core._sync._storages._sqlite import SyncSqliteStorage
 from hishel.beta._core.models import (
     CompletePair as CompletePair,
     IncompletePair as IncompletePair,
@@ -53,6 +55,8 @@ __all__ = (
     ## Storages
     "SyncBaseStorage",
     "AsyncBaseStorage",
+    "SyncSqliteStorage",
+    "AsyncSqliteStorage",
     ## Keygens
     "KeyGen",
     "HashKeyGen",

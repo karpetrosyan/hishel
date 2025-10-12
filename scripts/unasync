@@ -11,10 +11,17 @@ SUBS = [
     ("await ", ""),
     ("async for", "for"),
     ("__aiter__", "__iter__"),
+    ("AsyncIterator", "Iterator"),
+    ("AsyncIterable", "Iterable"),
+    ("@pytest.mark.anyio", ""),
     # our public API
     ("AsyncCacheProxy", "SyncCacheProxy"),
-    ("AsyncLmdbStorage", "SyncLmdbStorage"),
     ("AsyncBaseStorage", "SyncBaseStorage"),
+    ("AsyncSqliteStorage", "SyncSqliteStorage"),
+    ("anysqlite", "sqlite3"),
+    ("aiter_stream", "iter_stream"),
+    ("aprint_sqlite_state", "print_sqlite_state"),
+    ("make_async_iterator", "make_sync_iterator"),
 ]
 COMPILED_SUBS = [(re.compile(r"(^|\b)" + regex + r"($|\b)"), repl) for regex, repl in SUBS]
 
@@ -78,6 +85,24 @@ def main():
             unasync_file(file, temp_file.name)
             print(f"Wrote {temp_file.name}")
         return
+
+    FILES = [
+        (
+            "hishel/beta/_core/_async/_storages/_sqlite.py",
+            "hishel/beta/_core/_sync/_storages/_sqlite.py",
+        ),
+        (
+            "tests/beta/_core/_async/test_sqlite_storage.py",
+            "tests/beta/_core/_sync/test_sqlite_storage.py",
+        ),
+    ]
+
+    for in_path, out_path in FILES:
+        if check_only:
+            unasync_file_check(in_path, out_path)
+        else:
+            unasync_file(in_path, out_path)
+            print(f"Wrote {out_path}")
 
     if len(USED_SUBS) != len(SUBS):
         unused_subs = [SUBS[i] for i in range(len(SUBS)) if i not in USED_SUBS]

@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Mapping, Optional, Union, overload
+from typing import TYPE_CHECKING, Any, Mapping, Optional, Union, overload
 
 import msgpack
 from typing_extensions import Literal, cast
 
-from hishel import CompletePair, IncompletePair
 from hishel.beta._core._headers import Headers
 from hishel.beta._core.models import PairMeta, Request, Response
 
@@ -15,9 +14,13 @@ def filter_out_hishel_metadata(data: Mapping[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in data.items() if not k.startswith("hishel_")}
 
 
+if TYPE_CHECKING:
+    from hishel import CompletePair, IncompletePair
+
+
 @overload
 def pack(
-    value: CompletePair | IncompletePair,
+    value: "CompletePair" | "IncompletePair",
     /,
     kind: Literal["pair"],
 ) -> bytes: ...
@@ -32,10 +35,12 @@ def pack(
 
 
 def pack(
-    value: Union[CompletePair, IncompletePair, uuid.UUID],
+    value: Union["CompletePair", "IncompletePair", uuid.UUID],
     /,
     kind: Literal["pair", "entry_db_key_index"],
 ) -> bytes:
+    from hishel.beta import CompletePair, IncompletePair
+
     if kind == "entry_db_key_index":
         assert isinstance(value, uuid.UUID)
         return value.bytes
@@ -78,7 +83,7 @@ def unpack(
     value: bytes,
     /,
     kind: Literal["pair"],
-) -> Union[CompletePair, IncompletePair]: ...
+) -> Union["CompletePair", "IncompletePair"]: ...
 
 
 @overload
@@ -94,7 +99,7 @@ def unpack(
     value: Optional[bytes],
     /,
     kind: Literal["pair"],
-) -> Optional[Union[CompletePair, IncompletePair]]: ...
+) -> Optional[Union["CompletePair", "IncompletePair"]]: ...
 
 
 @overload
@@ -109,7 +114,9 @@ def unpack(
     value: Optional[bytes],
     /,
     kind: Literal["pair", "entry_db_key_index"],
-) -> Union[CompletePair, IncompletePair, uuid.UUID, None]:
+) -> Union["CompletePair", "IncompletePair", uuid.UUID, None]:
+    from hishel.beta import CompletePair, IncompletePair
+
     if value is None:
         return None
     if kind == "entry_db_key_index":

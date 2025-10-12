@@ -6,9 +6,8 @@ import pytest
 from inline_snapshot import snapshot
 from time_machine import travel
 
-from hishel._utils import aprint_sqlite_state
-from hishel.beta import Request, Response
-from hishel.beta._core._async._storages._sqlite import AsyncSqliteStorage
+from hishel._utils import aprint_sqlite_state, make_async_iterator
+from hishel.beta import AsyncSqliteStorage, Request, Response
 
 
 @pytest.mark.anyio
@@ -57,17 +56,13 @@ async def test_create_pair_with_stream(use_temp_dir: Any) -> None:
     """Test creating a pair with a streaming request body."""
     storage = AsyncSqliteStorage()
 
-    async def async_iter(items):
-        for item in items:
-            yield item
-
     pair_id = uuid.UUID(int=1)
     incomplete_pair = await storage.create_pair(
         id=pair_id,
         request=Request(
             method="POST",
             url="https://example.com/upload",
-            stream=async_iter([b"chunk1", b"chunk2"]),
+            stream=make_async_iterator([b"chunk1", b"chunk2"]),
         ),
     )
 
@@ -94,26 +89,24 @@ Rows: 1
 
 TABLE: streams
 --------------------------------------------------------------------------------
-Rows: 4
+Rows: 3
 
   Row 1:
     entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
-    chunk_key       = 'request_chunk_0'
+    kind            = 0
+    chunk_number    = 0
     chunk_data      = (str) 'chunk1'
 
   Row 2:
     entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
-    chunk_key       = 'request_chunk_1'
+    kind            = 0
+    chunk_number    = 1
     chunk_data      = (str) 'chunk2'
 
   Row 3:
     entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
-    chunk_key       = 'request_chunk_2'
-    chunk_data      = (str) ''
-
-  Row 4:
-    entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
-    chunk_key       = 'request_complete'
+    kind            = 0
+    chunk_number    = -1
     chunk_data      = (str) ''
 
 ================================================================================\
@@ -125,10 +118,6 @@ Rows: 4
 async def test_add_response(use_temp_dir: Any) -> None:
     """Test adding a response to an existing pair."""
     storage = AsyncSqliteStorage()
-
-    async def async_iter(items):
-        for item in items:
-            yield item
 
     pair_id = uuid.UUID(int=2)
     inc_pair = await storage.create_pair(
@@ -146,7 +135,7 @@ async def test_add_response(use_temp_dir: Any) -> None:
         pair_id=pair_id,
         response=Response(
             status_code=200,
-            stream=async_iter([b"response data"]),
+            stream=make_async_iterator([b"response data"]),
         ),
         key="test_key",
     )
@@ -174,31 +163,24 @@ Rows: 1
 
 TABLE: streams
 --------------------------------------------------------------------------------
-Rows: 5
+Rows: 3
 
   Row 1:
     entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
-    chunk_key       = 'request_chunk_0'
+    kind            = 0
+    chunk_number    = -1
     chunk_data      = (str) ''
 
   Row 2:
     entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
-    chunk_key       = 'request_complete'
-    chunk_data      = (str) ''
+    kind            = 1
+    chunk_number    = 0
+    chunk_data      = (str) 'response data'
 
   Row 3:
     entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
-    chunk_key       = 'response_chunk_0'
-    chunk_data      = (str) 'response data'
-
-  Row 4:
-    entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
-    chunk_key       = 'response_chunk_1'
-    chunk_data      = (str) ''
-
-  Row 5:
-    entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
-    chunk_key       = 'response_complete'
+    kind            = 1
+    chunk_number    = -1
     chunk_data      = (str) ''
 
 ================================================================================\
@@ -211,10 +193,6 @@ async def test_get_pairs(use_temp_dir: Any) -> None:
     """Test retrieving pairs by cache key."""
     storage = AsyncSqliteStorage()
 
-    async def async_iter(items):
-        for item in items:
-            yield item
-
     # Create two pairs with the same cache key
     pair_id_1 = uuid.UUID(int=3)
     await storage.create_pair(
@@ -223,7 +201,7 @@ async def test_get_pairs(use_temp_dir: Any) -> None:
     )
     await storage.add_response(
         pair_id=pair_id_1,
-        response=Response(status_code=200, stream=async_iter([b"response1"])),
+        response=Response(status_code=200, stream=make_async_iterator([b"response1"])),
         key="shared_key",
     )
 
@@ -234,7 +212,7 @@ async def test_get_pairs(use_temp_dir: Any) -> None:
     )
     await storage.add_response(
         pair_id=pair_id_2,
-        response=Response(status_code=200, stream=async_iter([b"response2"])),
+        response=Response(status_code=200, stream=make_async_iterator([b"response2"])),
         key="shared_key",
     )
 
@@ -250,10 +228,6 @@ async def test_get_pairs_filters_incomplete(use_temp_dir: Any) -> None:
     """Test that get_pairs filters out incomplete pairs."""
     storage = AsyncSqliteStorage()
 
-    async def async_iter(items):
-        for item in items:
-            yield item
-
     # Create a complete pair
     complete_id = uuid.UUID(int=5)
     await storage.create_pair(
@@ -262,7 +236,7 @@ async def test_get_pairs_filters_incomplete(use_temp_dir: Any) -> None:
     )
     await storage.add_response(
         pair_id=complete_id,
-        response=Response(status_code=200, stream=async_iter([b"data"])),
+        response=Response(status_code=200, stream=make_async_iterator([b"data"])),
         key="test_key",
     )
 
@@ -290,10 +264,6 @@ async def test_update_pair(use_temp_dir: Any) -> None:
     """Test updating an existing pair."""
     storage = AsyncSqliteStorage()
 
-    async def async_iter(items):
-        for item in items:
-            yield item
-
     pair_id = uuid.UUID(int=7)
     await storage.create_pair(
         id=pair_id,
@@ -301,7 +271,7 @@ async def test_update_pair(use_temp_dir: Any) -> None:
     )
     await storage.add_response(
         pair_id=pair_id,
-        response=Response(status_code=200, stream=async_iter([b"original"])),
+        response=Response(status_code=200, stream=make_async_iterator([b"original"])),
         key="original_key",
     )
 
@@ -325,10 +295,6 @@ async def test_update_pair_with_new_pair(use_temp_dir: Any) -> None:
     """Test updating a pair by providing a new pair directly."""
     storage = AsyncSqliteStorage()
 
-    async def async_iter(items):
-        for item in items:
-            yield item
-
     pair_id = uuid.UUID(int=8)
     await storage.create_pair(
         id=pair_id,
@@ -336,7 +302,7 @@ async def test_update_pair_with_new_pair(use_temp_dir: Any) -> None:
     )
     complete_pair = await storage.add_response(
         pair_id=pair_id,
-        response=Response(status_code=200, stream=async_iter([b"data"])),
+        response=Response(status_code=200, stream=make_async_iterator([b"data"])),
         key="key1",
     )
 
@@ -354,10 +320,6 @@ async def test_remove_pair(use_temp_dir: Any) -> None:
     """Test soft-deleting a pair."""
     storage = AsyncSqliteStorage()
 
-    async def async_iter(items):
-        for item in items:
-            yield item
-
     pair_id = uuid.UUID(int=9)
     await storage.create_pair(
         id=pair_id,
@@ -365,7 +327,7 @@ async def test_remove_pair(use_temp_dir: Any) -> None:
     )
     await storage.add_response(
         pair_id=pair_id,
-        response=Response(status_code=200, stream=async_iter([b"data"])),
+        response=Response(status_code=200, stream=make_async_iterator([b"data"])),
         key="test_key",
     )
 
@@ -387,10 +349,6 @@ async def test_stream_persistence(use_temp_dir: Any) -> None:
     """Test that streams are properly saved and retrieved."""
     storage = AsyncSqliteStorage()
 
-    async def async_iter(items):
-        for item in items:
-            yield item
-
     pair_id = uuid.UUID(int=10)
     request_chunks = [b"req1", b"req2", b"req3"]
     response_chunks = [b"resp1", b"resp2"]
@@ -400,7 +358,7 @@ async def test_stream_persistence(use_temp_dir: Any) -> None:
         request=Request(
             method="POST",
             url="https://example.com",
-            stream=async_iter(request_chunks),
+            stream=make_async_iterator(request_chunks),
         ),
     )
 
@@ -409,7 +367,7 @@ async def test_stream_persistence(use_temp_dir: Any) -> None:
 
     cmp_pair = await storage.add_response(
         pair_id=pair_id,
-        response=Response(status_code=200, stream=async_iter(response_chunks)),
+        response=Response(status_code=200, stream=make_async_iterator(response_chunks)),
         key="stream_test",
     )
 
@@ -438,10 +396,6 @@ async def test_multiple_pairs_different_keys(use_temp_dir: Any) -> None:
     """Test that pairs with different keys are properly isolated."""
     storage = AsyncSqliteStorage()
 
-    async def async_iter(items):
-        for item in items:
-            yield item
-
     # Create pairs with different keys
     for i in range(3):
         pair_id = uuid.UUID(int=100 + i)
@@ -451,7 +405,7 @@ async def test_multiple_pairs_different_keys(use_temp_dir: Any) -> None:
         )
         await storage.add_response(
             pair_id=pair_id,
-            response=Response(status_code=200, stream=async_iter([f"data{i}".encode()])),
+            response=Response(status_code=200, stream=make_async_iterator([f"data{i}".encode()])),
             key=f"key_{i}",
         )
 
@@ -488,14 +442,10 @@ async def test_add_response_to_nonexistent_pair(use_temp_dir: Any) -> None:
     """Test that adding a response to non-existent pair raises an error."""
     storage = AsyncSqliteStorage()
 
-    async def async_iter(items):
-        for item in items:
-            yield item
-
     try:
         await storage.add_response(
             pair_id=uuid.UUID(int=999),
-            response=Response(status_code=200, stream=async_iter([b"data"])),
+            response=Response(status_code=200, stream=make_async_iterator([b"data"])),
             key="test_key",
         )
         assert False, "Expected ValueError"

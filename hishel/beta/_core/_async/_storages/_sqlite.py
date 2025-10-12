@@ -28,8 +28,8 @@ from hishel.beta._core.models import (
 
 
 class AsyncSqliteStorage(AsyncBaseStorage):
-    _CHUNK_SUFFIX = {"request": "request_chunk_{id}", "response": "response_chunk_{id}"}
-    _COMPLETE_CHUNK_SUFFIX = {"request": "request_complete", "response": "response_complete"}
+    _STREAM_KIND = {"request": 0, "response": 1}
+    _COMPLETE_CHUNK_NUMBER = -1
 
     def __init__(
         self,
@@ -75,9 +75,10 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         await cursor.execute("""
             CREATE TABLE IF NOT EXISTS streams (
                 entry_id BLOB NOT NULL,
-                chunk_key TEXT NOT NULL,
+                kind INTEGER NOT NULL,
+                chunk_number INTEGER NOT NULL,
                 chunk_data BLOB NOT NULL,
-                PRIMARY KEY (entry_id, chunk_key),
+                PRIMARY KEY (entry_id, kind, chunk_number),
                 FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
             )
         """)
@@ -85,7 +86,7 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         # Indexes for performance
         await cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_deleted_at ON entries(deleted_at)")
         await cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_cache_key ON entries(cache_key)")
-        await cursor.execute("CREATE INDEX IF NOT EXISTS idx_streams_entry_id ON streams(entry_id)")
+        await cursor.execute("CREATE INDEX IF NOT EXISTS idx_streams_entry_kind ON streams(entry_id, kind)")
 
         await self.connection.commit()
 
@@ -103,13 +104,13 @@ class AsyncSqliteStorage(AsyncBaseStorage):
 
         packed_pair = pack(pair, kind="pair")
 
-        await self._ensure_connection()
-        cursor = await self.connection.cursor()
+        connection = await self._ensure_connection()
+        cursor = await connection.cursor()
         await cursor.execute(
             "INSERT INTO entries (id, cache_key, data, created_at, deleted_at) VALUES (?, ?, ?, ?, ?)",
             (pair_id.bytes, None, packed_pair, pair_meta.created_at, None),
         )
-        await self.connection.commit()
+        await connection.commit()
 
         assert isinstance(request.stream, AsyncIterable), "Request stream must be an AsyncIterable, not Iterable"
 
@@ -132,8 +133,8 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         if isinstance(key, str):
             key = key.encode("utf-8")
 
-        await self._ensure_connection()
-        cursor = await self.connection.cursor()
+        connection = await self._ensure_connection()
+        cursor = await connection.cursor()
 
         # Get the existing pair
         await cursor.execute("SELECT data FROM entries WHERE id = ?", (pair_id.bytes,))
@@ -155,15 +156,15 @@ class AsyncSqliteStorage(AsyncBaseStorage):
             "UPDATE entries SET data = ?, cache_key = ? WHERE id = ?",
             (pack(complete_pair, kind="pair"), key, pair_id.bytes),
         )
-        await self.connection.commit()
+        await connection.commit()
 
         return complete_pair
 
     async def get_pairs(self, key: str) -> List[CompletePair]:
         final_pairs: List[CompletePair] = []
 
-        await self._ensure_connection()
-        cursor = await self.connection.cursor()
+        connection = await self._ensure_connection()
+        cursor = await connection.cursor()
         # Query entries directly by cache_key
         await cursor.execute("SELECT id, data FROM entries WHERE cache_key = ?", (key.encode("utf-8"),))
 
@@ -198,8 +199,8 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         id: uuid.UUID,
         new_pair: Union[CompletePair, Callable[[CompletePair], CompletePair]],
     ) -> Optional[CompletePair]:
-        await self._ensure_connection()
-        cursor = await self.connection.cursor()
+        connection = await self._ensure_connection()
+        cursor = await connection.cursor()
         await cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
         result = await cursor.fetchone()
 
@@ -227,13 +228,13 @@ class AsyncSqliteStorage(AsyncBaseStorage):
                 (complete_pair.cache_key, complete_pair.id.bytes),
             )
 
-        await self.connection.commit()
+        await connection.commit()
 
         return complete_pair
 
     async def remove(self, id: uuid.UUID) -> None:
-        await self._ensure_connection()
-        cursor = await self.connection.cursor()
+        connection = await self._ensure_connection()
+        cursor = await connection.cursor()
         await cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
         result = await cursor.fetchone()
 
@@ -242,14 +243,16 @@ class AsyncSqliteStorage(AsyncBaseStorage):
 
         pair = unpack(result[0], kind="pair")
         await self._soft_delete_pair(pair, cursor)
-        await self.connection.commit()
+        await connection.commit()
 
     async def _is_stream_complete(
         self, kind: Literal["request", "response"], pair_id: uuid.UUID, cursor: anysqlite.Cursor
     ) -> bool:
-        complete_key = f"{kind}_complete"
+        kind_id = self._STREAM_KIND[kind]
+        # Check if there's a completion marker (chunk_number = -1)
         await cursor.execute(
-            "SELECT 1 FROM streams WHERE entry_id = ? AND chunk_key = ?", (pair_id.bytes, complete_key)
+            "SELECT 1 FROM streams WHERE entry_id = ? AND kind = ? AND chunk_number = ? LIMIT 1",
+            (pair_id.bytes, kind_id, self._COMPLETE_CHUNK_NUMBER),
         )
         return await cursor.fetchone() is not None
 
@@ -282,8 +285,8 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         should_mark_as_deleted: List[Union[CompletePair, IncompletePair]] = []
         should_hard_delete: List[Union[CompletePair, IncompletePair]] = []
 
-        await self._ensure_connection()
-        cursor = await self.connection.cursor()
+        connection = await self._ensure_connection()
+        cursor = await connection.cursor()
         await cursor.execute("SELECT id, data FROM entries")
 
         for row in await cursor.fetchall():
@@ -304,7 +307,7 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         for pair in should_hard_delete:
             await self._hard_delete_pair(pair, cursor)
 
-        await self.connection.commit()
+        await connection.commit()
 
     async def _is_corrupted(self, pair: IncompletePair | CompletePair, cursor: anysqlite.Cursor) -> bool:
         # if pair was created more than 1 hour ago and still not completed
@@ -321,23 +324,18 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         """
         await cursor.execute("DELETE FROM entries WHERE id = ?", (pair.id.bytes,))
 
-        await self._delete_stream(pair.id.bytes, cursor, kind="request")
-        await self._delete_stream(pair.id.bytes, cursor, kind="response")
+        # Delete all streams (both request and response) for this entry
+        await self._delete_stream(pair.id.bytes, cursor)
 
     async def _delete_stream(
         self,
         entry_id: bytes,
         cursor: anysqlite.Cursor,
-        kind: Literal["response", "request"],
     ) -> None:
         """
-        Delete the stream associated with the given entry ID.
+        Delete all streams (both request and response) associated with the given entry ID.
         """
-        # Delete all chunks for this entry and kind
-        await cursor.execute(
-            "DELETE FROM streams WHERE entry_id = ? AND (chunk_key LIKE ? OR chunk_key = ?)",
-            (entry_id, f"{kind}_chunk_%", f"{kind}_complete"),
-        )
+        await cursor.execute("DELETE FROM streams WHERE entry_id = ?", (entry_id,))
 
     async def _save_stream(
         self,
@@ -348,37 +346,27 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         """
         Wrapper around an async iterator that also saves the data to the cache in chunks.
         """
-        suffix = self._CHUNK_SUFFIX[kind]
-        complete_suffix = self._COMPLETE_CHUNK_SUFFIX[kind]
-        i = 0
+        kind_id = self._STREAM_KIND[kind]
+        chunk_number = 0
         async for chunk in stream:
-            chunk_key = suffix.format(id=i)
-            await self._ensure_connection()
-            cursor = await self.connection.cursor()
+            connection = await self._ensure_connection()
+            cursor = await connection.cursor()
             await cursor.execute(
-                "INSERT INTO streams (entry_id, chunk_key, chunk_data) VALUES (?, ?, ?)",
-                (entry_id, chunk_key, chunk),
+                "INSERT INTO streams (entry_id, kind, chunk_number, chunk_data) VALUES (?, ?, ?, ?)",
+                (entry_id, kind_id, chunk_number, chunk),
             )
-            await self.connection.commit()
-            i += 1
+            await connection.commit()
+            chunk_number += 1
             yield chunk
 
-        # Mark end of stream
-        empty_chunk_key = suffix.format(id=i)
-        complete_chunk_key = complete_suffix
-        await self._ensure_connection()
-        cursor = await self.connection.cursor()
-        # add empty chunk to indicate end of stream
+        # Mark end of stream with chunk_number = -1
+        connection = await self._ensure_connection()
+        cursor = await connection.cursor()
         await cursor.execute(
-            "INSERT INTO streams (entry_id, chunk_key, chunk_data) VALUES (?, ?, ?)",
-            (entry_id, empty_chunk_key, b""),
+            "INSERT INTO streams (entry_id, kind, chunk_number, chunk_data) VALUES (?, ?, ?, ?)",
+            (entry_id, kind_id, self._COMPLETE_CHUNK_NUMBER, b""),
         )
-        # add flag to indicate that the stream is complete
-        await cursor.execute(
-            "INSERT INTO streams (entry_id, chunk_key, chunk_data) VALUES (?, ?, ?)",
-            (entry_id, complete_chunk_key, b""),
-        )
-        await self.connection.commit()
+        await connection.commit()
 
     async def _stream_data_from_cache(
         self,
@@ -388,22 +376,23 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         """
         Get an async iterator that yields the stream data from the cache.
         """
-        suffix = self._CHUNK_SUFFIX[kind]
-        i = 0
+        kind_id = self._STREAM_KIND[kind]
+        chunk_number = 0
 
+        connection = await self._ensure_connection()
         while True:
-            chunk_key = suffix.format(id=i)
-            await self._ensure_connection()
-            cursor = await self.connection.cursor()
+            cursor = await connection.cursor()
             await cursor.execute(
-                "SELECT chunk_data FROM streams WHERE entry_id = ? AND chunk_key = ?", (entry_id, chunk_key)
+                "SELECT chunk_data FROM streams WHERE entry_id = ? AND kind = ? AND chunk_number = ?",
+                (entry_id, kind_id, chunk_number),
             )
             result = await cursor.fetchone()
 
             if result is None:
                 break
             chunk = result[0]
+            # chunk_number = -1 is the completion marker with empty data
             if chunk == b"":
                 break
             yield chunk
-            i += 1
+            chunk_number += 1
