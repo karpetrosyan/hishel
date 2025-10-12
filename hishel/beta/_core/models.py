@@ -73,8 +73,10 @@ class Request:
 
     async def aiter_stream(self) -> AsyncIterator[bytes]:
         if isinstance(self.stream, AsyncIterator):
-            return self.stream
-        raise TypeError("Request stream is not an AsyncIterator")
+            async for chunk in self.stream:
+                yield chunk
+        else:
+            raise TypeError("Request stream is not an AsyncIterator")
 
 
 class ResponseMetadata(TypedDict, total=False):
@@ -106,8 +108,10 @@ class Response:
 
     async def aiter_stream(self) -> AsyncIterator[bytes]:
         if isinstance(self.stream, AsyncIterator):
-            return self.stream
-        raise TypeError("Response stream is not an AsyncIterator")
+            async for chunk in self.stream:
+                yield chunk
+        else:
+            raise TypeError("Response stream is not an AsyncIterator")
 
 
 @dataclass

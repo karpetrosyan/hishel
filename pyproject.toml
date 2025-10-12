@@ -28,6 +28,7 @@ classifiers = [
 ]
 dependencies = [
     "anyio>=4.9.0",
+    "anysqlite>=0.0.5",
     "httpx>=0.28.0",
     "lmdb>=1.7.3",
     "msgpack>=1.1.1",

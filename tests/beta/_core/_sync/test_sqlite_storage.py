@@ -248,10 +248,9 @@ def test_get_pairs_filters_incomplete(use_temp_dir: Any) -> None:
         request=Request(method="GET", url="https://example.com/incomplete"),
     )
     # Update cache_key manually without adding response
-    with storage._lock:
-        cursor = storage.connection.cursor()
-        cursor.execute("UPDATE entries SET cache_key = ? WHERE id = ?", (b"test_key", incomplete_id.bytes))
-        storage.connection.commit()
+    cursor = storage.connection.cursor()
+    cursor.execute("UPDATE entries SET cache_key = ? WHERE id = ?", (b"test_key", incomplete_id.bytes))
+    storage.connection.commit()
 
     # Should only return the complete pair
     pairs = storage.get_pairs("test_key")
@@ -333,12 +332,11 @@ def test_remove_pair(use_temp_dir: Any) -> None:
     storage.remove(pair_id)
 
     # Verify deleted_at is set
-    with storage._lock:
-        cursor = storage.connection.cursor()
-        cursor.execute("SELECT deleted_at FROM entries WHERE id = ?", (pair_id.bytes,))
-        result = cursor.fetchone()
-        assert result is not None
-        assert result[0] is not None  # deleted_at should be set
+    cursor = storage.connection.cursor()
+    cursor.execute("SELECT deleted_at FROM entries WHERE id = ?", (pair_id.bytes,))
+    result = cursor.fetchone()
+    assert result is not None
+    assert result[0] is not None  # deleted_at should be set
 
 
 @travel("2024-01-01 00:00:00")
