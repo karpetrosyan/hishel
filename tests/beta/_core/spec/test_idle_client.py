@@ -558,7 +558,7 @@ class TestTransitionToFromCache:
         # Assert
         assert isinstance(next_state, FromCache)
 
-    def test_cache_hit_with_all_conditions_met(self, idle_client: IdleClient):
+    def test_cache_hit_with_all_conditions_met(self, idle_client: IdleClient) -> None:
         """
         Test: Cache hit when all RFC 9111 conditions are met.
 

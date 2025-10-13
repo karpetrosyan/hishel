@@ -91,7 +91,7 @@ class TestTransitionToStoreAndUse:
     - Response contains explicit caching directives or is heuristically cacheable
     """
 
-    def test_response_with_max_age_is_stored(self, default_options: CacheOptions, pair_id: uuid.UUID):
+    def test_response_with_max_age_is_stored(self, default_options: CacheOptions, pair_id: uuid.UUID) -> None:
         """
         Test: Response with max-age directive is stored.
 
@@ -116,7 +116,7 @@ class TestTransitionToStoreAndUse:
         assert response.metadata.get("hishel_stored") is True
         assert response.metadata.get("hishel_from_cache") is False
 
-    def test_response_with_expires_header_is_stored(self, default_options: CacheOptions, pair_id: uuid.UUID):
+    def test_response_with_expires_header_is_stored(self, default_options: CacheOptions, pair_id: uuid.UUID) -> None:
         """
         Test: Response with Expires header is stored.
 
@@ -140,7 +140,7 @@ class TestTransitionToStoreAndUse:
         assert isinstance(next_state, StoreAndUse)
         assert response.metadata.get("hishel_stored") is True
 
-    def test_response_with_public_directive_is_stored(self, default_options: CacheOptions, pair_id: uuid.UUID):
+    def test_response_with_public_directive_is_stored(self, default_options: CacheOptions, pair_id: uuid.UUID) -> None:
         """
         Test: Response with public directive is stored.
 
@@ -163,7 +163,9 @@ class TestTransitionToStoreAndUse:
         assert isinstance(next_state, StoreAndUse)
         assert response.metadata.get("hishel_stored") is True
 
-    def test_response_with_s_maxage_is_stored_in_shared_cache(self, default_options: CacheOptions, pair_id: uuid.UUID):
+    def test_response_with_s_maxage_is_stored_in_shared_cache(
+        self, default_options: CacheOptions, pair_id: uuid.UUID
+    ) -> None:
         """
         Test: Response with s-maxage is stored in shared cache.
 
@@ -187,7 +189,9 @@ class TestTransitionToStoreAndUse:
         assert isinstance(next_state, StoreAndUse)
         assert response.metadata.get("hishel_stored") is True
 
-    def test_private_response_stored_in_private_cache(self, private_cache_options: CacheOptions, pair_id: uuid.UUID):
+    def test_private_response_stored_in_private_cache(
+        self, private_cache_options: CacheOptions, pair_id: uuid.UUID
+    ) -> None:
         """
         Test: Response with private directive is stored in private cache.
 
@@ -213,7 +217,7 @@ class TestTransitionToStoreAndUse:
     @pytest.mark.parametrize("status_code", HEURISTICALLY_CACHEABLE_STATUS_CODES)
     def test_heuristically_cacheable_status_codes_are_stored(
         self, default_options: CacheOptions, pair_id: uuid.UUID, status_code: int
-    ):
+    ) -> None:
         """
         Test: Responses with heuristically cacheable status codes are stored.
 
@@ -239,7 +243,9 @@ class TestTransitionToStoreAndUse:
         assert isinstance(next_state, StoreAndUse)
         assert response.metadata.get("hishel_stored") is True
 
-    def test_response_after_revalidation_marked_correctly(self, default_options: CacheOptions, pair_id: uuid.UUID):
+    def test_response_after_revalidation_marked_correctly(
+        self, default_options: CacheOptions, pair_id: uuid.UUID
+    ) -> None:
         """
         Test: Response received after revalidation is marked with metadata.
 
@@ -263,7 +269,7 @@ class TestTransitionToStoreAndUse:
         assert isinstance(next_state, StoreAndUse)
         assert response.metadata.get("hishel_revalidated") is True
 
-    def test_response_with_multiple_caching_directives(self, default_options: CacheOptions, pair_id: uuid.UUID):
+    def test_response_with_multiple_caching_directives(self, default_options: CacheOptions, pair_id: uuid.UUID) -> None:
         """
         Test: Response with multiple caching directives is stored.
 
@@ -302,7 +308,7 @@ class TestTransitionToCouldNotBeStored:
     - Response explicitly prohibits caching
     """
 
-    def test_unsupported_method_cannot_be_stored(self, default_options: CacheOptions, pair_id: uuid.UUID):
+    def test_unsupported_method_cannot_be_stored(self, default_options: CacheOptions, pair_id: uuid.UUID) -> None:
         """
         Test: Response to unsupported method cannot be stored.
 
@@ -328,7 +334,7 @@ class TestTransitionToCouldNotBeStored:
     @pytest.mark.parametrize("status_code", [100, 101, 102, 103])
     def test_informational_status_codes_cannot_be_stored(
         self, default_options: CacheOptions, pair_id: uuid.UUID, status_code: int
-    ):
+    ) -> None:
         """
         Test: 1xx informational responses cannot be stored.
 
@@ -354,7 +360,7 @@ class TestTransitionToCouldNotBeStored:
     @pytest.mark.parametrize("status_code", [206, 304])
     def test_special_status_codes_cannot_be_stored(
         self, default_options: CacheOptions, pair_id: uuid.UUID, status_code: int
-    ):
+    ) -> None:
         """
         Test: 206 and 304 status codes cannot be stored (simplified implementation).
 
@@ -379,7 +385,7 @@ class TestTransitionToCouldNotBeStored:
         # Assert
         assert isinstance(next_state, CouldNotBeStored)
 
-    def test_no_store_directive_prevents_storage(self, default_options: CacheOptions, pair_id: uuid.UUID):
+    def test_no_store_directive_prevents_storage(self, default_options: CacheOptions, pair_id: uuid.UUID) -> None:
         """
         Test: no-store directive prevents storage.
 
@@ -404,7 +410,7 @@ class TestTransitionToCouldNotBeStored:
 
     def test_private_directive_prevents_storage_in_shared_cache(
         self, default_options: CacheOptions, pair_id: uuid.UUID
-    ):
+    ) -> None:
         """
         Test: private directive prevents storage in shared cache.
 
@@ -430,7 +436,7 @@ class TestTransitionToCouldNotBeStored:
 
     def test_authorization_header_prevents_storage_in_shared_cache(
         self, default_options: CacheOptions, pair_id: uuid.UUID
-    ):
+    ) -> None:
         """
         Test: Authorization header prevents storage in shared cache.
 
@@ -456,7 +462,7 @@ class TestTransitionToCouldNotBeStored:
 
     def test_response_without_caching_metadata_and_non_cacheable_status(
         self, default_options: CacheOptions, pair_id: uuid.UUID
-    ):
+    ) -> None:
         """
         Test: Response without caching metadata and non-cacheable status cannot be stored.
 
@@ -486,7 +492,9 @@ class TestTransitionToCouldNotBeStored:
         assert isinstance(next_state, CouldNotBeStored)
         assert response.metadata.get("hishel_stored") is False
 
-    def test_response_with_no_store_overrides_other_directives(self, default_options: CacheOptions, pair_id: uuid.UUID):
+    def test_response_with_no_store_overrides_other_directives(
+        self, default_options: CacheOptions, pair_id: uuid.UUID
+    ) -> None:
         """
         Test: no-store overrides other caching directives.
 
@@ -518,7 +526,7 @@ class TestMetadataAndObservability:
     Tests for metadata flags that provide observability into cache behavior.
     """
 
-    def test_metadata_flags_set_on_stored_response(self, default_options: CacheOptions, pair_id: uuid.UUID):
+    def test_metadata_flags_set_on_stored_response(self, default_options: CacheOptions, pair_id: uuid.UUID) -> None:
         """
         Test: Correct metadata flags are set when response is stored.
 
@@ -539,7 +547,7 @@ class TestMetadataAndObservability:
         assert response.metadata.get("hishel_from_cache") is False
         assert response.metadata.get("hishel_stored") is True
 
-    def test_metadata_flags_set_on_not_stored_response(self, default_options: CacheOptions, pair_id: uuid.UUID):
+    def test_metadata_flags_set_on_not_stored_response(self, default_options: CacheOptions, pair_id: uuid.UUID) -> None:
         """
         Test: Correct metadata flags are set when response cannot be stored.
         """
@@ -558,7 +566,9 @@ class TestMetadataAndObservability:
         assert response.metadata.get("hishel_from_cache") is False
         assert response.metadata.get("hishel_stored") is False
 
-    def test_revalidation_flag_set_when_after_revalidation(self, default_options: CacheOptions, pair_id: uuid.UUID):
+    def test_revalidation_flag_set_when_after_revalidation(
+        self, default_options: CacheOptions, pair_id: uuid.UUID
+    ) -> None:
         """
         Test: hishel_revalidated flag is set when after_revalidation is True.
 
@@ -579,7 +589,7 @@ class TestMetadataAndObservability:
 
     def test_revalidation_flag_not_set_when_not_after_revalidation(
         self, default_options: CacheOptions, pair_id: uuid.UUID
-    ):
+    ) -> None:
         """
         Test: hishel_revalidated flag is not set for normal cache misses.
         """
@@ -606,7 +616,7 @@ class TestEdgeCasesAndCacheTypes:
     Tests for edge cases and differences between shared and private caches.
     """
 
-    def test_shared_cache_vs_private_cache_with_private_directive(self, pair_id: uuid.UUID):
+    def test_shared_cache_vs_private_cache_with_private_directive(self, pair_id: uuid.UUID) -> None:
         """
         Test: private directive behavior differs between shared and private caches.
 
@@ -632,7 +642,7 @@ class TestEdgeCasesAndCacheTypes:
         next_state_private = cache_miss_private.next(response_private, pair_id)
         assert isinstance(next_state_private, StoreAndUse)
 
-    def test_s_maxage_only_applies_to_shared_cache(self, pair_id: uuid.UUID):
+    def test_s_maxage_only_applies_to_shared_cache(self, pair_id: uuid.UUID) -> None:
         """
         Test: s-maxage directive only provides caching metadata for shared caches.
 
@@ -666,7 +676,7 @@ class TestEdgeCasesAndCacheTypes:
         next_state_private = cache_miss_private.next(response_private, pair_id)
         assert isinstance(next_state_private, CouldNotBeStored)
 
-    def test_options_propagated_to_next_state(self, default_options: CacheOptions, pair_id: uuid.UUID):
+    def test_options_propagated_to_next_state(self, default_options: CacheOptions, pair_id: uuid.UUID) -> None:
         """
         Test: Cache options are propagated to the next state.
         """
@@ -683,7 +693,7 @@ class TestEdgeCasesAndCacheTypes:
         next_state_not_store = cache_miss.next(response_not_storable, pair_id)
         assert next_state_not_store.options == default_options
 
-    def test_pair_id_propagated_correctly(self, default_options: CacheOptions):
+    def test_pair_id_propagated_correctly(self, default_options: CacheOptions) -> None:
         """
         Test: pair_id is correctly propagated to next states.
         """
@@ -701,7 +711,7 @@ class TestEdgeCasesAndCacheTypes:
         next_state_not_store = cache_miss.next(response_not_storable, test_pair_id)
         assert next_state_not_store.pair_id == test_pair_id
 
-    def test_response_with_no_cache_control_header(self, default_options: CacheOptions, pair_id: uuid.UUID):
+    def test_response_with_no_cache_control_header(self, default_options: CacheOptions, pair_id: uuid.UUID) -> None:
         """
         Test: Response without Cache-Control header.
 

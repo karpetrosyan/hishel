@@ -674,7 +674,7 @@ class TestExcludeUnstorableHeaders:
             "proxy-authorization",
         ],
     )
-    def test_connection_specific_headers_excluded(self, header: str):
+    def test_connection_specific_headers_excluded(self, header: str) -> None:
         """
         Test: Connection-specific headers are excluded.
 
