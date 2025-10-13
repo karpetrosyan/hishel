@@ -845,6 +845,7 @@ def exclude_unstorable_headers(response: Response, is_cache_shared: bool) -> Res
     # https://www.rfc-editor.org/rfc/rfc9110#section-7.6.1
     need_to_be_excluded = set(
         [
+            "connection",  # Connection management
             "keep-alive",  # Connection timeout and max requests
             "te",  # Transfer encoding accepted by client
             "transfer-encoding",  # How the body is encoded for transfer
