@@ -47,7 +47,8 @@ def test_simple_caching_ignoring_spec(use_temp_dir: Any, caplog: pytest.LogCaptu
     assert caplog.messages == snapshot(
         [
             "Trying to get cached response ignoring specification",
-            "Found 0 cached pairs for the request", "Storing response in cache ignoring specification",
+            "Found 0 cached pairs for the request",
+            "Storing response in cache ignoring specification",
             "Trying to get cached response ignoring specification",
             "Found 1 cached pairs for the request",
             "Found matching cached response for the request",
