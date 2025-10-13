@@ -151,7 +151,7 @@ class TestTransitionToCacheMiss:
     - RFC 9111 conditions for cache reuse are not met
     """
 
-    def test_no_cached_responses(self, idle_client: IdleClient):
+    def test_no_cached_responses(self, idle_client: IdleClient) -> None:
         """
         Test: Empty cache results in CacheMiss.
 
@@ -161,7 +161,7 @@ class TestTransitionToCacheMiss:
         """
         # Arrange
         request = create_request()
-        associated_pairs = []  # Empty cache
+        associated_pairs: list[CompletePair] = []  # Empty cache
 
         # Act
         next_state = idle_client.next(request, associated_pairs)
@@ -171,7 +171,7 @@ class TestTransitionToCacheMiss:
         assert next_state.request == request
         assert next_state.options == idle_client.options
 
-    def test_range_request_causes_cache_miss(self, idle_client: IdleClient):
+    def test_range_request_causes_cache_miss(self, idle_client: IdleClient) -> None:
         """
         Test: Requests with Range header result in CacheMiss.
 
@@ -193,7 +193,7 @@ class TestTransitionToCacheMiss:
         assert isinstance(next_state, CacheMiss)
         assert next_state.request == request
 
-    def test_unsafe_method_causes_cache_miss(self, idle_client: IdleClient):
+    def test_unsafe_method_causes_cache_miss(self, idle_client: IdleClient) -> None:
         """
         Test: Unsafe methods (POST, PUT, DELETE, etc.) result in CacheMiss.
 
@@ -222,7 +222,7 @@ class TestTransitionToCacheMiss:
             assert isinstance(next_state, CacheMiss), f"{method} should result in CacheMiss"
             assert next_state.request == request
 
-    def test_url_mismatch_causes_cache_miss(self, idle_client: IdleClient):
+    def test_url_mismatch_causes_cache_miss(self, idle_client: IdleClient) -> None:
         """
         Test: Different URLs result in CacheMiss.
 
@@ -246,7 +246,7 @@ class TestTransitionToCacheMiss:
         # Assert
         assert isinstance(next_state, CacheMiss)
 
-    def test_method_mismatch_causes_cache_miss(self, idle_client: IdleClient):
+    def test_method_mismatch_causes_cache_miss(self, idle_client: IdleClient) -> None:
         """
         Test: Different request methods result in CacheMiss.
 
@@ -270,7 +270,7 @@ class TestTransitionToCacheMiss:
         # Assert
         assert isinstance(next_state, CacheMiss)
 
-    def test_vary_header_mismatch_causes_cache_miss(self, idle_client: IdleClient):
+    def test_vary_header_mismatch_causes_cache_miss(self, idle_client: IdleClient) -> None:
         """
         Test: Mismatched Vary headers result in CacheMiss.
 
@@ -299,7 +299,7 @@ class TestTransitionToCacheMiss:
         # Assert
         assert isinstance(next_state, CacheMiss)
 
-    def test_vary_star_always_causes_cache_miss(self, idle_client: IdleClient):
+    def test_vary_star_always_causes_cache_miss(self, idle_client: IdleClient) -> None:
         """
         Test: Vary: * always results in CacheMiss.
 
@@ -324,7 +324,7 @@ class TestTransitionToCacheMiss:
         # Assert
         assert isinstance(next_state, CacheMiss)
 
-    def test_no_cache_directive_requires_revalidation(self, idle_client: IdleClient):
+    def test_no_cache_directive_requires_revalidation(self, idle_client: IdleClient) -> None:
         """
         Test: Cached response with no-cache directive requires revalidation.
 
@@ -349,7 +349,7 @@ class TestTransitionToCacheMiss:
         # With no-cache, the response is filtered out, leading to CacheMiss
         assert isinstance(next_state, CacheMiss)
 
-    def test_all_responses_stale_and_not_allowed_causes_revalidation(self, idle_client: IdleClient):
+    def test_all_responses_stale_and_not_allowed_causes_revalidation(self, idle_client: IdleClient) -> None:
         """
         Test: When all cached responses are stale and cannot be served stale.
 
@@ -392,7 +392,7 @@ class TestTransitionToFromCache:
     - All RFC 9111 conditions for cache reuse are met
     """
 
-    def test_fresh_response_served_from_cache(self, idle_client: IdleClient):
+    def test_fresh_response_served_from_cache(self, idle_client: IdleClient) -> None:
         """
         Test: Fresh cached response is served from cache.
 
@@ -427,7 +427,7 @@ class TestTransitionToFromCache:
         # Verify metadata flag
         assert next_state.pair.response.metadata.get("hishel_from_cache") is True
 
-    def test_stale_but_allowed_response_served_from_cache(self, idle_client_allow_stale: IdleClient):
+    def test_stale_but_allowed_response_served_from_cache(self, idle_client_allow_stale: IdleClient) -> None:
         """
         Test: Stale response is served when explicitly allowed.
 
@@ -455,7 +455,7 @@ class TestTransitionToFromCache:
         age_value = int(next_state.pair.response.headers["age"])
         assert age_value >= 7200
 
-    def test_most_recent_response_selected_when_multiple_available(self, idle_client: IdleClient):
+    def test_most_recent_response_selected_when_multiple_available(self, idle_client: IdleClient) -> None:
         """
         Test: Most recent response is selected when multiple are cached.
 
@@ -500,7 +500,7 @@ class TestTransitionToFromCache:
         assert selected_age >= 1000
         assert selected_age < 2000  # Should be closer to 1000 than 2000
 
-    def test_age_header_updated_correctly(self, idle_client: IdleClient):
+    def test_age_header_updated_correctly(self, idle_client: IdleClient) -> None:
         """
         Test: Age header is calculated and updated correctly.
 
@@ -532,7 +532,7 @@ class TestTransitionToFromCache:
         assert age_value >= initial_age
         assert age_value < initial_age + 5  # Shouldn't increase by more than a few seconds
 
-    def test_matching_vary_headers_allows_cache_hit(self, idle_client: IdleClient):
+    def test_matching_vary_headers_allows_cache_hit(self, idle_client: IdleClient) -> None:
         """
         Test: Matching Vary headers allow cache hit.
 
@@ -612,7 +612,7 @@ class TestTransitionToNeedRevalidation:
     - Validation is required before serving
     """
 
-    def test_stale_response_requires_revalidation(self, idle_client: IdleClient):
+    def test_stale_response_requires_revalidation(self, idle_client: IdleClient) -> None:
         """
         Test: Stale response that cannot be served stale requires revalidation.
 
@@ -638,7 +638,7 @@ class TestTransitionToNeedRevalidation:
         assert len(next_state.revalidating_pairs) == 1
         assert next_state.revalidating_pairs[0] == cached_pair
 
-    def test_conditional_request_created_for_revalidation(self, idle_client: IdleClient):
+    def test_conditional_request_created_for_revalidation(self, idle_client: IdleClient) -> None:
         """
         Test: Conditional request is created with validators from cached response.
 
@@ -671,7 +671,7 @@ class TestTransitionToNeedRevalidation:
         # Should have If-None-Match (from ETag) or If-Modified-Since (from Last-Modified)
         assert "if-none-match" in conditional_request.headers or "if-modified-since" in conditional_request.headers
 
-    def test_must_revalidate_directive_forces_revalidation(self):
+    def test_must_revalidate_directive_forces_revalidation(self) -> None:
         """
         Test: must-revalidate directive forces revalidation of stale responses.
 
@@ -701,7 +701,7 @@ class TestTransitionToNeedRevalidation:
         # must-revalidate should override allow_stale
         assert isinstance(next_state, NeedRevalidation)
 
-    def test_multiple_stale_responses_all_included_in_revalidation(self, idle_client: IdleClient):
+    def test_multiple_stale_responses_all_included_in_revalidation(self, idle_client: IdleClient) -> None:
         """
         Test: Multiple stale responses are all passed to revalidation state.
 
@@ -739,7 +739,7 @@ class TestEdgeCasesAndCompliance:
     Tests for edge cases and specific RFC 9111 compliance scenarios.
     """
 
-    def test_response_without_explicit_freshness_info(self, idle_client: IdleClient):
+    def test_response_without_explicit_freshness_info(self, idle_client: IdleClient) -> None:
         """
         Test: Response without explicit freshness information.
 
@@ -774,7 +774,7 @@ class TestEdgeCasesAndCompliance:
         # Since it's fresh, it should be FromCache
         assert isinstance(next_state, (FromCache, NeedRevalidation, CacheMiss))
 
-    def test_safe_methods_can_be_cached(self, idle_client: IdleClient):
+    def test_safe_methods_can_be_cached(self, idle_client: IdleClient) -> None:
         """
         Test: Safe methods (GET, HEAD) can be cached.
 
@@ -798,7 +798,7 @@ class TestEdgeCasesAndCompliance:
             # Assert
             assert isinstance(next_state, FromCache), f"{method} should be cacheable"
 
-    def test_options_propagated_to_next_state(self, idle_client: IdleClient):
+    def test_options_propagated_to_next_state(self, idle_client: IdleClient) -> None:
         """
         Test: Cache options are propagated to the next state.
 
@@ -821,7 +821,7 @@ class TestEdgeCasesAndCompliance:
         next_state_revalidate = idle_client.next(request, [stale_pair])
         assert next_state_revalidate.options == idle_client.options
 
-    def test_metadata_flag_set_on_cache_hit(self, idle_client: IdleClient):
+    def test_metadata_flag_set_on_cache_hit(self, idle_client: IdleClient) -> None:
         """
         Test: Metadata flag is set when response is served from cache.
 
@@ -838,7 +838,7 @@ class TestEdgeCasesAndCompliance:
         assert isinstance(next_state, FromCache)
         assert next_state.pair.response.metadata.get("hishel_from_cache") is True
 
-    def test_empty_vary_header_treated_as_no_vary(self, idle_client: IdleClient):
+    def test_empty_vary_header_treated_as_no_vary(self, idle_client: IdleClient) -> None:
         """
         Test: Empty or missing Vary header means no variance on request headers.
 
@@ -859,7 +859,7 @@ class TestEdgeCasesAndCompliance:
         # Assert
         assert isinstance(next_state, FromCache)
 
-    def test_age_close_to_zero_for_newly_generated_response(self, idle_client: IdleClient):
+    def test_age_close_to_zero_for_newly_generated_response(self, idle_client: IdleClient) -> None:
         """
         Test: Age should be close to zero for a freshly cached response.
 
@@ -881,7 +881,7 @@ class TestEdgeCasesAndCompliance:
         age_value = int(next_state.pair.response.headers["age"])
         assert age_value < 10  # Should be very close to 0
 
-    def test_sorting_handles_responses_without_date_header(self, idle_client: IdleClient):
+    def test_sorting_handles_responses_without_date_header(self, idle_client: IdleClient) -> None:
         """
         Test: Sorting handles missing Date headers gracefully.
 
@@ -925,7 +925,7 @@ class TestIntegrationScenarios:
     Integration tests simulating real-world caching scenarios.
     """
 
-    def test_content_negotiation_with_vary(self, idle_client: IdleClient):
+    def test_content_negotiation_with_vary(self, idle_client: IdleClient) -> None:
         """
         Test: Content negotiation scenario with Vary header.
 
@@ -951,7 +951,7 @@ class TestIntegrationScenarios:
         next_state_xml = idle_client.next(xml_request, [cached_json])
         assert isinstance(next_state_xml, CacheMiss)
 
-    def test_compression_negotiation_with_vary_accept_encoding(self, idle_client: IdleClient):
+    def test_compression_negotiation_with_vary_accept_encoding(self, idle_client: IdleClient) -> None:
         """
         Test: Compression negotiation with Vary: Accept-Encoding.
 
@@ -976,7 +976,7 @@ class TestIntegrationScenarios:
         next_state_br = idle_client.next(br_request, [cached_gzip])
         assert isinstance(next_state_br, CacheMiss)
 
-    def test_lifecycle_fresh_to_stale_transition(self, idle_client: IdleClient):
+    def test_lifecycle_fresh_to_stale_transition(self, idle_client: IdleClient) -> None:
         """
         Test: Simulates the lifecycle of a response from fresh to stale.
 
@@ -1002,7 +1002,7 @@ class TestIntegrationScenarios:
         next_state_stale = idle_client.next(request, [stale_pair])
         assert isinstance(next_state_stale, NeedRevalidation)
 
-    def test_multiple_vary_headers(self, idle_client: IdleClient):
+    def test_multiple_vary_headers(self, idle_client: IdleClient) -> None:
         """
         Test: Response with multiple Vary headers.
 

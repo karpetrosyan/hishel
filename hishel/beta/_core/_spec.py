@@ -60,163 +60,695 @@ def vary_headers_match(
     associated_pair: CompletePair,
 ) -> bool:
     """
-    4.1 Calculating cache key with the vary header value
+    Determines if request headers match the Vary requirements of a cached response.
 
-    see: https://www.rfc-editor.org/rfc/rfc9111.html#caching.negotiated.responses
+    The Vary header specifies which request headers were used to select the
+    representation. For a cached response to be reusable, all headers listed
+    in Vary must match between the original and new requests.
+
+    RFC 9111 Section 4.1: Calculating Cache Keys
+    https://www.rfc-editor.org/rfc/rfc9111.html#section-4.1
+
+    Parameters:
+    ----------
+    original_request : Request
+        The new incoming request that we're trying to satisfy
+    associated_pair : CompletePair
+        A cached request-response pair that might match the new request
+
+    Returns:
+    -------
+    bool
+        True if the Vary headers match (or no Vary header exists),
+        False if they don't match or Vary contains "*"
+
+    RFC 9111 Compliance:
+    -------------------
+    From RFC 9111 Section 4.1:
+    "When a cache receives a request that can be satisfied by a stored response
+    and that stored response contains a Vary header field, the cache MUST NOT
+    use that stored response without revalidation unless all the presented
+    request header fields nominated by that Vary field value match those fields
+    in the original request (i.e., the request that caused the cached response
+    to be stored)."
+
+    "The header fields from two requests are defined to match if and only if
+    those in the first request can be transformed to those in the second request
+    by applying any of the following:
+     - adding or removing whitespace
+     - combining multiple header field lines with the same field name
+     - normalizing header field values"
+
+    "A stored response with a Vary header field value containing a member '*'
+    always fails to match."
+
+    Examples:
+    --------
+    >>> # No Vary header - always matches
+    >>> request = Request(headers=Headers({"accept": "application/json"}))
+    >>> response = Response(headers=Headers({}))  # No Vary
+    >>> pair = CompletePair(request=request, response=response)
+    >>> vary_headers_match(request, pair)
+    True
+
+    >>> # Vary: Accept with matching Accept header
+    >>> request1 = Request(headers=Headers({"accept": "application/json"}))
+    >>> response = Response(headers=Headers({"vary": "Accept"}))
+    >>> pair = CompletePair(request=request1, response=response)
+    >>> request2 = Request(headers=Headers({"accept": "application/json"}))
+    >>> vary_headers_match(request2, pair)
+    True
+
+    >>> # Vary: Accept with non-matching Accept header
+    >>> request2 = Request(headers=Headers({"accept": "application/xml"}))
+    >>> vary_headers_match(request2, pair)
+    False
+
+    >>> # Vary: * always fails
+    >>> response = Response(headers=Headers({"vary": "*"}))
+    >>> pair = CompletePair(request=request1, response=response)
+    >>> vary_headers_match(request2, pair)
+    False
     """
+    # Extract the Vary header from the cached response
     vary_header = associated_pair.response.headers.get("vary")
+
+    # If no Vary header exists, any request matches
+    # The response doesn't vary based on request headers
     if not vary_header:
         return True
 
+    # Parse the Vary header value into individual header names
     vary = Vary.from_value(vary_header)
 
+    # Check each header name listed in Vary
     for vary_header in vary.values:
+        # Special case: Vary: *
+        # RFC 9111 Section 4.1: "A stored response with a Vary header field
+        # value containing a member '*' always fails to match."
+        #
+        # Vary: * means the response varies on factors beyond request headers
+        # (e.g., cookies, user agent state, time of day). It can never be matched.
         if vary_header == "*":
             return False
 
+        # Compare the specific header value between original and new request
+        # Both headers must have the same value (or both be absent)
         if original_request.headers.get(vary_header) != associated_pair.request.headers.get(vary_header):
             return False
 
+    # All Vary headers matched
     return True
 
 
 def get_freshness_lifetime(response: Response, is_cache_shared: bool) -> Optional[int]:
     """
-    Get the freshness lifetime of a response.
+    Calculates the freshness lifetime of a cached response in seconds.
 
-    See: https://www.rfc-editor.org/rfc/rfc9111.html#name-calculating-freshness-lifet
+    The freshness lifetime is the time period during which a cached response
+    can be used without validation. It's determined by explicit directives
+    (max-age, s-maxage, Expires) or heuristically calculated.
+
+    RFC 9111 Section 4.2.1: Calculating Freshness Lifetime
+    https://www.rfc-editor.org/rfc/rfc9111.html#section-4.2.1
+
+    Parameters:
+    ----------
+    response : Response
+        The cached response to calculate freshness for
+    is_cache_shared : bool
+        True if this is a shared cache (proxy, CDN), False for private cache (browser)
+
+    Returns:
+    -------
+    Optional[int]
+        Freshness lifetime in seconds, or None if it cannot be determined
+
+    RFC 9111 Compliance:
+    -------------------
+    From RFC 9111 Section 4.2.1:
+    "A cache can calculate the freshness lifetime (denoted as freshness_lifetime)
+    of a response by evaluating the following rules and using the first match:
+
+     - If the cache is shared and the s-maxage response directive is present,
+       use its value
+     - If the max-age response directive is present, use its value
+     - If the Expires response header field is present, use its value minus
+       the value of the Date response header field
+     - Otherwise, no explicit expiration time is present in the response.
+       A heuristic freshness lifetime might be applicable; see Section 4.2.2"
+
+    Priority Order:
+    --------------
+    1. s-maxage (shared caches only) - highest priority
+    2. max-age - applies to all caches
+    3. Expires - Date - legacy but still supported
+    4. Heuristic freshness - calculated from Last-Modified
+
+    Examples:
+    --------
+    >>> # max-age directive
+    >>> response = Response(headers=Headers({"cache-control": "max-age=3600"}))
+    >>> get_freshness_lifetime(response, is_cache_shared=True)
+    3600
+
+    >>> # s-maxage overrides max-age for shared caches
+    >>> response = Response(headers=Headers({
+    ...     "cache-control": "max-age=3600, s-maxage=7200"
+    ... }))
+    >>> get_freshness_lifetime(response, is_cache_shared=True)
+    7200
+    >>> get_freshness_lifetime(response, is_cache_shared=False)
+    3600
     """
+    # Parse the Cache-Control header to extract directives
     response_cache_control = parse_cache_control(response.headers.get("Cache-Control"))
 
+    # PRIORITY 1: s-maxage (Shared Cache Only)
+    # RFC 9111 Section 5.2.2.10: s-maxage Response Directive
+    # https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.2.10
+    #
+    # "The s-maxage response directive indicates that, for a shared cache,
+    # the maximum age specified by this directive overrides the maximum age
+    # specified by either the max-age directive or the Expires header field."
+    #
+    # s-maxage only applies to shared caches (proxies, CDNs)
+    # Private caches (browsers) ignore it and fall through to max-age
     if is_cache_shared and response_cache_control.s_maxage is not None:
         return response_cache_control.s_maxage
 
+    # PRIORITY 2: max-age
+    # RFC 9111 Section 5.2.2.1: max-age Response Directive
+    # https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.2.1
+    #
+    # "The max-age response directive indicates that the response is to be
+    # considered stale after its age is greater than the specified number
+    # of seconds."
+    #
+    # max-age is the most common caching directive
+    # It applies to both shared and private caches
     if response_cache_control.max_age is not None:
         return response_cache_control.max_age
 
+    # PRIORITY 3: Expires - Date
+    # RFC 9111 Section 5.3: Expires
+    # https://www.rfc-editor.org/rfc/rfc9111.html#section-5.3
+    #
+    # "The Expires header field gives the date/time after which the response
+    # is considered stale."
+    #
+    # This is an older mechanism (HTTP/1.0) but still supported
+    # Freshness lifetime = Expires - Date
     if "expires" in response.headers:
         expires_timestamp = parse_date(response.headers["expires"])
 
         if expires_timestamp is None:
             raise RuntimeError("Cannot parse Expires header")  # pragma: nocover
 
+        # Get the Date header or use current time as fallback
         date_timestamp = parse_date(response.headers["date"]) if "date" in response.headers else time.time()
 
         if date_timestamp is None:  # pragma: nocover
-            # if the Date header is invalid, we use the current time as the date
+            # If the Date header is invalid, we use the current time as the date
+            # RFC 9110 Section 6.6.1: Date
+            # "A recipient with a clock that receives a response with an invalid
+            # Date header field value MAY replace that value with the time that
+            # response was received."
             date_timestamp = time.time()
 
+        # Calculate freshness lifetime as difference between Expires and Date
         return int(expires_timestamp - (time.time() if date_timestamp is None else date_timestamp))
+
+    # PRIORITY 4: Heuristic Freshness
+    # RFC 9111 Section 4.2.2: Calculating Heuristic Freshness
+    # https://www.rfc-editor.org/rfc/rfc9111.html#section-4.2.2
+    #
+    # "Since origin servers do not always provide explicit expiration times,
+    # a cache MAY assign a heuristic expiration time when an explicit time
+    # is not specified."
+    #
+    # If no explicit freshness information exists, try to calculate it
+    # heuristically based on the Last-Modified header
     heuristic_freshness = get_heuristic_freshness(response)
 
     if heuristic_freshness is None:
         return None
+
     return get_heuristic_freshness(response)
 
 
 def allowed_stale(response: Response, allow_stale_option: bool) -> bool:
     """
-    4.2.4 Serving stale responses
+    Determines if a stale response is allowed to be served without revalidation.
 
-    RFC Reference: https://www.rfc-editor.org/rfc/rfc9111.html#name-serving-stale-responses
+    Stale responses can sometimes be served to improve performance or availability,
+    but only if certain conditions are met and it's explicitly allowed.
+
+    RFC 9111 Section 4.2.4: Serving Stale Responses
+    https://www.rfc-editor.org/rfc/rfc9111.html#section-4.2.4
+
+    Parameters:
+    ----------
+    response : Response
+        The stale cached response being considered for use
+    allow_stale_option : bool
+        Configuration flag indicating if serving stale is allowed
+
+    Returns:
+    -------
+    bool
+        True if the stale response is allowed to be served, False otherwise
+
+    RFC 9111 Compliance:
+    -------------------
+    From RFC 9111 Section 4.2.4:
+    "A cache MUST NOT generate a stale response if it is prohibited by an
+    explicit in-protocol directive (e.g., by a no-cache response directive,
+    a must-revalidate response directive, or an applicable s-maxage or
+    proxy-revalidate response directive; see Section 5.2.2)."
+
+    "A cache MUST NOT generate a stale response unless it is disconnected or
+    doing so is explicitly permitted by the client or origin server (e.g., by
+    the max-stale request directive in Section 5.2.1, extension directives
+    such as those defined in [RFC5861], or configuration in accordance with
+    an out-of-band contract)."
+
+    Conditions that prohibit serving stale:
+    --------------------------------------
+    1. allow_stale_option is False (configuration disallows it)
+    2. Response has no-cache directive (must always revalidate)
+    3. Response has must-revalidate directive (must revalidate when stale)
+    4. Response has proxy-revalidate directive (shared caches must revalidate)
+    5. Response has s-maxage directive (shared caches must revalidate)
+
+    Examples:
+    --------
+    >>> # Stale allowed with permissive configuration
+    >>> response = Response(headers=Headers({"cache-control": "max-age=3600"}))
+    >>> allowed_stale(response, allow_stale_option=True)
+    True
+
+    >>> # Stale not allowed when configuration disables it
+    >>> allowed_stale(response, allow_stale_option=False)
+    False
+
+    >>> # must-revalidate prevents serving stale
+    >>> response = Response(headers=Headers({
+    ...     "cache-control": "max-age=3600, must-revalidate"
+    ... }))
+    >>> allowed_stale(response, allow_stale_option=True)
+    False
     """
-
+    # First check: Is serving stale enabled in configuration?
+    # If not, we can't serve stale responses regardless of directives
     if not allow_stale_option:
         return False
-    response_cache_control = parse_cache_control(
-        response.headers.get(
-            "Cache-Control",
-        )
-    )
 
+    # Parse Cache-Control directives to check for prohibitions
+    response_cache_control = parse_cache_control(response.headers.get("Cache-Control"))
+
+    # PROHIBITION 1: no-cache directive
+    # RFC 9111 Section 5.2.2.4: no-cache Response Directive
+    # https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.2.4
+    #
+    # "The no-cache response directive... indicates that the response MUST NOT
+    # be used to satisfy any other request without forwarding it for validation
+    # and receiving a successful response."
+    #
+    # no-cache means the response must ALWAYS be revalidated before use,
+    # even if it's fresh. Stale responses definitely cannot be served.
     if response_cache_control.no_cache:
         return False
 
+    # PROHIBITION 2: must-revalidate directive
+    # RFC 9111 Section 5.2.2.2: must-revalidate Response Directive
+    # https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.2.2
+    #
+    # "The must-revalidate response directive indicates that once the response
+    # has become stale, a cache MUST NOT reuse that response to satisfy another
+    # request until it has been successfully validated by the origin."
+    #
+    # must-revalidate specifically prohibits serving stale responses
+    # This is used for responses where serving stale content could cause
+    # incorrect operation (e.g., financial transactions)
     if response_cache_control.must_revalidate:
         return False
 
+    # All checks passed - stale response may be served
     return True
 
 
 def get_heuristic_freshness(response: Response) -> int | None:
     """
-    4.2.2. Calculating Heuristic Freshness
+    Calculates a heuristic freshness lifetime when no explicit expiration is provided.
 
-    RFC reference: https://www.rfc-editor.org/rfc/rfc9111.html#name-calculating-heuristic-fresh
+    When a response lacks explicit caching directives (max-age, Expires),
+    caches may assign a heuristic freshness lifetime based on other response
+    characteristics, particularly the Last-Modified header.
+
+    RFC 9111 Section 4.2.2: Calculating Heuristic Freshness
+    https://www.rfc-editor.org/rfc/rfc9111.html#section-4.2.2
+
+    Parameters:
+    ----------
+    response : Response
+        The response to calculate heuristic freshness for
+
+    Returns:
+    -------
+    int | None
+        Heuristic freshness lifetime in seconds, or None if it cannot be calculated
+
+    RFC 9111 Compliance:
+    -------------------
+    From RFC 9111 Section 4.2.2:
+    "Since origin servers do not always provide explicit expiration times,
+    a cache MAY assign a heuristic expiration time when an explicit time is
+    not specified, employing algorithms that use other field values (such as
+    the Last-Modified time) to estimate a plausible expiration time. This
+    specification does not provide specific algorithms, but it does impose
+    worst-case constraints on their results."
+
+    "If the response has a Last-Modified header field, caches are encouraged
+    to use a heuristic expiration value that is no more than some fraction of
+    the interval since that time. A typical setting of this fraction might
+    be 10%."
+
+    Heuristic Calculation:
+    ---------------------
+    - Freshness = 10% of (now - Last-Modified)
+    - Maximum: 1 week (604,800 seconds)
+    - Minimum: 0 seconds
+
+    Rationale:
+    ---------
+    If a resource hasn't changed in a long time (old Last-Modified), it's
+    likely stable and can be cached longer. The 10% rule is a conservative
+    heuristic that balances caching benefits with freshness.
+
+    Examples:
+    --------
+    >>> # Resource last modified 10 days ago
+    >>> # Heuristic freshness = 10% of 10 days = 1 day
+    >>> last_modified = (datetime.now() - timedelta(days=10)).strftime(...)
+    >>> response = Response(headers=Headers({"last-modified": last_modified}))
+    >>> get_heuristic_freshness(response)
+    86400  # 1 day in seconds
+
+    >>> # Resource last modified 100 days ago
+    >>> # Would be 10 days, but capped at 1 week maximum
+    >>> last_modified = (datetime.now() - timedelta(days=100)).strftime(...)
+    >>> response = Response(headers=Headers({"last-modified": last_modified}))
+    >>> get_heuristic_freshness(response)
+    604800  # 1 week (maximum)
+
+    >>> # No Last-Modified header
+    >>> response = Response(headers=Headers({}))
+    >>> get_heuristic_freshness(response)
+    None
     """
+    # Get the Last-Modified header if present
     last_modified = response.headers.get("last-modified")
 
     if last_modified:
+        # Parse the Last-Modified timestamp
         last_modified_timestamp = parse_date(last_modified)
+
         if last_modified_timestamp is None:  # pragma: nocover
+            # Cannot parse the date, cannot calculate heuristic freshness
             return None
+
+        # Calculate how long ago the resource was last modified
         now = time.time()
+        age_since_modification = now - last_modified_timestamp
 
-        ONE_WEEK = 604_800
+        # RFC 9111 recommends 10% of the age since modification
+        # "A typical setting of this fraction might be 10%."
+        heuristic_freshness = int(age_since_modification * 0.1)
 
-        return min(ONE_WEEK, int((now - last_modified_timestamp) * 0.1))
+        # Cap at one week maximum
+        # RFC 9111 Section 4.2.2: "Historically, HTTP required the Expires
+        # field value to be no more than a year in the future. While longer
+        # freshness lifetimes are no longer prohibited, extremely large values
+        # have been demonstrated to cause problems."
+        #
+        # We use a conservative 1-week maximum for heuristic freshness
+        ONE_WEEK = 604_800  # 7 days * 24 hours * 60 minutes * 60 seconds
 
+        return min(ONE_WEEK, heuristic_freshness)
+
+    # No Last-Modified header, cannot calculate heuristic freshness
     return None
 
 
 def get_age(response: Response) -> int:
     """
-    4.2.3. Calculating Age
+    Calculates the current age of a cached response in seconds.
 
-    RFC reference: https://www.rfc-editor.org/rfc/rfc9111.html#name-calculating-age
+    Age represents how old a cached response is - the time since it was
+    generated or last validated by the origin server. This is crucial for
+    determining if a response is still fresh.
+
+    RFC 9111 Section 4.2.3: Calculating Age
+    https://www.rfc-editor.org/rfc/rfc9111.html#section-4.2.3
+
+    Parameters:
+    ----------
+    response : Response
+        The cached response to calculate age for
+
+    Returns:
+    -------
+    int
+        Age of the response in seconds (always >= 0)
+
+    RFC 9111 Compliance:
+    -------------------
+    From RFC 9111 Section 4.2.3:
+    "A response's 'age' is the time that has passed since it was generated by,
+    or successfully validated with, the origin server."
+
+    The full RFC formula accounts for:
+    - apparent_age: Current time minus Date header
+    - age_value: Age header from upstream caches
+    - response_delay: Network latency
+    - resident_time: Time stored in this cache
+
+    This simplified implementation calculates:
+    age = max(0, now - Date)
+
+    Where:
+    - now: Current time
+    - Date: Value from the Date response header
+
+    Fallbacks:
+    ---------
+    - If Date header is missing: age = 0
+    - If Date header is invalid: age = 0
+    - If Date is in the future: age = 0 (via max(0, ...))
+
+    Note on Accuracy:
+    ----------------
+    This is a simplified calculation suitable for single-hop caches.
+    A full implementation would consider:
+    - Age header from upstream caches
+    - Request/response timing for latency correction
+    - Clock skew compensation
+
+    Examples:
+    --------
+    >>> # Response from 1 hour ago
+    >>> date = (datetime.utcnow() - timedelta(hours=1)).strftime(...)
+    >>> response = Response(headers=Headers({"date": date}))
+    >>> get_age(response)
+    3600  # 1 hour in seconds
+
+    >>> # Fresh response (Date = now)
+    >>> date = datetime.utcnow().strftime(...)
+    >>> response = Response(headers=Headers({"date": date}))
+    >>> get_age(response)
+    0  # or very close to 0
+
+    >>> # No Date header
+    >>> response = Response(headers=Headers({}))
+    >>> get_age(response)
+    0
     """
-
-    # A recipient with a clock that receives a response with an invalid Date header
-    # field value MAY replace that value with the time that response was received.
-    # See: https://www.rfc-editor.org/rfc/rfc9110#name-date
+    # RFC 9110 Section 6.6.1: Date
+    # https://www.rfc-editor.org/rfc/rfc9110#section-6.6.1
+    #
+    # "A recipient with a clock that receives a response with an invalid Date
+    # header field value MAY replace that value with the time that response
+    # was received."
+    #
+    # If no Date header exists, we treat the response as having age 0
+    # This is conservative - it assumes the response is brand new
     if "date" not in response.headers:
         return 0
 
+    # Parse the Date header
     date = parse_date(response.headers["date"])
+
     if date is None:  # pragma: nocover
+        # Invalid Date header, treat as age 0
         return 0
 
+    # Calculate apparent age: how long ago was the response generated?
     now = time.time()
     apparent_age = max(0, now - date)
+
+    # Return age as integer seconds
+    # max(0, ...) ensures we never return negative age (e.g., if Date is in future)
     return int(apparent_age)
 
 
 def make_conditional_request(request: Request, response: Response) -> Request:
     """
-    4.3.1 Sending a Validation Request
-    Adds the precondition headers needed for response validation.
+    Converts a regular request into a conditional request for validation.
 
-    This method will use the "Last-Modified" or "Etag" headers
-    if they are provided in order to create precondition headers.
+    Conditional requests use validators (ETag, Last-Modified) to check if a
+    cached response is still valid. If the resource hasn't changed, the server
+    responds with 304 Not Modified, saving bandwidth.
 
-    See also (https://www.rfc-editor.org/rfc/rfc9111.html#name-sending-a-validation-reques)
+    RFC 9111 Section 4.3.1: Sending a Validation Request
+    https://www.rfc-editor.org/rfc/rfc9111.html#section-4.3.1
+
+    Parameters:
+    ----------
+    request : Request
+        The original request to make conditional
+    response : Response
+        The cached response containing validators (ETag, Last-Modified)
+
+    Returns:
+    -------
+    Request
+        A new request with conditional headers added (If-None-Match, If-Modified-Since)
+
+    RFC 9111 Compliance:
+    -------------------
+    From RFC 9111 Section 4.3.1:
+    "When generating a conditional request for validation, a cache... updates
+    that request with one or more precondition header fields. These contain
+    validator metadata sourced from a stored response(s) that has the same URI."
+
+    "When generating a conditional request for validation, a cache:
+     - MUST send the relevant entity tags (using If-Match, If-None-Match, or
+       If-Range) if the entity tags were provided in the stored response(s)
+       being validated.
+     - SHOULD send the Last-Modified value (using If-Modified-Since) if the
+       request is not for a subrange, a single stored response is being
+       validated, and that response contains a Last-Modified value."
+
+    Conditional Headers Added:
+    -------------------------
+    1. If-None-Match: Added if response has ETag
+       - Asks server: "Send full response only if ETag doesn't match"
+       - 304 response if ETag matches (resource unchanged)
+       - 200 response with content if ETag differs (resource changed)
+
+    2. If-Modified-Since: Added if response has Last-Modified
+       - Asks server: "Send full response only if modified after this date"
+       - 304 response if not modified (resource unchanged)
+       - 200 response with content if modified (resource changed)
+
+    Validator Priority:
+    ------------------
+    Both validators are sent if available. ETags are more reliable than
+    Last-Modified (1-second granularity), so servers typically check ETag first.
+
+    Examples:
+    --------
+    >>> # Request with ETag validator
+    >>> request = Request(method="GET", url="https://example.com/resource")
+    >>> response = Response(headers=Headers({"etag": '"abc123"'}))
+    >>> conditional = make_conditional_request(request, response)
+    >>> conditional.headers["if-none-match"]
+    '"abc123"'
+
+    >>> # Request with Last-Modified validator
+    >>> response = Response(headers=Headers({
+    ...     "last-modified": "Mon, 01 Jan 2024 00:00:00 GMT"
+    ... }))
+    >>> conditional = make_conditional_request(request, response)
+    >>> conditional.headers["if-modified-since"]
+    'Mon, 01 Jan 2024 00:00:00 GMT'
+
+    >>> # Request with both validators
+    >>> response = Response(headers=Headers({
+    ...     "etag": '"abc123"',
+    ...     "last-modified": "Mon, 01 Jan 2024 00:00:00 GMT"
+    ... }))
+    >>> conditional = make_conditional_request(request, response)
+    >>> "if-none-match" in conditional.headers
+    True
+    >>> "if-modified-since" in conditional.headers
+    True
     """
+    # Extract validators from the cached response
 
+    # VALIDATOR 1: Last-Modified
+    # RFC 9110 Section 8.8.2: Last-Modified
+    # https://www.rfc-editor.org/rfc/rfc9110#section-8.8.2
+    #
+    # Last-Modified indicates when the resource was last changed
+    # Used to create If-Modified-Since conditional header
     if "last-modified" in response.headers:
         last_modified = response.headers["last-modified"]
     else:
         last_modified = None
 
+    # VALIDATOR 2: ETag (Entity Tag)
+    # RFC 9110 Section 8.8.3: ETag
+    # https://www.rfc-editor.org/rfc/rfc9110#section-8.8.3
+    #
+    # ETag is an opaque validator that represents a specific version of a resource
+    # More reliable than Last-Modified (no timestamp granularity issues)
+    # Used to create If-None-Match conditional header
     if "etag" in response.headers:
         etag = response.headers["etag"]
     else:
         etag = None
 
+    # Build precondition headers dictionary
     precondition_headers: Dict[str, str] = {}
 
-    # When generating a conditional request for validation, a cache:
-
-    # MUST send the relevant entity tags (using If-Match, If-None-Match, or If-Range)
-    # if the entity tags were provided in the stored response(s) being validated.
+    # ADD PRECONDITION 1: If-None-Match (from ETag)
+    # RFC 9110 Section 13.1.2: If-None-Match
+    # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.2
+    #
+    # "MUST send the relevant entity tags (using If-Match, If-None-Match, or
+    # If-Range) if the entity tags were provided in the stored response(s)
+    # being validated."
+    #
+    # If-None-Match tells the server: "Only send the full response if the
+    # current ETag is different from this one"
+    #
+    # Server responses:
+    # - 304 Not Modified: ETag matches, cached version is still valid
+    # - 200 OK: ETag differs, sends new content
     if etag is not None:
         precondition_headers["If-None-Match"] = etag
 
-    # SHOULD send the Last-Modified value (using If-Modified-Since)
-    # if the request is not for a subrange, a single stored response
-    # is being validated, and that response contains a Last-Modified value.
+    # ADD PRECONDITION 2: If-Modified-Since (from Last-Modified)
+    # RFC 9110 Section 13.1.3: If-Modified-Since
+    # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.3
+    #
+    # "SHOULD send the Last-Modified value (using If-Modified-Since) if the
+    # request is not for a subrange, a single stored response is being
+    # validated, and that response contains a Last-Modified value."
+    #
+    # If-Modified-Since tells the server: "Only send the full response if the
+    # resource has been modified after this date"
+    #
+    # Server responses:
+    # - 304 Not Modified: Not modified since date, cached version is valid
+    # - 200 OK: Modified since date, sends new content
     if last_modified:
         precondition_headers["If-Modified-Since"] = last_modified
 
+    # Create a new request with the original headers plus precondition headers
+    # The replace() function creates a copy of the request with updated headers
     return replace(
         request,
         headers=Headers(
@@ -230,39 +762,143 @@ def make_conditional_request(request: Request, response: Response) -> Request:
 
 def exclude_unstorable_headers(response: Response, is_cache_shared: bool) -> Response:
     """
-    see: https://www.rfc-editor.org/rfc/rfc9111.html#section-3.1
-    """
+    Removes headers that must not be stored in the cache.
 
+    Certain headers are connection-specific or contain sensitive information
+    that should not be cached. This function filters them out before storage.
+
+    RFC 9111 Section 3.1: Storing Header and Trailer Fields
+    https://www.rfc-editor.org/rfc/rfc9111.html#section-3.1
+
+    Parameters:
+    ----------
+    response : Response
+        The response to filter headers from
+    is_cache_shared : bool
+        True if this is a shared cache (affects private directive handling)
+
+    Returns:
+    -------
+    Response
+        A new response with unstorable headers removed
+
+    RFC 9111 Compliance:
+    -------------------
+    From RFC 9111 Section 3.1:
+    "Caches MUST include all received response header fields -- including
+    unrecognized ones -- when storing a response; this assures that new HTTP
+    header fields can be successfully deployed. However, the following exceptions
+    are made:
+     - The Connection header field and fields whose names are listed in it are
+       not stored (see Section 7.6.1 of [HTTP])
+     - Caches MUST NOT store fields defined as being specific to a particular
+       connection or applicable only to a tunnel or gateway, unless the cache
+       was specifically designed to support these fields"
+
+    Headers Always Excluded:
+    -----------------------
+    Connection-specific headers (RFC 9110 Section 7.6.1):
+    - Connection
+    - Keep-Alive
+    - Proxy-Connection (non-standard but common)
+    - Transfer-Encoding
+    - Upgrade
+    - TE
+
+    Hop-by-hop authentication headers:
+    - Proxy-Authenticate
+    - Proxy-Authorization
+    - Proxy-Authentication-Info
+
+    Headers Conditionally Excluded:
+    -------------------------------
+    - Fields listed in no-cache directive (always excluded)
+    - Fields listed in private directive (excluded for shared caches only)
+
+    Examples:
+    --------
+    >>> # Remove connection-specific headers
+    >>> response = Response(headers=Headers({
+    ...     "cache-control": "max-age=3600",
+    ...     "connection": "keep-alive",
+    ...     "keep-alive": "timeout=5",
+    ...     "content-type": "application/json"
+    ... }))
+    >>> filtered = exclude_unstorable_headers(response, is_cache_shared=True)
+    >>> "connection" in filtered.headers
+    False
+    >>> "content-type" in filtered.headers
+    True
+
+    >>> # Remove headers listed in no-cache
+    >>> response = Response(headers=Headers({
+    ...     "cache-control": 'no-cache="Set-Cookie"',
+    ...     "set-cookie": "session=abc123"
+    ... }))
+    >>> filtered = exclude_unstorable_headers(response, is_cache_shared=True)
+    >>> "set-cookie" in filtered.headers
+    False
+    """
+    # Initialize set of headers to exclude
+    # These are connection-specific headers that must never be cached
+    # RFC 9110 Section 7.6.1: Connection-Specific Header Fields
+    # https://www.rfc-editor.org/rfc/rfc9110#section-7.6.1
     need_to_be_excluded = set(
         [
-            "keep-alive",
-            "te",
-            "transfer-encoding",
-            "upgrade",
-            "proxy-connection",
-            "proxy-authenticate",
-            "proxy-authentication-info",
-            "proxy-authorization",
+            "keep-alive",  # Connection timeout and max requests
+            "te",  # Transfer encoding accepted by client
+            "transfer-encoding",  # How the body is encoded for transfer
+            "upgrade",  # Protocol upgrade (e.g., WebSocket)
+            "proxy-connection",  # Non-standard but widely used
+            "proxy-authenticate",  # Proxy authentication challenge
+            "proxy-authentication-info",  # Proxy auth additional info
+            "proxy-authorization",  # Proxy auth credentials
         ]
     )
 
-    cache_control = parse_cache_control(
-        response.headers.get(
-            "cache-control",
-        )
-    )
+    # Parse Cache-Control to check for no-cache and private directives
+    cache_control = parse_cache_control(response.headers.get("cache-control"))
 
+    # EXCLUSION RULE 1: no-cache with field names
+    # RFC 9111 Section 5.2.2.4: no-cache Response Directive
+    # https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.2.4
+    #
+    # "The qualified form of the no-cache response directive, with an argument
+    # that lists one or more field names, indicates that a cache MAY use the
+    # response to satisfy a subsequent request, subject to any other restrictions
+    # on caching, if the listed header fields are excluded from the subsequent
+    # response or the subsequent response has been successfully revalidated with
+    # the origin server."
+    #
+    # Example: Cache-Control: no-cache="Set-Cookie, Set-Cookie2"
+    # Means: Cache the response but exclude Set-Cookie headers from the cache
     if isinstance(cache_control.no_cache, list):
         for field in cache_control.no_cache:
             need_to_be_excluded.add(field.lower())
 
+    # EXCLUSION RULE 2: private with field names (shared caches only)
+    # RFC 9111 Section 5.2.2.7: private Response Directive
+    # https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.2.7
+    #
+    # "If a qualified private response directive is present, with an argument
+    # that lists one or more field names, then only the listed header fields
+    # are limited to a single user: a shared cache MUST NOT store the listed
+    # header fields if they are present in the original response but MAY store
+    # the remainder of the response message without those header fields"
+    #
+    # Example: Cache-Control: private="Authorization"
+    # Means: Shared caches can cache the response but must exclude Authorization
     if is_cache_shared and isinstance(cache_control.private, list):
         for field in cache_control.private:
             need_to_be_excluded.add(field.lower())
 
+    # Filter out the excluded headers
+    # Create new Headers dict with only the headers we want to keep
     new_headers = Headers(
         {key: value for key, value in response.headers.items() if key.lower() not in need_to_be_excluded}
     )
+
+    # Return a new response with filtered headers
     return replace(
         response,
         headers=new_headers,
@@ -274,28 +910,117 @@ def refresh_response_headers(
     revalidation_response: Response,
 ) -> Response:
     """
-    see: https://www.rfc-editor.org/rfc/rfc9111.html#section-3.2
-    """
+    Updates a stored response's headers with fresh metadata from a 304 response.
 
+    When revalidation succeeds (304 Not Modified), the cached response is still
+    valid but its metadata (Date, Cache-Control, etc.) should be updated with
+    fresh values from the 304 response.
+
+    RFC 9111 Section 3.2: Updating Stored Header Fields
+    https://www.rfc-editor.org/rfc/rfc9111.html#section-3.2
+
+    Parameters:
+    ----------
+    stored_response : Response
+        The cached response that is being freshened
+    revalidation_response : Response
+        The 304 Not Modified response containing fresh metadata
+
+    Returns:
+    -------
+    Response
+        The stored response with updated headers
+
+    RFC 9111 Compliance:
+    -------------------
+    From RFC 9111 Section 3.2:
+    "When doing so, the cache MUST add each header field in the provided response
+    to the stored response, replacing field values that are already present,
+    with the following exceptions:
+     - Header fields that provide metadata about the message content and/or the
+       selected representation (e.g., Content-Encoding, Content-Type, Content-Range)
+       MUST NOT be updated unless the response is being stored as a result of
+       successful validation."
+
+    Update Rules:
+    ------------
+    1. Merge headers from 304 response into stored response
+    2. 304 headers override stored headers (newer metadata)
+    3. EXCEPT: Content metadata headers are NOT updated
+       - Content-Encoding
+       - Content-Type
+       - Content-Range
+    4. Remove unstorable headers after merging
+
+    Rationale for Exceptions:
+    ------------------------
+    Content-* headers describe the body of the response. A 304 response has
+    no body, so its Content-* headers (if any) don't describe the cached body.
+    We must preserve the original Content-* headers from the cached response.
+
+    For example:
+    - Cached response: Content-Type: application/json, body is JSON
+    - 304 response: Content-Type: text/plain (this is wrong for the cached body!)
+    - Result: Keep application/json from cached response
+
+    Examples:
+    --------
+    >>> # Update Date and Cache-Control, preserve Content-Type
+    >>> stored = Response(
+    ...     status_code=200,
+    ...     headers=Headers({
+    ...         "date": "Mon, 01 Jan 2024 00:00:00 GMT",
+    ...         "cache-control": "max-age=3600",
+    ...         "content-type": "application/json"
+    ...     })
+    ... )
+    >>> revalidation = Response(
+    ...     status_code=304,
+    ...     headers=Headers({
+    ...         "date": "Mon, 01 Jan 2024 12:00:00 GMT",
+    ...         "cache-control": "max-age=7200",
+    ...         "content-type": "text/plain"  # Should be ignored
+    ...     })
+    ... )
+    >>> refreshed = refresh_response_headers(stored, revalidation)
+    >>> refreshed.headers["cache-control"]
+    'max-age=7200'  # Updated
+    >>> refreshed.headers["content-type"]
+    'application/json'  # Preserved from stored response
+    """
+    # Define headers that must NOT be updated from the 304 response
+    # These headers describe the message body/representation
+    # RFC 9111 Section 3.2: "Header fields that provide metadata about the
+    # message content and/or the selected representation... MUST NOT be updated"
     excluded_headers = set(
         [
-            "content-encoding",
-            "content-type",
-            "content-range",
+            "content-encoding",  # How the body is encoded (gzip, br, etc.)
+            "content-type",  # MIME type of the body
+            "content-range",  # For partial content (206 responses)
         ]
     )
 
+    # Merge headers: Start with stored response, overlay revalidation response
+    # Headers from revalidation_response override stored_response
+    # EXCEPT for excluded headers (content metadata)
     new_headers = {
-        **stored_response.headers,
-        **{key: value for key, value in revalidation_response.headers.items() if key.lower() not in excluded_headers},
+        **stored_response.headers,  # Base: original cached headers
+        **{
+            key: value
+            for key, value in revalidation_response.headers.items()
+            if key.lower() not in excluded_headers  # Skip content metadata
+        },
     }
 
+    # Remove unstorable headers from the final merged headers
+    # This ensures we don't accidentally cache connection-specific headers
+    # that might have been in the 304 response
     return exclude_unstorable_headers(
         replace(
             stored_response,
             headers=Headers(new_headers),
         ),
-        is_cache_shared=True,
+        is_cache_shared=True,  # Assume shared cache for maximum safety
     )
 
 

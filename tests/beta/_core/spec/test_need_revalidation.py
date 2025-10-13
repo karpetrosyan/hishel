@@ -94,7 +94,7 @@ class TestNotModifiedResponses:
     RFC 9111 Section 4.3.4: Freshening Stored Responses Upon Validation
     """
 
-    def test_304_with_matching_strong_etag_freshens_response(self, default_options: CacheOptions):
+    def test_304_with_matching_strong_etag_freshens_response(self, default_options: CacheOptions) -> None:
         """
         Test: 304 response with matching strong ETag freshens cached response.
 
@@ -141,7 +141,7 @@ class TestNotModifiedResponses:
         updated_response = next_state.updating_pairs[0].response
         assert "cache-control" in updated_response.headers
 
-    def test_304_with_weak_etag_uses_last_modified_fallback(self, default_options: CacheOptions):
+    def test_304_with_weak_etag_uses_last_modified_fallback(self, default_options: CacheOptions) -> None:
         """
         Test: 304 with weak ETag falls back to Last-Modified matching.
 
@@ -183,7 +183,7 @@ class TestNotModifiedResponses:
         assert isinstance(next_state, NeedToBeUpdated)
         assert len(next_state.updating_pairs) == 1
 
-    def test_304_with_matching_last_modified_freshens_response(self, default_options: CacheOptions):
+    def test_304_with_matching_last_modified_freshens_response(self, default_options: CacheOptions) -> None:
         """
         Test: 304 response with matching Last-Modified freshens cached response.
 
@@ -222,7 +222,7 @@ class TestNotModifiedResponses:
         assert isinstance(next_state, NeedToBeUpdated)
         assert len(next_state.updating_pairs) == 1
 
-    def test_304_with_single_cached_response_and_no_validators(self, default_options: CacheOptions):
+    def test_304_with_single_cached_response_and_no_validators(self, default_options: CacheOptions) -> None:
         """
         Test: 304 with no validators but single cached response freshens it.
 
@@ -257,7 +257,7 @@ class TestNotModifiedResponses:
         assert isinstance(next_state, NeedToBeUpdated)
         assert len(next_state.updating_pairs) == 1
 
-    def test_304_with_multiple_responses_and_no_validators_invalidates_all(self, default_options: CacheOptions):
+    def test_304_with_multiple_responses_and_no_validators_invalidates_all(self, default_options: CacheOptions) -> None:
         """
         Test: 304 with no validators and multiple responses invalidates all.
 
@@ -297,7 +297,7 @@ class TestNotModifiedResponses:
         assert len(next_state.pair_ids) == 2
         assert isinstance(next_state.next_state, CacheMiss)
 
-    def test_304_with_non_matching_etag_invalidates_response(self, default_options: CacheOptions):
+    def test_304_with_non_matching_etag_invalidates_response(self, default_options: CacheOptions) -> None:
         """
         Test: 304 with non-matching ETag invalidates cached response.
 
@@ -332,7 +332,9 @@ class TestNotModifiedResponses:
         assert len(next_state.pair_ids) == 1
         assert isinstance(next_state.next_state, CacheMiss)
 
-    def test_304_with_multiple_responses_freshens_matching_invalidates_others(self, default_options: CacheOptions):
+    def test_304_with_multiple_responses_freshens_matching_invalidates_others(
+        self, default_options: CacheOptions
+    ) -> None:
         """
         Test: 304 with multiple cached responses freshens matching, invalidates others.
 
@@ -388,7 +390,9 @@ class TestSuccessResponses:
     """
 
     @pytest.mark.parametrize("status_code", [200, 201, 202, 203, 204, 206])
-    def test_2xx_response_invalidates_old_pairs_and_stores_new(self, default_options: CacheOptions, status_code: int):
+    def test_2xx_response_invalidates_old_pairs_and_stores_new(
+        self, default_options: CacheOptions, status_code: int
+    ) -> None:
         """
         Test: 2xx response invalidates old cached pairs and stores new response.
 
@@ -436,7 +440,7 @@ class TestSuccessResponses:
         inner_state = next_state.next_state
         assert isinstance(inner_state, (StoreAndUse, CouldNotBeStored))
 
-    def test_200_response_marks_as_after_revalidation(self, default_options: CacheOptions):
+    def test_200_response_marks_as_after_revalidation(self, default_options: CacheOptions) -> None:
         """
         Test: 200 response during revalidation is marked with after_revalidation flag.
 
@@ -469,7 +473,7 @@ class TestSuccessResponses:
         # Response should be marked as revalidated
         assert new_response.metadata.get("hishel_revalidated") is True
 
-    def test_2xx_reuses_last_pair_id_for_new_response(self, default_options: CacheOptions):
+    def test_2xx_reuses_last_pair_id_for_new_response(self, default_options: CacheOptions) -> None:
         """
         Test: 2xx response reuses the last pair's ID for storing the new response.
 
@@ -524,7 +528,7 @@ class TestServerErrorResponses:
     """
 
     @pytest.mark.parametrize("status_code", [500, 502, 503, 504])
-    def test_5xx_response_invalidates_and_forwards_error(self, default_options: CacheOptions, status_code: int):
+    def test_5xx_response_invalidates_and_forwards_error(self, default_options: CacheOptions, status_code: int) -> None:
         """
         Test: 5xx response invalidates cached pairs and forwards the error.
 
@@ -563,7 +567,7 @@ class TestServerErrorResponses:
         # Error might not be stored (depends on cacheability)
         assert isinstance(inner_state, (StoreAndUse, CouldNotBeStored))
 
-    def test_503_service_unavailable_handled_like_2xx(self, default_options: CacheOptions):
+    def test_503_service_unavailable_handled_like_2xx(self, default_options: CacheOptions) -> None:
         """
         Test: 503 Service Unavailable is handled the same as 2xx responses.
 
@@ -608,7 +612,7 @@ class TestEdgeCases:
     Tests for edge cases and error conditions.
     """
 
-    def test_unexpected_status_code_raises_error(self, default_options: CacheOptions):
+    def test_unexpected_status_code_raises_error(self, default_options: CacheOptions) -> None:
         """
         Test: Unexpected status codes during revalidation raise RuntimeError.
 
@@ -635,7 +639,7 @@ class TestEdgeCases:
             need_revalidation.next(redirect_response)
 
     @pytest.mark.parametrize("status_code", [100, 101, 400, 401, 403, 404])
-    def test_other_unexpected_status_codes_raise_error(self, default_options: CacheOptions, status_code: int):
+    def test_other_unexpected_status_codes_raise_error(self, default_options: CacheOptions, status_code: int) -> None:
         """
         Test: Various unexpected status codes raise RuntimeError.
 
@@ -660,7 +664,7 @@ class TestEdgeCases:
         with pytest.raises(RuntimeError):
             need_revalidation.next(unexpected_response)
 
-    def test_options_propagated_to_next_states(self, default_options: CacheOptions):
+    def test_options_propagated_to_next_states(self, default_options: CacheOptions) -> None:
         """
         Test: Cache options are propagated to all next states.
         """
@@ -692,7 +696,7 @@ class TestEdgeCases:
         next_state_200 = need_revalidation_2.next(response_200)
         assert next_state_200.options == default_options
 
-    def test_original_request_preserved_in_next_states(self, default_options: CacheOptions):
+    def test_original_request_preserved_in_next_states(self, default_options: CacheOptions) -> None:
         """
         Test: Original request is preserved through state transitions.
 
@@ -721,7 +725,7 @@ class TestEdgeCases:
             if isinstance(next_state.next_state, NeedToBeUpdated):
                 assert next_state.next_state.original_request == original_request
 
-    def test_empty_revalidating_pairs_handled_gracefully(self, default_options: CacheOptions):
+    def test_empty_revalidating_pairs_handled_gracefully(self, default_options: CacheOptions) -> None:
         """
         Test: Empty revalidating_pairs list is handled without errors.
 
