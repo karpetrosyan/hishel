@@ -151,7 +151,7 @@ class SyncSqliteStorage(SyncBaseStorage):
         assert isinstance(response.stream, (Iterator, Iterable))
         response = replace(response, stream=self._save_stream(response.stream, pair_id.bytes, "response"))
 
-        assert isinstance(pair, IncompletePair)
+        self._delete_stream(pair.id.bytes, cursor, type="response")
         complete_pair = CompletePair(id=pair.id, request=pair.request, response=response, meta=pair.meta, cache_key=key)
 
         # Update the entry with the complete pair and set cache_key
@@ -334,11 +334,21 @@ class SyncSqliteStorage(SyncBaseStorage):
         self,
         entry_id: bytes,
         cursor: sqlite3.Cursor,
+        type: Literal["request", "response", "all"] = "all",
     ) -> None:
         """
         Delete all streams (both request and response) associated with the given entry ID.
         """
-        cursor.execute("DELETE FROM streams WHERE entry_id = ?", (entry_id,))
+        if type == "request":
+            cursor.execute(
+                "DELETE FROM streams WHERE entry_id = ? AND kind = ?", (entry_id, self._STREAM_KIND["request"])
+            )
+        elif type == "response":
+            cursor.execute(
+                "DELETE FROM streams WHERE entry_id = ? AND kind = ?", (entry_id, self._STREAM_KIND["response"])
+            )
+        elif type == "all":
+            cursor.execute("DELETE FROM streams WHERE entry_id = ?", (entry_id,))
 
     def _save_stream(
         self,

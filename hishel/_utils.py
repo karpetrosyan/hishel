@@ -225,6 +225,28 @@ def make_sync_iterator(iterable: Iterable[bytes]) -> Iterator[bytes]:
         yield item
 
 
+def snake_to_header(text: str) -> str:
+    """
+    Convert snake_case string to Header-Case format.
+
+    Args:
+        text: Snake case string (e.g., "hishel_ttl")
+
+    Returns:
+        Header case string (e.g., "X-Hishel-Ttl")
+
+    Examples:
+        >>> snake_to_header("hishel_ttl")
+        'X-Hishel-Ttl'
+        >>> snake_to_header("cache_control")
+        'X-Cache-Control'
+        >>> snake_to_header("content_type")
+        'X-Content-Type'
+    """
+    # Split by underscore, capitalize each word, join with dash, add X- prefix
+    return "X-" + "-".join(word.capitalize() for word in text.split("_"))
+
+
 _T = TypeVar("_T")
 
 

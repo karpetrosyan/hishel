@@ -8,7 +8,6 @@ from dataclasses import dataclass, field, replace
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Dict,
     Literal,
     Optional,
@@ -18,8 +17,6 @@ from typing import (
 
 from hishel._utils import parse_date, partition
 from hishel.beta._core._headers import Headers, Range, Vary, parse_cache_control
-from hishel.beta._core._keygen import KeyGen
-from hishel.beta._core.models import IncompletePair
 
 if TYPE_CHECKING:
     from hishel.beta import CompletePair, Request, Response
@@ -48,7 +45,6 @@ class CacheOptions:
     shared: bool = True
     supported_methods: list[str] = field(default_factory=lambda: ["GET", "HEAD"])
     allow_stale: bool = False
-    keygen: Optional[Callable[[Request], str | bytes] | KeyGen] = None
 
 
 @dataclass
@@ -312,6 +308,7 @@ AnyState = Union[
     "NeedToBeUpdated",
     "NeedRevalidation",
     "IdleClient",
+    "InvalidatePairs",
 ]
 
 # Defined in https://www.rfc-editor.org/rfc/rfc9110#name-safe-methods
@@ -334,21 +331,18 @@ class IdleClient(State):
     """
 
     def next(
-        self, incomplete_pair: IncompletePair, associated_pairs: list[CompletePair]
+        self, request: Request, associated_pairs: list[CompletePair]
     ) -> Union["CacheMiss" | "FromCache" | "NeedRevalidation"]:
-        request = incomplete_pair.request
         request_range = Range.try_from_str(request.headers["range"]) if "range" in request.headers else None
 
         if request_range is not None:
-            return CacheMiss(options=self.options, pair_id=incomplete_pair.id, request=request)
+            return CacheMiss(options=self.options, request=request)
 
         # A cache MUST write through requests with methods that are unsafe (Section 9.2.1 of [HTTP])
         # to the origin server; i.e., a cache is not allowed to generate a reply to such a request
         # before having forwarded the request and having received a corresponding response.
         if request.method.upper() not in SAFE_METHODS:
-            return CacheMiss(
-                pair_id=incomplete_pair.id, request=incomplete_pair.request, options=self.options
-            )  # pragma: nocover
+            return CacheMiss(request=request, options=self.options)  # pragma: nocover
 
         # When presented with a request, a cache MUST NOT reuse a stored response unless:
 
@@ -425,15 +419,14 @@ class IdleClient(State):
 
         elif need_revalidation:
             return NeedRevalidation(
-                pair_id=incomplete_pair.id,
-                request=make_conditional_request(incomplete_pair.request, need_revalidation[-1].response),
+                request=make_conditional_request(request, need_revalidation[-1].response),
                 revalidating_pairs=need_revalidation,
                 options=self.options,
+                original_request=request,
             )
         else:
             return CacheMiss(
-                pair_id=incomplete_pair.id,
-                request=incomplete_pair.request,
+                request=request,
                 options=self.options,
             )
 
@@ -460,6 +453,8 @@ class CouldNotBeStored(State):
 
     response: Response
 
+    pair_id: uuid.UUID
+
     def next(self) -> None:
         return None  # pragma: nocover
 
@@ -470,11 +465,6 @@ class CacheMiss(State):
     Storing Responses in Caches
 
     RFC reference: https://www.rfc-editor.org/rfc/rfc9111.html#name-storing-responses-in-caches
-    """
-
-    pair_id: uuid.UUID
-    """
-    The id of the pair that missed the cache.
     """
 
     request: Request
@@ -490,7 +480,7 @@ class CacheMiss(State):
     Indicates whether the cache miss occurred after a revalidation attempt.
     """
 
-    def next(self, response: Response) -> Union["StoreAndUse", "CouldNotBeStored"]:
+    def next(self, response: Response, pair_id: uuid.UUID) -> Union["StoreAndUse", "CouldNotBeStored"]:
         response.metadata["hishel_spec_ignored"] = False  # type: ignore
         response.metadata["hishel_from_cache"] = False  # type: ignore
 
@@ -591,15 +581,29 @@ class CacheMiss(State):
                     )
 
             response.metadata["hishel_stored"] = False  # type: ignore
-            return CouldNotBeStored(response=response, options=self.options)
+            return CouldNotBeStored(response=response, pair_id=pair_id, options=self.options)
 
         logger.debug("Storing response in cache")
         response.metadata["hishel_stored"] = True  # type: ignore
         return StoreAndUse(
-            pair_id=self.pair_id,
+            pair_id=pair_id,
             response=exclude_unstorable_headers(response, self.options.shared),
             options=self.options,
         )
+
+
+@dataclass
+class InvalidatePairs(State):
+    """
+    The state that represents the deletion of cache pairs.
+    """
+
+    pair_ids: list[uuid.UUID]
+
+    next_state: AnyState
+
+    def next(self) -> AnyState:
+        return self.next_state
 
 
 @dataclass
@@ -616,6 +620,7 @@ class FromCache(State):
 @dataclass
 class NeedToBeUpdated(State):
     updating_pairs: list[CompletePair]
+    original_request: Request
 
     def next(self) -> FromCache:
         return FromCache(pair=self.updating_pairs[-1], options=self.options)  # pragma: nocover
@@ -629,21 +634,19 @@ class NeedRevalidation(State):
     RFC reference: https://www.rfc-editor.org/rfc/rfc9111.html#name-handling-a-validation-respo
     """
 
-    pair_id: uuid.UUID
-
     request: Request
     """
     The request that was sent to the server for revalidation.
     """
+
+    original_request: Request
 
     revalidating_pairs: list[CompletePair]
     """
     The stored pairs that the request was sent for revalidation.
     """
 
-    def next(self, revalidation_pair: CompletePair) -> Union["NeedToBeUpdated", "CacheMiss"]:
-        revalidation_response = revalidation_pair.response
-
+    def next(self, revalidation_response: Response) -> Union["NeedToBeUpdated", "InvalidatePairs", "CacheMiss"]:
         # Cache handling of a response to a conditional request depends upon its status code:
         if revalidation_response.status_code == 304:
             # A 304 (Not Modified) response status code indicates that the stored
@@ -654,11 +657,14 @@ class NeedRevalidation(State):
             # responses nominated in the conditional request are suitable. Instead, the cache
             # MUST use the full response to satisfy the request. The cache MAY store such a full
             # response, subject to its constraints (see Section 3).
-            return CacheMiss(
-                pair_id=revalidation_pair.id,
-                request=revalidation_pair.request,
+            return InvalidatePairs(
                 options=self.options,
-                after_revalidation=True,
+                pair_ids=[pair.id for pair in self.revalidating_pairs[:-1]],
+                next_state=CacheMiss(
+                    request=self.original_request,
+                    options=self.options,
+                    after_revalidation=True,
+                ).next(revalidation_response, pair_id=self.revalidating_pairs[-1].id),
             )
         elif revalidation_response.status_code // 100 == 5:
             # However, if a cache receives a 5xx (Server Error) response while attempting to
@@ -666,42 +672,70 @@ class NeedRevalidation(State):
             # or act as if the server failed to respond. In the latter case, the cache can send
             # a previously stored response, subject to its constraints on doing so
             # (see Section 4.2.4),or retry the validation request.
-            return CacheMiss(
-                pair_id=revalidation_pair.id,
-                request=revalidation_pair.request,
+            return InvalidatePairs(
                 options=self.options,
-                after_revalidation=True,
+                pair_ids=[pair.id for pair in self.revalidating_pairs[:-1]],
+                next_state=CacheMiss(
+                    request=self.original_request,
+                    options=self.options,
+                    after_revalidation=True,
+                ).next(revalidation_response, pair_id=self.revalidating_pairs[-1].id),
             )
         raise RuntimeError(
             f"Unexpected response status code during revalidation: {revalidation_response.status_code}"
         )  # pragma: nocover
 
-    def freshening_stored_responses(self, revalidation_response: Response) -> NeedToBeUpdated:
+    def freshening_stored_responses(
+        self, revalidation_response: Response
+    ) -> NeedToBeUpdated | InvalidatePairs | CacheMiss:
         """
         4.3.4 Freshening stored responses upon validation
 
         RFC reference: https://www.rfc-editor.org/rfc/rfc9111.html#name-freshening-stored-responses
         """
 
-        identified_for_revalidation: list[CompletePair] = []
+        identified_for_revalidation: list[CompletePair]
         if "etag" in revalidation_response.headers and (not revalidation_response.headers["etag"].startswith("W/")):
-            for pair in self.revalidating_pairs:  # pragma: nocover
-                if pair.response.headers.get("etag") == revalidation_response.headers.get("etag"):
-                    identified_for_revalidation.append(pair)
+            identified_for_revalidation, need_to_be_invalidated = partition(
+                self.revalidating_pairs,
+                lambda pair: pair.response.headers.get("etag") == revalidation_response.headers.get("etag"),  # type: ignore[no-untyped-call]
+            )
         elif revalidation_response.headers.get("last-modified"):
-            for pair in self.revalidating_pairs:  # pragma: nocover
-                if pair.response.headers.get("last-modified") == revalidation_response.headers.get("last-modified"):
-                    identified_for_revalidation.append(pair)
+            identified_for_revalidation, need_to_be_invalidated = partition(
+                self.revalidating_pairs,
+                lambda pair: pair.response.headers.get("last-modified")
+                == revalidation_response.headers.get("last-modified"),  # type: ignore[no-untyped-call]
+            )
         else:
             if len(self.revalidating_pairs) == 1:
-                identified_for_revalidation.append(self.revalidating_pairs[0])
-        return NeedToBeUpdated(
-            updating_pairs=[
-                replace(
-                    pair,
-                    response=refresh_response_headers(pair.response, revalidation_response),
-                )
-                for pair in identified_for_revalidation
-            ],
-            options=self.options,
+                identified_for_revalidation, need_to_be_invalidated = [self.revalidating_pairs[0]], []
+            else:
+                identified_for_revalidation, need_to_be_invalidated = [], self.revalidating_pairs
+
+        next_state = (
+            NeedToBeUpdated(
+                updating_pairs=[
+                    replace(
+                        pair,
+                        response=refresh_response_headers(pair.response, revalidation_response),
+                    )
+                    for pair in identified_for_revalidation
+                ],
+                original_request=self.original_request,
+                options=self.options,
+            )
+            if identified_for_revalidation
+            else CacheMiss(
+                options=self.options,
+                request=self.original_request,
+                after_revalidation=True,
+            )
         )
+
+        if need_to_be_invalidated:
+            return InvalidatePairs(
+                options=self.options,
+                pair_ids=[pair.id for pair in need_to_be_invalidated],
+                next_state=next_state,
+            )
+        return next_state

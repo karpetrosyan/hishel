@@ -57,6 +57,34 @@ class RequestMetadata(TypedDict, total=False):
     When True, hishel will ignore the caching specification for this request.
     """
 
+    hishel_body_key: bool | None
+    """
+    When True, the request body is included in the cache key generation.
+    This is useful for caching POST or QUERY requests with different bodies.
+    """
+
+
+def extract_metadata_from_headers(headers: Mapping[str, str]) -> RequestMetadata:
+    metadata: RequestMetadata = {}
+    if "X-Hishel-Ttl" in headers:
+        try:
+            metadata["hishel_ttl"] = float(headers["X-Hishel-Ttl"])
+        except ValueError:
+            pass
+    if "X-Hishel-Refresh-Ttl-On-Access" in headers:
+        value = headers["X-Hishel-Refresh-Ttl-On-Access"].lower()
+        if value in ("1", "true", "yes", "on"):
+            metadata["hishel_refresh_ttl_on_access"] = True
+        elif value in ("0", "false", "no", "off"):
+            metadata["hishel_refresh_ttl_on_access"] = False
+    if "X-Hishel-Spec-Ignore" in headers:
+        value = headers["X-Hishel-Spec-Ignore"].lower()
+        if value in ("1", "true", "yes", "on"):
+            metadata["hishel_spec_ignore"] = True
+        elif value in ("0", "false", "no", "off"):
+            metadata["hishel_spec_ignore"] = False
+    return metadata
+
 
 @dataclass
 class Request:

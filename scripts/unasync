@@ -14,16 +14,19 @@ SUBS = [
     ("AsyncIterator", "Iterator"),
     ("AsyncIterable", "Iterable"),
     ("@pytest.mark.anyio", ""),
+    (r"Awaitable\[([^\]]+)\]", r"\1"),
     # our public API
     ("AsyncCacheProxy", "SyncCacheProxy"),
     ("AsyncBaseStorage", "SyncBaseStorage"),
+    ("AsyncHishelClient", "SyncHishelClient"),
     ("AsyncSqliteStorage", "SyncSqliteStorage"),
     ("anysqlite", "sqlite3"),
     ("aiter_stream", "iter_stream"),
+    ("aiter_raw", "iter_raw"),
     ("aprint_sqlite_state", "print_sqlite_state"),
     ("make_async_iterator", "make_sync_iterator"),
 ]
-COMPILED_SUBS = [(re.compile(r"(^|\b)" + regex + r"($|\b)"), repl) for regex, repl in SUBS]
+COMPILED_SUBS = [(re.compile(regex), repl) for regex, repl in SUBS]
 
 USED_SUBS = set()
 
@@ -95,6 +98,8 @@ def main():
             "tests/beta/_core/_async/test_sqlite_storage.py",
             "tests/beta/_core/_sync/test_sqlite_storage.py",
         ),
+        ("tests/beta/test_async_httpx.py", "tests/beta/test_sync_httpx.py"),
+        ("hishel/beta/_async_cache.py", "hishel/beta/_sync_cache.py"),
     ]
 
     for in_path, out_path in FILES:

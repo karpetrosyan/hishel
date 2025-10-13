@@ -7,7 +7,7 @@ Hishel provides an integration with httpx, making it easy to enable flexible cac
 To get started, you can use `SyncHishelClient`(or `AsyncHishelClient` for async) as a drop-in replacement for an httpx client, like so:
 
 ```python
-from hishel.beta.integrations.clients.httpx import SyncHishelClient
+from hishel.beta.httpx import SyncHishelClient
 
 client = SyncHishelClient()
 client.get("https://hishel.com")
@@ -18,7 +18,7 @@ You can configure the client's storage and cache options like so:
 
 ```python
 from hishel.beta import CacheOptions, SyncSqliteStorage
-from hishel.beta.integrations.clients.httpx import SyncHishelClient
+from hishel.beta.httpx import SyncHishelClient
 
 client = SyncHishelClient(
     storage=SyncSqliteStorage(default_ttl=60 * 60 * 24), # 1 day
@@ -32,7 +32,7 @@ As lower-level building blocks, Hishel also provides caching httpx transports th
 import httpx
 
 from hishel.beta import CacheOptions, SyncSqliteStorage
-from hishel.beta.integrations.clients.httpx import SyncCacheTransport
+from hishel.beta.httpx import SyncCacheTransport
 
 client = httpx.Client(
     transport=SyncCacheTransport(
@@ -42,3 +42,26 @@ client = httpx.Client(
     )
 )
 ```
+
+## Metadata
+
+Request and response metadata are attributes that hold data and can sometimes control caching behavior, attached to both request and response instances.
+
+=== "extensions"
+    ```python
+    from hishel.beta.httpx import SyncHishelClient
+
+    client = SyncHishelClient()
+
+    client.get("https://httpbin.org/get", extensions={"hishel_ttl": 3600})
+    ```
+=== "headers"
+    ```python
+    from hishel.beta.httpx import SyncHishelClient
+
+    client = SyncHishelClient()
+
+    client.get("https://httpbin.org/get", headers={"x-hishel-ttl": "3600"})
+    ```
+
+You can find the full list of supported metadata attributes in the [metadata reference](../metadata.md) section.

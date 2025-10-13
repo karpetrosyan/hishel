@@ -47,6 +47,12 @@ s3 = [
     "boto3>=1.15.0,<=1.15.3; python_version < '3.12'",
     "boto3>=1.15.3; python_version >= '3.12'",
 ]
+requests = [
+    "requests>=2.32.5",
+]
+httpx = [
+    "httpx>=0.28.1",
+]
 
 [project.urls]
 Homepage = "https://hishel.com"
@@ -79,7 +85,7 @@ disallow_untyped_defs = false
 
 check_untyped_defs = true
 [[tool.mypy.overrides]]
-module = ["time_machine.*", "msgpack.*", "lmdb.*"]
+module = ["time_machine.*", "msgpack.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
@@ -94,7 +100,14 @@ include = ["hishel/*", "tests/*"]
 exclude_also = ['__repr__', 'raise NotImplementedError()']
 
 [tool.ruff]
-exclude = ["hishel/_sync", "hishel/__init__.py", "tests/_sync", "hishel/beta/_core/_sync", "tests/beta/_core/_sync"]
+exclude = [
+    "hishel/_sync",
+    "hishel/__init__.py",
+    "tests/_sync",
+    "hishel/beta/_core/_sync",
+    "tests/beta/_core/_sync",
+    "hishel/beta/integrations/clients/_sync_base.py"
+]
 line-length = 120
 
 [tool.ruff.lint]
@@ -120,5 +133,6 @@ dev = [
     "trio==0.30.0",
     "types-boto3==1.40.0",
     "types-pyyaml==6.0.12.20250516",
+    "types-requests>=2.31.0.6",
     "zipp>=3.19.1",
 ]

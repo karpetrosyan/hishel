@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import ssl
 import typing as t
-from typing import AsyncIterator, Iterator, Union, overload
+from typing import AsyncIterator, Iterable, Iterator, Union, overload
 
 import httpx
 
 from hishel.beta import Headers, Request, Response
+from hishel.beta._async_cache import AsyncCacheProxy
 from hishel.beta._core._base._storages._base import AsyncBaseStorage, SyncBaseStorage
 from hishel.beta._core._spec import (
     CacheOptions,
 )
 from hishel.beta._core.models import AnyIterable
-from hishel.beta.integrations.clients._base import AsyncCacheProxy, SyncCacheProxy
+from hishel.beta._sync_cache import SyncCacheProxy
 
 SOCKET_OPTION = t.Union[
     t.Tuple[int, int, int],
@@ -85,7 +86,7 @@ def httpx_to_internal(
         stream = AnyIterable(value.content)
     except (httpx.RequestNotRead, httpx.ResponseNotRead):
         if isinstance(value, httpx.Response):
-            stream = value.iter_raw()
+            stream = value.iter_raw() if isinstance(value.stream, Iterable) else value.aiter_raw()
         else:
             stream = value.stream  # type: ignore
     if isinstance(value, httpx.Request):
