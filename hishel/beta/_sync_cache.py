@@ -8,6 +8,7 @@ from typing import Callable, Iterator
 
 from typing_extensions import assert_never
 
+from hishel._sync._storages import InMemoryStorage
 from hishel.beta import (
     AnyState,
     CacheMiss,
@@ -48,7 +49,7 @@ class SyncCacheProxy:
         ignore_specification: bool = False,
     ) -> None:
         self.send_request = send_request
-        self.storage = storage if storage is not None else SyncSqliteStorage()
+        self.storage = storage if storage is not None else InMemoryStorage()
         self.cache_options = cache_options if cache_options is not None else CacheOptions()
         self.ignore_specification = ignore_specification
 

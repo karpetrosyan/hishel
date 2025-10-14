@@ -145,7 +145,7 @@ class SyncCacheTransport(httpx.BaseTransport):
         return httpx_to_internal(httpx_response)
 
 
-class SyncHishelClient(httpx.Client):
+class SyncCacheClient(httpx.Client):
     @overload
     def __init__(
         self,
@@ -255,7 +255,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         return httpx_to_internal(httpx_response)
 
 
-class AsyncHishelClient(httpx.AsyncClient):
+class AsyncCacheClient(httpx.AsyncClient):
     def __init__(self, *args: t.Any, **kwargs: t.Any) -> None:
         self.storage: AsyncBaseStorage | None = kwargs.pop("storage", None)
         self.cache_options: CacheOptions | None = kwargs.pop("cache_options", None)

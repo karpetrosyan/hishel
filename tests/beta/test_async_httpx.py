@@ -6,12 +6,12 @@ import pytest
 from httpx import ByteStream, MockTransport
 from inline_snapshot import snapshot
 
-from hishel.beta.httpx import AsyncHishelClient
+from hishel.beta.httpx import AsyncCacheClient
 
 
 @pytest.mark.anyio
 async def test_simple_caching(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> None:
-    client = AsyncHishelClient()
+    client = AsyncCacheClient()
 
     with caplog.at_level("DEBUG", logger="hishel"):
         await client.get("https://hishel.com")
@@ -32,7 +32,7 @@ async def test_simple_caching(use_temp_dir: Any, caplog: pytest.LogCaptureFixtur
 
 @pytest.mark.anyio
 async def test_simple_caching_ignoring_spec(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> None:
-    client = AsyncHishelClient()
+    client = AsyncCacheClient()
 
     with caplog.at_level("DEBUG", logger="hishel"):
         await client.get("https://hishel.com", extensions={"hishel_spec_ignore": True})
@@ -60,7 +60,7 @@ async def test_encoded_content_caching(use_temp_dir: Any) -> None:
             headers={"Content-Encoding": "gzip", "Content-Type": "text/plain", "Content-Length": "1000"},
         )
 
-    client = AsyncHishelClient(transport=MockTransport(handler=handler))
+    client = AsyncCacheClient(transport=MockTransport(handler=handler))
 
     response = await client.get("https://localhost")
 
