@@ -3,11 +3,7 @@ from __future__ import annotations
 from io import RawIOBase
 from typing import Iterator, Mapping, Optional, overload
 
-import requests
-from requests.adapters import HTTPAdapter
 from typing_extensions import assert_never
-from urllib3 import HTTPResponse
-from urllib3.util.retry import Retry as Retry
 
 from hishel._utils import snake_to_header
 from hishel.beta import Headers, Request, Response as Response
@@ -15,6 +11,17 @@ from hishel.beta._core._base._storages._base import SyncBaseStorage
 from hishel.beta._core._spec import CacheOptions
 from hishel.beta._core.models import extract_metadata_from_headers
 from hishel.beta._sync_cache import SyncCacheProxy
+
+try:
+    import requests
+    from requests.adapters import HTTPAdapter
+    from urllib3 import HTTPResponse
+    from urllib3.util.retry import Retry as Retry
+except ImportError:  # pragma: no cover
+    raise ImportError(
+        "The 'requests' library is required to use the requests integration. "
+        "Install hishel with 'pip install hishel[requests]'."
+    )
 
 
 class IteratorStream(RawIOBase):

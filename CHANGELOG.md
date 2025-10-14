@@ -1,10 +1,28 @@
-# Changelog
+## [0.1.4] - 2025-10-14
 
-## development
+### 🚀 Features
 
+- Add support for requests library
+- Add support for a sans-IO API (#366)
+- Allow already consumed streams with `CacheTransport` (#377)
+- Add sqlite storage for beta storages
+- Get rid of some locks from sqlite storage
+- Better async implemetation for sqlite storage
 - Added `Metadata` to public API. (#363)
 - Fix race condition in FileStorage initialization. (#353)
 
+### 🐛 Bug Fixes
+
+- Create an sqlite file in a cache folder
+- Fix beta imports
+
+### ⚙️ Miscellaneous Tasks
+
+- Improve CI (#369)
+- *(internal)* Remove src folder (#373)
+- *(internal)* Temporary remove python3.14 from CI
+- *(tests)* Add sqlite tests for new storage
+- *(tests)* Move some tests to beta
 ## 0.1.3 (1st July, 2025)
 
 - Remove `types-redis` from dev dependencies (#336)
