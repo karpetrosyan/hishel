@@ -21,6 +21,9 @@ SOCKET_OPTION = t.Union[
     t.Tuple[int, int, None, int],
 ]
 
+# 128 KB
+CHUNK_SIZE = 131072
+
 
 class IteratorStream(httpx.SyncByteStream, httpx.AsyncByteStream):
     def __init__(self, iterator: Iterator[bytes] | AsyncIterator[bytes]) -> None:
@@ -86,7 +89,11 @@ def httpx_to_internal(
         stream = AnyIterable(value.content)
     except (httpx.RequestNotRead, httpx.ResponseNotRead):
         if isinstance(value, httpx.Response):
-            stream = value.iter_raw() if isinstance(value.stream, Iterable) else value.aiter_raw()
+            stream = (
+                value.iter_raw(chunk_size=CHUNK_SIZE)
+                if isinstance(value.stream, Iterable)
+                else value.aiter_raw(chunk_size=CHUNK_SIZE)
+            )
         else:
             stream = value.stream  # type: ignore
     if isinstance(value, httpx.Request):
