@@ -163,6 +163,7 @@ The state machine implements RFC 9111 through a series of well-defined states. E
 **What it means:** The starting point of the cache state machine. This state represents an idle client that has received a request and needs to determine whether it can be satisfied from cache, needs revalidation, or must be forwarded to the origin server.
 
 **When you're in this state:** 
+
 - A new HTTP request has been received
 - You need to check if cached responses exist
 - You need to evaluate if cached responses can be used
@@ -194,6 +195,7 @@ next_state = idle.next(request, associated_pairs=[])
 **What it means:** The request cannot be satisfied from cache and must be forwarded to the origin server. After receiving the origin's response, this state evaluates whether the response can be stored in the cache.
 
 **When you're in this state:**
+
 - No suitable cached response exists for the request
 - You've received a response from the origin server
 - You need to determine if this response should be cached
@@ -204,6 +206,7 @@ next_state = idle.next(request, associated_pairs=[])
 - **→ CouldNotBeStored**: The response fails one or more storage requirements and cannot be cached
 
 **Storage Requirements Checked:**
+
 1. Request method is understood by the cache
 2. Response status code is final (not 1xx)
 3. Cache understands the response status code
@@ -233,6 +236,7 @@ next_state = cache_miss.next(response, pair_id=uuid.uuid4())
 **What it means:** One or more stale cached responses exist for the request, but they cannot be used without validation. A conditional request must be sent to the origin server to check if the cached content is still valid.
 
 **When you're in this state:**
+
 - Cached responses exist but are stale (past their freshness lifetime)
 - The responses have validators (ETag or Last-Modified)
 - You've sent a conditional request to the origin (If-None-Match or If-Modified-Since)
@@ -245,6 +249,7 @@ next_state = cache_miss.next(response, pair_id=uuid.uuid4())
 - **→ CacheMiss**: No matching responses found during the freshening process
 
 **Validation Process:**
+
 1. Client sends conditional request with validators from cached response
 2. Origin server checks if content has changed
 3. **304 response**: Content unchanged, update cache metadata
@@ -285,6 +290,7 @@ next_state = need_revalidation.next(validation_response)
 - **→ None**: This is a terminal state. Use the cached response to satisfy the request.
 
 **What to do:**
+
 1. Retrieve the cached response
 2. Update the Age header to reflect current age
 3. Return the response to the client
@@ -312,6 +318,7 @@ assert from_cache.next() is None
 **What it means:** The origin server responded with 304 Not Modified during revalidation. The cached responses are still valid but need their metadata refreshed with information from the 304 response.
 
 **When you're in this state:**
+
 - You received a 304 Not Modified response
 - One or more cached responses match the validators
 - The cached content is still valid but metadata needs updating
@@ -321,6 +328,7 @@ assert from_cache.next() is None
 - **→ FromCache**: After updating cached responses, use them to satisfy the request
 
 **Update Process:**
+
 1. Match cached responses using validators (ETag or Last-Modified)
 2. Update matched responses with new headers from 304 response
 3. Preserve the cached response body (content hasn't changed)
@@ -351,6 +359,7 @@ next_state = need_update.next()
 **What it means:** The response from the origin server meets all RFC 9111 storage requirements and should be saved to the cache. This is a terminal state indicating successful caching.
 
 **When you're in this state:**
+
 - You received a response from the origin server
 - The response passed all storage validation checks
 - The response should be cached for future requests
@@ -360,6 +369,7 @@ next_state = need_update.next()
 - **→ None**: This is a terminal state. Store the response and use it to satisfy the request.
 
 **What to do:**
+
 1. Store the request-response pair in your cache storage
 2. Store any stream data (request/response bodies)
 3. Return the response to the client
@@ -391,11 +401,13 @@ assert store_and_use.next() is None
 **What it means:** The response from the origin server does not meet RFC 9111 storage requirements and cannot be cached. This is a terminal state indicating the response should be used but not stored.
 
 **When you're in this state:**
+
 - You received a response from the origin server
 - The response failed one or more storage validation checks
 - The response should be returned to the client but not cached
 
 **Common Reasons:**
+
 - Contains `no-store` cache directive
 - Contains `private` directive (for shared caches)
 - Method not supported for caching
@@ -408,6 +420,7 @@ assert store_and_use.next() is None
 - **→ None**: This is a terminal state. Use the response without storing it.
 
 **What to do:**
+
 1. Return the response to the client
 2. Do NOT store it in cache
 3. Future identical requests will also result in cache miss
@@ -438,6 +451,7 @@ assert could_not_store.next() is None
 **What it means:** One or more cached response pairs need to be invalidated (deleted) from the cache before proceeding to the next state. This is a wrapper state that performs cleanup before transitioning.
 
 **When you're in this state:**
+
 - Outdated cached responses need to be removed
 - You're proceeding to another state after cleanup
 - This typically occurs during revalidation when new responses replace old ones
@@ -447,11 +461,13 @@ assert could_not_store.next() is None
 - **→ next_state**: After invalidating pairs, transition to the wrapped next state (typically `CacheMiss` or `NeedToBeUpdated`)
 
 **Common Scenarios:**
+
 1. **After 2xx response during revalidation**: Old cached responses are outdated, invalidate them before storing new response
 2. **After 5xx error during revalidation**: Server error invalidates cached responses
 3. **During freshening**: Responses that don't match validators need removal
 
 **What to do:**
+
 1. Delete the specified pairs from cache storage
 2. Delete associated stream data
 3. Transition to the next state specified

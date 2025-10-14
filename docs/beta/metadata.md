@@ -130,6 +130,7 @@ Request metadata controls how Hishel caches the request and its response. You ca
 **Description:** When `True`, accessing a cached entry resets its TTL, keeping frequently accessed entries fresh. When `False`, the TTL countdown starts from the original storage time and is not affected by subsequent accesses.
 
 **Use Cases:**
+
 - Keep popular content cached longer (sliding expiration)
 - Ensure rarely accessed content expires on schedule (fixed expiration)
 
@@ -343,6 +344,7 @@ Request metadata controls how Hishel caches the request and its response. You ca
 **Description:** When `True`, includes the request body in cache key generation. This allows caching different responses for the same URL but with different request bodies, which is essential for POST requests and GraphQL queries.
 
 **Use Cases:**
+
 - Cache POST requests with different payloads
 - Cache GraphQL queries (different queries to same endpoint)
 - Cache search requests with different parameters in body
@@ -502,20 +504,12 @@ Response metadata provides information about cache operations that occurred. The
 **Description:** Indicates whether the response was served from cache (`True`) or fetched from the origin server (`False`).
 
 **Use Cases:**
+
 - Monitor cache hit rates
 - Debug caching behavior
 - Log cache performance
 - Conditional logic based on cache status
 
-**Example:**
-
-=== "httpx"
-    ```python
-    from hishel.beta.httpx import SyncCacheClient
-
-    client = SyncCacheClient()
-
-    response = client.get("https://httpbin.org/get")
 
 **Example:**
 
@@ -632,20 +626,12 @@ Response metadata provides information about cache operations that occurred. The
 **Description:** Indicates whether a stale cached response was revalidated with the origin server. When `True`, the response was in cache but required validation (typically resulting in a 304 Not Modified response).
 
 **Use Cases:**
+
 - Monitor revalidation frequency
 - Debug cache freshness logic
 - Track conditional request behavior
 - Optimize cache TTL settings
 
-**Example:**
-
-=== "httpx"
-    ```python
-    from hishel.beta.httpx import SyncCacheClient
-
-    client = SyncCacheClient()
-
-    response = client.get("https://httpbin.org/get")
 
 **Example:**
 
@@ -756,19 +742,10 @@ Response metadata provides information about cache operations that occurred. The
 **Description:** Indicates whether RFC 9111 caching specification was ignored for this response. When `True`, the response was cached despite having directives that would normally prevent caching (like `Cache-Control: no-store`).
 
 **Use Cases:**
+
 - Verify `hishel_spec_ignore` worked as expected
 - Audit which responses bypass standard caching rules
 - Debug forced caching behavior
-
-**Example:**
-
-=== "httpx"
-    ```python
-    from hishel.beta.httpx import SyncCacheClient
-
-    client = SyncCacheClient()
-
-    response = client.get("https://httpbin.org/get", extensions={"hishel_spec_ignore": True})
 
 **Example:**
 
@@ -887,20 +864,12 @@ Response metadata provides information about cache operations that occurred. The
 **Description:** Indicates whether the response was successfully stored in cache. When `True`, the response met all caching requirements and was saved. When `False`, the response was not cacheable (e.g., due to `Cache-Control: no-store`).
 
 **Use Cases:**
+
 - Verify responses are being cached
 - Debug why responses aren't cached
 - Monitor cache storage success rate
 - Validate caching configuration
 
-**Example:**
-
-=== "httpx"
-    ```python
-    from hishel.beta.httpx import SyncCacheClient
-
-    client = SyncCacheClient()
-
-    response = client.get("https://httpbin.org/get")
 
 **Example:**
 

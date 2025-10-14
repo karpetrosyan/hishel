@@ -249,12 +249,13 @@ Update an existing pair with new information.
 === "Async"
 
     ```python
+    import time
     from dataclasses import replace
     
     # Option 1: Update with a new pair object
     updated_pair = replace(
         complete_pair,
-        response=replace(complete_pair.response, status_code=304)
+        meta=replace(complete_pair.meta, created_at=time.time())
     )
     result = await storage.update_pair(complete_pair.id, updated_pair)
     
