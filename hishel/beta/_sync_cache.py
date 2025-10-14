@@ -4,13 +4,14 @@ import hashlib
 import logging
 import time
 from dataclasses import replace
-from typing import Callable, Iterator
+from typing import Iterator, Awaitable, Callable
 
 from typing_extensions import assert_never
 
-from hishel._sync._storages import InMemoryStorage
 from hishel.beta import (
     AnyState,
+    SyncBaseStorage,
+    SyncSqliteStorage,
     CacheMiss,
     CacheOptions,
     CouldNotBeStored,
@@ -21,8 +22,6 @@ from hishel.beta import (
     Request,
     Response,
     StoreAndUse,
-    SyncBaseStorage,
-    SyncSqliteStorage,
     create_idle_state,
 )
 from hishel.beta._core._spec import InvalidatePairs, vary_headers_match
@@ -49,7 +48,7 @@ class SyncCacheProxy:
         ignore_specification: bool = False,
     ) -> None:
         self.send_request = send_request
-        self.storage = storage if storage is not None else InMemoryStorage()
+        self.storage = storage if storage is not None else SyncSqliteStorage()
         self.cache_options = cache_options if cache_options is not None else CacheOptions()
         self.ignore_specification = ignore_specification
 
@@ -101,7 +100,9 @@ class SyncCacheProxy:
         response = self.send_request(incomplete_pair.request)
 
         logger.debug("Storing response in cache ignoring specification")
-        complete_pair = self.storage.add_response(incomplete_pair.id, response, self._get_key_for_request(request))
+        complete_pair = self.storage.add_response(
+            incomplete_pair.id, response, self._get_key_for_request(request)
+        )
         return complete_pair.response
 
     def _handle_request_respecting_spec(self, request: Request) -> Response:
@@ -141,7 +142,9 @@ class SyncCacheProxy:
         return state.next(response, incomplete_pair.id)
 
     def _handle_store_and_use(self, state: StoreAndUse, request: Request) -> Response:
-        complete_pair = self.storage.add_response(state.pair_id, state.response, self._get_key_for_request(request))
+        complete_pair = self.storage.add_response(
+            state.pair_id, state.response, self._get_key_for_request(request)
+        )
         return complete_pair.response
 
     def _handle_revalidation(self, state: NeedRevalidation) -> AnyState:

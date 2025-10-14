@@ -18,7 +18,7 @@ SUBS = [
     # our public API
     ("AsyncCacheProxy", "SyncCacheProxy"),
     ("AsyncBaseStorage", "SyncBaseStorage"),
-    ("AsyncHishelClient", "SyncHishelClient"),
+    ("AsyncCacheClient", "SyncCacheClient"),
     ("AsyncSqliteStorage", "SyncSqliteStorage"),
     ("anysqlite", "sqlite3"),
     ("aiter_stream", "iter_stream"),

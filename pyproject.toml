@@ -106,7 +106,9 @@ exclude = [
     "tests/_sync",
     "hishel/beta/_core/_sync",
     "tests/beta/_core/_sync",
-    "hishel/beta/integrations/clients/_sync_base.py"
+    "hishel/beta/integrations/clients/_sync_base.py",
+    "hishel/beta/_sync_cache.py",
+    "tests/beta/test_sync_httpx.py"
 ]
 line-length = 120
 

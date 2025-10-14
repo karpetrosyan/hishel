@@ -9,6 +9,7 @@ from inline_snapshot import snapshot
 from hishel.beta.httpx import SyncCacheClient
 
 
+
 def test_simple_caching(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> None:
     client = SyncCacheClient()
 
@@ -29,6 +30,7 @@ def test_simple_caching(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> 
     assert response.extensions == snapshot({"hishel_from_cache": True})
 
 
+
 def test_simple_caching_ignoring_spec(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> None:
     client = SyncCacheClient()
 
@@ -47,6 +49,7 @@ def test_simple_caching_ignoring_spec(use_temp_dir: Any, caplog: pytest.LogCaptu
         ]
     )
     assert response.extensions == snapshot({"hishel_from_cache": True})
+
 
 
 def test_encoded_content_caching(use_temp_dir: Any) -> None:
