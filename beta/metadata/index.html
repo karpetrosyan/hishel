@@ -1188,9 +1188,11 @@
 <h3 id="hishel_refresh_ttl_on_access">hishel_refresh_ttl_on_access</h3>
 <p><strong>Type:</strong> <code>bool | None</code></p>
 <p><strong>Description:</strong> When <code>True</code>, accessing a cached entry resets its TTL, keeping frequently accessed entries fresh. When <code>False</code>, the TTL countdown starts from the original storage time and is not affected by subsequent accesses.</p>
-<p><strong>Use Cases:</strong>
-- Keep popular content cached longer (sliding expiration)
-- Ensure rarely accessed content expires on schedule (fixed expiration)</p>
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Keep popular content cached longer (sliding expiration)</li>
+<li>Ensure rarely accessed content expires on schedule (fixed expiration)</li>
+</ul>
 <p><strong>Default:</strong> Storage's <code>refresh_ttl_on_access</code> setting (typically <code>True</code>)</p>
 <p><strong>Example:</strong></p>
 <div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">httpx</label><label for="__tabbed_3_2">requests</label></div>
@@ -1395,10 +1397,12 @@
 <h3 id="hishel_body_key">hishel_body_key</h3>
 <p><strong>Type:</strong> <code>bool | None</code></p>
 <p><strong>Description:</strong> When <code>True</code>, includes the request body in cache key generation. This allows caching different responses for the same URL but with different request bodies, which is essential for POST requests and GraphQL queries.</p>
-<p><strong>Use Cases:</strong>
-- Cache POST requests with different payloads
-- Cache GraphQL queries (different queries to same endpoint)
-- Cache search requests with different parameters in body</p>
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Cache POST requests with different payloads</li>
+<li>Cache GraphQL queries (different queries to same endpoint)</li>
+<li>Cache search requests with different parameters in body</li>
+</ul>
 <p><strong>Default:</strong> <code>False</code> (body not included in cache key)</p>
 <p><strong>Example:</strong></p>
 <div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">httpx</label><label for="__tabbed_7_2">requests</label></div>
@@ -1548,24 +1552,15 @@
 <h3 id="hishel_from_cache">hishel_from_cache</h3>
 <p><strong>Type:</strong> <code>bool | None</code></p>
 <p><strong>Description:</strong> Indicates whether the response was served from cache (<code>True</code>) or fetched from the origin server (<code>False</code>).</p>
-<p><strong>Use Cases:</strong>
-- Monitor cache hit rates
-- Debug caching behavior
-- Log cache performance
-- Conditional logic based on cache status</p>
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Monitor cache hit rates</li>
+<li>Debug caching behavior</li>
+<li>Log cache performance</li>
+<li>Conditional logic based on cache status</li>
+</ul>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="9:1"><input checked="checked" id="__tabbed_9_1" name="__tabbed_9" type="radio" /><div class="tabbed-labels"><label for="__tabbed_9_1">httpx</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>```python
-from hishel.beta.httpx import SyncCacheClient</p>
-<p>client = SyncCacheClient()</p>
-<p>response = client.get("https://httpbin.org/get")</p>
-</div>
-</div>
-</div>
-<p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="10:2"><input checked="checked" id="__tabbed_10_1" name="__tabbed_10" type="radio" /><input id="__tabbed_10_2" name="__tabbed_10" type="radio" /><div class="tabbed-labels"><label for="__tabbed_10_1">httpx</label><label for="__tabbed_10_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="9:2"><input checked="checked" id="__tabbed_9_1" name="__tabbed_9" type="radio" /><input id="__tabbed_9_2" name="__tabbed_9" type="radio" /><div class="tabbed-labels"><label for="__tabbed_9_1">httpx</label><label for="__tabbed_9_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1601,7 +1596,7 @@ from hishel.beta.httpx import SyncCacheClient</p>
 </div>
 </div>
 <p><strong>Real-World Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="11:2"><input checked="checked" id="__tabbed_11_1" name="__tabbed_11" type="radio" /><input id="__tabbed_11_2" name="__tabbed_11" type="radio" /><div class="tabbed-labels"><label for="__tabbed_11_1">httpx</label><label for="__tabbed_11_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="10:2"><input checked="checked" id="__tabbed_10_1" name="__tabbed_10" type="radio" /><input id="__tabbed_10_2" name="__tabbed_10" type="radio" /><div class="tabbed-labels"><label for="__tabbed_10_1">httpx</label><label for="__tabbed_10_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1676,24 +1671,15 @@ from hishel.beta.httpx import SyncCacheClient</p>
 <h3 id="hishel_revalidated">hishel_revalidated</h3>
 <p><strong>Type:</strong> <code>bool | None</code></p>
 <p><strong>Description:</strong> Indicates whether a stale cached response was revalidated with the origin server. When <code>True</code>, the response was in cache but required validation (typically resulting in a 304 Not Modified response).</p>
-<p><strong>Use Cases:</strong>
-- Monitor revalidation frequency
-- Debug cache freshness logic
-- Track conditional request behavior
-- Optimize cache TTL settings</p>
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Monitor revalidation frequency</li>
+<li>Debug cache freshness logic</li>
+<li>Track conditional request behavior</li>
+<li>Optimize cache TTL settings</li>
+</ul>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="12:1"><input checked="checked" id="__tabbed_12_1" name="__tabbed_12" type="radio" /><div class="tabbed-labels"><label for="__tabbed_12_1">httpx</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>```python
-from hishel.beta.httpx import SyncCacheClient</p>
-<p>client = SyncCacheClient()</p>
-<p>response = client.get("https://httpbin.org/get")</p>
-</div>
-</div>
-</div>
-<p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="13:2"><input checked="checked" id="__tabbed_13_1" name="__tabbed_13" type="radio" /><input id="__tabbed_13_2" name="__tabbed_13" type="radio" /><div class="tabbed-labels"><label for="__tabbed_13_1">httpx</label><label for="__tabbed_13_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="11:2"><input checked="checked" id="__tabbed_11_1" name="__tabbed_11" type="radio" /><input id="__tabbed_11_2" name="__tabbed_11" type="radio" /><div class="tabbed-labels"><label for="__tabbed_11_1">httpx</label><label for="__tabbed_11_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1725,7 +1711,7 @@ from hishel.beta.httpx import SyncCacheClient</p>
 </div>
 </div>
 <p><strong>Real-World Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="14:2"><input checked="checked" id="__tabbed_14_1" name="__tabbed_14" type="radio" /><input id="__tabbed_14_2" name="__tabbed_14" type="radio" /><div class="tabbed-labels"><label for="__tabbed_14_1">httpx</label><label for="__tabbed_14_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="12:2"><input checked="checked" id="__tabbed_12_1" name="__tabbed_12" type="radio" /><input id="__tabbed_12_2" name="__tabbed_12" type="radio" /><div class="tabbed-labels"><label for="__tabbed_12_1">httpx</label><label for="__tabbed_12_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1798,23 +1784,14 @@ from hishel.beta.httpx import SyncCacheClient</p>
 <h3 id="hishel_spec_ignored">hishel_spec_ignored</h3>
 <p><strong>Type:</strong> <code>bool | None</code></p>
 <p><strong>Description:</strong> Indicates whether RFC 9111 caching specification was ignored for this response. When <code>True</code>, the response was cached despite having directives that would normally prevent caching (like <code>Cache-Control: no-store</code>).</p>
-<p><strong>Use Cases:</strong>
-- Verify <code>hishel_spec_ignore</code> worked as expected
-- Audit which responses bypass standard caching rules
-- Debug forced caching behavior</p>
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Verify <code>hishel_spec_ignore</code> worked as expected</li>
+<li>Audit which responses bypass standard caching rules</li>
+<li>Debug forced caching behavior</li>
+</ul>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="15:1"><input checked="checked" id="__tabbed_15_1" name="__tabbed_15" type="radio" /><div class="tabbed-labels"><label for="__tabbed_15_1">httpx</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>```python
-from hishel.beta.httpx import SyncCacheClient</p>
-<p>client = SyncCacheClient()</p>
-<p>response = client.get("https://httpbin.org/get", extensions={"hishel_spec_ignore": True})</p>
-</div>
-</div>
-</div>
-<p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="16:2"><input checked="checked" id="__tabbed_16_1" name="__tabbed_16" type="radio" /><input id="__tabbed_16_2" name="__tabbed_16" type="radio" /><div class="tabbed-labels"><label for="__tabbed_16_1">httpx</label><label for="__tabbed_16_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="13:2"><input checked="checked" id="__tabbed_13_1" name="__tabbed_13" type="radio" /><input id="__tabbed_13_2" name="__tabbed_13" type="radio" /><div class="tabbed-labels"><label for="__tabbed_13_1">httpx</label><label for="__tabbed_13_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1854,7 +1831,7 @@ from hishel.beta.httpx import SyncCacheClient</p>
 </div>
 </div>
 <p><strong>Real-World Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="17:2"><input checked="checked" id="__tabbed_17_1" name="__tabbed_17" type="radio" /><input id="__tabbed_17_2" name="__tabbed_17" type="radio" /><div class="tabbed-labels"><label for="__tabbed_17_1">httpx</label><label for="__tabbed_17_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="14:2"><input checked="checked" id="__tabbed_14_1" name="__tabbed_14" type="radio" /><input id="__tabbed_14_2" name="__tabbed_14" type="radio" /><div class="tabbed-labels"><label for="__tabbed_14_1">httpx</label><label for="__tabbed_14_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1927,24 +1904,15 @@ from hishel.beta.httpx import SyncCacheClient</p>
 <h3 id="hishel_stored">hishel_stored</h3>
 <p><strong>Type:</strong> <code>bool | None</code></p>
 <p><strong>Description:</strong> Indicates whether the response was successfully stored in cache. When <code>True</code>, the response met all caching requirements and was saved. When <code>False</code>, the response was not cacheable (e.g., due to <code>Cache-Control: no-store</code>).</p>
-<p><strong>Use Cases:</strong>
-- Verify responses are being cached
-- Debug why responses aren't cached
-- Monitor cache storage success rate
-- Validate caching configuration</p>
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Verify responses are being cached</li>
+<li>Debug why responses aren't cached</li>
+<li>Monitor cache storage success rate</li>
+<li>Validate caching configuration</li>
+</ul>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="18:1"><input checked="checked" id="__tabbed_18_1" name="__tabbed_18" type="radio" /><div class="tabbed-labels"><label for="__tabbed_18_1">httpx</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>```python
-from hishel.beta.httpx import SyncCacheClient</p>
-<p>client = SyncCacheClient()</p>
-<p>response = client.get("https://httpbin.org/get")</p>
-</div>
-</div>
-</div>
-<p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="19:2"><input checked="checked" id="__tabbed_19_1" name="__tabbed_19" type="radio" /><input id="__tabbed_19_2" name="__tabbed_19" type="radio" /><div class="tabbed-labels"><label for="__tabbed_19_1">httpx</label><label for="__tabbed_19_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="15:2"><input checked="checked" id="__tabbed_15_1" name="__tabbed_15" type="radio" /><input id="__tabbed_15_2" name="__tabbed_15" type="radio" /><div class="tabbed-labels"><label for="__tabbed_15_1">httpx</label><label for="__tabbed_15_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1980,7 +1948,7 @@ from hishel.beta.httpx import SyncCacheClient</p>
 </div>
 </div>
 <p><strong>Real-World Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="20:2"><input checked="checked" id="__tabbed_20_1" name="__tabbed_20" type="radio" /><input id="__tabbed_20_2" name="__tabbed_20" type="radio" /><div class="tabbed-labels"><label for="__tabbed_20_1">httpx</label><label for="__tabbed_20_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="16:2"><input checked="checked" id="__tabbed_16_1" name="__tabbed_16" type="radio" /><input id="__tabbed_16_2" name="__tabbed_16" type="radio" /><div class="tabbed-labels"><label for="__tabbed_16_1">httpx</label><label for="__tabbed_16_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>

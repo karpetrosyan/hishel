@@ -1224,10 +1224,12 @@
 <p>The state machine implements RFC 9111 through a series of well-defined states. Each state represents a specific point in the HTTP caching lifecycle and determines the next action to take.</p>
 <h3 id="idleclient">IdleClient</h3>
 <p><strong>What it means:</strong> The starting point of the cache state machine. This state represents an idle client that has received a request and needs to determine whether it can be satisfied from cache, needs revalidation, or must be forwarded to the origin server.</p>
-<p><strong>When you're in this state:</strong> 
-- A new HTTP request has been received
-- You need to check if cached responses exist
-- You need to evaluate if cached responses can be used</p>
+<p><strong>When you're in this state:</strong> </p>
+<ul>
+<li>A new HTTP request has been received</li>
+<li>You need to check if cached responses exist</li>
+<li>You need to evaluate if cached responses can be used</li>
+</ul>
 <p><strong>Transitions:</strong></p>
 <ul>
 <li><strong>→ FromCache</strong>: A fresh cached response exists and can be used immediately without contacting the origin server</li>
@@ -1248,23 +1250,27 @@
 <hr />
 <h3 id="cachemiss">CacheMiss</h3>
 <p><strong>What it means:</strong> The request cannot be satisfied from cache and must be forwarded to the origin server. After receiving the origin's response, this state evaluates whether the response can be stored in the cache.</p>
-<p><strong>When you're in this state:</strong>
-- No suitable cached response exists for the request
-- You've received a response from the origin server
-- You need to determine if this response should be cached</p>
+<p><strong>When you're in this state:</strong></p>
+<ul>
+<li>No suitable cached response exists for the request</li>
+<li>You've received a response from the origin server</li>
+<li>You need to determine if this response should be cached</li>
+</ul>
 <p><strong>Transitions:</strong></p>
 <ul>
 <li><strong>→ StoreAndUse</strong>: The response meets all RFC 9111 storage requirements and should be cached</li>
 <li><strong>→ CouldNotBeStored</strong>: The response fails one or more storage requirements and cannot be cached</li>
 </ul>
-<p><strong>Storage Requirements Checked:</strong>
-1. Request method is understood by the cache
-2. Response status code is final (not 1xx)
-3. Cache understands the response status code
-4. No <code>no-store</code> directive present
-5. <code>private</code> directive allows storage (for shared caches)
-6. <code>Authorization</code> header is properly handled
-7. Response contains explicit caching information OR is heuristically cacheable</p>
+<p><strong>Storage Requirements Checked:</strong></p>
+<ol>
+<li>Request method is understood by the cache</li>
+<li>Response status code is final (not 1xx)</li>
+<li>Cache understands the response status code</li>
+<li>No <code>no-store</code> directive present</li>
+<li><code>private</code> directive allows storage (for shared caches)</li>
+<li><code>Authorization</code> header is properly handled</li>
+<li>Response contains explicit caching information OR is heuristically cacheable</li>
+</ol>
 <p><strong>RFC Reference:</strong> <a href="https://www.rfc-editor.org/rfc/rfc9111.html#section-3">Section 3 - Storing Responses in Caches</a></p>
 <p><strong>Example:</strong>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheMiss</span>
@@ -1279,22 +1285,26 @@
 <hr />
 <h3 id="needrevalidation">NeedRevalidation</h3>
 <p><strong>What it means:</strong> One or more stale cached responses exist for the request, but they cannot be used without validation. A conditional request must be sent to the origin server to check if the cached content is still valid.</p>
-<p><strong>When you're in this state:</strong>
-- Cached responses exist but are stale (past their freshness lifetime)
-- The responses have validators (ETag or Last-Modified)
-- You've sent a conditional request to the origin (If-None-Match or If-Modified-Since)
-- You're waiting for the validation response</p>
+<p><strong>When you're in this state:</strong></p>
+<ul>
+<li>Cached responses exist but are stale (past their freshness lifetime)</li>
+<li>The responses have validators (ETag or Last-Modified)</li>
+<li>You've sent a conditional request to the origin (If-None-Match or If-Modified-Since)</li>
+<li>You're waiting for the validation response</li>
+</ul>
 <p><strong>Transitions:</strong></p>
 <ul>
 <li><strong>→ NeedToBeUpdated</strong>: Origin responds with 304 Not Modified - cached responses are still valid and can be freshened</li>
 <li><strong>→ InvalidatePairs + CacheMiss</strong>: Origin responds with 2xx/5xx - cached responses are outdated and must be replaced</li>
 <li><strong>→ CacheMiss</strong>: No matching responses found during the freshening process</li>
 </ul>
-<p><strong>Validation Process:</strong>
-1. Client sends conditional request with validators from cached response
-2. Origin server checks if content has changed
-3. <strong>304 response</strong>: Content unchanged, update cache metadata
-4. <strong>2xx/5xx response</strong>: Content changed or error, invalidate old cache and store new response</p>
+<p><strong>Validation Process:</strong></p>
+<ol>
+<li>Client sends conditional request with validators from cached response</li>
+<li>Origin server checks if content has changed</li>
+<li><strong>304 response</strong>: Content unchanged, update cache metadata</li>
+<li><strong>2xx/5xx response</strong>: Content changed or error, invalidate old cache and store new response</li>
+</ol>
 <p><strong>RFC Reference:</strong> <a href="https://www.rfc-editor.org/rfc/rfc9111.html#section-4.3">Section 4.3 - Validation</a></p>
 <p><strong>Example:</strong>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta</span><span class="w"> </span><span class="kn">import</span> <span class="n">NeedRevalidation</span>
@@ -1322,11 +1332,13 @@
 <ul>
 <li><strong>→ None</strong>: This is a terminal state. Use the cached response to satisfy the request.</li>
 </ul>
-<p><strong>What to do:</strong>
-1. Retrieve the cached response
-2. Update the Age header to reflect current age
-3. Return the response to the client
-4. No further state transitions needed</p>
+<p><strong>What to do:</strong></p>
+<ol>
+<li>Retrieve the cached response</li>
+<li>Update the Age header to reflect current age</li>
+<li>Return the response to the client</li>
+<li>No further state transitions needed</li>
+</ol>
 <p><strong>RFC Reference:</strong> <a href="https://www.rfc-editor.org/rfc/rfc9111.html#section-4.2">Section 4.2 - Freshness</a></p>
 <p><strong>Example:</strong>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta</span><span class="w"> </span><span class="kn">import</span> <span class="n">FromCache</span>
@@ -1342,19 +1354,23 @@
 <hr />
 <h3 id="needtobeupdated">NeedToBeUpdated</h3>
 <p><strong>What it means:</strong> The origin server responded with 304 Not Modified during revalidation. The cached responses are still valid but need their metadata refreshed with information from the 304 response.</p>
-<p><strong>When you're in this state:</strong>
-- You received a 304 Not Modified response
-- One or more cached responses match the validators
-- The cached content is still valid but metadata needs updating</p>
+<p><strong>When you're in this state:</strong></p>
+<ul>
+<li>You received a 304 Not Modified response</li>
+<li>One or more cached responses match the validators</li>
+<li>The cached content is still valid but metadata needs updating</li>
+</ul>
 <p><strong>Transitions:</strong></p>
 <ul>
 <li><strong>→ FromCache</strong>: After updating cached responses, use them to satisfy the request</li>
 </ul>
-<p><strong>Update Process:</strong>
-1. Match cached responses using validators (ETag or Last-Modified)
-2. Update matched responses with new headers from 304 response
-3. Preserve the cached response body (content hasn't changed)
-4. Update freshness information (Date, Cache-Control, Expires)</p>
+<p><strong>Update Process:</strong></p>
+<ol>
+<li>Match cached responses using validators (ETag or Last-Modified)</li>
+<li>Update matched responses with new headers from 304 response</li>
+<li>Preserve the cached response body (content hasn't changed)</li>
+<li>Update freshness information (Date, Cache-Control, Expires)</li>
+</ol>
 <p><strong>RFC Reference:</strong> <a href="https://www.rfc-editor.org/rfc/rfc9111.html#section-4.3.4">Section 4.3.4 - Freshening Stored Responses</a></p>
 <p><strong>Example:</strong>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta</span><span class="w"> </span><span class="kn">import</span> <span class="n">NeedToBeUpdated</span>
@@ -1373,19 +1389,23 @@
 <hr />
 <h3 id="storeanduse">StoreAndUse</h3>
 <p><strong>What it means:</strong> The response from the origin server meets all RFC 9111 storage requirements and should be saved to the cache. This is a terminal state indicating successful caching.</p>
-<p><strong>When you're in this state:</strong>
-- You received a response from the origin server
-- The response passed all storage validation checks
-- The response should be cached for future requests</p>
+<p><strong>When you're in this state:</strong></p>
+<ul>
+<li>You received a response from the origin server</li>
+<li>The response passed all storage validation checks</li>
+<li>The response should be cached for future requests</li>
+</ul>
 <p><strong>Transitions:</strong></p>
 <ul>
 <li><strong>→ None</strong>: This is a terminal state. Store the response and use it to satisfy the request.</li>
 </ul>
-<p><strong>What to do:</strong>
-1. Store the request-response pair in your cache storage
-2. Store any stream data (request/response bodies)
-3. Return the response to the client
-4. The response is now available for future requests</p>
+<p><strong>What to do:</strong></p>
+<ol>
+<li>Store the request-response pair in your cache storage</li>
+<li>Store any stream data (request/response bodies)</li>
+<li>Return the response to the client</li>
+<li>The response is now available for future requests</li>
+</ol>
 <p><strong>RFC Reference:</strong> <a href="https://www.rfc-editor.org/rfc/rfc9111.html#section-3">Section 3 - Storing Responses in Caches</a></p>
 <p><strong>Example:</strong>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta</span><span class="w"> </span><span class="kn">import</span> <span class="n">StoreAndUse</span>
@@ -1405,25 +1425,31 @@
 <hr />
 <h3 id="couldnotbestored">CouldNotBeStored</h3>
 <p><strong>What it means:</strong> The response from the origin server does not meet RFC 9111 storage requirements and cannot be cached. This is a terminal state indicating the response should be used but not stored.</p>
-<p><strong>When you're in this state:</strong>
-- You received a response from the origin server
-- The response failed one or more storage validation checks
-- The response should be returned to the client but not cached</p>
-<p><strong>Common Reasons:</strong>
-- Contains <code>no-store</code> cache directive
-- Contains <code>private</code> directive (for shared caches)
-- Method not supported for caching
-- Status code not cacheable
-- <code>Authorization</code> header without explicit caching permission
-- No explicit caching directives and not heuristically cacheable</p>
+<p><strong>When you're in this state:</strong></p>
+<ul>
+<li>You received a response from the origin server</li>
+<li>The response failed one or more storage validation checks</li>
+<li>The response should be returned to the client but not cached</li>
+</ul>
+<p><strong>Common Reasons:</strong></p>
+<ul>
+<li>Contains <code>no-store</code> cache directive</li>
+<li>Contains <code>private</code> directive (for shared caches)</li>
+<li>Method not supported for caching</li>
+<li>Status code not cacheable</li>
+<li><code>Authorization</code> header without explicit caching permission</li>
+<li>No explicit caching directives and not heuristically cacheable</li>
+</ul>
 <p><strong>Transitions:</strong></p>
 <ul>
 <li><strong>→ None</strong>: This is a terminal state. Use the response without storing it.</li>
 </ul>
-<p><strong>What to do:</strong>
-1. Return the response to the client
-2. Do NOT store it in cache
-3. Future identical requests will also result in cache miss</p>
+<p><strong>What to do:</strong></p>
+<ol>
+<li>Return the response to the client</li>
+<li>Do NOT store it in cache</li>
+<li>Future identical requests will also result in cache miss</li>
+</ol>
 <p><strong>RFC Reference:</strong> <a href="https://www.rfc-editor.org/rfc/rfc9111.html#section-3">Section 3 - Storing Responses in Caches</a></p>
 <p><strong>Example:</strong>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta</span><span class="w"> </span><span class="kn">import</span> <span class="n">CouldNotBeStored</span>
@@ -1443,22 +1469,28 @@
 <hr />
 <h3 id="invalidatepairs">InvalidatePairs</h3>
 <p><strong>What it means:</strong> One or more cached response pairs need to be invalidated (deleted) from the cache before proceeding to the next state. This is a wrapper state that performs cleanup before transitioning.</p>
-<p><strong>When you're in this state:</strong>
-- Outdated cached responses need to be removed
-- You're proceeding to another state after cleanup
-- This typically occurs during revalidation when new responses replace old ones</p>
+<p><strong>When you're in this state:</strong></p>
+<ul>
+<li>Outdated cached responses need to be removed</li>
+<li>You're proceeding to another state after cleanup</li>
+<li>This typically occurs during revalidation when new responses replace old ones</li>
+</ul>
 <p><strong>Transitions:</strong></p>
 <ul>
 <li><strong>→ next_state</strong>: After invalidating pairs, transition to the wrapped next state (typically <code>CacheMiss</code> or <code>NeedToBeUpdated</code>)</li>
 </ul>
-<p><strong>Common Scenarios:</strong>
-1. <strong>After 2xx response during revalidation</strong>: Old cached responses are outdated, invalidate them before storing new response
-2. <strong>After 5xx error during revalidation</strong>: Server error invalidates cached responses
-3. <strong>During freshening</strong>: Responses that don't match validators need removal</p>
-<p><strong>What to do:</strong>
-1. Delete the specified pairs from cache storage
-2. Delete associated stream data
-3. Transition to the next state specified</p>
+<p><strong>Common Scenarios:</strong></p>
+<ol>
+<li><strong>After 2xx response during revalidation</strong>: Old cached responses are outdated, invalidate them before storing new response</li>
+<li><strong>After 5xx error during revalidation</strong>: Server error invalidates cached responses</li>
+<li><strong>During freshening</strong>: Responses that don't match validators need removal</li>
+</ol>
+<p><strong>What to do:</strong></p>
+<ol>
+<li>Delete the specified pairs from cache storage</li>
+<li>Delete associated stream data</li>
+<li>Transition to the next state specified</li>
+</ol>
 <p><strong>Example:</strong>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.beta</span><span class="w"> </span><span class="kn">import</span> <span class="n">InvalidatePairs</span><span class="p">,</span> <span class="n">CacheMiss</span>
 <a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
