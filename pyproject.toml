@@ -37,9 +37,9 @@ dependencies = [
 
 [project.optional-dependencies]
 
-yaml = ["pyyaml==6.0.2"]
+yaml = ["pyyaml==6.0.3"]
 
-redis = ["redis==6.2.0"]
+redis = ["redis==6.4.0"]
 
 sqlite = ["anysqlite>=0.0.5"]
 
@@ -120,21 +120,21 @@ combine-as-imports = true
 
 [dependency-groups]
 dev = [
-    "anyio==4.9.0",
-    "coverage==7.10.1",
-    "hatch==1.14.1",
+    "anyio==4.11.0",
+    "coverage==7.10.7",
+    "hatch==1.14.2",
     "inline-snapshot>=0.28.0",
     "mkdocs==1.6.1",
-    "mkdocs-material==9.6.16",
-    "mypy==1.17.1",
+    "mkdocs-material==9.6.21",
+    "mypy==1.18.2",
     "pyright>=1.1.404",
-    "pytest==8.4.1",
+    "pytest==8.4.2",
     "pytest-cov>=6.2.1",
-    "ruff==0.12.7",
+    "ruff==0.14.0",
     "time-machine>=2.19.0",
-    "trio==0.30.0",
-    "types-boto3==1.40.0",
-    "types-pyyaml==6.0.12.20250516",
+    "trio==0.31.0",
+    "types-boto3==1.40.51",
+    "types-pyyaml==6.0.12.20250915",
     "types-requests>=2.31.0.6",
     "zipp>=3.19.1",
 ]
