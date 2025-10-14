@@ -22,8 +22,8 @@
       <img src="https://img.shields.io/pypi/l/hishel" alt="license">
   </a>
 
-  <a href="https://img.shields.io/codecov/c/github/karpetrosyan/hishel">
-      <img src="https://img.shields.io/codecov/c/github/karpetrosyan/hishel" alt="license">
+  <a href="https://coveralls.io/github/karpetrosyan/hishel">
+      <img src="https://img.shields.io/coverallsCoverage/github/karpetrosyan/hishel" alt="license">
   </a>
 
   <a href="https://github.com/karpetrosyan/hishel">

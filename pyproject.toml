@@ -24,14 +24,14 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
     "anyio>=4.9.0",
     "anysqlite>=0.0.5",
     "httpx>=0.28.0",
-    "lmdb>=1.7.3",
-    "msgpack>=1.1.1",
+    "msgpack>=1.1.2",
     "typing-extensions>=4.14.1",
 ]
 
