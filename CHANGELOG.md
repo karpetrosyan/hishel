@@ -3,6 +3,7 @@
 ### 🚀 Features
 
 - Add support for requests library
+- Add support for Python 3.14
 - Add support for a sans-IO API (#366)
 - Allow already consumed streams with `CacheTransport` (#377)
 - Add sqlite storage for beta storages
