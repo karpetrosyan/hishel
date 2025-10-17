@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterator, List, Literal, Mapping, MutableMapping, Optional, Union, cast
 
-
 """
 HTTP token and quoted-string parsing utilities.
 
@@ -108,7 +107,7 @@ def is_token(c: str) -> bool:
 
 
 def is_qd_text(c: str) -> bool:
-    """
+    r"""
     Check if character is valid in quoted-text.
 
     Per RFC 7230 Section 3.2.6:
