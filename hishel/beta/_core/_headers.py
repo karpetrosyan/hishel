@@ -1,117 +1,287 @@
 from __future__ import annotations
 
-import string
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator, List, Literal, Mapping, MutableMapping, Optional, Union, cast
-
-from hishel._exceptions import ParseError, ValidationError
-
-## Grammar
+from typing import Any, Iterator, List, Literal, Mapping, MutableMapping, Optional, Union, cast
 
 
-HTAB = "\t"
-SP = " "
-obs_text = "".join(chr(i) for i in range(0x80, 0xFF + 1))  # 0x80-0xFF
+"""
+HTTP token and quoted-string parsing utilities.
 
-tchar = "!#$%&'*+-.^_`|~0123456789" + string.ascii_letters
-qdtext = "".join(
-    [
-        HTAB,
-        SP,
-        "\x21",
-        "".join(chr(i) for i in range(0x23, 0x5B + 1)),  # 0x23-0x5b
-        "".join(chr(i) for i in range(0x5D, 0x7E + 1)),  # 0x5D-0x7E
-        obs_text,
-    ]
-)
-
-TIME_FIELDS = [
-    "max_age",
-    "max_stale",
-    "min_fresh",
-    "s_maxage",
-]
-
-BOOLEAN_FIELDS = [
-    "immutable",
-    "must_revalidate",
-    "must_understand",
-    "no_store",
-    "no_transform",
-    "only_if_cached",
-    "public",
-    "proxy_revalidate",
-]
-
-LIST_FIELDS = ["no_cache", "private"]
-
-__all__ = (
-    "CacheControl",
-    "Vary",
-)
+These functions implement RFC 7230 parsing rules for HTTP/1.1 tokens
+and quoted strings.
+"""
 
 
-def strip_ows_around(text: str) -> str:
-    return text.strip(" ").strip("\t")
+def is_char(c: str) -> bool:
+    """
+    Check if character is a valid ASCII character (0-127).
+
+    Per RFC 7230: CHAR = any US-ASCII character (octets 0 - 127)
+
+    Args:
+        c: Single character string
+
+    Returns:
+        True if character is valid ASCII (0-127), False otherwise
+    """
+    if not c:
+        return False
+    return ord(c) <= 127
 
 
-def normalize_directive(text: str) -> str:
-    return text.replace("-", "_")
+def is_ctl(c: str) -> bool:
+    """
+    Check if character is a control character.
+
+    Per RFC 7230: CTL = control characters (0-31 and 127)
+
+    Args:
+        c: Single character string
+
+    Returns:
+        True if character is a control character, False otherwise
+    """
+    if not c:
+        return False
+    b = ord(c)
+    return b <= 31 or b == 127
 
 
-def parse_cache_control(cache_control_value: Optional[str]) -> "CacheControl":
-    if cache_control_value is None:
-        return CacheControl()
-    directives = {}
+def is_separator(c: str) -> bool:
+    """
+    Check if character is an HTTP separator.
 
-    if "no-cache=" in cache_control_value or "private=" in cache_control_value:
-        cache_control_splited = [cache_control_value]
-    else:
-        cache_control_splited = cache_control_value.split(",")
+    Per RFC 2616 Section 2.2:
+    separators = "(" | ")" | "<" | ">" | "@"
+               | "," | ";" | ":" | "\" | <">
+               | "/" | "[" | "]" | "?" | "="
+               | "{" | "}" | SP | HT
 
-    for directive in cache_control_splited:
-        key: str = ""
-        value: Optional[str] = None
-        dquote = False
+    Args:
+        c: Single character string
 
-        if not directive:
-            raise ParseError("The directive should not be left blank.")
+    Returns:
+        True if character is a separator, False otherwise
+    """
+    if not c:
+        return False
+    return c in '()<>@,;:\\"/[]?={} \t'
 
-        directive = strip_ows_around(directive)
 
-        if not directive:
-            raise ParseError("The directive should not contain only whitespaces.")
+def is_token(c: str) -> bool:
+    """
+    Check if character is valid in an HTTP token.
 
-        for i, key_char in enumerate(directive):
-            if key_char == "=":
-                value = directive[i + 1 :]
+    Per RFC 7230 Section 3.2.6:
+    token = 1*tchar
+    tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*"
+          / "+" / "-" / "." / "0"-"9" / "A"-"Z"
+          / "^" / "_" / "`" / "a"-"z" / "|" / "~"
 
-                if not value:
-                    raise ParseError("The directive value cannot be left blank.")
+    Implementation: token chars are CHAR but not CTL or separators
 
-                if value[0] == '"':
-                    dquote = True
-                if dquote and value[-1] != '"':
-                    raise ParseError("Invalid quotes around the value.")
+    Args:
+        c: Single character string
 
-                if not dquote:
-                    for value_char in value:
-                        if value_char not in tchar:
-                            raise ParseError(
-                                f"The character '{value_char!r}' is not permitted for the unquoted values."
-                            )
-                else:
-                    for value_char in value[1:-1]:
-                        if value_char not in qdtext:
-                            raise ParseError(f"The character '{value_char!r}' is not permitted for the quoted values.")
-                break
+    Returns:
+        True if character is valid in a token, False otherwise
 
-            if key_char not in tchar:
-                raise ParseError(f"The character '{key_char!r}' is not permitted in the directive name.")
-            key += key_char
-        directives[key] = value
-    validated_data = CacheControl.validate(directives)
-    return CacheControl(**validated_data)
+    Examples:
+        >>> is_token('a')
+        True
+        >>> is_token('Z')
+        True
+        >>> is_token('5')
+        True
+        >>> is_token('-')
+        True
+        >>> is_token('!')
+        True
+        >>> is_token(' ')
+        False
+        >>> is_token(',')
+        False
+        >>> is_token('=')
+        False
+    """
+    return is_char(c) and not is_ctl(c) and not is_separator(c)
+
+
+def is_qd_text(c: str) -> bool:
+    """
+    Check if character is valid in quoted-text.
+
+    Per RFC 7230 Section 3.2.6:
+    quoted-string = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+    qdtext = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
+    obs-text = %x80-FF
+
+    In other words:
+    - HTAB (0x09)
+    - SP (0x20)
+    - 0x21 (!)
+    - 0x23-0x5B (# to [, excluding " which is 0x22)
+    - 0x5D-0x7E (] to ~, excluding \ which is 0x5C)
+    - 0x80-0xFF (obs-text, extended ASCII)
+
+    Args:
+        c: Single character string
+
+    Returns:
+        True if character is valid quoted-text, False otherwise
+    """
+    if not c:
+        return False
+
+    b = ord(c)
+    return (
+        b == 0x09  # HTAB
+        or b == 0x20  # SP
+        or b == 0x21  # !
+        or (0x23 <= b <= 0x5B)  # # to [ (skips " which is 0x22)
+        or (0x5D <= b <= 0x7E)  # ] to ~ (skips \ which is 0x5C)
+        or b >= 0x80
+    )  # obs-text
+
+
+def http_unquote_pair(c: str) -> str:
+    """
+    Unquote a single escaped character from a quoted-pair.
+
+    Per RFC 7230 Section 3.2.6:
+    quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
+    VCHAR = visible characters (0x21-0x7E)
+
+    Valid escaped characters:
+    - HTAB (0x09)
+    - SP (0x20)
+    - VCHAR (0x21-0x7E)
+    - obs-text (0x80-0xFF)
+
+    Invalid characters are replaced with '?'
+
+    Args:
+        c: Single character string (the character after the backslash)
+
+    Returns:
+        The unquoted character, or '?' if invalid
+
+    Examples:
+        >>> http_unquote_pair('"')
+        '"'
+        >>> http_unquote_pair('n')
+        'n'
+        >>> http_unquote_pair('\\')
+        '\\'
+    """
+    if not c:
+        return "?"
+
+    b = ord(c)
+    # Valid characters that can be escaped
+    if b == 0x09 or b == 0x20 or (0x21 <= b <= 0x7E) or b >= 0x80:
+        return c
+    return "?"
+
+
+def http_unquote(raw: str) -> tuple[int, str]:
+    """
+    Unquote an HTTP quoted-string.
+
+    Per RFC 7230 Section 3.2.6:
+    quoted-string = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+    quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
+
+    The raw string must begin with a double quote ("). Only the first
+    quoted string is parsed. The function returns the number of characters
+    consumed and the unquoted result.
+
+    Args:
+        raw: String that must start with a double quote
+
+    Returns:
+        Tuple of (eaten, result) where:
+        - eaten: number of characters consumed, or -1 on failure
+        - result: the unquoted string, or empty string on failure
+
+    Examples:
+        >>> http_unquote('"hello"')
+        (7, 'hello')
+        >>> http_unquote('"hello world"')
+        (13, 'hello world')
+        >>> http_unquote('"hello\\"world"')
+        (14, 'hello"world')
+        >>> http_unquote('"test')
+        (-1, '')
+        >>> http_unquote('not quoted')
+        (-1, '')
+    """
+    if not raw or raw[0] != '"':
+        return -1, ""
+
+    buf = []
+    i = 1  # Start after opening quote
+
+    while i < len(raw):
+        b = raw[i]
+
+        if b == '"':
+            # Found closing quote - success
+            return i + 1, "".join(buf)
+
+        elif b == "\\":
+            # Escaped character (quoted-pair)
+            if i + 1 >= len(raw):
+                # Backslash at end of string - invalid
+                return -1, ""
+
+            # Unquote the next character
+            buf.append(http_unquote_pair(raw[i + 1]))
+            i += 2  # Skip both backslash and escaped char
+
+        else:
+            # Regular character
+            if is_qd_text(b):
+                buf.append(b)
+            else:
+                # Invalid character in quoted text
+                buf.append("?")
+            i += 1
+
+    # Reached end without finding closing quote - invalid
+    return -1, ""
+
+
+class Headers(MutableMapping[str, str]):
+    def __init__(self, headers: Mapping[str, Union[str, List[str]]]) -> None:
+        self._headers = {k.lower(): ([v] if isinstance(v, str) else v[:]) for k, v in headers.items()}
+
+    def get_list(self, key: str) -> Optional[List[str]]:
+        return self._headers.get(key.lower(), None)
+
+    def __getitem__(self, key: str) -> str:
+        return ", ".join(self._headers[key.lower()])
+
+    def __setitem__(self, key: str, value: str) -> None:
+        self._headers.setdefault(key.lower(), []).append(value)
+
+    def __delitem__(self, key: str) -> None:
+        del self._headers[key.lower()]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._headers)
+
+    def __len__(self) -> int:
+        return len(self._headers)
+
+    def __repr__(self) -> str:
+        return repr(self._headers)
+
+    def __str__(self) -> str:
+        return str(self._headers)
+
+    def __eq__(self, other_headers: Any) -> bool:
+        return isinstance(other_headers, Headers) and self._headers == other_headers._headers  # type: ignore
 
 
 class Vary:
@@ -126,28 +296,6 @@ class Vary:
             field_name = field_name.strip()
             values.append(field_name)
         return Vary(values)
-
-
-@dataclass
-class ContentRange:
-    unit: Literal["bytes"]
-    range: tuple[int, int] | None
-    size: int | None
-
-    @classmethod
-    def from_str(cls, content_range: str) -> "ContentRange":
-        words = [word for word in content_range.split(" ") if word != ""]
-
-        unit = words[0]
-        range, size = words[1].split("/")
-
-        splited_range = range.split("-")
-
-        return cls(
-            unit=cast(Literal["bytes"], unit),
-            range=None if range == "*" else (int(splited_range[0]), int(splited_range[1])),
-            size=None if size == "*" else int(size),
-        )
 
 
 @dataclass
@@ -182,120 +330,306 @@ class Range:
 
 
 class CacheControl:
-    def __init__(
-        self,
-        immutable: bool = False,  # [RFC8246]
-        max_age: Optional[int] = None,  # [RFC9111, Section 5.2.1.1, 5.2.2.1]
-        max_stale: Optional[int] = None,  # [RFC9111, Section 5.2.1.2]
-        min_fresh: Optional[int] = None,  # [RFC9111, Section 5.2.1.3]
-        must_revalidate: bool = False,  # [RFC9111, Section 5.2.2.2]
-        must_understand: bool = False,  # [RFC9111, Section 5.2.2.3]
-        no_cache: Union[bool, List[str]] = False,  # [RFC9111, Section 5.2.1.4, 5.2.2.4]
-        no_store: bool = False,  # [RFC9111, Section 5.2.1.5, 5.2.2.5]
-        no_transform: bool = False,  # [RFC9111, Section 5.2.1.6, 5.2.2.6]
-        only_if_cached: bool = False,  # [RFC9111, Section 5.2.1.7]
-        private: Union[bool, List[str]] = False,  # [RFC9111, Section 5.2.2.7]
-        proxy_revalidate: bool = False,  # [RFC9111, Section 5.2.2.8]
-        public: bool = False,  # [RFC9111, Section 5.2.2.9]
-        s_maxage: Optional[int] = None,  # [RFC9111, Section 5.2.2.10]
-    ) -> None:
-        self.immutable = immutable
-        self.max_age = max_age
-        self.max_stale = max_stale
-        self.min_fresh = min_fresh
-        self.must_revalidate = must_revalidate
-        self.must_understand = must_understand
-        self.no_cache = no_cache
-        self.no_store = no_store
-        self.no_transform = no_transform
-        self.only_if_cached = only_if_cached
-        self.private = private
-        self.proxy_revalidate = proxy_revalidate
-        self.public = public
-        self.s_maxage = s_maxage
+    """
+    Unified Cache-Control directives for both requests and responses.
 
-    @classmethod
-    def validate(cls, directives: Dict[str, Any]) -> Dict[str, Any]:
-        validated_data: Dict[str, Any] = {}
+    Supports all standard directives from RFC9111 and experimental directives.
+    Uses None for unset values instead of -1.
 
-        for key, value in directives.items():
-            key = normalize_directive(key)
-            if key in TIME_FIELDS:
-                if value is None:
-                    raise ValidationError(f"The directive '{key}' necessitates a value.")
+    Supported Directives:
+    - immutable [RFC8246]
+    - max-age [RFC9111, Section 5.2.1.1, 5.2.2.1]
+    - max-stale [RFC9111, Section 5.2.1.2]
+    - min-fresh [RFC9111, Section 5.2.1.3]
+    - must-revalidate [RFC9111, Section 5.2.2.2]
+    - must-understand [RFC9111, Section 5.2.2.3]
+    - no-cache [RFC9111, Section 5.2.1.4, 5.2.2.4]
+    - no-store [RFC9111, Section 5.2.1.5, 5.2.2.5]
+    - no-transform [RFC9111, Section 5.2.1.6, 5.2.2.6]
+    - only-if-cached [RFC9111, Section 5.2.1.7]
+    - private [RFC9111, Section 5.2.2.7]
+    - proxy-revalidate [RFC9111, Section 5.2.2.8]
+    - public [RFC9111, Section 5.2.2.9]
+    - s-maxage [RFC9111, Section 5.2.2.10]
+    - stale-if-error [RFC5861, Section 4]
+    - stale-while-revalidate [RFC5861, Section 3]
 
-                if value[0] == '"' or value[-1] == '"':
-                    raise ValidationError(f"The argument '{key}' should be an integer, but a quote was found.")
+    no_cache and private can be:
+        - None: directive not present
+        - True: directive present without field names
+        - List[str]: directive present with specific field names
+    """
 
-                try:
-                    validated_data[key] = int(value)
-                except Exception:
-                    raise ValidationError(f"The argument '{key}' should be an integer, but got '{value!r}'.")
-            elif key in BOOLEAN_FIELDS:
-                if value is not None:
-                    raise ValidationError(f"The directive '{key}' should have no value, but it does.")
-                validated_data[key] = True
-            elif key in LIST_FIELDS:
-                if value is None:
-                    validated_data[key] = True
-                else:
-                    values = []
-                    for list_value in value[1:-1].split(","):
-                        if not list_value:
-                            raise ValidationError("The list value must not be empty.")
-                        list_value = strip_ows_around(list_value)
-                        values.append(list_value)
-                    validated_data[key] = values
+    def __init__(self):
+        # Common directives
+        self.max_age: Optional[int] = None
+        self.no_store: bool = False
+        self.no_transform: bool = False
 
-        return validated_data
+        # Request-specific
+        self.max_stale: Optional[int] = None
+        self.min_fresh: Optional[int] = None
+        self.only_if_cached: bool = False
 
-    def __repr__(self) -> str:
-        fields = ""
+        # Response-specific
+        self.must_revalidate: bool = False
+        self.must_understand: bool = False
+        self.public: bool = False
+        self.proxy_revalidate: bool = False
+        self.s_maxage: Optional[int] = None
+        self.immutable: bool = False
 
-        for key in TIME_FIELDS:
-            key = key.replace("-", "_")
-            value = getattr(self, key)
-            if value:
-                fields += f"{key}={value}, "
+        # Can be boolean or contain field names
+        self.no_cache: Union[bool, List[str], None] = None
+        self.private: Union[bool, List[str], None] = None
 
-        for key in BOOLEAN_FIELDS:
-            key = key.replace("-", "_")
-            value = getattr(self, key)
-            if value:
-                fields += f"{key}, "
+        # Experimental
+        self.stale_if_error: Optional[int] = None
+        self.stale_while_revalidate: Optional[int] = None
 
-        fields = fields[:-2]
-
-        return f"<{type(self).__name__} {fields}>"
+        # Extensions (unrecognized directives)
+        self.extensions: List[str] = []
 
 
-class Headers(MutableMapping[str, str]):
-    def __init__(self, headers: Mapping[str, Union[str, List[str]]]) -> None:
-        self._headers = {k.lower(): ([v] if isinstance(v, str) else v[:]) for k, v in headers.items()}
+def parse_int_value(value: str) -> Optional[int]:
+    """Parse integer value, return None if invalid."""
+    try:
+        val = int(value)
+        # Cap at max int32 for compatibility
+        return min(val, 2147483647) if val >= 0 else None
+    except (ValueError, OverflowError):
+        return None
 
-    def get_list(self, key: str) -> Optional[List[str]]:
-        return self._headers.get(key.lower(), None)
 
-    def __getitem__(self, key: str) -> str:
-        return ", ".join(self._headers[key.lower()])
+def parse_field_names(value: str) -> List[str]:
+    """Parse comma-separated field names and canonicalize them."""
+    fields = []
+    for field in value.split(","):
+        field = field.strip()
+        if field:
+            # Convert to canonical header form (Title-Case)
+            canonical = "-".join(word.capitalize() for word in field.split("-"))
+            fields.append(canonical)
+    return fields
 
-    def __setitem__(self, key: str, value: str) -> None:
-        self._headers.setdefault(key.lower(), []).append(value)
 
-    def __delitem__(self, key: str) -> None:
-        del self._headers[key.lower()]
+def has_field_names(token: str) -> bool:
+    """Check if token can have comma-separated field names."""
+    return token in ("no-cache", "private")
 
-    def __iter__(self) -> Iterator[str]:
-        return iter(self._headers)
 
-    def __len__(self) -> int:
-        return len(self._headers)
+def parse(value: str) -> CacheControl:
+    """
+    Parse a Cache-Control header value character by character.
 
-    def __repr__(self) -> str:
-        return repr(self._headers)
+    This parser handles quoted values and field names correctly,
+    allowing commas within field name lists.
 
-    def __str__(self) -> str:
-        return str(self._headers)
+    Args:
+        value: The Cache-Control header value string
 
-    def __eq__(self, other_headers: Any) -> bool:
-        return isinstance(other_headers, Headers) and self._headers == other_headers._headers  # type: ignore
+    Returns:
+        CacheControl object with parsed directives
+    """
+    cc = CacheControl()
+
+    if not value:
+        return cc
+
+    i = 0
+    length = len(value)
+
+    while i < length:
+        # Skip leading whitespace and commas
+        while i < length and (value[i] in (" ", "\t", ",")):
+            i += 1
+
+        if i >= length:
+            break
+
+        # Find end of token
+        j = i
+        while j < length and is_token(value[j]):
+            j += 1
+
+        if j == i:
+            # No valid token found, skip this character
+            i += 1
+            continue
+
+        token = value[i:j].lower()
+        token_has_fields = has_field_names(token)
+
+        # Skip whitespace after token
+        while j < length and value[j] in (" ", "\t"):
+            j += 1
+
+        # Check if token has a value (token=value)
+        if j < length and value[j] == "=":
+            k = j + 1
+
+            # Skip whitespace after equals sign
+            while k < length and value[k] in (" ", "\t"):
+                k += 1
+
+            if k >= length:
+                # Directive ends with '=' but no value
+                i = k
+                continue
+
+            # Check for quoted value
+            if value[k] == '"':
+                eaten, result = http_unquote(value[k:])
+                if eaten == -1:
+                    # Quote mismatch, skip to next directive
+                    i = k + 1
+                    continue
+
+                i = k + eaten
+                handle_directive_with_value(cc, token, result)
+            else:
+                # Unquoted value
+                z = k
+                while z < length:
+                    if token_has_fields:
+                        # For directives with field names, stop only at whitespace
+                        if value[z] in (" ", "\t"):
+                            break
+                    else:
+                        # For other directives, stop at whitespace or comma
+                        if value[z] in (" ", "\t", ","):
+                            break
+                    z += 1
+
+                result = value[k:z]
+
+                # Remove trailing comma if present
+                if result and result[-1] == ",":
+                    result = result[:-1]
+
+                i = z
+                handle_directive_with_value(cc, token, result)
+        else:
+            # Token without value
+            handle_directive_without_value(cc, token)
+            i = j
+
+    return cc
+
+
+def handle_directive_with_value(cc: CacheControl, token: str, value: str) -> None:
+    """Handle a directive that has a value."""
+    if token == "max-age":
+        cc.max_age = parse_int_value(value)
+
+    elif token == "s-maxage":
+        cc.s_maxage = parse_int_value(value)
+
+    elif token == "max-stale":
+        cc.max_stale = parse_int_value(value)
+
+    elif token == "min-fresh":
+        cc.min_fresh = parse_int_value(value)
+
+    elif token == "stale-if-error":
+        cc.stale_if_error = parse_int_value(value)
+
+    elif token == "stale-while-revalidate":
+        cc.stale_while_revalidate = parse_int_value(value)
+
+    elif token == "no-cache":
+        # no-cache with field names
+        cc.no_cache = parse_field_names(value)
+
+    elif token == "private":
+        # private with field names
+        cc.private = parse_field_names(value)
+
+    else:
+        # Unrecognized directive with value
+        cc.extensions.append(f"{token}={value}")
+
+
+def handle_directive_without_value(cc: CacheControl, token: str) -> None:
+    """Handle a directive that doesn't have a value."""
+    if token == "max-stale":
+        # max-stale without value means accept any stale response
+        cc.max_stale = 2147483647  # max int32
+
+    elif token == "no-cache":
+        cc.no_cache = True
+
+    elif token == "private":
+        cc.private = True
+
+    elif token == "no-store":
+        cc.no_store = True
+
+    elif token == "no-transform":
+        cc.no_transform = True
+
+    elif token == "only-if-cached":
+        cc.only_if_cached = True
+
+    elif token == "must-revalidate":
+        cc.must_revalidate = True
+
+    elif token == "must-understand":
+        cc.must_understand = True
+
+    elif token == "public":
+        cc.public = True
+
+    elif token == "proxy-revalidate":
+        cc.proxy_revalidate = True
+
+    elif token == "immutable":
+        cc.immutable = True
+
+    else:
+        # Unrecognized directive without value
+        cc.extensions.append(token)
+
+
+def parse_cache_control(value: str) -> CacheControl:
+    """
+    Parse a Cache-Control header from either a request or response.
+
+    This is the main entry point for parsing.
+
+    Args:
+        value: The Cache-Control header value
+
+    Returns:
+        CacheControl object containing all parsed directives
+
+    Examples:
+        >>> # Response example
+        >>> cc = parse_cache_control("public, max-age=3600, must-revalidate")
+        >>> cc.public
+        True
+        >>> cc.max_age
+        3600
+        >>> cc.must_revalidate
+        True
+
+        >>> # Request example
+        >>> cc = parse_cache_control("max-age=0, no-cache")
+        >>> cc.max_age
+        0
+        >>> cc.no_cache
+        True
+
+        >>> # With field names
+        >>> cc = parse_cache_control('no-cache="Set-Cookie, Authorization"')
+        >>> cc.no_cache
+        ['Set-Cookie', 'Authorization']
+
+        >>> # Experimental directives
+        >>> cc = parse_cache_control("immutable, stale-while-revalidate=86400")
+        >>> cc.immutable
+        True
+        >>> cc.stale_while_revalidate
+        86400
+    """
+    return parse(value)
