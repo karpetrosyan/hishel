@@ -14,14 +14,14 @@ class TestBasicParsing:
         """Empty string should return default CacheControl."""
         cc = parse_cache_control("")
         assert cc.max_age is None
-        assert cc.no_cache is None
+        assert cc.no_cache is False
         assert cc.no_store is False
 
     def test_whitespace_only(self):
         """Whitespace-only string should return default CacheControl."""
         cc = parse_cache_control("   ")
         assert cc.max_age is None
-        assert cc.no_cache is None
+        assert cc.no_cache is False
 
     def test_single_directive(self):
         """Single directive without value."""
@@ -525,7 +525,7 @@ class TestEdgeCases:
         """String with only commas."""
         cc = parse_cache_control(",,,")
         assert cc.max_age is None
-        assert cc.no_cache is None
+        assert cc.no_cache is False
 
     def test_trailing_comma(self):
         """Trailing comma."""
@@ -601,9 +601,9 @@ class TestDefaultValues:
         assert cc.proxy_revalidate is False
         assert cc.immutable is False
 
-        # Special directives should be None
-        assert cc.no_cache is None
-        assert cc.private is None
+        # Special directives should be False
+        assert cc.no_cache is False
+        assert cc.private is False
 
         # Extensions should be empty list
         assert cc.extensions == []

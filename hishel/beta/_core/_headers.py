@@ -379,8 +379,8 @@ class CacheControl:
         self.immutable: bool = False
 
         # Can be boolean or contain field names
-        self.no_cache: Union[bool, List[str], None] = None
-        self.private: Union[bool, List[str], None] = None
+        self.no_cache: Union[bool, List[str]] = False
+        self.private: Union[bool, List[str]] = False
 
         # Experimental
         self.stale_if_error: Optional[int] = None
