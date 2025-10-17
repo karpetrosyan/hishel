@@ -218,7 +218,7 @@ def http_unquote(raw: str) -> tuple[int, str]:
     if not raw or raw[0] != '"':
         return -1, ""
 
-    buf = []
+    buf: list[str] = []
     i = 1  # Start after opening quote
 
     while i < len(raw):
@@ -359,7 +359,7 @@ class CacheControl:
         - List[str]: directive present with specific field names
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Common directives
         self.max_age: Optional[int] = None
         self.no_store: bool = False
@@ -590,7 +590,7 @@ def handle_directive_without_value(cc: CacheControl, token: str) -> None:
         cc.extensions.append(token)
 
 
-def parse_cache_control(value: str) -> CacheControl:
+def parse_cache_control(value: str | None) -> CacheControl:
     """
     Parse a Cache-Control header from either a request or response.
 
@@ -631,4 +631,6 @@ def parse_cache_control(value: str) -> CacheControl:
         >>> cc.stale_while_revalidate
         86400
     """
+    if value is None:
+        return CacheControl()
     return parse(value)

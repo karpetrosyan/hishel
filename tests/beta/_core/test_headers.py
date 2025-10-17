@@ -169,12 +169,14 @@ class TestNoCache:
     def test_no_cache_field_canonicalization(self):
         """Field names should be canonicalized to Title-Case."""
         cc = parse_cache_control('no-cache="set-cookie, authorization"')
+        assert isinstance(cc.no_cache, list)
         assert "Set-Cookie" in cc.no_cache
         assert "Authorization" in cc.no_cache
 
     def test_no_cache_with_whitespace(self):
         """no-cache with whitespace around field names."""
         cc = parse_cache_control('no-cache=" Set-Cookie , Authorization "')
+        assert isinstance(cc.no_cache, list)
         assert "Set-Cookie" in cc.no_cache
         assert "Authorization" in cc.no_cache
 
@@ -203,6 +205,7 @@ class TestPrivate:
     def test_private_field_canonicalization(self):
         """Field names should be canonicalized."""
         cc = parse_cache_control('private="x-custom-header"')
+        assert isinstance(cc.private, list)
         assert "X-Custom-Header" in cc.private
 
 
@@ -308,6 +311,7 @@ class TestQuotedValues:
     def test_quoted_field_names(self):
         """Quoted field names in no-cache."""
         cc = parse_cache_control('no-cache="Set-Cookie"')
+        assert isinstance(cc.no_cache, list)
         assert "Set-Cookie" in cc.no_cache
 
     def test_quoted_extension_value(self):
