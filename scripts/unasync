@@ -1,4 +1,9 @@
 #!/usr/bin/env uv run --script
+# /// script
+# requires-python = ">=3.9"
+# dependencies = []
+# ///
+
 
 import os
 import re
