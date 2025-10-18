@@ -1,5 +1,6 @@
 site_name: Hishel
 repo_url: https://github.com/karpetrosyan/hishel
+site_url: https://hishel.com/
 
 theme:
   name: material
@@ -20,7 +21,18 @@ theme:
       toggle:
         icon: material/lightbulb-outline
         name: Switch to light mode
-
+plugins:
+  - mike:
+      alias_type: symlink
+      redirect_template: null
+      deploy_prefix: ''
+      canonical_version: null
+      version_selector: true
+      css_dir: css
+      javascript_dir: js
+extra:
+  version:
+    provider: mike
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
