@@ -132,6 +132,7 @@ class SyncCacheTransport(httpx.BaseTransport):
             cache_options=cache_options,
             ignore_specification=ignore_specification,
         )
+        self.storage = self._cache_proxy.storage
 
     def handle_request(
         self,
@@ -144,6 +145,7 @@ class SyncCacheTransport(httpx.BaseTransport):
 
     def close(self) -> None:
         self.next_transport.close()
+        self.storage.close()
         super().close()
 
     def sync_send_request(self, request: Request) -> Response:
@@ -242,6 +244,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             cache_options=cache_options,
             ignore_specification=ignore_specification,
         )
+        self.storage = self._cache_proxy.storage
 
     async def handle_async_request(
         self,
@@ -254,6 +257,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
 
     async def aclose(self) -> None:
         await self.next_transport.aclose()
+        await self.storage.close()
         await super().aclose()
 
     async def async_send_request(self, request: Request) -> Response:
