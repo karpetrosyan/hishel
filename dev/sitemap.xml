@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://hishel.com/dev/</loc>
+         <lastmod>2025-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://hishel.com/dev/contributing/</loc>
+         <lastmod>2025-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://hishel.com/dev/metadata/</loc>
+         <lastmod>2025-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://hishel.com/dev/specification/</loc>
+         <lastmod>2025-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://hishel.com/dev/storages/</loc>
+         <lastmod>2025-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://hishel.com/dev/integrations/httpx/</loc>
+         <lastmod>2025-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://hishel.com/dev/integrations/requests/</loc>
+         <lastmod>2025-10-18</lastmod>
+    </url>
+</urlset>
