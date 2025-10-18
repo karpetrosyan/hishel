@@ -238,13 +238,13 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         ignore_specification: bool = False,
     ) -> None:
         self.next_transport = next_transport
-        self.storage = storage
         self._cache_proxy: AsyncCacheProxy = AsyncCacheProxy(
             send_request=self.async_send_request,
             storage=storage,
             cache_options=cache_options,
             ignore_specification=ignore_specification,
         )
+        self.storage = self._cache_proxy.storage
 
     async def handle_async_request(
         self,
