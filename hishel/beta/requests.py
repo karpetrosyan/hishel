@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from io import RawIOBase
-from typing import Iterator, Mapping, Optional, overload
+from typing import Any, Iterator, Mapping, Optional, overload
 
 from typing_extensions import assert_never
 
@@ -159,7 +159,7 @@ class CacheAdapter(HTTPAdapter):
         storage: SyncBaseStorage | None = None,
         cache_options: CacheOptions | None = None,
         ignore_specification: bool = False,
-    ):
+    ) -> None:
         super().__init__(pool_connections, pool_maxsize, max_retries, pool_block)
         self._cache_proxy = SyncCacheProxy(
             send_request=self.send_request,
@@ -167,6 +167,7 @@ class CacheAdapter(HTTPAdapter):
             cache_options=cache_options,
             ignore_specification=ignore_specification,
         )
+        self.storage = self._cache_proxy.storage
 
     def send(
         self,
@@ -191,3 +192,6 @@ class CacheAdapter(HTTPAdapter):
         requests_request = internal_to_requests(request)
         response = super().send(requests_request, stream=True)
         return requests_to_internal(response)
+
+    def close(self) -> Any:
+        self.storage.close()

@@ -87,6 +87,12 @@ class SyncBaseStorage(ABC):
         """
         raise NotImplementedError()
 
+    def close(self) -> None:
+        """
+        Close any resources held by the storage backend.
+        """
+        pass
+
     def is_soft_deleted(self, pair: IncompletePair | CompletePair) -> bool:
         """
         Check if a pair is soft deleted based on its metadata.
@@ -204,6 +210,12 @@ class AsyncBaseStorage(ABC):
             id: The unique identifier of the request pair to remove.
         """
         raise NotImplementedError()
+
+    async def close(self) -> None:
+        """
+        Close any resources held by the storage backend.
+        """
+        pass
 
     def is_soft_deleted(self, pair: IncompletePair | CompletePair) -> bool:
         """
