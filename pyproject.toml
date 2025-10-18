@@ -124,6 +124,7 @@ dev = [
     "coverage==7.10.1",
     "hatch==1.14.1",
     "inline-snapshot>=0.28.0",
+    "mike>=2.1.3",
     "mkdocs==1.6.1",
     "mkdocs-material==9.6.16",
     "mypy==1.17.1",
