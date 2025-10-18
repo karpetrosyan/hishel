@@ -54,7 +54,7 @@ jobs:
           file: coverage.xml
 
       - name: Upload dev docs
-        run: uv run mike deploy --push --update-aliases dev dev
+        run: uv run mike deploy --push --update-aliases dev
 
   coveralls:
     name: Finish Coveralls
