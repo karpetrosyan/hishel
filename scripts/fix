@@ -6,3 +6,5 @@ echo "==> Running ruff"
 uv run ruff check --fix hishel tests
 uv run ruff format hishel tests
 
+echo "==> Make sure async/sync are consistent"
+scripts/unasync

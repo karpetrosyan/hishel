@@ -6,6 +6,9 @@ echo "==> Running ruff"
 uv run ruff check hishel tests
 uv run ruff format --check
 
+echo "==> Make sure async/sync are consistent"
+scripts/unasync --check
+
 echo "==> Running mypy"
 uv run --all-extras mypy hishel tests
 

@@ -10,7 +10,6 @@ SUBS = [
     ("async with", "with"),
     ("await ", ""),
     ("async for", "for"),
-    ("__aiter__", "__iter__"),
     ("AsyncIterator", "Iterator"),
     ("AsyncIterable", "Iterable"),
     ("@pytest.mark.anyio", ""),
@@ -79,27 +78,18 @@ def unasync_dir(in_dir, out_dir, check_only=False):
 
 def main():
     check_only = "--check" in sys.argv
-    file = sys.argv[1] if len(sys.argv) > 1 else None
-
-    if file:
-        import tempfile
-
-        with tempfile.NamedTemporaryFile("w+", delete=False) as temp_file:
-            unasync_file(file, temp_file.name)
-            print(f"Wrote {temp_file.name}")
-        return
 
     FILES = [
         (
-            "hishel/beta/_core/_async/_storages/_sqlite.py",
-            "hishel/beta/_core/_sync/_storages/_sqlite.py",
+            "hishel/_core/_async/_storages/_sqlite.py",
+            "hishel/_core/_sync/_storages/_sqlite.py",
         ),
         (
-            "tests/beta/_core/_async/test_sqlite_storage.py",
-            "tests/beta/_core/_sync/test_sqlite_storage.py",
+            "tests/_core/_async/test_sqlite_storage.py",
+            "tests/_core/_sync/test_sqlite_storage.py",
         ),
-        ("tests/beta/test_async_httpx.py", "tests/beta/test_sync_httpx.py"),
-        ("hishel/beta/_async_cache.py", "hishel/beta/_sync_cache.py"),
+        ("tests/test_async_httpx.py", "tests/test_sync_httpx.py"),
+        ("hishel/_async_cache.py", "hishel/_sync_cache.py"),
     ]
 
     for in_path, out_path in FILES:

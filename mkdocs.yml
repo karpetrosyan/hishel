@@ -4,12 +4,6 @@ site_url: https://hishel.com/
 
 theme:
   name: material
-  features:
-    - content.code.copy
-    - toc.integrate
-    - toc.follow
-    - navigation.expand
-
   palette:
     - scheme: default
       primary: "amber"
@@ -21,62 +15,31 @@ theme:
       toggle:
         icon: material/lightbulb-outline
         name: Switch to light mode
+  features:
+    - navigation.expand
 plugins:
-  - mike:
-      alias_type: symlink
-      redirect_template: null
-      deploy_prefix: ''
-      canonical_version: null
-      version_selector: true
-      css_dir: css
-      javascript_dir: js
+  - mike: {}
 extra:
   version:
     provider: mike
+
+# mkdocs.yml
 markdown_extensions:
-  - pymdownx.highlight:
-      anchor_linenums: true
-      line_spans: __span
-      pygments_lang_class: true
-  - attr_list
   - pymdownx.tabbed:
-      alternate_style: true
-  - pymdownx.emoji:
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      alternate_style: true  # Required for === syntax
+  - pymdownx.superfences    # For code blocks inside tabs
+  - admonition # For notes, warnings, etc.
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
-  - pymdownx.inlinehilite
-  - pymdownx.snippets
-  - admonition
-  - pymdownx.details
-  - pymdownx.highlight:
-      anchor_linenums: true
-  - pymdownx.superfences
-  - tables
-
 nav:
   - Introduction: index.md
-  - User Guide: userguide.md
-  - Advanced Usage:
-      - "Storages": advanced/storages.md
-      - Serializers: advanced/serializers.md
-      - Controllers: advanced/controllers.md
-      - HTTP Headers: advanced/http_headers.md
-      - Extensions: advanced/extensions.md
-      - Logging: advanced/logging.md
-  - Examples:
-      - GitHub: examples/github.md
-      - FastAPI: examples/fastapi.md
-      - Flask: examples/flask.md
-  - Beta:
-      - Specification: beta/specification.md
-      - Storages: beta/storages.md
-      - Metadata: beta/metadata.md
-      - Integrations:
-          - Httpx: beta/integrations/httpx.md
-          - Requests: beta/integrations/requests.md
+  - Storages: storages.md
+  - Metadata: metadata.md
+  - Sans-I/O Caching: specification.md
+  - Integrations:
+      - httpx: integrations/httpx.md
+      - requests: integrations/requests.md
   - Contributing: contributing.md

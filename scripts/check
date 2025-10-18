@@ -1,8 +1,0 @@
-#! /bin/bash -ex
-
-export SOURCE_FILES="hishel tests"
-
-uv run ruff format $SOURCE_FILES --diff
-uv run ruff check $SOURCE_FILES
-uv run --all-extras mypy $SOURCE_FILES
-uv run python unasync.py --check

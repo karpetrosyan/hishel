@@ -4,7 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hishel"
-dynamic = ["readme", "version"]
+version = "1.0.0.dev0"
+dynamic = ["readme"]
 description = "Persistent cache implementation for httpx and httpcore"
 license = "BSD-3-Clause"
 requires-python = ">=3.9"
@@ -37,16 +38,6 @@ dependencies = [
 
 [project.optional-dependencies]
 
-yaml = ["pyyaml==6.0.2"]
-
-redis = ["redis==6.2.0"]
-
-sqlite = ["anysqlite>=0.0.5"]
-
-s3 = [
-    "boto3>=1.15.0,<=1.15.3; python_version < '3.12'",
-    "boto3>=1.15.3; python_version >= '3.12'",
-]
 requests = [
     "requests>=2.32.5",
 ]
@@ -92,10 +83,6 @@ ignore_missing_imports = true
 addopts = ["-rxXs", "--strict-config", "--strict-markers"]
 filterwarnings = []
 
-[tool.coverage.run]
-omit = ["venv/*", "hishel/_sync/*", "hishel/_s3.py", "hishel/_core/_headers.py"]
-include = ["hishel/*", "tests/*"]
-
 [tool.coverage.report]
 exclude_also = ['__repr__', 'raise NotImplementedError()']
 
@@ -104,11 +91,10 @@ exclude = [
     "hishel/_sync",
     "hishel/__init__.py",
     "tests/_sync",
-    "hishel/beta/_core/_sync",
-    "tests/beta/_core/_sync",
-    "hishel/beta/integrations/clients/_sync_base.py",
-    "hishel/beta/_sync_cache.py",
-    "tests/beta/test_sync_httpx.py"
+    "hishel/_core/_sync",
+    "tests/_core/_sync",
+    "hishel/_sync_cache.py",
+    "tests/test_sync_httpx.py"
 ]
 line-length = 120
 

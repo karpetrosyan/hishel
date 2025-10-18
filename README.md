@@ -1,148 +1,217 @@
-<p align="center" class="logo">
-    <div align="center">
-        <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_yellow.png">
-            <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_black.png">
-            <img alt="Logo" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_yellow.png">
-        </picture>
-    </div>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_yellow.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_black.png">
+    <img alt="Hishel Logo" width="350" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_yellow.png">
+  </picture>
 </p>
 
-
-
-<p align="center"><strong>Hishel</strong> <em>- An elegant HTTP Cache implementation for httpx and httpcore.</em></p>
+<h1 align="center">Hishel</h1>
 
 <p align="center">
+  <strong>Elegant HTTP Caching for Python</strong>
+</p>
 
+<p align="center">
   <a href="https://pypi.org/project/hishel">
-      <img src="https://img.shields.io/pypi/v/hishel.svg" alt="pypi">
+    <img src="https://img.shields.io/pypi/v/hishel.svg" alt="PyPI version">
   </a>
-
-  <a href="https://img.shields.io/pypi/l/hishel">
-      <img src="https://img.shields.io/pypi/l/hishel" alt="license">
+  <a href="https://pypi.org/project/hishel">
+    <img src="https://img.shields.io/pypi/pyversions/hishel.svg" alt="Python versions">
   </a>
-
+  <a href="https://github.com/karpetrosyan/hishel/blob/master/LICENSE">
+    <img src="https://img.shields.io/pypi/l/hishel" alt="License">
+  </a>
   <a href="https://coveralls.io/github/karpetrosyan/hishel">
-      <img src="https://img.shields.io/coverallsCoverage/github/karpetrosyan/hishel" alt="license">
+    <img src="https://img.shields.io/coverallsCoverage/github/karpetrosyan/hishel" alt="Coverage">
   </a>
-
-  <a href="https://github.com/karpetrosyan/hishel">
-      <img src="https://img.shields.io/pypi/dm/hishel.svg" alt="Downloads">
+  <a href="https://static.pepy.tech/badge/hishel/month">
+    <img src="https://static.pepy.tech/badge/hishel/month" alt="Downloads">
   </a>
 </p>
+
+---
+
+**Hishel** (հիշել, *to remember* in Armenian) is a modern HTTP caching library for Python that implements [RFC 9111](https://www.rfc-editor.org/rfc/rfc9111.html) specifications. It provides seamless caching integration for popular HTTP clients with minimal code changes.
+
+## ✨ Features
+
+- 🎯 **RFC 9111 Compliant** - Fully compliant with the latest HTTP caching specification
+- 🔌 **Easy Integration** - Drop-in support for HTTPX and Requests
+- 💾 **Flexible Storage** - SQLite backend with more coming soon
+- ⚡ **High Performance** - Efficient caching with minimal overhead
+- 🔄 **Async & Sync** - Full support for both synchronous and asynchronous workflows
+- 🎨 **Type Safe** - Fully typed with comprehensive type hints
+- 🧪 **Well Tested** - Extensive test coverage and battle-tested
+- 🎛️ **Configurable** - Fine-grained control over caching behavior
+- 🌐 **Future Ready** - Designed for easy integration with any HTTP client/server
+
+## 📦 Installation
+
+```bash
+pip install hishel
+```
+
+### Optional Dependencies
+
+Install with specific HTTP client support:
+
+```bash
+pip install hishel[httpx]      # For HTTPX support
+pip install hishel[requests]   # For Requests support
+```
+
+Or install both:
+
+```bash
+pip install hishel[httpx,requests]
+```
+
+## 🚀 Quick Start
+
+### With HTTPX
+
+**Synchronous:**
+
+```python
+from hishel.httpx import SyncCacheClient
+
+client = SyncCacheClient()
+
+# First request - fetches from origin
+response = client.get("https://api.example.com/data")
+print(response.extensions["hishel_from_cache"])  # False
+
+# Second request - served from cache
+response = client.get("https://api.example.com/data")
+print(response.extensions["hishel_from_cache"])  # True
+```
+
+**Asynchronous:**
+
+```python
+from hishel.httpx import AsyncCacheClient
+
+async with AsyncCacheClient() as client:
+    # First request - fetches from origin
+    response = await client.get("https://api.example.com/data")
+    print(response.extensions["hishel_from_cache"])  # False
+    
+    # Second request - served from cache
+    response = await client.get("https://api.example.com/data")
+    print(response.extensions["hishel_from_cache"])  # True
+```
+
+### With Requests
+
+```python
+import requests
+from hishel.requests import CacheAdapter
+
+session = requests.Session()
+session.mount("https://", CacheAdapter())
+session.mount("http://", CacheAdapter())
+
+# First request - fetches from origin
+response = session.get("https://api.example.com/data")
+
+# Second request - served from cache
+response = session.get("https://api.example.com/data")
+print(response.headers.get("X-Hishel-From-Cache"))  # "True"
+```
+
+## 🎛️ Advanced Configuration
+
+### Custom Cache Options
+
+```python
+from hishel import CacheOptions
+from hishel.httpx import SyncCacheClient
+
+client = SyncCacheClient(
+    cache_options=CacheOptions(
+        always_cache=True,        # Force caching regardless of headers
+        ttl=3600,                 # Cache for 1 hour
+        refresh_on_hit=True       # Update cache metadata on access
+    )
+)
+```
+
+### Custom Storage Backend
+
+```python
+from hishel import SyncSqliteStorage
+from hishel.httpx import SyncCacheClient
+
+storage = SyncSqliteStorage(
+    database_path="my_cache.db",
+    default_ttl=7200.0,
+    refresh_ttl_on_access=True
+)
+
+client = SyncCacheClient(storage=storage)
+```
+
+## 🏗️ Architecture
+
+Hishel uses a **sans-I/O state machine** architecture that separates HTTP caching logic from I/O operations:
+
+- ✅ **Correct** - Fully RFC 9111 compliant
+- ✅ **Testable** - Easy to test without network dependencies
+- ✅ **Flexible** - Works with any HTTP client or server
+- ✅ **Type Safe** - Clear state transitions with full type hints
+
+## 🔮 Roadmap
+
+While Hishel currently supports HTTPX and Requests, we're actively working on:
+
+- 🎯 Additional HTTP client integrations
+- 🎯 Server-side caching support
+- 🎯 More storage backends
+- 🎯 Advanced caching strategies
+- 🎯 Performance optimizations
+
+## 📚 Documentation
+
+Comprehensive documentation is available at [https://hishel.com](https://hishel.com)
+
+- [Getting Started](https://hishel.com)
+- [HTTPX Integration](https://hishel.com/integrations/httpx)
+- [Requests Integration](https://hishel.com/integrations/requests)
+- [Storage Backends](https://hishel.com/storages)
+- [RFC 9111 Specification](https://hishel.com/specification)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+See our [Contributing Guide](https://hishel.com/contributing) for more details.
+
+## 📄 License
+
+This project is licensed under the BSD-3-Clause License - see the [LICENSE](LICENSE) file for details.
+
+## 💖 Support
+
+If you find Hishel useful, please consider:
+
+- ⭐ Starring the repository
+- 🐛 Reporting bugs and issues
+- 💡 Suggesting new features
+- 📖 Improving documentation
+- ☕ [Buying me a coffee](https://buymeacoffee.com/karpetrosyan)
+
+## 🙏 Acknowledgments
+
+Hishel is inspired by and builds upon the excellent work in the Python HTTP ecosystem, particularly:
+
+- [HTTPX](https://github.com/encode/httpx) - A next-generation HTTP client for Python
+- [Requests](https://github.com/psf/requests) - The classic HTTP library for Python
+- [RFC 9111](https://www.rfc-editor.org/rfc/rfc9111.html) - HTTP Caching specification
+
+---
 
 <p align="center">
-    <a href="https://buymeacoffee.com/karpetrosyan" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
+  <strong>Made with ❤️ by <a href="https://github.com/karpetrosyan">Kar Petrosyan</a></strong>
 </p>
-
------
-
-**Hishel (հիշել, remember)** is a library that implements HTTP Caching for [HTTPX](https://github.com/encode/httpx) and [HTTP Core](https://github.com/encode/httpcore) libraries in accordance with [**RFC 9111**](https://www.rfc-editor.org/rfc/rfc9111.html), the most recent caching specification.
-
-## Features
-
-- 💾 **Persistence**: Responses are cached in the [**persistent memory**](https://en.m.wikipedia.org/wiki/Persistent_memory) for later use.
-- 🤲 **Compatibility**: It is completely compatible with your existing transports or connection pools, *whether they are default, custom, or provided by third-party libraries.*
-- 🤗 **Easy to use**: You continue to use httpx while also enabling [web cache](https://en.wikipedia.org/wiki/Web_cache).
-- 🧠 **Smart**: Attempts to clearly implement RFC 9111, understands `Vary`, `Etag`, `Last-Modified`,  `Cache-Control`, and `Expires` headers, and *handles response re-validation automatically*.
-- ⚙️  **Configurable**: You have complete control over how the responses are stored and serialized.
-- 📦 **From the package**:
-    - Built-in support for [File system](https://en.wikipedia.org/wiki/File_system), [Redis](https://en.wikipedia.org/wiki/Redis), [SQLite](https://en.wikipedia.org/wiki/SQLite), and [AWS S3](https://aws.amazon.com/s3/) backends.
-    - Built-in support for [JSON](https://en.wikipedia.org/wiki/JSON), [YAML](https://en.wikipedia.org/wiki/YAML), and [pickle](https://docs.python.org/3/library/pickle.html) serializers.
-- 🚀 **Very fast**: Your requests will be even faster if there are *no IO operations*.
-
-## Documentation
-Go through the [Hishel documentation](https://hishel.com).
-
-## QuickStart
-
-Install `Hishel` using pip:
-``` shell
-$ pip install hishel
-```
-
-Let's begin with an example of a httpx client.
-
-```python
-import hishel
-
-with hishel.CacheClient() as client:
-    client.get("https://hishel.com")  # 0.4749558370003797s
-    client.get("https://hishel.com")  # 0.002873589000046195s (~250x faster!)
-```
-
-or in asynchronous context
-
-```python
-import hishel
-
-async with hishel.AsyncCacheClient() as client:
-    await client.get("https://hishel.com")
-    await client.get("https://hishel.com")  # takes from the cache
-```
-
-## Configurations
-
-Configure when and how you want to store your responses.
-
-```python
-import hishel
-
-# All the specification configs
-controller = hishel.Controller(
-        # Cache only GET and POST methods
-        cacheable_methods=["GET", "POST"],
-
-        # Cache only 200 status codes
-        cacheable_status_codes=[200],
-
-        # Use the stale response if there is a connection issue and the new response cannot be obtained.
-        allow_stale=True,
-
-        # First, revalidate the response and then utilize it.
-        # If the response has not changed, do not download the
-        # entire response data from the server; instead,
-        # use the one you have because you know it has not been modified.
-        always_revalidate=True,
-)
-
-# All the storage configs
-storage = hishel.S3Storage(
-        bucket_name="my_bucket_name", # store my cache files in the `my_bucket_name` bucket
-        ttl=3600, # delete the response if it is in the cache for more than an hour
-)
-client = hishel.CacheClient(controller=controller, storage=storage)
-
-
-# Ignore the fact that the server does not recommend you cache this request!
-client.post(
-        "https://example.com",
-        extensions={"force_cache": True}
-)
-
-
-# Return a regular response if it is in the cache; else, return a 504 status code. DO NOT SEND A REQUEST!
-client.post(
-        "https://example.com",
-        headers=[("Cache-Control", "only-if-cached")]
-)
-
-
-# Ignore cached responses and do not store incoming responses!
-response = client.post(
-        "https://example.com",
-        extensions={"cache_disabled": True}
-)
-```
-
-## How and where are the responses saved?
-
-The responses are stored by `Hishel` in [storages](https://hishel.com/userguide/#storages).
-You have complete control over them; you can change storage or even write your own if necessary.
-
-
-## Support the project
-
-You can support the project by simply leaving a GitHub star ⭐ or by [contributing](https://hishel.com/contributing/).
-Help us grow and continue developing good software for you ❤️
 
