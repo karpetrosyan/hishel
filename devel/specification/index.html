@@ -1,0 +1,1360 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://hishel.com/devel/specification/">
+      
+      
+        <link rel="prev" href="../metadata/">
+      
+      
+        <link rel="next" href="../integrations/httpx/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.16">
+    
+    
+      
+        <title>Sans-I/O Caching - Hishel</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.7e37652d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#http-caching-state-machine" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Hishel" class="md-header__button md-logo" aria-label="Hishel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Hishel
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Sans-I/O Caching
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7M9 21v-1h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1m3-17a5 5 0 0 0-5 5c0 2.05 1.23 3.81 3 4.58V16h4v-2.42c1.77-.77 3-2.53 3-4.58a5 5 0 0 0-5-5"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/karpetrosyan/hishel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Hishel" class="md-nav__button md-logo" aria-label="Hishel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Hishel
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/karpetrosyan/hishel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m20 22-3.86-1.55c.7-1.53 1.2-3.11 1.51-4.72zM7.86 20.45 4 22l2.35-6.27c.31 1.61.81 3.19 1.51 4.72M12 2s5 2 5 10c0 3.1-.75 5.75-1.67 7.83A2 2 0 0 1 13.5 21h-3a2 2 0 0 1-1.83-1.17C7.76 17.75 7 15.1 7 12c0-8 5-10 5-10m0 10c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2"/></svg>
+  
+  <span class="md-ellipsis">
+    Introduction
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storages/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 3C7.58 3 4 4.79 4 7s3.58 4 8 4 8-1.79 8-4-3.58-4-8-4M4 9v3c0 2.21 3.58 4 8 4s8-1.79 8-4V9c0 2.21-3.58 4-8 4s-8-1.79-8-4m0 5v3c0 2.21 3.58 4 8 4s8-1.79 8-4v-3c0 2.21-3.58 4-8 4s-8-1.79-8-4"/></svg>
+  
+  <span class="md-ellipsis">
+    Storages
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metadata/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16 20h4v-4h-4m0-2h4v-4h-4m-6-2h4V4h-4m6 4h4V4h-4m-6 10h4v-4h-4m-6 4h4v-4H4m0 10h4v-4H4m6 4h4v-4h-4M4 8h4V4H4z"/></svg>
+  
+  <span class="md-ellipsis">
+    Metadata
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5"/></svg>
+  
+  <span class="md-ellipsis">
+    Sans-I/O Caching
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5"/></svg>
+  
+  <span class="md-ellipsis">
+    Sans-I/O Caching
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Start
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      How It Works
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      State Transitions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-flow-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      State Flow Examples
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="State Flow Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1-fresh-cache-hit" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 1: Fresh Cache Hit
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-2-cache-miss-and-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 2: Cache Miss and Store
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-3-cache-miss-but-cannot-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 3: Cache Miss but Cannot Store
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-4-successful-revalidation-304" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 4: Successful Revalidation (304)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-5-failed-revalidation-200" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 5: Failed Revalidation (200)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#states" class="md-nav__link">
+    <span class="md-ellipsis">
+      States
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="States">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#idleclient" class="md-nav__link">
+    <span class="md-ellipsis">
+      IdleClient
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cachemiss" class="md-nav__link">
+    <span class="md-ellipsis">
+      CacheMiss
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#needrevalidation" class="md-nav__link">
+    <span class="md-ellipsis">
+      NeedRevalidation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fromcache" class="md-nav__link">
+    <span class="md-ellipsis">
+      FromCache
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#needtobeupdated" class="md-nav__link">
+    <span class="md-ellipsis">
+      NeedToBeUpdated
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storeanduse" class="md-nav__link">
+    <span class="md-ellipsis">
+      StoreAndUse
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#couldnotbestored" class="md-nav__link">
+    <span class="md-ellipsis">
+      CouldNotBeStored
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invalidatepairs" class="md-nav__link">
+    <span class="md-ellipsis">
+      InvalidatePairs
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Integrations
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Integrations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/httpx/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 21h-2V6L9.03 3.97 10 3l2 2 2-2 1 1-2 2zM7 6a5.002 5.002 0 0 0-3 9v2c0 2.21 1.79 4 4 4 .72 0 1.39-.19 1.97-.5l.03-.04V7c-.84-.63-1.87-1-3-1m-.5 6.5L5 11l1.5-1.5L8 11zM22 11c0-2.76-2.24-5-5-5-1.12 0-2.15.37-3 1v13.46c.59.35 1.27.54 2 .54 2.21 0 4-1.79 4-4v-2c1.21-.91 2-2.36 2-4m-4.5 1.5L16 11l1.5-1.5L19 11z"/></svg>
+  
+  <span class="md-ellipsis">
+    httpx
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integrations/requests/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.25.18.9.2.73.26.59.3.45.32.34.34.25.34.16.33.1.3.04.26.02.2-.01.13V8.5l-.05.63-.13.55-.21.46-.26.38-.3.31-.33.25-.35.19-.35.14-.33.1-.3.07-.26.04-.21.02H8.77l-.69.05-.59.14-.5.22-.41.27-.33.32-.27.35-.2.36-.15.37-.1.35-.07.32-.04.27-.02.21v3.06H3.17l-.21-.03-.28-.07-.32-.12-.35-.18-.36-.26-.36-.36-.35-.46-.32-.59-.28-.73-.21-.88-.14-1.05-.05-1.23.06-1.22.16-1.04.24-.87.32-.71.36-.57.4-.44.42-.33.42-.24.4-.16.36-.1.32-.05.24-.01h.16l.06.01h8.16v-.83H6.18l-.01-2.75-.02-.37.05-.34.11-.31.17-.28.25-.26.31-.23.38-.2.44-.18.51-.15.58-.12.64-.1.71-.06.77-.04.84-.02 1.27.05zm-6.3 1.98-.23.33-.08.41.08.41.23.34.33.22.41.09.41-.09.33-.22.23-.34.08-.41-.08-.41-.23-.33-.33-.22-.41-.09-.41.09zm13.09 3.95.28.06.32.12.35.18.36.27.36.35.35.47.32.59.28.73.21.88.14 1.04.05 1.23-.06 1.23-.16 1.04-.24.86-.32.71-.36.57-.4.45-.42.33-.42.24-.4.16-.36.09-.32.05-.24.02-.16-.01h-8.22v.82h5.84l.01 2.76.02.36-.05.34-.11.31-.17.29-.25.25-.31.24-.38.2-.44.17-.51.15-.58.13-.64.09-.71.07-.77.04-.84.01-1.27-.04-1.07-.14-.9-.2-.73-.25-.59-.3-.45-.33-.34-.34-.25-.34-.16-.33-.1-.3-.04-.25-.02-.2.01-.13v-5.34l.05-.64.13-.54.21-.46.26-.38.3-.32.33-.24.35-.2.35-.14.33-.1.3-.06.26-.04.21-.02.13-.01h5.84l.69-.05.59-.14.5-.21.41-.28.33-.32.27-.35.2-.36.15-.36.1-.35.07-.32.04-.28.02-.21V6.07h2.09l.14.01zm-6.47 14.25-.23.33-.08.41.08.41.23.33.33.23.41.08.41-.08.33-.23.23-.33.08-.41-.08-.41-.23-.33-.33-.23-.41-.08-.41.08z"/></svg>
+  
+  <span class="md-ellipsis">
+    requests
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16 2c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5m0 8c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3m3 6h-2c0-1.2-.75-2.28-1.87-2.7L8.97 11H1v11h6v-1.44l7 1.94 8-2.5v-1c0-1.66-1.34-3-3-3M5 20H3v-7h2zm8.97.41L7 18.5V13h1.61l5.82 2.17c.34.13.57.46.57.83 0 0-2-.05-2.3-.15l-2.38-.79-.63 1.9 2.38.79c.51.17 1.04.25 1.58.25H19c.39 0 .74.24.9.57z"/></svg>
+  
+  <span class="md-ellipsis">
+    Contributing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Start
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      How It Works
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-transitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      State Transitions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-flow-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      State Flow Examples
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="State Flow Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1-fresh-cache-hit" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 1: Fresh Cache Hit
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-2-cache-miss-and-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 2: Cache Miss and Store
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-3-cache-miss-but-cannot-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 3: Cache Miss but Cannot Store
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-4-successful-revalidation-304" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 4: Successful Revalidation (304)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-5-failed-revalidation-200" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 5: Failed Revalidation (200)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#states" class="md-nav__link">
+    <span class="md-ellipsis">
+      States
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="States">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#idleclient" class="md-nav__link">
+    <span class="md-ellipsis">
+      IdleClient
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cachemiss" class="md-nav__link">
+    <span class="md-ellipsis">
+      CacheMiss
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#needrevalidation" class="md-nav__link">
+    <span class="md-ellipsis">
+      NeedRevalidation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fromcache" class="md-nav__link">
+    <span class="md-ellipsis">
+      FromCache
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#needtobeupdated" class="md-nav__link">
+    <span class="md-ellipsis">
+      NeedToBeUpdated
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storeanduse" class="md-nav__link">
+    <span class="md-ellipsis">
+      StoreAndUse
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#couldnotbestored" class="md-nav__link">
+    <span class="md-ellipsis">
+      CouldNotBeStored
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invalidatepairs" class="md-nav__link">
+    <span class="md-ellipsis">
+      InvalidatePairs
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="http-caching-state-machine">HTTP Caching State Machine</h1>
+<p>Hishel provides a sans-I/O implementation of the HTTP caching specification (RFC 9111), allowing you to integrate RFC-compliant caching into any Python application—whether client-side or server-side.</p>
+<p>The implementation uses an event-driven state machine that tells you exactly what to do next based on HTTP caching rules. You handle all I/O (network requests, storage operations), while the state machine ensures RFC 9111 compliance.</p>
+<h2 id="quick-start">Quick Start</h2>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="c1"># States</span>
+    <span class="n">IdleClient</span><span class="p">,</span>
+    <span class="n">CacheMiss</span><span class="p">,</span>
+    <span class="n">FromCache</span><span class="p">,</span>
+    <span class="n">NeedRevalidation</span><span class="p">,</span>
+    <span class="n">NeedToBeUpdated</span><span class="p">,</span>
+    <span class="n">StoreAndUse</span><span class="p">,</span>
+    <span class="n">CouldNotBeStored</span><span class="p">,</span>
+    <span class="n">InvalidatePairs</span><span class="p">,</span>
+
+    <span class="c1"># Configuration</span>
+    <span class="n">CacheOptions</span><span class="p">,</span>
+
+    <span class="c1"># Helper</span>
+    <span class="n">create_idle_state</span>
+<span class="p">)</span>
+
+<span class="c1"># Create an idle state (starting point)</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">create_idle_state</span><span class="p">(</span><span class="s2">&quot;client&quot;</span><span class="p">)</span>  <span class="c1"># &quot;client&quot; or &quot;server&quot; (server in development)</span>
+
+<span class="c1"># The state machine guides you through the caching logic</span>
+<span class="n">next_state</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">associated_pairs</span><span class="o">=</span><span class="p">[])</span>
+
+<span class="c1"># Each state has a specific signature for its next() method</span>
+<span class="c1"># Type hints tell you exactly what parameters are needed</span>
+</code></pre></div>
+<h2 id="how-it-works">How It Works</h2>
+<p>The state machine exposes RFC 9111 logic as a series of <strong>states</strong> and <strong>transitions</strong>. Each state represents a specific situation in the HTTP caching lifecycle:</p>
+<ol>
+<li><strong>You provide</strong>: HTTP requests, responses, and cached data</li>
+<li><strong>State machine decides</strong>: What action to take next</li>
+<li><strong>You execute</strong>: The I/O operations (network, storage)</li>
+<li><strong>State machine validates</strong>: Ensures RFC compliance</li>
+</ol>
+<p>This design allows you to build HTTP caches that are:
+- ✅ <strong>Correct</strong>: Fully compliant with RFC 9111
+- ✅ <strong>Testable</strong>: Sans-I/O design enables easy testing
+- ✅ <strong>Flexible</strong>: Works with any I/O library or framework
+- ✅ <strong>Type-safe</strong>: Fully typed with clear state transitions</p>
+<hr />
+<h2 id="state-transitions">State Transitions</h2>
+<p>The state machine follows a clear flow through different states based on HTTP caching rules defined in RFC 9111. Here's the complete transition map:</p>
+<pre class="mermaid"><code>graph TB
+  IdleClient[IdleClient&lt;br/&gt;Starting Point] --&gt;|No cache or&lt;br/&gt;uncacheable| CacheMiss[CacheMiss&lt;br/&gt;Forward to Origin]
+  IdleClient --&gt;|Fresh cache| FromCache[FromCache&lt;br/&gt;Use Cached Response]
+  IdleClient --&gt;|Stale cache| NeedRevalidation[NeedRevalidation&lt;br/&gt;Validate with Origin]
+
+  CacheMiss --&gt;|Response&lt;br/&gt;cacheable| StoreAndUse[StoreAndUse&lt;br/&gt;Store &amp; Return]
+  CacheMiss --&gt;|Response not&lt;br/&gt;cacheable| CouldNotBeStored[CouldNotBeStored&lt;br/&gt;Return without storing]
+
+  NeedRevalidation --&gt;|304 Not&lt;br/&gt;Modified| NeedToBeUpdated[NeedToBeUpdated&lt;br/&gt;Freshen Cache]
+  NeedRevalidation --&gt;|2xx/5xx&lt;br/&gt;Response| InvalidatePairs[InvalidatePairs&lt;br/&gt;Delete Old Cache]
+
+  InvalidatePairs --&gt; CacheMiss
+  NeedToBeUpdated --&gt; FromCache
+
+  FromCache -.-&gt;|Terminal| End1((End))
+  StoreAndUse -.-&gt;|Terminal| End2((End))
+  CouldNotBeStored -.-&gt;|Terminal| End3((End))
+
+  style IdleClient fill:#e1f5ff
+  style FromCache fill:#c8e6c9
+  style StoreAndUse fill:#c8e6c9
+  style CouldNotBeStored fill:#ffcdd2
+  style NeedRevalidation fill:#fff9c4
+  style InvalidatePairs fill:#ffe0b2</code></pre>
+<p><strong>Legend:</strong>
+- <strong>Blue</strong>: Entry state (IdleClient)
+- <strong>Green</strong>: Success states (FromCache, StoreAndUse)
+- <strong>Red</strong>: Failure state (CouldNotBeStored)
+- <strong>Yellow</strong>: Intermediate states requiring I/O
+- <strong>Orange</strong>: Action states (InvalidatePairs)</p>
+<hr />
+<h2 id="state-flow-examples">State Flow Examples</h2>
+<h3 id="example-1-fresh-cache-hit">Example 1: Fresh Cache Hit</h3>
+<p><div class="highlight"><pre><span></span><code>Request → IdleClient → FromCache → End
+</code></pre></div>
+<strong>Scenario:</strong> Client requests <code>/api/users</code>, cache has fresh response<br />
+<strong>Actions:</strong> Return cached response immediately, no origin contact</p>
+<h3 id="example-2-cache-miss-and-store">Example 2: Cache Miss and Store</h3>
+<p><div class="highlight"><pre><span></span><code>Request → IdleClient → CacheMiss → StoreAndUse → End
+</code></pre></div>
+<strong>Scenario:</strong> First request for <code>/api/products</code><br />
+<strong>Actions:</strong> Forward to origin, receive cacheable response, store it, return to client</p>
+<h3 id="example-3-cache-miss-but-cannot-store">Example 3: Cache Miss but Cannot Store</h3>
+<p><div class="highlight"><pre><span></span><code>Request → IdleClient → CacheMiss → CouldNotBeStored → End
+</code></pre></div>
+<strong>Scenario:</strong> Request <code>/api/private</code> with Authorization header, response has no cache directives<br />
+<strong>Actions:</strong> Forward to origin, receive response with <code>no-store</code>, return without caching</p>
+<h3 id="example-4-successful-revalidation-304">Example 4: Successful Revalidation (304)</h3>
+<p><div class="highlight"><pre><span></span><code>Request → IdleClient → NeedRevalidation → NeedToBeUpdated → FromCache → End
+</code></pre></div>
+<strong>Scenario:</strong> Cached <code>/api/data</code> is stale, origin confirms it's unchanged<br />
+<strong>Actions:</strong> Send conditional request, receive 304, update cache metadata, return cached content</p>
+<h3 id="example-5-failed-revalidation-200">Example 5: Failed Revalidation (200)</h3>
+<p><div class="highlight"><pre><span></span><code>Request → IdleClient → NeedRevalidation → InvalidatePairs → CacheMiss → StoreAndUse → End
+</code></pre></div>
+<strong>Scenario:</strong> Cached <code>/api/status</code> is stale, origin returns new content<br />
+<strong>Actions:</strong> Send conditional request, receive 200 with new content, delete old cache, store new response</p>
+<hr />
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_idle_state</span>
+
+<span class="n">state</span> <span class="o">=</span> <span class="n">create_idle_state</span><span class="p">(</span><span class="s2">&quot;client&quot;</span><span class="p">)</span>  <span class="c1"># client or server (server still in development)</span>
+
+<span class="c1"># signature will look like:</span>
+<span class="c1">#   (method) def next(</span>
+<span class="c1">#       request: Request,</span>
+<span class="c1">#       associated_pairs: list[CompletePair]</span>
+<span class="c1">#  )  -&gt; (CacheMiss | FromCache | NeedRevalidation)</span>
+<span class="n">next_state</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</code></pre></div>
+<p>In this example, <code>next_state</code> will be one of <code>CacheMiss</code>, <code>FromCache</code>, or <code>NeedRevalidation</code>, each exposing the appropriate signature for its next method.</p>
+<hr />
+<h2 id="states">States</h2>
+<p>The state machine implements RFC 9111 through a series of well-defined states. Each state represents a specific point in the HTTP caching lifecycle and determines the next action to take.</p>
+<h3 id="idleclient">IdleClient</h3>
+<p><strong>What it means:</strong> The starting point of the cache state machine. This state represents an idle client that has received a request and needs to determine whether it can be satisfied from cache, needs revalidation, or must be forwarded to the origin server.</p>
+<p><strong>When you're in this state:</strong> </p>
+<ul>
+<li>A new HTTP request has been received</li>
+<li>You need to check if cached responses exist</li>
+<li>You need to evaluate if cached responses can be used</li>
+</ul>
+<p><strong>Transitions:</strong></p>
+<ul>
+<li><strong>→ FromCache</strong>: A fresh cached response exists and can be used immediately without contacting the origin server</li>
+<li><strong>→ NeedRevalidation</strong>: A stale cached response exists that requires validation with the origin server before use</li>
+<li><strong>→ CacheMiss</strong>: No suitable cached response exists, or the request cannot be satisfied from cache</li>
+</ul>
+<p><strong>RFC Reference:</strong> <a href="https://www.rfc-editor.org/rfc/rfc9111.html#section-4">Section 4 - Constructing Responses from Caches</a></p>
+<p><strong>Example:</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">IdleClient</span><span class="p">,</span> <span class="n">CacheOptions</span>
+
+<span class="c1"># Create idle state</span>
+<span class="n">idle</span> <span class="o">=</span> <span class="n">IdleClient</span><span class="p">(</span><span class="n">options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">())</span>
+
+<span class="c1"># Transition based on request and cached pairs</span>
+<span class="n">next_state</span> <span class="o">=</span> <span class="n">idle</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">associated_pairs</span><span class="o">=</span><span class="p">[])</span>
+<span class="c1"># Returns: CacheMiss | FromCache | NeedRevalidation</span>
+</code></pre></div></p>
+<hr />
+<h3 id="cachemiss">CacheMiss</h3>
+<p><strong>What it means:</strong> The request cannot be satisfied from cache and must be forwarded to the origin server. After receiving the origin's response, this state evaluates whether the response can be stored in the cache.</p>
+<p><strong>When you're in this state:</strong></p>
+<ul>
+<li>No suitable cached response exists for the request</li>
+<li>You've received a response from the origin server</li>
+<li>You need to determine if this response should be cached</li>
+</ul>
+<p><strong>Transitions:</strong></p>
+<ul>
+<li><strong>→ StoreAndUse</strong>: The response meets all RFC 9111 storage requirements and should be cached</li>
+<li><strong>→ CouldNotBeStored</strong>: The response fails one or more storage requirements and cannot be cached</li>
+</ul>
+<p><strong>Storage Requirements Checked:</strong></p>
+<ol>
+<li>Request method is understood by the cache</li>
+<li>Response status code is final (not 1xx)</li>
+<li>Cache understands the response status code</li>
+<li>No <code>no-store</code> directive present</li>
+<li><code>private</code> directive allows storage (for shared caches)</li>
+<li><code>Authorization</code> header is properly handled</li>
+<li>Response contains explicit caching information OR is heuristically cacheable</li>
+</ol>
+<p><strong>RFC Reference:</strong> <a href="https://www.rfc-editor.org/rfc/rfc9111.html#section-3">Section 3 - Storing Responses in Caches</a></p>
+<p><strong>Example:</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheMiss</span>
+
+<span class="c1"># After forwarding request to origin</span>
+<span class="n">cache_miss</span> <span class="o">=</span> <span class="n">CacheMiss</span><span class="p">(</span><span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">)</span>
+
+<span class="c1"># Evaluate response for storage</span>
+<span class="n">next_state</span> <span class="o">=</span> <span class="n">cache_miss</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">pair_id</span><span class="o">=</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+<span class="c1"># Returns: StoreAndUse | CouldNotBeStored</span>
+</code></pre></div></p>
+<hr />
+<h3 id="needrevalidation">NeedRevalidation</h3>
+<p><strong>What it means:</strong> One or more stale cached responses exist for the request, but they cannot be used without validation. A conditional request must be sent to the origin server to check if the cached content is still valid.</p>
+<p><strong>When you're in this state:</strong></p>
+<ul>
+<li>Cached responses exist but are stale (past their freshness lifetime)</li>
+<li>The responses have validators (ETag or Last-Modified)</li>
+<li>You've sent a conditional request to the origin (If-None-Match or If-Modified-Since)</li>
+<li>You're waiting for the validation response</li>
+</ul>
+<p><strong>Transitions:</strong></p>
+<ul>
+<li><strong>→ NeedToBeUpdated</strong>: Origin responds with 304 Not Modified - cached responses are still valid and can be freshened</li>
+<li><strong>→ InvalidatePairs + CacheMiss</strong>: Origin responds with 2xx/5xx - cached responses are outdated and must be replaced</li>
+<li><strong>→ CacheMiss</strong>: No matching responses found during the freshening process</li>
+</ul>
+<p><strong>Validation Process:</strong></p>
+<ol>
+<li>Client sends conditional request with validators from cached response</li>
+<li>Origin server checks if content has changed</li>
+<li><strong>304 response</strong>: Content unchanged, update cache metadata</li>
+<li><strong>2xx/5xx response</strong>: Content changed or error, invalidate old cache and store new response</li>
+</ol>
+<p><strong>RFC Reference:</strong> <a href="https://www.rfc-editor.org/rfc/rfc9111.html#section-4.3">Section 4.3 - Validation</a></p>
+<p><strong>Example:</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">NeedRevalidation</span>
+
+<span class="c1"># After detecting stale cache</span>
+<span class="n">need_revalidation</span> <span class="o">=</span> <span class="n">NeedRevalidation</span><span class="p">(</span>
+    <span class="n">request</span><span class="o">=</span><span class="n">conditional_request</span><span class="p">,</span>
+    <span class="n">original_request</span><span class="o">=</span><span class="n">original_request</span><span class="p">,</span>
+    <span class="n">revalidating_pairs</span><span class="o">=</span><span class="p">[</span><span class="n">stale_pair</span><span class="p">],</span>
+    <span class="n">options</span><span class="o">=</span><span class="n">options</span>
+<span class="p">)</span>
+
+<span class="c1"># Handle validation response</span>
+<span class="n">next_state</span> <span class="o">=</span> <span class="n">need_revalidation</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="n">validation_response</span><span class="p">)</span>
+<span class="c1"># Returns: NeedToBeUpdated | InvalidatePairs | CacheMiss</span>
+</code></pre></div></p>
+<hr />
+<h3 id="fromcache">FromCache</h3>
+<p><strong>What it means:</strong> A suitable cached response was found and can be used immediately to satisfy the request. No communication with the origin server is needed.</p>
+<p><strong>When you're in this state:</strong>
+- A fresh cached response exists for the request
+- The cached response matches all request requirements (Vary headers, etc.)
+- The response is within its freshness lifetime OR stale responses are allowed</p>
+<p><strong>Transitions:</strong></p>
+<ul>
+<li><strong>→ None</strong>: This is a terminal state. Use the cached response to satisfy the request.</li>
+</ul>
+<p><strong>What to do:</strong></p>
+<ol>
+<li>Retrieve the cached response</li>
+<li>Update the Age header to reflect current age</li>
+<li>Return the response to the client</li>
+<li>No further state transitions needed</li>
+</ol>
+<p><strong>RFC Reference:</strong> <a href="https://www.rfc-editor.org/rfc/rfc9111.html#section-4.2">Section 4.2 - Freshness</a></p>
+<p><strong>Example:</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">FromCache</span>
+
+<span class="c1"># When a fresh response is found</span>
+<span class="n">from_cache</span> <span class="o">=</span> <span class="n">FromCache</span><span class="p">(</span><span class="n">pair</span><span class="o">=</span><span class="n">cached_pair</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">)</span>
+
+<span class="c1"># This is a terminal state</span>
+<span class="k">assert</span> <span class="n">from_cache</span><span class="o">.</span><span class="n">next</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span>
+
+<span class="c1"># Use cached_pair.response to satisfy the request</span>
+</code></pre></div></p>
+<hr />
+<h3 id="needtobeupdated">NeedToBeUpdated</h3>
+<p><strong>What it means:</strong> The origin server responded with 304 Not Modified during revalidation. The cached responses are still valid but need their metadata refreshed with information from the 304 response.</p>
+<p><strong>When you're in this state:</strong></p>
+<ul>
+<li>You received a 304 Not Modified response</li>
+<li>One or more cached responses match the validators</li>
+<li>The cached content is still valid but metadata needs updating</li>
+</ul>
+<p><strong>Transitions:</strong></p>
+<ul>
+<li><strong>→ FromCache</strong>: After updating cached responses, use them to satisfy the request</li>
+</ul>
+<p><strong>Update Process:</strong></p>
+<ol>
+<li>Match cached responses using validators (ETag or Last-Modified)</li>
+<li>Update matched responses with new headers from 304 response</li>
+<li>Preserve the cached response body (content hasn't changed)</li>
+<li>Update freshness information (Date, Cache-Control, Expires)</li>
+</ol>
+<p><strong>RFC Reference:</strong> <a href="https://www.rfc-editor.org/rfc/rfc9111.html#section-4.3.4">Section 4.3.4 - Freshening Stored Responses</a></p>
+<p><strong>Example:</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">NeedToBeUpdated</span>
+
+<span class="c1"># After 304 Not Modified</span>
+<span class="n">need_update</span> <span class="o">=</span> <span class="n">NeedToBeUpdated</span><span class="p">(</span>
+    <span class="n">updating_pairs</span><span class="o">=</span><span class="p">[</span><span class="n">cached_pair</span><span class="p">],</span>
+    <span class="n">original_request</span><span class="o">=</span><span class="n">original_request</span><span class="p">,</span>
+    <span class="n">options</span><span class="o">=</span><span class="n">options</span>
+<span class="p">)</span>
+
+<span class="c1"># Transition to FromCache</span>
+<span class="n">next_state</span> <span class="o">=</span> <span class="n">need_update</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+<span class="c1"># Returns: FromCache</span>
+</code></pre></div></p>
+<hr />
+<h3 id="storeanduse">StoreAndUse</h3>
+<p><strong>What it means:</strong> The response from the origin server meets all RFC 9111 storage requirements and should be saved to the cache. This is a terminal state indicating successful caching.</p>
+<p><strong>When you're in this state:</strong></p>
+<ul>
+<li>You received a response from the origin server</li>
+<li>The response passed all storage validation checks</li>
+<li>The response should be cached for future requests</li>
+</ul>
+<p><strong>Transitions:</strong></p>
+<ul>
+<li><strong>→ None</strong>: This is a terminal state. Store the response and use it to satisfy the request.</li>
+</ul>
+<p><strong>What to do:</strong></p>
+<ol>
+<li>Store the request-response pair in your cache storage</li>
+<li>Store any stream data (request/response bodies)</li>
+<li>Return the response to the client</li>
+<li>The response is now available for future requests</li>
+</ol>
+<p><strong>RFC Reference:</strong> <a href="https://www.rfc-editor.org/rfc/rfc9111.html#section-3">Section 3 - Storing Responses in Caches</a></p>
+<p><strong>Example:</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">StoreAndUse</span>
+
+<span class="c1"># After determining response is cacheable</span>
+<span class="n">store_and_use</span> <span class="o">=</span> <span class="n">StoreAndUse</span><span class="p">(</span>
+    <span class="n">pair_id</span><span class="o">=</span><span class="n">pair_id</span><span class="p">,</span>
+    <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
+    <span class="n">options</span><span class="o">=</span><span class="n">options</span>
+<span class="p">)</span>
+
+<span class="c1"># This is a terminal state</span>
+<span class="k">assert</span> <span class="n">store_and_use</span><span class="o">.</span><span class="n">next</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span>
+
+<span class="c1"># Store the pair and return the response</span>
+</code></pre></div></p>
+<hr />
+<h3 id="couldnotbestored">CouldNotBeStored</h3>
+<p><strong>What it means:</strong> The response from the origin server does not meet RFC 9111 storage requirements and cannot be cached. This is a terminal state indicating the response should be used but not stored.</p>
+<p><strong>When you're in this state:</strong></p>
+<ul>
+<li>You received a response from the origin server</li>
+<li>The response failed one or more storage validation checks</li>
+<li>The response should be returned to the client but not cached</li>
+</ul>
+<p><strong>Common Reasons:</strong></p>
+<ul>
+<li>Contains <code>no-store</code> cache directive</li>
+<li>Contains <code>private</code> directive (for shared caches)</li>
+<li>Method not supported for caching</li>
+<li>Status code not cacheable</li>
+<li><code>Authorization</code> header without explicit caching permission</li>
+<li>No explicit caching directives and not heuristically cacheable</li>
+</ul>
+<p><strong>Transitions:</strong></p>
+<ul>
+<li><strong>→ None</strong>: This is a terminal state. Use the response without storing it.</li>
+</ul>
+<p><strong>What to do:</strong></p>
+<ol>
+<li>Return the response to the client</li>
+<li>Do NOT store it in cache</li>
+<li>Future identical requests will also result in cache miss</li>
+</ol>
+<p><strong>RFC Reference:</strong> <a href="https://www.rfc-editor.org/rfc/rfc9111.html#section-3">Section 3 - Storing Responses in Caches</a></p>
+<p><strong>Example:</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">CouldNotBeStored</span>
+
+<span class="c1"># After determining response is not cacheable</span>
+<span class="n">could_not_store</span> <span class="o">=</span> <span class="n">CouldNotBeStored</span><span class="p">(</span>
+    <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
+    <span class="n">pair_id</span><span class="o">=</span><span class="n">pair_id</span><span class="p">,</span>
+    <span class="n">options</span><span class="o">=</span><span class="n">options</span>
+<span class="p">)</span>
+
+<span class="c1"># This is a terminal state</span>
+<span class="k">assert</span> <span class="n">could_not_store</span><span class="o">.</span><span class="n">next</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span>
+
+<span class="c1"># Return response without storing</span>
+</code></pre></div></p>
+<hr />
+<h3 id="invalidatepairs">InvalidatePairs</h3>
+<p><strong>What it means:</strong> One or more cached response pairs need to be invalidated (deleted) from the cache before proceeding to the next state. This is a wrapper state that performs cleanup before transitioning.</p>
+<p><strong>When you're in this state:</strong></p>
+<ul>
+<li>Outdated cached responses need to be removed</li>
+<li>You're proceeding to another state after cleanup</li>
+<li>This typically occurs during revalidation when new responses replace old ones</li>
+</ul>
+<p><strong>Transitions:</strong></p>
+<ul>
+<li><strong>→ next_state</strong>: After invalidating pairs, transition to the wrapped next state (typically <code>CacheMiss</code> or <code>NeedToBeUpdated</code>)</li>
+</ul>
+<p><strong>Common Scenarios:</strong></p>
+<ol>
+<li><strong>After 2xx response during revalidation</strong>: Old cached responses are outdated, invalidate them before storing new response</li>
+<li><strong>After 5xx error during revalidation</strong>: Server error invalidates cached responses</li>
+<li><strong>During freshening</strong>: Responses that don't match validators need removal</li>
+</ol>
+<p><strong>What to do:</strong></p>
+<ol>
+<li>Delete the specified pairs from cache storage</li>
+<li>Delete associated stream data</li>
+<li>Transition to the next state specified</li>
+</ol>
+<p><strong>Example:</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">InvalidatePairs</span><span class="p">,</span> <span class="n">CacheMiss</span>
+
+<span class="c1"># During revalidation with new response</span>
+<span class="n">invalidate</span> <span class="o">=</span> <span class="n">InvalidatePairs</span><span class="p">(</span>
+    <span class="n">pair_ids</span><span class="o">=</span><span class="p">[</span><span class="n">old_pair_id1</span><span class="p">,</span> <span class="n">old_pair_id2</span><span class="p">],</span>
+    <span class="n">next_state</span><span class="o">=</span><span class="n">CacheMiss</span><span class="p">(</span><span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">),</span>
+    <span class="n">options</span><span class="o">=</span><span class="n">options</span>
+<span class="p">)</span>
+
+<span class="c1"># Get next state after invalidation</span>
+<span class="n">next_state</span> <span class="o">=</span> <span class="n">invalidate</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+<span class="c1"># Returns: The wrapped next_state (e.g., CacheMiss)</span>
+</code></pre></div></p>
+<h2 id="configuration">Configuration</h2>
+<p>You can pass an options parameter to any state to control how it behaves in certain situations. This was primarily added to allow configuration for cases where the RFC does not explicitly specify the behavior. In some places, the RFC might say that a cache MIGHT do something; the <code>options</code> parameter lets you define how to handle such cases.</p>
+<p>Import the CacheOptions class and pass it to the State, like so:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">IdleClient</span><span class="p">,</span> <span class="n">CacheOptions</span>
+
+<span class="n">state</span> <span class="o">=</span> <span class="n">IdleClient</span><span class="p">(</span>
+  <span class="n">options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(</span>
+    <span class="n">allow_stale</span><span class="o">=</span><span class="kc">True</span>
+  <span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.expand"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.50899def.min.js"></script>
+      
+    
+  </body>
+</html>
