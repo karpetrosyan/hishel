@@ -53,6 +53,9 @@ jobs:
           parallel: true
           file: coverage.xml
 
+      - name: Upload dev docs
+        run: uv run mike deploy --push --update-aliases dev dev
+
   coveralls:
     name: Finish Coveralls
     needs: test

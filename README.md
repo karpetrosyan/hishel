@@ -173,19 +173,19 @@ While Hishel currently supports HTTPX and Requests, we're actively working on:
 
 ## 📚 Documentation
 
-Comprehensive documentation is available at [https://hishel.com](https://hishel.com)
+Comprehensive documentation is available at [https://hishel.com/dev](https://hishel.com/dev)
 
 - [Getting Started](https://hishel.com)
-- [HTTPX Integration](https://hishel.com/integrations/httpx)
-- [Requests Integration](https://hishel.com/integrations/requests)
-- [Storage Backends](https://hishel.com/storages)
-- [RFC 9111 Specification](https://hishel.com/specification)
+- [HTTPX Integration](https://hishel.com/dev/integrations/httpx)
+- [Requests Integration](https://hishel.com/dev/integrations/requests)
+- [Storage Backends](https://hishel.com/dev/storages)
+- [RFC 9111 Specification](https://hishel.com/dev/specification)
 
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
-See our [Contributing Guide](https://hishel.com/contributing) for more details.
+See our [Contributing Guide](https://hishel.com/dev/contributing) for more details.
 
 ## 📄 License
 
