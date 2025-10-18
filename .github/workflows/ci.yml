@@ -54,7 +54,10 @@ jobs:
           file: coverage.xml
 
       - name: Upload dev docs
-        run: uv run mike deploy --push --update-aliases dev
+        run: |
+          git config user.name "Kar Petrosyan"
+          git config user.email "karpetrosyanpy@gmail.com"
+          uv run mike deploy --push --update-aliases dev
 
   coveralls:
     name: Finish Coveralls
