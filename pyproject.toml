@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "hishel"
 version = "1.0.0.dev0"
 dynamic = ["readme"]
-description = "Persistent cache implementation for httpx and httpcore"
+description = " Elegant HTTP Caching for Python"
 license = "BSD-3-Clause"
 requires-python = ">=3.9"
 authors = [{ name = "Kar Petrosyan", email = "kar.petrosyanpy@gmail.com" }]
