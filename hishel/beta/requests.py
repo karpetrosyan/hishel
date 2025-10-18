@@ -23,6 +23,9 @@ except ImportError:  # pragma: no cover
         "Install hishel with 'pip install hishel[requests]'."
     )
 
+# 128 KB
+CHUNK_SIZE = 131072
+
 
 class IteratorStream(RawIOBase):
     def __init__(self, iterator: Iterator[bytes]):
@@ -90,7 +93,7 @@ def requests_to_internal(
         )
     elif isinstance(model, requests.models.Response):
         try:
-            stream = model.raw.stream(amt=8192)
+            stream = model.raw.stream(amt=CHUNK_SIZE, decode_content=None)
         except requests.exceptions.StreamConsumedError:
             stream = iter([model.content])
 
@@ -113,7 +116,6 @@ def internal_to_requests(model: Request | Response) -> requests.models.Response 
         response = requests.models.Response()
 
         assert isinstance(model.stream, Iterator)
-        # Collect all chunks from the internal stream
         stream = IteratorStream(model.stream)
 
         urllib_response = HTTPResponse(
@@ -121,7 +123,7 @@ def internal_to_requests(model: Request | Response) -> requests.models.Response 
             headers={**model.headers, **{snake_to_header(k): str(v) for k, v in model.metadata.items()}},
             status=model.status_code,
             preload_content=False,
-            decode_content=True,
+            decode_content=False,
         )
 
         # Set up the response object
@@ -130,7 +132,6 @@ def internal_to_requests(model: Request | Response) -> requests.models.Response 
         response.headers.update(model.headers)
         response.headers.update({snake_to_header(k): str(v) for k, v in model.metadata.items()})
         response.url = ""  # Will be set by requests
-        response.encoding = response.apparent_encoding
 
         return response
     else:
