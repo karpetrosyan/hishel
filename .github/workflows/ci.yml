@@ -58,6 +58,8 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
     steps:
       - name: Checkout (official GitHub action)
         uses: actions/checkout@v4
