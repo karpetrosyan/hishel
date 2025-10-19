@@ -73,7 +73,7 @@ jobs:
         run: uv python install
 
       - name: Publish docs
-        run: uv run mike deploy --push --update-aliases $(scripts/get_doc_version.py) latest
+        run: uv run mike deploy --push --update-aliases $(scripts/get_doc_version.py)
 
   release:
     name: Create GitHub release
