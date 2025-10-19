@@ -1,3 +1,9 @@
+## [1.0.0dev0] - 2025-10-19
+
+### ⚙️ Miscellaneous Tasks
+
+- *(docs)* Use mike powered versioning
+- *(docs)* Improve docs versioning, deploy dev doc on ci
 ## [0.1.5] - 2025-10-18
 
 ### 🚀 Features
