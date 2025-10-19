@@ -122,7 +122,7 @@ class CacheOptions:
 
     shared: bool = True
     """
-    When True, the cache operates as a shared cache (proxy/CDN). 
+    When True, the cache operates as a shared cache (proxy/CDN).
     When False, as a private cache (browser).
     """
 
