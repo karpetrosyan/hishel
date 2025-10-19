@@ -1,0 +1,1373 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://hishel.com/1.0/integrations/httpx/">
+      
+      
+        <link rel="prev" href="../../specification/">
+      
+      
+        <link rel="next" href="../requests/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.16">
+    
+    
+      
+        <title>httpx - Hishel</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.7e37652d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../docs/custom.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#httpx-integration" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Hishel" class="md-header__button md-logo" aria-label="Hishel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Hishel
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              httpx
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="amber" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="amber" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7M9 21v-1h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1m3-17a5 5 0 0 0-5 5c0 2.05 1.23 3.81 3 4.58V16h4v-2.42c1.77-.77 3-2.53 3-4.58a5 5 0 0 0-5-5"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/karpetrosyan/hishel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Hishel" class="md-nav__button md-logo" aria-label="Hishel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Hishel
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/karpetrosyan/hishel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Introduction
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../storages/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 3C7.58 3 4 4.79 4 7s3.58 4 8 4 8-1.79 8-4-3.58-4-8-4M4 9v3c0 2.21 3.58 4 8 4s8-1.79 8-4V9c0 2.21-3.58 4-8 4s-8-1.79-8-4m0 5v3c0 2.21 3.58 4 8 4s8-1.79 8-4v-3c0 2.21-3.58 4-8 4s-8-1.79-8-4"/></svg>
+  
+  <span class="md-ellipsis">
+    Storages
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../metadata/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16 20h4v-4h-4m0-2h4v-4h-4m-6-2h4V4h-4m6 4h4V4h-4m-6 10h4v-4h-4m-6 4h4v-4H4m0 10h4v-4H4m6 4h4v-4h-4M4 8h4V4H4z"/></svg>
+  
+  <span class="md-ellipsis">
+    Metadata
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specification/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7.5 13A2.5 2.5 0 0 0 5 15.5 2.5 2.5 0 0 0 7.5 18a2.5 2.5 0 0 0 2.5-2.5A2.5 2.5 0 0 0 7.5 13m9 0a2.5 2.5 0 0 0-2.5 2.5 2.5 2.5 0 0 0 2.5 2.5 2.5 2.5 0 0 0 2.5-2.5 2.5 2.5 0 0 0-2.5-2.5"/></svg>
+  
+  <span class="md-ellipsis">
+    Sans-I/O Caching
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Integrations
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Integrations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 21h-2V6L9.03 3.97 10 3l2 2 2-2 1 1-2 2zM7 6a5.002 5.002 0 0 0-3 9v2c0 2.21 1.79 4 4 4 .72 0 1.39-.19 1.97-.5l.03-.04V7c-.84-.63-1.87-1-3-1m-.5 6.5L5 11l1.5-1.5L8 11zM22 11c0-2.76-2.24-5-5-5-1.12 0-2.15.37-3 1v13.46c.59.35 1.27.54 2 .54 2.21 0 4-1.79 4-4v-2c1.21-.91 2-2.36 2-4m-4.5 1.5L16 11l1.5-1.5L19 11z"/></svg>
+  
+  <span class="md-ellipsis">
+    httpx
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 21h-2V6L9.03 3.97 10 3l2 2 2-2 1 1-2 2zM7 6a5.002 5.002 0 0 0-3 9v2c0 2.21 1.79 4 4 4 .72 0 1.39-.19 1.97-.5l.03-.04V7c-.84-.63-1.87-1-3-1m-.5 6.5L5 11l1.5-1.5L8 11zM22 11c0-2.76-2.24-5-5-5-1.12 0-2.15.37-3 1v13.46c.59.35 1.27.54 2 .54 2.21 0 4-1.79 4-4v-2c1.21-.91 2-2.36 2-4m-4.5 1.5L16 11l1.5-1.5L19 11z"/></svg>
+  
+  <span class="md-ellipsis">
+    httpx
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Start
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cache-clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache Clients
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cache Clients">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Usage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#force-caching-ignoring-rfc-9111" class="md-nav__link">
+    <span class="md-ellipsis">
+      Force Caching (Ignoring RFC 9111)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setting-ttl-time-to-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting TTL (Time To Live)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refresh-on-hit" class="md-nav__link">
+    <span class="md-ellipsis">
+      Refresh on Hit
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cache-transports" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache Transports
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cache Transports">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-transports" class="md-nav__link">
+    <span class="md-ellipsis">
+      When to Use Transports
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chaining-transports" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chaining Transports
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#controlling-cache-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      Controlling Cache Behavior
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Controlling Cache Behavior">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-extensions-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Extensions (Recommended)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-headers-alternative" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Headers (Alternative)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      Available Metadata
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspecting-cache-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inspecting Cache Status
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migration-from-standard-httpx" class="md-nav__link">
+    <span class="md-ellipsis">
+      Migration from Standard HTTPX
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See Also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../requests/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.25.18.9.2.73.26.59.3.45.32.34.34.25.34.16.33.1.3.04.26.02.2-.01.13V8.5l-.05.63-.13.55-.21.46-.26.38-.3.31-.33.25-.35.19-.35.14-.33.1-.3.07-.26.04-.21.02H8.77l-.69.05-.59.14-.5.22-.41.27-.33.32-.27.35-.2.36-.15.37-.1.35-.07.32-.04.27-.02.21v3.06H3.17l-.21-.03-.28-.07-.32-.12-.35-.18-.36-.26-.36-.36-.35-.46-.32-.59-.28-.73-.21-.88-.14-1.05-.05-1.23.06-1.22.16-1.04.24-.87.32-.71.36-.57.4-.44.42-.33.42-.24.4-.16.36-.1.32-.05.24-.01h.16l.06.01h8.16v-.83H6.18l-.01-2.75-.02-.37.05-.34.11-.31.17-.28.25-.26.31-.23.38-.2.44-.18.51-.15.58-.12.64-.1.71-.06.77-.04.84-.02 1.27.05zm-6.3 1.98-.23.33-.08.41.08.41.23.34.33.22.41.09.41-.09.33-.22.23-.34.08-.41-.08-.41-.23-.33-.33-.22-.41-.09-.41.09zm13.09 3.95.28.06.32.12.35.18.36.27.36.35.35.47.32.59.28.73.21.88.14 1.04.05 1.23-.06 1.23-.16 1.04-.24.86-.32.71-.36.57-.4.45-.42.33-.42.24-.4.16-.36.09-.32.05-.24.02-.16-.01h-8.22v.82h5.84l.01 2.76.02.36-.05.34-.11.31-.17.29-.25.25-.31.24-.38.2-.44.17-.51.15-.58.13-.64.09-.71.07-.77.04-.84.01-1.27-.04-1.07-.14-.9-.2-.73-.25-.59-.3-.45-.33-.34-.34-.25-.34-.16-.33-.1-.3-.04-.25-.02-.2.01-.13v-5.34l.05-.64.13-.54.21-.46.26-.38.3-.32.33-.24.35-.2.35-.14.33-.1.3-.06.26-.04.21-.02.13-.01h5.84l.69-.05.59-.14.5-.21.41-.28.33-.32.27-.35.2-.36.15-.36.1-.35.07-.32.04-.28.02-.21V6.07h2.09l.14.01zm-6.47 14.25-.23.33-.08.41.08.41.23.33.33.23.41.08.41-.08.33-.23.23-.33.08-.41-.08-.41-.23-.33-.33-.23-.41-.08-.41.08z"/></svg>
+  
+  <span class="md-ellipsis">
+    requests
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16 2c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5m0 8c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3m3 6h-2c0-1.2-.75-2.28-1.87-2.7L8.97 11H1v11h6v-1.44l7 1.94 8-2.5v-1c0-1.66-1.34-3-3-3M5 20H3v-7h2zm8.97.41L7 18.5V13h1.61l5.82 2.17c.34.13.57.46.57.83 0 0-2-.05-2.3-.15l-2.38-.79-.63 1.9 2.38.79c.51.17 1.04.25 1.58.25H19c.39 0 .74.24.9.57z"/></svg>
+  
+  <span class="md-ellipsis">
+    Contributing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Start
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cache-clients" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache Clients
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cache Clients">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Usage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#force-caching-ignoring-rfc-9111" class="md-nav__link">
+    <span class="md-ellipsis">
+      Force Caching (Ignoring RFC 9111)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setting-ttl-time-to-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting TTL (Time To Live)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refresh-on-hit" class="md-nav__link">
+    <span class="md-ellipsis">
+      Refresh on Hit
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cache-transports" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cache Transports
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cache Transports">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-transports" class="md-nav__link">
+    <span class="md-ellipsis">
+      When to Use Transports
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chaining-transports" class="md-nav__link">
+    <span class="md-ellipsis">
+      Chaining Transports
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#controlling-cache-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      Controlling Cache Behavior
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Controlling Cache Behavior">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-extensions-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Extensions (Recommended)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-headers-alternative" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Headers (Alternative)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      Available Metadata
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspecting-cache-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inspecting Cache Status
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migration-from-standard-httpx" class="md-nav__link">
+    <span class="md-ellipsis">
+      Migration from Standard HTTPX
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See Also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="httpx-integration">HTTPX Integration</h1>
+<p>Hishel provides seamless integration with <a href="https://www.python-httpx.org/">HTTPX</a>, adding RFC 9111-compliant HTTP caching to your HTTPX applications with minimal code changes.</p>
+<h2 id="quick-start">Quick Start</h2>
+<p>The easiest way to add caching to your HTTPX application is using the cache-enabled client classes:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Sync</label><label for="__tabbed_1_2">Async</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
+
+<span class="c1"># First request - fetches from origin</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="p">[</span><span class="s2">&quot;hishel_from_cache&quot;</span><span class="p">])</span>  <span class="c1"># False</span>
+
+<span class="c1"># Second request - served from cache</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="p">[</span><span class="s2">&quot;hishel_from_cache&quot;</span><span class="p">])</span>  <span class="c1"># True</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheClient</span>
+
+<span class="k">async</span> <span class="k">with</span> <span class="n">AsyncCacheClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="c1"># First request - fetches from origin</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="p">[</span><span class="s2">&quot;hishel_from_cache&quot;</span><span class="p">])</span>  <span class="c1"># False</span>
+
+    <span class="c1"># Second request - served from cache</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="p">[</span><span class="s2">&quot;hishel_from_cache&quot;</span><span class="p">])</span>  <span class="c1"># True</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>That's it! Hishel automatically caches responses according to RFC 9111 rules.</p>
+<hr />
+<h2 id="cache-clients">Cache Clients</h2>
+<p>Hishel provides drop-in replacements for HTTPX's <code>Client</code> and <code>AsyncClient</code>:</p>
+<ul>
+<li><code>SyncCacheClient</code> - Synchronous caching client</li>
+<li><code>AsyncCacheClient</code> - Asynchronous caching client</li>
+</ul>
+<p>These clients inherit from HTTPX clients and accept all the same parameters, plus additional caching configuration.</p>
+<h3 id="basic-usage">Basic Usage</h3>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Sync</label><label for="__tabbed_2_2">Async</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
+
+<span class="c1"># Create client with default settings</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
+
+<span class="c1"># Make requests as usual</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/users&quot;</span><span class="p">)</span>
+
+<span class="c1"># All HTTPX methods work</span>
+<span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;value&quot;</span><span class="p">})</span>
+<span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/resource/1&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+
+<span class="c1"># Or use context manager</span>
+<span class="k">with</span> <span class="n">SyncCacheClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheClient</span>
+
+<span class="c1"># Create client with default settings</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">AsyncCacheClient</span><span class="p">()</span>
+
+<span class="c1"># Make requests as usual</span>
+<span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/users&quot;</span><span class="p">)</span>
+
+<span class="c1"># All HTTPX async methods work</span>
+
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;value&quot;</span><span class="p">})</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/resource/1&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+
+<span class="c1"># Or use context manager (recommended)</span>
+<span class="k">async</span> <span class="k">with</span> <span class="n">AsyncCacheClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<h3 id="force-caching-ignoring-rfc-9111">Force Caching (Ignoring RFC 9111)</h3>
+<p>By default, Hishel follows RFC 9111 caching rules. To force caching regardless of response headers:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Sync</label><label for="__tabbed_3_2">Async</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheOptions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">(</span>
+    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(</span><span class="n">always_cache</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># This will be cached even without proper cache headers</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheOptions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheClient</span>
+
+<span class="k">async</span> <span class="k">with</span> <span class="n">AsyncCacheClient</span><span class="p">(</span>
+    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(</span><span class="n">always_cache</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<h3 id="setting-ttl-time-to-live">Setting TTL (Time To Live)</h3>
+<p>Specify how long responses should be cached:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Sync</label><label for="__tabbed_4_2">Async</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheOptions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
+
+<span class="c1"># Cache for 1 hour (3600 seconds)</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">(</span>
+    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(</span><span class="n">ttl</span><span class="o">=</span><span class="mi">3600</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheOptions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheClient</span>
+
+<span class="c1"># Cache for 1 hour (3600 seconds)</span>
+<span class="k">async</span> <span class="k">with</span> <span class="n">AsyncCacheClient</span><span class="p">(</span>
+    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(</span><span class="n">ttl</span><span class="o">=</span><span class="mi">3600</span><span class="p">)</span>
+<span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<h3 id="refresh-on-hit">Refresh on Hit</h3>
+<p>Update cache metadata on every cache hit to extend freshness:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Sync</label><label for="__tabbed_5_2">Async</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheOptions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">(</span>
+    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(</span><span class="n">refresh_on_hit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheOptions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheClient</span>
+
+<span class="k">async</span> <span class="k">with</span> <span class="n">AsyncCacheClient</span><span class="p">(</span>
+    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(</span><span class="n">refresh_on_hit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="cache-transports">Cache Transports</h2>
+<p>For more control or to integrate with existing HTTPX clients, use cache transports directly:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">Sync</label><label for="__tabbed_6_2">Async</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncSqliteStorage</span><span class="p">,</span> <span class="n">CacheOptions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheTransport</span>
+
+<span class="c1"># Create transport with caching</span>
+<span class="n">transport</span> <span class="o">=</span> <span class="n">SyncCacheTransport</span><span class="p">(</span>
+    <span class="n">next_transport</span><span class="o">=</span><span class="n">httpx</span><span class="o">.</span><span class="n">HTTPTransport</span><span class="p">(),</span>
+    <span class="n">storage</span><span class="o">=</span><span class="n">SyncSqliteStorage</span><span class="p">(),</span>
+    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">()</span>
+<span class="p">)</span>
+
+<span class="c1"># Use with standard HTTPX client</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">transport</span><span class="o">=</span><span class="n">transport</span><span class="p">)</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSqliteStorage</span><span class="p">,</span> <span class="n">CacheOptions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheTransport</span>
+
+<span class="c1"># Create transport with caching</span>
+<span class="n">transport</span> <span class="o">=</span> <span class="n">AsyncCacheTransport</span><span class="p">(</span>
+    <span class="n">next_transport</span><span class="o">=</span><span class="n">httpx</span><span class="o">.</span><span class="n">AsyncHTTPTransport</span><span class="p">(),</span>
+    <span class="n">storage</span><span class="o">=</span><span class="n">AsyncSqliteStorage</span><span class="p">(),</span>
+    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">()</span>
+<span class="p">)</span>
+
+<span class="c1"># Use with standard HTTPX client</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">(</span><span class="n">transport</span><span class="o">=</span><span class="n">transport</span><span class="p">)</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<h3 id="when-to-use-transports">When to Use Transports</h3>
+<p>Use transports when you need to:</p>
+<ul>
+<li>Combine with other custom transports</li>
+<li>Add caching to existing HTTPX clients</li>
+<li>Have fine-grained control over transport layer</li>
+<li>Build custom client classes</li>
+</ul>
+<h3 id="chaining-transports">Chaining Transports</h3>
+<div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">Sync</label><label for="__tabbed_7_2">Async</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheTransport</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncSqliteStorage</span>
+
+<span class="c1"># Custom transport (e.g., for logging)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">LoggingTransport</span><span class="p">(</span><span class="n">httpx</span><span class="o">.</span><span class="n">BaseTransport</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transport</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">BaseTransport</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transport</span> <span class="o">=</span> <span class="n">transport</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Response</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Request: </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transport</span><span class="o">.</span><span class="n">handle_request</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Response: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">response</span>
+
+<span class="c1"># Chain: HTTP -&gt; Cache -&gt; Logging</span>
+<span class="n">transport</span> <span class="o">=</span> <span class="n">LoggingTransport</span><span class="p">(</span>
+    <span class="n">transport</span><span class="o">=</span><span class="n">SyncCacheTransport</span><span class="p">(</span>
+        <span class="n">next_transport</span><span class="o">=</span><span class="n">httpx</span><span class="o">.</span><span class="n">HTTPTransport</span><span class="p">(),</span>
+        <span class="n">storage</span><span class="o">=</span><span class="n">SyncSqliteStorage</span><span class="p">()</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">transport</span><span class="o">=</span><span class="n">transport</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheTransport</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSqliteStorage</span>
+
+<span class="c1"># Custom transport (e.g., for logging)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">LoggingTransport</span><span class="p">(</span><span class="n">httpx</span><span class="o">.</span><span class="n">AsyncBaseTransport</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transport</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncBaseTransport</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transport</span> <span class="o">=</span> <span class="n">transport</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_async_request</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Request</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Response</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Request: </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">transport</span><span class="o">.</span><span class="n">handle_async_request</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Response: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">response</span>
+
+<span class="c1"># Chain: HTTP -&gt; Cache -&gt; Logging</span>
+<span class="n">transport</span> <span class="o">=</span> <span class="n">LoggingTransport</span><span class="p">(</span>
+    <span class="n">transport</span><span class="o">=</span><span class="n">AsyncCacheTransport</span><span class="p">(</span>
+        <span class="n">next_transport</span><span class="o">=</span><span class="n">httpx</span><span class="o">.</span><span class="n">AsyncHTTPTransport</span><span class="p">(),</span>
+        <span class="n">storage</span><span class="o">=</span><span class="n">AsyncSqliteStorage</span><span class="p">()</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">(</span><span class="n">transport</span><span class="o">=</span><span class="n">transport</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h2 id="controlling-cache-behavior">Controlling Cache Behavior</h2>
+<h3 id="using-extensions-recommended">Using Extensions (Recommended)</h3>
+<p>Set caching metadata using HTTPX's <code>extensions</code> parameter:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="8:2"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">Sync</label><label for="__tabbed_8_2">Async</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
+
+<span class="c1"># Custom TTL for specific request</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">,</span>
+    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">300</span><span class="p">}</span>  <span class="c1"># Cache for 5 minutes</span>
+<span class="p">)</span>
+
+<span class="c1"># Ignore caching rules</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;https://api.example.com/private&quot;</span><span class="p">,</span>
+    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;hishel_spec_ignore&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># Multiple options</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;https://api.example.com/search&quot;</span><span class="p">,</span>
+    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">600</span><span class="p">,</span>
+        <span class="s2">&quot;hishel_refresh_ttl_on_access&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s2">&quot;hishel_body_key&quot;</span><span class="p">:</span> <span class="kc">True</span>  <span class="c1"># Include body in cache key</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheClient</span>
+
+<span class="k">async</span> <span class="k">with</span> <span class="n">AsyncCacheClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="c1"># Custom TTL for specific request</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">,</span>
+        <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">300</span><span class="p">}</span>  <span class="c1"># Cache for 5 minutes</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Ignore caching rules</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="s2">&quot;https://api.example.com/private&quot;</span><span class="p">,</span>
+        <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;hishel_spec_ignore&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Multiple options</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="s2">&quot;https://api.example.com/search&quot;</span><span class="p">,</span>
+        <span class="n">extensions</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">600</span><span class="p">,</span>
+            <span class="s2">&quot;hishel_refresh_ttl_on_access&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">&quot;hishel_body_key&quot;</span><span class="p">:</span> <span class="kc">True</span>  <span class="c1"># Include body in cache key</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<h3 id="using-headers-alternative">Using Headers (Alternative)</h3>
+<p>You can also use HTTP headers:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="9:2"><input checked="checked" id="__tabbed_9_1" name="__tabbed_9" type="radio" /><input id="__tabbed_9_2" name="__tabbed_9" type="radio" /><div class="tabbed-labels"><label for="__tabbed_9_1">Sync</label><label for="__tabbed_9_2">Async</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">,</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Hishel-Ttl&quot;</span><span class="p">:</span> <span class="s2">&quot;300&quot;</span><span class="p">}</span>
+<span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheClient</span>
+
+<span class="k">async</span> <span class="k">with</span> <span class="n">AsyncCacheClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Hishel-Ttl&quot;</span><span class="p">:</span> <span class="s2">&quot;300&quot;</span><span class="p">}</span>
+    <span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Extensions vs Headers</p>
+<p>Use <code>extensions</code> for better type safety and to avoid sending cache control headers to the server.</p>
+</div>
+<h3 id="available-metadata">Available Metadata</h3>
+<p>See <a href="../../metadata/">Metadata Documentation</a> for complete reference:</p>
+<ul>
+<li><code>hishel_ttl</code> - Custom TTL in seconds</li>
+<li><code>hishel_refresh_ttl_on_access</code> - Enable sliding expiration</li>
+<li><code>hishel_spec_ignore</code> - Ignore RFC 9111 rules</li>
+<li><code>hishel_body_key</code> - Include body in cache key (for POST/GraphQL)</li>
+</ul>
+<hr />
+<h2 id="inspecting-cache-status">Inspecting Cache Status</h2>
+<p>Check if responses came from cache using metadata:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="10:2"><input checked="checked" id="__tabbed_10_1" name="__tabbed_10" type="radio" /><input id="__tabbed_10_2" name="__tabbed_10" type="radio" /><div class="tabbed-labels"><label for="__tabbed_10_1">Sync</label><label for="__tabbed_10_2">Async</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+
+<span class="c1"># Check cache status</span>
+<span class="n">from_cache</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_from_cache&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+<span class="n">revalidated</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_revalidated&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+<span class="n">stored</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_stored&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">from_cache</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">revalidated</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Fresh cache hit&quot;</span><span class="p">)</span>
+<span class="k">elif</span> <span class="n">from_cache</span> <span class="ow">and</span> <span class="n">revalidated</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;↻ Revalidated (304)&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✗ Cache miss&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">stored</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Response was cached for future requests&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheClient</span>
+
+<span class="k">async</span> <span class="k">with</span> <span class="n">AsyncCacheClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Check cache status</span>
+    <span class="n">from_cache</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_from_cache&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="n">revalidated</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_revalidated&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="n">stored</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_stored&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">from_cache</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">revalidated</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Fresh cache hit&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">from_cache</span> <span class="ow">and</span> <span class="n">revalidated</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;↻ Revalidated (304)&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✗ Cache miss&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">stored</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Response was cached for future requests&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h2 id="migration-from-standard-httpx">Migration from Standard HTTPX</h2>
+<p>Migrating existing HTTPX code to use Hishel is straightforward:</p>
+<p><strong>Before (Standard HTTPX):</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+</code></pre></div></p>
+<p><strong>After (With Caching):</strong>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>  <span class="c1"># Drop-in replacement</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
+</code></pre></div></p>
+<p>All HTTPX features continue to work:</p>
+<ul>
+<li>✓ Request parameters (<code>params</code>, <code>headers</code>, <code>json</code>, <code>data</code>)</li>
+<li>✓ Authentication (<code>auth</code>)</li>
+<li>✓ Timeouts (<code>timeout</code>)</li>
+<li>✓ HTTP/2 support (<code>http2=True</code>)</li>
+<li>✓ Proxies (<code>proxies</code>)</li>
+<li>✓ Custom transports</li>
+<li>✓ Event hooks</li>
+<li>✓ Connection pooling</li>
+</ul>
+<hr />
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="../../metadata/">Metadata Reference</a> - Complete guide to caching metadata</li>
+<li><a href="../../storages/">Storage Documentation</a> - Storage backend configuration</li>
+<li><a href="../../specification/">Specification</a> - RFC 9111 state machine</li>
+<li><a href="https://www.python-httpx.org/">HTTPX Documentation</a> - Official HTTPX docs</li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.expand"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.50899def.min.js"></script>
+      
+    
+  </body>
+</html>
