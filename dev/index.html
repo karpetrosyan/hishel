@@ -936,9 +936,9 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
 
 <span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">(</span>
     <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(</span>
-        <span class="n">always_cache</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>        <span class="c1"># Force caching regardless of headers</span>
-        <span class="n">ttl</span><span class="o">=</span><span class="mi">3600</span><span class="p">,</span>                 <span class="c1"># Cache for 1 hour</span>
-        <span class="n">refresh_on_hit</span><span class="o">=</span><span class="kc">True</span>       <span class="c1"># Update cache metadata on access</span>
+        <span class="n">shared</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>                              <span class="c1"># Use as private cache (browser-like)</span>
+        <span class="n">supported_methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;HEAD&quot;</span><span class="p">,</span> <span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="c1"># Cache GET, HEAD, and POST</span>
+        <span class="n">allow_stale</span><span class="o">=</span><span class="kc">True</span>                           <span class="c1"># Allow serving stale responses</span>
     <span class="p">)</span>
 <span class="p">)</span>
 </code></pre></div>
@@ -948,8 +948,8 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
 
 <span class="n">storage</span> <span class="o">=</span> <span class="n">SyncSqliteStorage</span><span class="p">(</span>
     <span class="n">database_path</span><span class="o">=</span><span class="s2">&quot;my_cache.db&quot;</span><span class="p">,</span>
-    <span class="n">default_ttl</span><span class="o">=</span><span class="mf">7200.0</span><span class="p">,</span>
-    <span class="n">refresh_ttl_on_access</span><span class="o">=</span><span class="kc">True</span>
+    <span class="n">default_ttl</span><span class="o">=</span><span class="mf">7200.0</span><span class="p">,</span>           <span class="c1"># Cache entries expire after 2 hours</span>
+    <span class="n">refresh_ttl_on_access</span><span class="o">=</span><span class="kc">True</span>    <span class="c1"># Reset TTL when accessing cached entries</span>
 <span class="p">)</span>
 
 <span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="n">storage</span><span class="p">)</span>
