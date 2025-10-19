@@ -41,9 +41,96 @@ logger = logging.getLogger("hishel.core.spec")
 
 @dataclass
 class CacheOptions:
+    """
+    Configuration options for HTTP cache behavior.
+
+    These options control how the cache interprets and applies RFC 9111 caching rules.
+    All options have sensible defaults that follow the specification.
+
+    Attributes:
+    ----------
+    shared : bool
+        Determines whether the cache operates as a shared cache or private cache.
+
+        RFC 9111 Section 3.5: Authenticated Responses
+        https://www.rfc-editor.org/rfc/rfc9111.html#section-3.5
+
+        - Shared cache (True): Acts as a proxy, CDN, or gateway cache serving multiple users.
+          Must respect private directives and Authorization header restrictions.
+          Can use s-maxage directive instead of max-age for shared-specific freshness.
+
+        - Private cache (False): Acts as a browser or user-agent cache for a single user.
+          Can cache private responses and ignore s-maxage directives.
+
+        Default: True (shared cache)
+
+        Examples:
+        --------
+        >>> # Shared cache (proxy/CDN)
+        >>> options = CacheOptions(shared=True)
+
+        >>> # Private cache (browser)
+        >>> options = CacheOptions(shared=False)
+
+    supported_methods : list[str]
+        HTTP methods that are allowed to be cached by this cache implementation.
+
+        RFC 9111 Section 3, paragraph 2.1:
+        https://www.rfc-editor.org/rfc/rfc9111.html#section-3-2.1.1
+
+        "A cache MUST NOT store a response to a request unless:
+         - the request method is understood by the cache"
+
+        Default: ["GET", "HEAD"] (most commonly cached methods)
+
+        Examples:
+        --------
+        >>> # Default: cache GET and HEAD only
+        >>> options = CacheOptions()
+        >>> options.supported_methods
+        ['GET', 'HEAD']
+
+        >>> # Cache POST responses (advanced use case)
+        >>> options = CacheOptions(supported_methods=["GET", "HEAD", "POST"])
+
+    allow_stale : bool
+        Controls whether stale responses can be served without revalidation.
+
+        RFC 9111 Section 4.2.4: Serving Stale Responses
+        https://www.rfc-editor.org/rfc/rfc9111.html#section-4.2.4
+
+        "A cache MUST NOT generate a stale response unless it is disconnected or
+        doing so is explicitly permitted by the client or origin server (e.g., by
+        the max-stale request directive in Section 5.2.1, extension directives
+        such as those defined in [RFC5861], or configuration in accordance with
+        an out-of-band contract)."
+
+        Default: False (no stale responses)
+
+        Examples:
+        --------
+        >>> # Conservative: never serve stale
+        >>> options = CacheOptions(allow_stale=False)
+
+        >>> # Permissive: serve stale when allowed
+        >>> options = CacheOptions(allow_stale=True)
+
+        >>> # Stale-while-revalidate pattern (RFC 5861)
+        >>> # Even with allow_stale=True, directives are respected
+        >>> options = CacheOptions(allow_stale=True)
+    """
+
     shared: bool = True
+    """
+    When True, the cache operates as a shared cache (proxy/CDN). 
+    When False, as a private cache (browser).
+    """
+
     supported_methods: list[str] = field(default_factory=lambda: ["GET", "HEAD"])
+    """HTTP methods that are allowed to be cached."""
+
     allow_stale: bool = False
+    """When True, stale responses can be served without revalidation."""
 
 
 @dataclass

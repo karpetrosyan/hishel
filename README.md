@@ -127,9 +127,9 @@ from hishel.httpx import SyncCacheClient
 
 client = SyncCacheClient(
     cache_options=CacheOptions(
-        always_cache=True,        # Force caching regardless of headers
-        ttl=3600,                 # Cache for 1 hour
-        refresh_on_hit=True       # Update cache metadata on access
+        shared=False,                              # Use as private cache (browser-like)
+        supported_methods=["GET", "HEAD", "POST"], # Cache GET, HEAD, and POST
+        allow_stale=True                           # Allow serving stale responses
     )
 )
 ```
@@ -142,8 +142,8 @@ from hishel.httpx import SyncCacheClient
 
 storage = SyncSqliteStorage(
     database_path="my_cache.db",
-    default_ttl=7200.0,
-    refresh_ttl_on_access=True
+    default_ttl=7200.0,           # Cache entries expire after 2 hours
+    refresh_ttl_on_access=True    # Reset TTL when accessing cached entries
 )
 
 client = SyncCacheClient(storage=storage)
