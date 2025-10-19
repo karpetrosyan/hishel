@@ -43,3 +43,5 @@ nav:
       - httpx: integrations/httpx.md
       - requests: integrations/requests.md
   - Contributing: contributing.md
+extra_css:
+  - docs/custom.css
