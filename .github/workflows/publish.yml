@@ -75,7 +75,10 @@ jobs:
         run: uv python install
 
       - name: Publish docs
-        run: uv run mike deploy --push --update-aliases $(scripts/get_doc_version.py)
+        run: |
+          git config user.name "Kar Petrosyan"
+          git config user.email "karpetrosyanpy@gmail.com"
+          uv run mike deploy --push --update-aliases $(scripts/get_doc_version.py)
 
   release:
     name: Create GitHub release
