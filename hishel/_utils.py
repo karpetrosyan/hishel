@@ -10,11 +10,9 @@ from datetime import date
 from email.utils import parsedate_tz
 from typing import Any, AsyncIterator, Generator, Iterable, Iterator, TypeVar
 
-import anyio
 import anysqlite
 import httpcore
 import httpx
-from anyio import from_thread, to_thread
 
 HEADERS_ENCODING = "iso-8859-1"
 
@@ -116,10 +114,6 @@ def parse_date(date: str) -> tp.Optional[int]:
     return timestamp
 
 
-async def asleep(seconds: tp.Union[int, float]) -> None:
-    await anyio.sleep(seconds)
-
-
 def sleep(seconds: tp.Union[int, float]) -> None:
     time.sleep(seconds)
 
@@ -153,66 +147,6 @@ def partition(iterable: tp.Iterable[T], predicate: tp.Callable[[T], bool]) -> tp
         else:
             non_matching.append(item)
     return matching, non_matching
-
-
-def async_iterator_to_sync(iterator: AsyncIterator[bytes]) -> Iterator[bytes]:
-    """
-    Convert an asynchronous byte iterator to a synchronous one.
-    This function takes an asynchronous iterator that yields bytes and converts it into
-    a synchronous iterator.
-
-    Args:
-        iterator (AsyncIterator[bytes]): The asynchronous byte iterator to be converted.
-    Returns:
-        Iterator[bytes]: A synchronous iterator that yields the same byte chunks as the input iterator.
-    Example:
-        ```python
-        async_iter = some_async_byte_stream()
-        sync_iter = async_iterator_to_sync(async_iter)
-        for chunk in sync_iter:
-            process_bytes(chunk)
-        ```
-    """
-
-    while True:
-        try:
-            chunk = from_thread.run(iterator.__anext__)
-        except StopAsyncIteration:
-            break
-        yield chunk
-
-
-def _call_next(iterator: Iterator[bytes]) -> bytes:
-    try:
-        return iterator.__next__()
-    except StopIteration:
-        raise StopAsyncIteration
-
-
-async def sync_iterator_to_async(iterator: Iterator[bytes]) -> AsyncIterator[bytes]:
-    """
-    Converts a synchronous bytes iterator to an asynchronous one.
-    This function takes a synchronous iterator that yields bytes and converts it into an
-    asynchronous iterator, allowing it to be used in async contexts without blocking.
-    Args:
-        iterator (Iterator[bytes]): A synchronous iterator yielding bytes objects.
-    Returns:
-        AsyncIterator[bytes]: An asynchronous iterator yielding the same bytes objects.
-    Example:
-        ```
-        sync_iter = iter([b'data1', b'data2'])
-        async for chunk in sync_iterator_to_async(sync_iter):
-            await process_chunk(chunk)
-        ```
-    """
-
-    while True:
-        try:
-            chunk = await to_thread.run_sync(_call_next, iterator)
-        except StopAsyncIteration:
-            break
-
-        yield chunk
 
 
 async def make_async_iterator(iterable: Iterable[bytes]) -> AsyncIterator[bytes]:
