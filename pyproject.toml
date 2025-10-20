@@ -29,14 +29,16 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
-    "anyio>=4.9.0",
-    "anysqlite>=0.0.5",
-    "httpx>=0.28.0",
     "msgpack>=1.1.2",
     "typing-extensions>=4.14.1",
 ]
 
 [project.optional-dependencies]
+
+async = [
+    "anyio>=4.9.0",
+    "anysqlite>=0.0.5",
+]
 
 requests = [
     "requests>=2.32.5",

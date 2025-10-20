@@ -525,14 +525,15 @@ name = "hishel"
 version = "1.0.0.dev0"
 source = { editable = "." }
 dependencies = [
-    { name = "anyio" },
-    { name = "anysqlite" },
-    { name = "httpx" },
     { name = "msgpack" },
     { name = "typing-extensions" },
 ]
 
 [package.optional-dependencies]
+async = [
+    { name = "anyio" },
+    { name = "anysqlite" },
+]
 httpx = [
     { name = "httpx" },
 ]
@@ -565,15 +566,14 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anyio", specifier = ">=4.9.0" },
-    { name = "anysqlite", specifier = ">=0.0.5" },
-    { name = "httpx", specifier = ">=0.28.0" },
+    { name = "anyio", marker = "extra == 'async'", specifier = ">=4.9.0" },
+    { name = "anysqlite", marker = "extra == 'async'", specifier = ">=0.0.5" },
     { name = "httpx", marker = "extra == 'httpx'", specifier = ">=0.28.1" },
     { name = "msgpack", specifier = ">=1.1.2" },
     { name = "requests", marker = "extra == 'requests'", specifier = ">=2.32.5" },
     { name = "typing-extensions", specifier = ">=4.14.1" },
 ]
-provides-extras = ["requests", "httpx"]
+provides-extras = ["async", "requests", "httpx"]
 
 [package.metadata.requires-dev]
 dev = [

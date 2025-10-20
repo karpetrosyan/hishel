@@ -4,8 +4,6 @@ import ssl
 import typing as t
 from typing import AsyncIterator, Iterable, Iterator, Union, overload
 
-import httpx
-
 from hishel import Headers, Request, Response
 from hishel._async_cache import AsyncCacheProxy
 from hishel._core._base._storages._base import AsyncBaseStorage, SyncBaseStorage
@@ -14,6 +12,15 @@ from hishel._core._spec import (
 )
 from hishel._core.models import AnyIterable
 from hishel._sync_cache import SyncCacheProxy
+
+try:
+    import httpx
+except ImportError as e:
+    raise ImportError(
+        "httpx is required to use hishel.httpx module. "
+        "Please install hishel with the 'httpx' extra, "
+        "e.g., 'pip install hishel[httpx]'."
+    ) from e
 
 SOCKET_OPTION = t.Union[
     t.Tuple[int, int, int],
