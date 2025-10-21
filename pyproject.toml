@@ -45,6 +45,9 @@ requests = [
 ]
 httpx = [
     "httpx>=0.28.1",
+    # install async extra
+    "anyio>=4.9.0",
+    "anysqlite>=0.0.5",
 ]
 
 [project.urls]
