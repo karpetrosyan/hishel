@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hishel"
-version = "1.0.0.dev1"
+version = "1.0.0.dev2"
 dynamic = ["readme"]
 description = " Elegant HTTP Caching for Python"
 license = "BSD-3-Clause"

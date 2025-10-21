@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.0.0.dev2 - 2025-10-21
+### ⚙️ Miscellaneous Tasks
+- Remove redundant utils and tests
+- Add import without extras check in ci
+
+### 🐛 Bug Fixes
+- Fix check for storing auth requests
+- Don't raise an error on 3xx during revalidation
+
+### 🚀 Features
+- Add hishel_created_at response metadata
+
 ## 1.0.0.dev1 - 2025-10-21
 ### ⚙️ Miscellaneous Tasks
 - Remove some redundant utils methods
