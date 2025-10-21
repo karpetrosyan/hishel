@@ -535,6 +535,8 @@ async = [
     { name = "anysqlite" },
 ]
 httpx = [
+    { name = "anyio" },
+    { name = "anysqlite" },
     { name = "httpx" },
 ]
 requests = [
@@ -568,7 +570,9 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anyio", marker = "extra == 'async'", specifier = ">=4.9.0" },
+    { name = "anyio", marker = "extra == 'httpx'", specifier = ">=4.9.0" },
     { name = "anysqlite", marker = "extra == 'async'", specifier = ">=0.0.5" },
+    { name = "anysqlite", marker = "extra == 'httpx'", specifier = ">=0.0.5" },
     { name = "httpx", marker = "extra == 'httpx'", specifier = ">=0.28.1" },
     { name = "msgpack", specifier = ">=1.1.2" },
     { name = "requests", marker = "extra == 'requests'", specifier = ">=2.32.5" },
