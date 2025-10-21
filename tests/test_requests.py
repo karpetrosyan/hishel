@@ -35,7 +35,7 @@ def test_simple_caching(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> 
     assert {k: v for k, v in response.headers.items() if k.lower().startswith("x-hishel")} == snapshot(
         {
             "X-Hishel-From-Cache": "True",
-            "X-Hishel-Created-At": '1704067200.0',
+            "X-Hishel-Created-At": "1704067200.0",
             "X-Hishel-Spec-Ignored": "False",
             "X-Hishel-Revalidated": "False",
             "X-Hishel-Stored": "False",
@@ -69,7 +69,7 @@ def test_simple_caching_ignoring_spec(use_temp_dir: Any, caplog: pytest.LogCaptu
         {
             "X-Hishel-Spec-Ignored": "True",
             "X-Hishel-From-Cache": "True",
-            "X-Hishel-Created-At": '1704067200.0',
+            "X-Hishel-Created-At": "1704067200.0",
             "X-Hishel-Revalidated": "False",
             "X-Hishel-Stored": "False",
         }
