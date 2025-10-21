@@ -423,57 +423,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#metadata-reference-summary" class="md-nav__link">
-    <span class="md-ellipsis">
-      Metadata Reference Summary
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Metadata Reference Summary">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#setting-request-metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      Setting Request Metadata
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#request-metadata-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      Request Metadata Fields
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reading-response-metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      Reading Response Metadata
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#response-metadata-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      Response Metadata Fields
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -745,57 +694,6 @@
   <a href="#hishel_stored" class="md-nav__link">
     <span class="md-ellipsis">
       hishel_stored
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#metadata-reference-summary" class="md-nav__link">
-    <span class="md-ellipsis">
-      Metadata Reference Summary
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Metadata Reference Summary">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#setting-request-metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      Setting Request Metadata
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#request-metadata-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      Request Metadata Fields
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reading-response-metadata" class="md-nav__link">
-    <span class="md-ellipsis">
-      Reading Response Metadata
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#response-metadata-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      Response Metadata Fields
     </span>
   </a>
   
@@ -1755,198 +1653,42 @@
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheAdapter</span>
-
-<span class="n">session</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;http://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;https://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-
-<span class="c1"># Debug why responses aren&#39;t being cached</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/user/profile&quot;</span><span class="p">)</span>
-
-<span class="n">stored</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Hishel-Stored&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span>
-<span class="n">from_cache</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Hishel-From-Cache&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span>
-
-<span class="k">if</span> <span class="ow">not</span> <span class="n">stored</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">from_cache</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️  Response not cached!&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Status: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Cache-Control: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cache-control&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   Check server caching headers&quot;</span><span class="p">)</span>
-
-<span class="c1"># Monitor cache storage rate</span>
-<span class="n">stored_count</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">not_stored_count</span> <span class="o">=</span> <span class="mi">0</span>
-
-<span class="n">test_urls</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s2">&quot;https://api.example.com/static&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;https://api.example.com/dynamic&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;https://api.example.com/private&quot;</span><span class="p">,</span>
-<span class="p">]</span>
-
-<span class="k">for</span> <span class="n">url</span> <span class="ow">in</span> <span class="n">test_urls</span><span class="p">:</span>
-    <span class="n">resp</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Hishel-Stored&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
-        <span class="n">stored_count</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ </span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2"> - cached&quot;</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">not_stored_count</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✗ </span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2"> - not cached&quot;</span><span class="p">)</span>
-
-<span class="n">storage_rate</span> <span class="o">=</span> <span class="p">(</span><span class="n">stored_count</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_urls</span><span class="p">))</span> <span class="o">*</span> <span class="mi">100</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Storage rate: </span><span class="si">{</span><span class="n">storage_rate</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
-
-<span class="c1"># Validate caching after configuration changes</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/test&quot;</span><span class="p">,</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Hishel-Ttl&quot;</span><span class="p">:</span> <span class="s2">&quot;600&quot;</span><span class="p">}</span>
-<span class="p">)</span>
-
-<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Hishel-Stored&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Configuration working - responses are being cached&quot;</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✗ Configuration issue - check TTL and cache headers&quot;</span><span class="p">)</span>
-</code></pre></div>
+<p>```python
+import requests
+from hishel.requests import CacheAdapter</p>
+<p>session = requests.Session()
+session.mount("http://", CacheAdapter())
+session.mount("https://", CacheAdapter())</p>
+<h1 id="debug-why-responses-arent-being-cached">Debug why responses aren't being cached</h1>
+<p>response = session.get("https://api.example.com/user/profile")</p>
+<p>stored = response.headers.get("X-Hishel-Stored") == "true"
+from_cache = response.headers.get("X-Hishel-From-Cache") == "true"</p>
+<p>if not stored and not from_cache:
+    print("⚠️  Response not cached!")
+    print(f"   Status: {response.status_code}")
+    print(f"   Cache-Control: {response.headers.get('cache-control')}")
+    print("   Check server caching headers")</p>
 </div>
 </div>
 </div>
-<hr />
-<h2 id="metadata-reference-summary">Metadata Reference Summary</h2>
-<h3 id="setting-request-metadata">Setting Request Metadata</h3>
-<table>
-<thead>
-<tr>
-<th>Library</th>
-<th>Method</th>
-<th>Format</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>httpx</strong></td>
-<td><code>extensions</code> (recommended)</td>
-<td><code>extensions={"hishel_ttl": 3600}</code> (Python types)</td>
-</tr>
-<tr>
-<td><strong>httpx</strong></td>
-<td><code>headers</code></td>
-<td><code>headers={"X-Hishel-Ttl": "3600"}</code> (string values)</td>
-</tr>
-<tr>
-<td><strong>requests</strong></td>
-<td><code>headers</code></td>
-<td><code>headers={"X-Hishel-Ttl": "3600"}</code> (string values)</td>
-</tr>
-</tbody>
-</table>
-<h3 id="request-metadata-fields">Request Metadata Fields</h3>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Header</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>hishel_ttl</code></td>
-<td><code>X-Hishel-Ttl</code></td>
-<td><code>float</code> / <code>string</code></td>
-<td>Custom TTL in seconds</td>
-</tr>
-<tr>
-<td><code>hishel_refresh_ttl_on_access</code></td>
-<td><code>X-Hishel-Refresh-Ttl-On-Access</code></td>
-<td><code>bool</code> / <code>string</code></td>
-<td>Enable sliding expiration</td>
-</tr>
-<tr>
-<td><code>hishel_spec_ignore</code></td>
-<td><code>X-Hishel-Spec-Ignore</code></td>
-<td><code>bool</code> / <code>string</code></td>
-<td>Ignore RFC 9111 rules</td>
-</tr>
-<tr>
-<td><code>hishel_body_key</code></td>
-<td><code>X-Hishel-Body-Key</code></td>
-<td><code>bool</code> / <code>string</code></td>
-<td>Include body in cache key</td>
-</tr>
-</tbody>
-</table>
-<h3 id="reading-response-metadata">Reading Response Metadata</h3>
-<table>
-<thead>
-<tr>
-<th>Library</th>
-<th>Method</th>
-<th>Example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>httpx</strong></td>
-<td><code>extensions</code> dict</td>
-<td><code>response.extensions.get("hishel_from_cache")</code></td>
-</tr>
-<tr>
-<td><strong>httpx</strong></td>
-<td><code>headers</code></td>
-<td><code>response.headers.get("X-Hishel-From-Cache")</code></td>
-</tr>
-<tr>
-<td><strong>requests</strong></td>
-<td><code>headers</code></td>
-<td><code>response.headers.get("X-Hishel-From-Cache")</code></td>
-</tr>
-</tbody>
-</table>
-<h3 id="response-metadata-fields">Response Metadata Fields</h3>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Header</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>hishel_from_cache</code></td>
-<td><code>X-Hishel-From-Cache</code></td>
-<td><code>bool</code> / <code>string</code></td>
-<td>Response from cache</td>
-</tr>
-<tr>
-<td><code>hishel_revalidated</code></td>
-<td><code>X-Hishel-Revalidated</code></td>
-<td><code>bool</code> / <code>string</code></td>
-<td>Response was revalidated</td>
-</tr>
-<tr>
-<td><code>hishel_spec_ignored</code></td>
-<td><code>X-Hishel-Spec-Ignored</code></td>
-<td><code>bool</code> / <code>string</code></td>
-<td>Spec was ignored</td>
-</tr>
-<tr>
-<td><code>hishel_stored</code></td>
-<td><code>X-Hishel-Stored</code></td>
-<td><code>bool</code> / <code>string</code></td>
-<td>Response was stored</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="admonition-title">Type Differences</p>
+<h3 id="hishel_created_at">hishel_created_at</h3>
+<p><strong>Type:</strong> <code>float | None</code></p>
+<p><strong>Description:</strong> POSIX timestamp (seconds since the epoch) indicating when the response entry was created in the cache. This value is set by Hishel when the response is stored and can be used with <code>hishel_ttl</code> to compute remaining freshness.</p>
+<p><strong>Use Cases:</strong></p>
 <ul>
-<li><strong>httpx extensions</strong>: Native Python types (<code>bool</code>, <code>float</code>)</li>
-<li><strong>httpx/requests headers</strong>: String values (<code>"true"</code>, <code>"false"</code>, <code>"3600"</code>)</li>
+<li>Determine when an entry was cached for logging or debugging.</li>
+<li>Compute remaining TTL: <code>remaining = hishel_ttl - (now - hishel_created_at)</code>.</li>
 </ul>
-</div>
+<p><strong>Example (httpx extensions):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="n">created</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_created_at&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">created</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cached at:&quot;</span><span class="p">,</span> <span class="n">created</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Example (requests headers):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="n">created</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Hishel-Created-At&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">created</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cached at:&quot;</span><span class="p">,</span> <span class="n">created</span><span class="p">)</span>
+</code></pre></div>
 <hr />
 
 
