@@ -88,6 +88,7 @@ graph TB
 ```
 
 **Legend:**
+
 - **Blue**: Entry state (IdleClient)
 - **Green**: Success states (FromCache, StoreAndUse)
 - **Red**: Failure state (CouldNotBeStored)

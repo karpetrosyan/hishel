@@ -1897,7 +1897,9 @@ class NeedRevalidation(State):
     The stored pairs that the request was sent for revalidation.
     """
 
-    def next(self, revalidation_response: Response) -> Union["NeedToBeUpdated", "InvalidatePairs", "CacheMiss"]:
+    def next(
+        self, revalidation_response: Response
+    ) -> Union["NeedToBeUpdated", "InvalidatePairs", "CacheMiss", "FromCache"]:
         """
         Handles the response to a conditional request and determines the next state.
 
@@ -2051,6 +2053,15 @@ class NeedRevalidation(State):
                     options=self.options,
                     after_revalidation=True,
                 ).next(revalidation_response, pair_id=self.revalidating_pairs[-1].id),
+            )
+        elif revalidation_response.status_code // 100 == 3:
+            # 3xx Redirects should have been followed by the HTTP client
+            return FromCache(
+                pair=replace(
+                    self.revalidating_pairs[-1],
+                    response=revalidation_response,
+                ),
+                options=self.options,
             )
 
         # ============================================================================

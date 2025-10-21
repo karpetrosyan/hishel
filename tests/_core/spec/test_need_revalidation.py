@@ -24,6 +24,7 @@ from hishel._core._spec import (
     CacheMiss,
     CacheOptions,
     CouldNotBeStored,
+    FromCache,
     InvalidatePairs,
     NeedRevalidation,
     NeedToBeUpdated,
@@ -612,12 +613,9 @@ class TestEdgeCases:
     Tests for edge cases and error conditions.
     """
 
-    def test_unexpected_status_code_raises_error(self, default_options: CacheOptions) -> None:
+    def test_redirect_status_code_is_handled(self, default_options: CacheOptions) -> None:
         """
-        Test: Unexpected status codes during revalidation raise RuntimeError.
-
-        Valid revalidation responses: 304, 2xx, 5xx
-        Other status codes (1xx, 3xx, 4xx) are unexpected and indicate a problem.
+        Test: 3xx redirect response during revalidation is handled correctly.
         """
         # Arrange
         original_request = create_request()
@@ -635,8 +633,9 @@ class TestEdgeCases:
         redirect_response = create_response(status_code=301, headers={"location": "https://example.com/moved"})
 
         # Act & Assert
-        with pytest.raises(RuntimeError, match="Unexpected response status code"):
-            need_revalidation.next(redirect_response)
+        next_state = need_revalidation.next(redirect_response)
+
+        assert isinstance(next_state, FromCache)
 
     @pytest.mark.parametrize("status_code", [100, 101, 400, 401, 403, 404])
     def test_other_unexpected_status_codes_raise_error(self, default_options: CacheOptions, status_code: int) -> None:
