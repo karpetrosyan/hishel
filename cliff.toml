@@ -1,6 +1,20 @@
 # git-cliff ~ configuration file
 # https://git-cliff.org/docs/configuration
 
+[git]
+commit_parsers = [
+    { message = "^feat", group = "🚀 Features" },
+    { message = "^fix", group = "🐛 Bug Fixes" },
+    { message = "^doc", group = "📚 Documentation" },
+    { message = "^perf", group = "⚡ Performance" },
+    { message = "^refactor", group = "♻️ Refactoring" },
+    { message = "^test", group = "✅ Testing" },
+    { message = "^style", group = "🎨 Style" },
+    { message = "^chore\\(deps\\)", group = "📦 Dependencies" },
+    { message = "^chore|^ci", group = "⚙️ Miscellaneous Tasks" },
+    { body = ".*security", group = "🔒 Security" },
+]
+
 [changelog]
 # changelog header
 header = """
