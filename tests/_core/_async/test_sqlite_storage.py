@@ -7,7 +7,8 @@ from inline_snapshot import snapshot
 from time_machine import travel
 
 from hishel import AsyncSqliteStorage, Request, Response
-from hishel._utils import aprint_sqlite_state, make_async_iterator
+from hishel._utils import make_async_iterator
+from tests.conftest import aprint_sqlite_state
 
 
 @pytest.mark.anyio

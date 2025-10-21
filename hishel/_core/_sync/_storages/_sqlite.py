@@ -4,6 +4,7 @@ import time
 import uuid
 from dataclasses import replace
 from typing import (
+    Any,
     Iterable,
     Iterator,
     Callable,
@@ -448,8 +449,8 @@ try:
                 chunk_number += 1
 except ImportError:
 
-    class SyncSqliteStorage(SyncBaseStorage):
-        def __init__(self, *args, **kwargs):
+    class SyncSqliteStorage(SyncBaseStorage):  # type: ignore[no-redef]
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             raise ImportError(
                 "The 'sqlite3' library is required to use the `SyncSqliteStorage` integration. "
                 "Install hishel with 'pip install hishel[async]'."
