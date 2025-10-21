@@ -57,6 +57,8 @@ jobs:
     name: Publish documentation to GitHub Pages
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
