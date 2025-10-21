@@ -1412,16 +1412,11 @@ class IdleClient(State):
             #
             # The Age header informs the client how old the cached response is.
 
-            # Mark all ready-to-use responses with metadata (for observability)
-            for pair in ready_to_use:
-                pair.response.metadata["hishel_from_cache"] = True  # type: ignore
-
             # Use the most recent response (first in sorted list)
             selected_pair = ready_to_use[0]
 
             # Calculate current age and update the Age header
             current_age = get_age(selected_pair.response)
-
             return FromCache(
                 pair=replace(
                     selected_pair,
@@ -1578,20 +1573,6 @@ class CacheMiss(State):
            * an s-maxage response directive (if cache is shared)
            * a status code that is defined as heuristically cacheable"
 
-        Side Effects:
-        ------------
-        Sets metadata flags on the response object:
-        - hishel_spec_ignored: False (caching spec is being followed)
-        - hishel_from_cache: False (response is from origin, not cache)
-        - hishel_revalidated: True (if after_revalidation is True)
-        - hishel_stored: True/False (whether response was stored)
-
-        Logging:
-        -------
-        When a response cannot be stored, detailed debug logs are emitted explaining
-        which specific RFC requirement failed, with direct links to the relevant
-        RFC sections.
-
         Examples:
         --------
         >>> # Cacheable response
@@ -1615,26 +1596,12 @@ class CacheMiss(State):
         """
 
         # ============================================================================
-        # STEP 1: Set Response Metadata
-        # ============================================================================
-        # Initialize metadata flags to track the response lifecycle
-
-        response.metadata["hishel_spec_ignored"] = False  # type: ignore
-        # We are following the caching specification
-
-        response.metadata["hishel_from_cache"] = False  # type: ignore
-        # This response came from origin server, not cache
-
-        if self.after_revalidation:
-            response.metadata["hishel_revalidated"] = True  # type: ignore
-            # Mark that this response is the result of a revalidation
-
-        # ============================================================================
         # STEP 2: Parse Cache-Control Directive
         # ============================================================================
         # Extract and parse the Cache-Control header to check caching directives
 
         request = self.request
+        request_cache_control = parse_cache_control(request.headers.get("cache-control"))
         response_cache_control = parse_cache_control(response.headers.get("cache-control"))
 
         # ============================================================================
@@ -1723,11 +1690,14 @@ class CacheMiss(State):
         #
         # Requests with Authorization headers often contain user-specific data.
         # Shared caches must be careful not to serve one user's data to another.
-        #
-        # This check is inverted in the current implementation and needs review:
-        # TODO: Fix logic - should be: (not shared) OR (no auth header) OR (has explicit directive)
-        # Current logic: (shared) AND (no auth header)
-        is_shared_and_authorized = not (self.options.shared and "authorization" in request.headers)
+        has_explicit_directive = (
+            response_cache_control.public
+            or response_cache_control.s_maxage is not None
+            or response_cache_control.must_revalidate
+        )
+        can_cache_auth_request = (
+            not self.options.shared or "authorization" not in request.headers or has_explicit_directive
+        )
 
         # CONDITION 7: Response Contains Required Caching Information
         # RFC 9111 Section 3, paragraph 2.7:
@@ -1797,7 +1767,7 @@ class CacheMiss(State):
             or not understands_how_to_cache
             or not no_store_is_not_present
             or not private_directive_allows_storing
-            or not is_shared_and_authorized
+            or not can_cache_auth_request
             or not contains_required_component
         ):
             # --------------------------------------------------------------------
@@ -1833,10 +1803,11 @@ class CacheMiss(State):
                         "Cannot store the response because the `private` response directive does not "
                         "allow shared caches to store it. See: https://www.rfc-editor.org/rfc/rfc9111.html#section-3-2.5.1"
                     )
-                elif not is_shared_and_authorized:
+                elif not can_cache_auth_request:
                     logger.debug(
-                        "Cannot store the response because the cache is shared and the request contains "
-                        "an Authorization header field. See: https://www.rfc-editor.org/rfc/rfc9111.html#section-3-2.6.1"
+                        "Cannot store the response because the request contained an Authorization header "
+                        "and there was no explicit directive allowing shared caching. "
+                        "See: https://www.rfc-editor.org/rfc/rfc9111.html#section-3-5"
                     )
                 elif not contains_required_component:
                     logger.debug(
@@ -1847,7 +1818,9 @@ class CacheMiss(State):
             # Mark response as not stored
             response.metadata["hishel_stored"] = False  # type: ignore
 
-            return CouldNotBeStored(response=response, pair_id=pair_id, options=self.options)
+            return CouldNotBeStored(
+                response=response, pair_id=pair_id, options=self.options, after_revalidation=self.after_revalidation
+            )
 
         # --------------------------------------------------------------------
         # Transition to: StoreAndUse
@@ -1869,6 +1842,7 @@ class CacheMiss(State):
             pair_id=pair_id,
             response=cleaned_response,
             options=self.options,
+            after_revalidation=self.after_revalidation,
         )
 
 
@@ -2316,32 +2290,93 @@ class NeedRevalidation(State):
         return next_state
 
 
-@dataclass
+# @dataclass
+# class StoreAndUse(State):
+#     """
+#     The state that indicates that the response can be stored in the cache and used.
+#     """
+
+#     pair_id: uuid.UUID
+
+#     response: Response
+
+#     def next(self) -> None:
+#         return None  # pragma: nocover
+
+
 class StoreAndUse(State):
     """
     The state that indicates that the response can be stored in the cache and used.
+
+    Attributes:
+    ----------
+    pair_id : uuid.UUID
+        The unique identifier for the cache pair.
+    response : Response
+        The HTTP response to be stored in the cache.
+    after_revalidation : bool
+        Indicates if the storage is occurring after a revalidation process.
     """
 
-    pair_id: uuid.UUID
-
-    response: Response
+    def __init__(
+        self, pair_id: uuid.UUID, response: Response, options: CacheOptions, after_revalidation: bool = False
+    ) -> None:
+        super().__init__(options)
+        self.pair_id = pair_id
+        self.response = response
+        self.after_revalidation = after_revalidation
+        self.response.metadata["hishel_from_cache"] = False
+        self.response.metadata["hishel_created_at"] = time.time()
+        self.response.metadata["hishel_spec_ignored"] = False
+        self.response.metadata["hishel_revalidated"] = after_revalidation
+        self.response.metadata["hishel_stored"] = True
 
     def next(self) -> None:
-        return None  # pragma: nocover
+        return None
 
 
-@dataclass
+# @dataclass
+# class CouldNotBeStored(State):
+#     """
+#     The state that indicates that the response could not be stored in the cache.
+#     """
+
+#     response: Response
+
+#     pair_id: uuid.UUID
+
+#     def next(self) -> None:
+#         return None  # pragma: nocover
+
+
 class CouldNotBeStored(State):
     """
     The state that indicates that the response could not be stored in the cache.
+
+    Attributes:
+    ----------
+    response : Response
+        The HTTP response that could not be stored.
+    pair_id : uuid.UUID
+        The unique identifier for the cache pair.
+    after_revalidation : bool
+        Indicates if the storage attempt occurred after a revalidation process.
     """
 
-    response: Response
-
-    pair_id: uuid.UUID
+    def __init__(
+        self, response: Response, pair_id: uuid.UUID, options: CacheOptions, after_revalidation: bool = False
+    ) -> None:
+        super().__init__(options)
+        self.response = response
+        self.pair_id = pair_id
+        self.response.metadata["hishel_from_cache"] = False
+        self.response.metadata["hishel_created_at"] = time.time()
+        self.response.metadata["hishel_spec_ignored"] = False
+        self.response.metadata["hishel_revalidated"] = after_revalidation
+        self.response.metadata["hishel_stored"] = False
 
     def next(self) -> None:
-        return None  # pragma: nocover
+        return None
 
 
 @dataclass
@@ -2358,15 +2393,19 @@ class InvalidatePairs(State):
         return self.next_state
 
 
-@dataclass
 class FromCache(State):
-    pair: CompletePair
-    """
-    List of pairs that can be used to satisfy the request.
-    """
+    def __init__(self, pair: CompletePair, options: CacheOptions, after_revalidation: bool = False) -> None:
+        super().__init__(options)
+        self.pair = pair
+        self.after_revalidation = after_revalidation
+        self.pair.response.metadata["hishel_from_cache"] = True
+        self.pair.response.metadata["hishel_created_at"] = pair.meta.created_at
+        self.pair.response.metadata["hishel_spec_ignored"] = False
+        self.pair.response.metadata["hishel_revalidated"] = after_revalidation
+        self.pair.response.metadata["hishel_stored"] = False
 
     def next(self) -> None:
-        return None  # pragma: nocover
+        return None
 
 
 @dataclass
