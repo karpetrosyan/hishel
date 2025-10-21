@@ -522,7 +522,7 @@ wheels = [
 
 [[package]]
 name = "hishel"
-version = "1.0.0.dev0"
+version = "1.0.0.dev1"
 source = { editable = "." }
 dependencies = [
     { name = "msgpack" },
