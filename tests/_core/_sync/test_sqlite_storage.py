@@ -7,7 +7,8 @@ from inline_snapshot import snapshot
 from time_machine import travel
 
 from hishel import SyncSqliteStorage, Request, Response
-from hishel._utils import print_sqlite_state, make_sync_iterator
+from hishel._utils import make_sync_iterator
+from tests.conftest import print_sqlite_state
 
 
 

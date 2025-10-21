@@ -544,6 +544,7 @@ requests = [
 [package.dev-dependencies]
 dev = [
     { name = "anyio" },
+    { name = "anysqlite" },
     { name = "coverage" },
     { name = "hatch" },
     { name = "inline-snapshot" },
@@ -578,6 +579,7 @@ provides-extras = ["async", "requests", "httpx"]
 [package.metadata.requires-dev]
 dev = [
     { name = "anyio", specifier = "==4.9.0" },
+    { name = "anysqlite", specifier = ">=0.0.5" },
     { name = "coverage", specifier = "==7.10.1" },
     { name = "hatch", specifier = "==1.14.1" },
     { name = "inline-snapshot", specifier = ">=0.28.0" },

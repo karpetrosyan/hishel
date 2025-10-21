@@ -109,6 +109,7 @@ combine-as-imports = true
 [dependency-groups]
 dev = [
     "anyio==4.9.0",
+    "anysqlite>=0.0.5",
     "coverage==7.10.1",
     "hatch==1.14.1",
     "inline-snapshot>=0.28.0",
