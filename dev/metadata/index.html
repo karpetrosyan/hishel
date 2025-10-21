@@ -418,6 +418,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#hishel_created_at" class="md-nav__link">
+    <span class="md-ellipsis">
+      hishel_created_at
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -699,6 +708,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#hishel_created_at" class="md-nav__link">
+    <span class="md-ellipsis">
+      hishel_created_at
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -791,50 +809,6 @@
 </div>
 </div>
 </div>
-<p><strong>Real-World Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">httpx</label><label for="__tabbed_2_2">requests</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
-
-<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
-
-<span class="c1"># Short TTL for frequently changing stock prices</span>
-<span class="n">stocks</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/stocks&quot;</span><span class="p">,</span>
-    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">}</span>  <span class="c1"># 1 minute</span>
-<span class="p">)</span>
-
-<span class="c1"># Long TTL for static configuration</span>
-<span class="n">config</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/config&quot;</span><span class="p">,</span>
-    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">86400</span><span class="p">}</span>  <span class="c1"># 24 hours</span>
-<span class="p">)</span>
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheAdapter</span>
-
-<span class="n">session</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;http://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;https://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-
-<span class="c1"># Short TTL for frequently changing stock prices</span>
-<span class="n">stocks</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/stocks&quot;</span><span class="p">,</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Hishel-Ttl&quot;</span><span class="p">:</span> <span class="s2">&quot;60&quot;</span><span class="p">}</span>  <span class="c1"># 1 minute</span>
-<span class="p">)</span>
-
-<span class="c1"># Long TTL for static configuration</span>
-<span class="n">config</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/config&quot;</span><span class="p">,</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Hishel-Ttl&quot;</span><span class="p">:</span> <span class="s2">&quot;86400&quot;</span><span class="p">}</span>  <span class="c1"># 24 hours</span>
-<span class="p">)</span>
-</code></pre></div>
-</div>
-</div>
-</div>
 <hr />
 <h3 id="hishel_refresh_ttl_on_access">hishel_refresh_ttl_on_access</h3>
 <p><strong>Type:</strong> <code>bool | None</code></p>
@@ -846,7 +820,7 @@
 </ul>
 <p><strong>Default:</strong> Storage's <code>refresh_ttl_on_access</code> setting (typically <code>True</code>)</p>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">httpx</label><label for="__tabbed_3_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">httpx</label><label for="__tabbed_2_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -877,66 +851,6 @@
 </div>
 </div>
 </div>
-<p><strong>Real-World Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">httpx</label><label for="__tabbed_4_2">requests</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
-
-<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
-
-<span class="c1"># User session data - keep active sessions cached</span>
-<span class="c1"># Each access extends the cache lifetime</span>
-<span class="n">session_data</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/user/session&quot;</span><span class="p">,</span>
-    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">1800</span><span class="p">,</span>  <span class="c1"># 30 minutes</span>
-        <span class="s2">&quot;hishel_refresh_ttl_on_access&quot;</span><span class="p">:</span> <span class="kc">True</span>  <span class="c1"># Reset on each use</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-
-<span class="c1"># Analytics report - expire exactly 1 hour after creation</span>
-<span class="c1"># Don&#39;t extend lifetime even if accessed multiple times</span>
-<span class="n">report</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/reports/daily&quot;</span><span class="p">,</span>
-    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">3600</span><span class="p">,</span>  <span class="c1"># 1 hour</span>
-        <span class="s2">&quot;hishel_refresh_ttl_on_access&quot;</span><span class="p">:</span> <span class="kc">False</span>  <span class="c1"># Fixed expiration</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheAdapter</span>
-
-<span class="n">session</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;http://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;https://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-
-<span class="c1"># User session data - keep active sessions cached</span>
-<span class="c1"># Each access extends the cache lifetime</span>
-<span class="n">session_data</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/user/session&quot;</span><span class="p">,</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;X-Hishel-Ttl&quot;</span><span class="p">:</span> <span class="s2">&quot;1800&quot;</span><span class="p">,</span>  <span class="c1"># 30 minutes</span>
-        <span class="s2">&quot;X-Hishel-Refresh-Ttl-On-Access&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span>  <span class="c1"># Reset on each use</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-
-<span class="c1"># Analytics report - expire exactly 1 hour after creation</span>
-<span class="c1"># Don&#39;t extend lifetime even if accessed multiple times</span>
-<span class="n">report</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/reports/daily&quot;</span><span class="p">,</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;X-Hishel-Ttl&quot;</span><span class="p">:</span> <span class="s2">&quot;3600&quot;</span><span class="p">,</span>  <span class="c1"># 1 hour</span>
-        <span class="s2">&quot;X-Hishel-Refresh-Ttl-On-Access&quot;</span><span class="p">:</span> <span class="s2">&quot;false&quot;</span>  <span class="c1"># Fixed expiration</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-</code></pre></div>
-</div>
-</div>
-</div>
 <hr />
 <h3 id="hishel_spec_ignore">hishel_spec_ignore</h3>
 <p><strong>Type:</strong> <code>bool | None</code></p>
@@ -953,7 +867,7 @@
 <p>Use with caution. Ignoring the specification may cache sensitive data or stale content.</p>
 </div>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">httpx</label><label for="__tabbed_5_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">httpx</label><label for="__tabbed_3_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -984,66 +898,6 @@
 </div>
 </div>
 </div>
-<p><strong>Real-World Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">httpx</label><label for="__tabbed_6_2">requests</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
-
-<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
-
-<span class="c1"># Development: Cache API responses that don&#39;t have cache headers</span>
-<span class="c1"># This reduces API calls during development/testing</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/test-endpoint&quot;</span><span class="p">,</span>
-    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;hishel_spec_ignore&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">300</span>  <span class="c1"># Cache for 5 minutes</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-
-<span class="c1"># Cache a response that has Cache-Control: no-store</span>
-<span class="c1"># Useful when you control both client and server</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/private-but-cacheable&quot;</span><span class="p">,</span>
-    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;hishel_spec_ignore&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">60</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheAdapter</span>
-
-<span class="n">session</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;http://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;https://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-
-<span class="c1"># Development: Cache API responses that don&#39;t have cache headers</span>
-<span class="c1"># This reduces API calls during development/testing</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/test-endpoint&quot;</span><span class="p">,</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;X-Hishel-Spec-Ignore&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;X-Hishel-Ttl&quot;</span><span class="p">:</span> <span class="s2">&quot;300&quot;</span>  <span class="c1"># Cache for 5 minutes</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-
-<span class="c1"># Cache a response that has Cache-Control: no-store</span>
-<span class="c1"># Useful when you control both client and server</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/private-but-cacheable&quot;</span><span class="p">,</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;X-Hishel-Spec-Ignore&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;X-Hishel-Ttl&quot;</span><span class="p">:</span> <span class="s2">&quot;60&quot;</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-</code></pre></div>
-</div>
-</div>
-</div>
 <hr />
 <h3 id="hishel_body_key">hishel_body_key</h3>
 <p><strong>Type:</strong> <code>bool | None</code></p>
@@ -1056,7 +910,7 @@
 </ul>
 <p><strong>Default:</strong> <code>False</code> (body not included in cache key)</p>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">httpx</label><label for="__tabbed_7_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">httpx</label><label for="__tabbed_4_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1089,114 +943,6 @@
 </div>
 </div>
 </div>
-<p><strong>Real-World Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="8:2"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">httpx</label><label for="__tabbed_8_2">requests</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
-
-<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
-
-<span class="c1"># GraphQL: Cache different queries to the same endpoint</span>
-<span class="n">query1</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/graphql&quot;</span><span class="p">,</span>
-    <span class="n">json</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;{ user(id: 1) { name email } }&quot;</span>
-    <span class="p">},</span>
-    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;hishel_body_key&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">300</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-
-<span class="n">query2</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/graphql&quot;</span><span class="p">,</span>
-    <span class="n">json</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;{ posts { title author } }&quot;</span>
-    <span class="p">},</span>
-    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;hishel_body_key&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">300</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-<span class="c1"># These will be cached separately despite same URL</span>
-
-<span class="c1"># Search API: Cache different search queries</span>
-<span class="n">search_python</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/search&quot;</span><span class="p">,</span>
-    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">},</span>
-    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;hishel_body_key&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">600</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-
-<span class="n">search_javascript</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/search&quot;</span><span class="p">,</span>
-    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="s2">&quot;javascript&quot;</span><span class="p">,</span> <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">},</span>
-    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;hishel_body_key&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">600</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-<span class="c1"># Different searches cached separately</span>
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheAdapter</span>
-
-<span class="n">session</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;http://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;https://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-
-<span class="c1"># GraphQL: Cache different queries to the same endpoint</span>
-<span class="n">query1</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/graphql&quot;</span><span class="p">,</span>
-    <span class="n">json</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;{ user(id: 1) { name email } }&quot;</span>
-    <span class="p">},</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;X-Hishel-Body-Key&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;X-Hishel-Ttl&quot;</span><span class="p">:</span> <span class="s2">&quot;300&quot;</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-
-<span class="n">query2</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/graphql&quot;</span><span class="p">,</span>
-    <span class="n">json</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="s2">&quot;{ posts { title author } }&quot;</span>
-    <span class="p">},</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;X-Hishel-Body-Key&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;X-Hishel-Ttl&quot;</span><span class="p">:</span> <span class="s2">&quot;300&quot;</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-<span class="c1"># These will be cached separately despite same URL</span>
-
-<span class="c1"># Search API: Cache different search queries</span>
-<span class="n">search_python</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/search&quot;</span><span class="p">,</span>
-    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="s2">&quot;python&quot;</span><span class="p">,</span> <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">},</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;X-Hishel-Body-Key&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;X-Hishel-Ttl&quot;</span><span class="p">:</span> <span class="s2">&quot;600&quot;</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-
-<span class="n">search_javascript</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/search&quot;</span><span class="p">,</span>
-    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;q&quot;</span><span class="p">:</span> <span class="s2">&quot;javascript&quot;</span><span class="p">,</span> <span class="s2">&quot;limit&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">},</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;X-Hishel-Body-Key&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;X-Hishel-Ttl&quot;</span><span class="p">:</span> <span class="s2">&quot;600&quot;</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-<span class="c1"># Different searches cached separately</span>
-</code></pre></div>
-</div>
-</div>
-</div>
 <hr />
 <h2 id="response-metadata">Response Metadata</h2>
 <p>Response metadata provides information about cache operations that occurred. These fields are read-only and set by Hishel.</p>
@@ -1211,7 +957,7 @@
 <li>Conditional logic based on cache status</li>
 </ul>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="9:2"><input checked="checked" id="__tabbed_9_1" name="__tabbed_9" type="radio" /><input id="__tabbed_9_2" name="__tabbed_9" type="radio" /><div class="tabbed-labels"><label for="__tabbed_9_1">httpx</label><label for="__tabbed_9_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">httpx</label><label for="__tabbed_5_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1246,78 +992,6 @@
 </div>
 </div>
 </div>
-<p><strong>Real-World Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="10:2"><input checked="checked" id="__tabbed_10_1" name="__tabbed_10" type="radio" /><input id="__tabbed_10_2" name="__tabbed_10" type="radio" /><div class="tabbed-labels"><label for="__tabbed_10_1">httpx</label><label for="__tabbed_10_2">requests</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-
-<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
-
-<span class="c1"># Monitor cache performance</span>
-<span class="n">cache_hits</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">cache_misses</span> <span class="o">=</span> <span class="mi">0</span>
-
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
-    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/popular-data&quot;</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_from_cache&quot;</span><span class="p">):</span>
-        <span class="n">cache_hits</span> <span class="o">+=</span> <span class="mi">1</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">cache_misses</span> <span class="o">+=</span> <span class="mi">1</span>
-
-<span class="n">hit_rate</span> <span class="o">=</span> <span class="p">(</span><span class="n">cache_hits</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache hit rate: </span><span class="si">{</span><span class="n">hit_rate</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
-
-<span class="c1"># Conditional processing based on cache status</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/user/profile&quot;</span><span class="p">)</span>
-
-<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_from_cache&quot;</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using cached profile - may be slightly outdated&quot;</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Fresh profile data from server&quot;</span><span class="p">)</span>
-    <span class="c1"># Trigger additional processing for fresh data</span>
-    <span class="n">process_fresh_data</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheAdapter</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-
-<span class="n">session</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;http://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;https://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-
-<span class="c1"># Monitor cache performance</span>
-<span class="n">cache_hits</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">cache_misses</span> <span class="o">=</span> <span class="mi">0</span>
-
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
-    <span class="n">response</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/popular-data&quot;</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Hishel-From-Cache&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
-        <span class="n">cache_hits</span> <span class="o">+=</span> <span class="mi">1</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">cache_misses</span> <span class="o">+=</span> <span class="mi">1</span>
-
-<span class="n">hit_rate</span> <span class="o">=</span> <span class="p">(</span><span class="n">cache_hits</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache hit rate: </span><span class="si">{</span><span class="n">hit_rate</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
-
-<span class="c1"># Conditional processing based on cache status</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/user/profile&quot;</span><span class="p">)</span>
-
-<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Hishel-From-Cache&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using cached profile - may be slightly outdated&quot;</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Fresh profile data from server&quot;</span><span class="p">)</span>
-    <span class="c1"># Trigger additional processing for fresh data</span>
-    <span class="n">process_fresh_data</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">())</span>
-</code></pre></div>
-</div>
-</div>
-</div>
 <hr />
 <h3 id="hishel_revalidated">hishel_revalidated</h3>
 <p><strong>Type:</strong> <code>bool | None</code></p>
@@ -1330,7 +1004,7 @@
 <li>Optimize cache TTL settings</li>
 </ul>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="11:2"><input checked="checked" id="__tabbed_11_1" name="__tabbed_11" type="radio" /><input id="__tabbed_11_2" name="__tabbed_11" type="radio" /><div class="tabbed-labels"><label for="__tabbed_11_1">httpx</label><label for="__tabbed_11_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">httpx</label><label for="__tabbed_6_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1361,76 +1035,6 @@
 </div>
 </div>
 </div>
-<p><strong>Real-World Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="12:2"><input checked="checked" id="__tabbed_12_1" name="__tabbed_12" type="radio" /><input id="__tabbed_12_2" name="__tabbed_12" type="radio" /><div class="tabbed-labels"><label for="__tabbed_12_1">httpx</label><label for="__tabbed_12_2">requests</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
-
-<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
-
-<span class="c1"># Track different cache states</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/articles&quot;</span><span class="p">)</span>
-
-<span class="n">from_cache</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_from_cache&quot;</span><span class="p">)</span>
-<span class="n">revalidated</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_revalidated&quot;</span><span class="p">)</span>
-
-<span class="k">if</span> <span class="n">from_cache</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">revalidated</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Fresh cache hit - no server contact&quot;</span><span class="p">)</span>
-<span class="k">elif</span> <span class="n">from_cache</span> <span class="ow">and</span> <span class="n">revalidated</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;↻ Stale cache revalidated - saved bandwidth&quot;</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✗ Cache miss - full response from server&quot;</span><span class="p">)</span>
-
-<span class="c1"># Analyze caching patterns</span>
-<span class="n">revalidation_count</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">total_requests</span> <span class="o">=</span> <span class="mi">100</span>
-
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">total_requests</span><span class="p">):</span>
-    <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">resp</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_revalidated&quot;</span><span class="p">):</span>
-        <span class="n">revalidation_count</span> <span class="o">+=</span> <span class="mi">1</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Revalidation rate: </span><span class="si">{</span><span class="p">(</span><span class="n">revalidation_count</span><span class="o">/</span><span class="n">total_requests</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Tip: High revalidation rate might indicate TTL is too short&quot;</span><span class="p">)</span>
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheAdapter</span>
-
-<span class="n">session</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;http://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;https://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-
-<span class="c1"># Track different cache states</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/articles&quot;</span><span class="p">)</span>
-
-<span class="n">from_cache</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Hishel-From-Cache&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span>
-<span class="n">revalidated</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Hishel-Revalidated&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span>
-
-<span class="k">if</span> <span class="n">from_cache</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">revalidated</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Fresh cache hit - no server contact&quot;</span><span class="p">)</span>
-<span class="k">elif</span> <span class="n">from_cache</span> <span class="ow">and</span> <span class="n">revalidated</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;↻ Stale cache revalidated - saved bandwidth&quot;</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✗ Cache miss - full response from server&quot;</span><span class="p">)</span>
-
-<span class="c1"># Analyze caching patterns</span>
-<span class="n">revalidation_count</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">total_requests</span> <span class="o">=</span> <span class="mi">100</span>
-
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">total_requests</span><span class="p">):</span>
-    <span class="n">resp</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Hishel-Revalidated&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
-        <span class="n">revalidation_count</span> <span class="o">+=</span> <span class="mi">1</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Revalidation rate: </span><span class="si">{</span><span class="p">(</span><span class="n">revalidation_count</span><span class="o">/</span><span class="n">total_requests</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Tip: High revalidation rate might indicate TTL is too short&quot;</span><span class="p">)</span>
-</code></pre></div>
-</div>
-</div>
-</div>
 <hr />
 <h3 id="hishel_spec_ignored">hishel_spec_ignored</h3>
 <p><strong>Type:</strong> <code>bool | None</code></p>
@@ -1442,7 +1046,7 @@
 <li>Debug forced caching behavior</li>
 </ul>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="13:2"><input checked="checked" id="__tabbed_13_1" name="__tabbed_13" type="radio" /><input id="__tabbed_13_2" name="__tabbed_13" type="radio" /><div class="tabbed-labels"><label for="__tabbed_13_1">httpx</label><label for="__tabbed_13_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">httpx</label><label for="__tabbed_7_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1481,76 +1085,6 @@
 </div>
 </div>
 </div>
-<p><strong>Real-World Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="14:2"><input checked="checked" id="__tabbed_14_1" name="__tabbed_14" type="radio" /><input id="__tabbed_14_2" name="__tabbed_14" type="radio" /><div class="tabbed-labels"><label for="__tabbed_14_1">httpx</label><label for="__tabbed_14_2">requests</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
-
-<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
-
-<span class="c1"># Testing/Development: Force cache responses without proper headers</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/dev-endpoint&quot;</span><span class="p">,</span>
-    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;hishel_spec_ignore&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">300</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-
-<span class="c1"># Log which responses bypass caching rules</span>
-<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_spec_ignored&quot;</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️  Spec ignored for: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Original Cache-Control: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cache-control&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   Response cached anyway&quot;</span><span class="p">)</span>
-
-<span class="c1"># Audit forced caching</span>
-<span class="n">forced_cache_urls</span> <span class="o">=</span> <span class="p">[]</span>
-
-<span class="k">for</span> <span class="n">url</span> <span class="ow">in</span> <span class="n">api_endpoints</span><span class="p">:</span>
-    <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;hishel_spec_ignore&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
-    <span class="k">if</span> <span class="n">resp</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_spec_ignored&quot;</span><span class="p">):</span>
-        <span class="n">forced_cache_urls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total endpoints with forced caching: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">forced_cache_urls</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheAdapter</span>
-
-<span class="n">session</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;http://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;https://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-
-<span class="c1"># Testing/Development: Force cache responses without proper headers</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/dev-endpoint&quot;</span><span class="p">,</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;X-Hishel-Spec-Ignore&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;X-Hishel-Ttl&quot;</span><span class="p">:</span> <span class="s2">&quot;300&quot;</span>
-    <span class="p">}</span>
-<span class="p">)</span>
-
-<span class="c1"># Log which responses bypass caching rules</span>
-<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Hishel-Spec-Ignored&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️  Spec ignored for: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Original Cache-Control: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cache-control&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   Response cached anyway&quot;</span><span class="p">)</span>
-
-<span class="c1"># Audit forced caching</span>
-<span class="n">forced_cache_urls</span> <span class="o">=</span> <span class="p">[]</span>
-
-<span class="k">for</span> <span class="n">url</span> <span class="ow">in</span> <span class="n">api_endpoints</span><span class="p">:</span>
-    <span class="n">resp</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Hishel-Spec-Ignore&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">})</span>
-    <span class="k">if</span> <span class="n">resp</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Hishel-Spec-Ignored&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
-        <span class="n">forced_cache_urls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total endpoints with forced caching: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">forced_cache_urls</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</code></pre></div>
-</div>
-</div>
-</div>
 <hr />
 <h3 id="hishel_stored">hishel_stored</h3>
 <p><strong>Type:</strong> <code>bool | None</code></p>
@@ -1563,7 +1097,7 @@
 <li>Validate caching configuration</li>
 </ul>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="15:2"><input checked="checked" id="__tabbed_15_1" name="__tabbed_15" type="radio" /><input id="__tabbed_15_2" name="__tabbed_15" type="radio" /><div class="tabbed-labels"><label for="__tabbed_15_1">httpx</label><label for="__tabbed_15_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="8:2"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">httpx</label><label for="__tabbed_8_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1595,79 +1129,6 @@
 <span class="k">else</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✗ Response not cached&quot;</span><span class="p">)</span>
 </code></pre></div>
-</div>
-</div>
-</div>
-<p><strong>Real-World Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="16:2"><input checked="checked" id="__tabbed_16_1" name="__tabbed_16" type="radio" /><input id="__tabbed_16_2" name="__tabbed_16" type="radio" /><div class="tabbed-labels"><label for="__tabbed_16_1">httpx</label><label for="__tabbed_16_2">requests</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
-
-<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
-
-<span class="c1"># Debug why responses aren&#39;t being cached</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/user/profile&quot;</span><span class="p">)</span>
-
-<span class="n">stored</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_stored&quot;</span><span class="p">)</span>
-<span class="n">from_cache</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_from_cache&quot;</span><span class="p">)</span>
-
-<span class="k">if</span> <span class="ow">not</span> <span class="n">stored</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">from_cache</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️  Response not cached!&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Status: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Cache-Control: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cache-control&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   Check server caching headers&quot;</span><span class="p">)</span>
-
-<span class="c1"># Monitor cache storage rate</span>
-<span class="n">stored_count</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">not_stored_count</span> <span class="o">=</span> <span class="mi">0</span>
-
-<span class="n">test_urls</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s2">&quot;https://api.example.com/static&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;https://api.example.com/dynamic&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;https://api.example.com/private&quot;</span><span class="p">,</span>
-<span class="p">]</span>
-
-<span class="k">for</span> <span class="n">url</span> <span class="ow">in</span> <span class="n">test_urls</span><span class="p">:</span>
-    <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">resp</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_stored&quot;</span><span class="p">):</span>
-        <span class="n">stored_count</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ </span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2"> - cached&quot;</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">not_stored_count</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✗ </span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2"> - not cached&quot;</span><span class="p">)</span>
-
-<span class="n">storage_rate</span> <span class="o">=</span> <span class="p">(</span><span class="n">stored_count</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_urls</span><span class="p">))</span> <span class="o">*</span> <span class="mi">100</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Storage rate: </span><span class="si">{</span><span class="n">storage_rate</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
-
-<span class="c1"># Validate caching after configuration changes</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/test&quot;</span><span class="p">,</span>
-    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mi">600</span><span class="p">}</span>
-<span class="p">)</span>
-
-<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_stored&quot;</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Configuration working - responses are being cached&quot;</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✗ Configuration issue - check TTL and cache headers&quot;</span><span class="p">)</span>
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<p>```python
-import requests
-from hishel.requests import CacheAdapter</p>
-<p>session = requests.Session()
-session.mount("http://", CacheAdapter())
-session.mount("https://", CacheAdapter())</p>
-<h1 id="debug-why-responses-arent-being-cached">Debug why responses aren't being cached</h1>
-<p>response = session.get("https://api.example.com/user/profile")</p>
-<p>stored = response.headers.get("X-Hishel-Stored") == "true"
-from_cache = response.headers.get("X-Hishel-From-Cache") == "true"</p>
-<p>if not stored and not from_cache:
-    print("⚠️  Response not cached!")
-    print(f"   Status: {response.status_code}")
-    print(f"   Cache-Control: {response.headers.get('cache-control')}")
-    print("   Check server caching headers")</p>
 </div>
 </div>
 </div>
