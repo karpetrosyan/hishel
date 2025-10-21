@@ -1,5 +1,7 @@
 import gzip
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
@@ -11,7 +13,7 @@ from hishel.httpx import AsyncCacheClient
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00", tick=False)
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")), tick=False)
 async def test_simple_caching(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> None:
     client = AsyncCacheClient()
 
@@ -32,7 +34,7 @@ async def test_simple_caching(use_temp_dir: Any, caplog: pytest.LogCaptureFixtur
     assert response.extensions == snapshot(
         {
             "hishel_from_cache": True,
-            "hishel_created_at": 1704052800.0,
+            "hishel_created_at": 1704067200.0,
             "hishel_spec_ignored": False,
             "hishel_revalidated": False,
             "hishel_stored": False,
@@ -41,7 +43,7 @@ async def test_simple_caching(use_temp_dir: Any, caplog: pytest.LogCaptureFixtur
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00", tick=False)
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")), tick=False)
 async def test_simple_caching_ignoring_spec(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> None:
     client = AsyncCacheClient()
 
@@ -63,7 +65,7 @@ async def test_simple_caching_ignoring_spec(use_temp_dir: Any, caplog: pytest.Lo
         {
             "hishel_spec_ignored": True,
             "hishel_from_cache": True,
-            "hishel_created_at": 1704052800.0,
+            "hishel_created_at": 1704067200.0,
             "hishel_revalidated": False,
             "hishel_stored": False,
         }

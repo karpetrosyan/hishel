@@ -1,6 +1,8 @@
 import uuid
 from dataclasses import replace
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pytest
 from inline_snapshot import snapshot
@@ -12,7 +14,7 @@ from tests.conftest import aprint_sqlite_state
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00")
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_create_pair(use_temp_dir: Any) -> None:
     storage = AsyncSqliteStorage()
 
@@ -52,7 +54,7 @@ Rows: 0
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00")
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_create_pair_with_stream(use_temp_dir: Any) -> None:
     """Test creating a pair with a streaming request body."""
     storage = AsyncSqliteStorage()
@@ -115,7 +117,7 @@ Rows: 3
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00")
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_add_response(use_temp_dir: Any) -> None:
     """Test adding a response to an existing pair."""
     storage = AsyncSqliteStorage()
@@ -189,7 +191,7 @@ Rows: 3
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00")
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_get_pairs(use_temp_dir: Any) -> None:
     """Test retrieving pairs by cache key."""
     storage = AsyncSqliteStorage()
@@ -224,7 +226,7 @@ async def test_get_pairs(use_temp_dir: Any) -> None:
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00")
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_get_pairs_filters_incomplete(use_temp_dir: Any) -> None:
     """Test that get_pairs filters out incomplete pairs."""
     storage = AsyncSqliteStorage()
@@ -260,7 +262,7 @@ async def test_get_pairs_filters_incomplete(use_temp_dir: Any) -> None:
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00")
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_update_pair(use_temp_dir: Any) -> None:
     """Test updating an existing pair."""
     storage = AsyncSqliteStorage()
@@ -291,7 +293,7 @@ async def test_update_pair(use_temp_dir: Any) -> None:
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00")
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_update_pair_with_new_pair(use_temp_dir: Any) -> None:
     """Test updating a pair by providing a new pair directly."""
     storage = AsyncSqliteStorage()
@@ -316,7 +318,7 @@ async def test_update_pair_with_new_pair(use_temp_dir: Any) -> None:
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00")
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_remove_pair(use_temp_dir: Any) -> None:
     """Test soft-deleting a pair."""
     storage = AsyncSqliteStorage()
@@ -345,7 +347,7 @@ async def test_remove_pair(use_temp_dir: Any) -> None:
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00")
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_stream_persistence(use_temp_dir: Any) -> None:
     """Test that streams are properly saved and retrieved."""
     storage = AsyncSqliteStorage()
@@ -392,7 +394,7 @@ async def test_stream_persistence(use_temp_dir: Any) -> None:
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00")
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_multiple_pairs_different_keys(use_temp_dir: Any) -> None:
     """Test that pairs with different keys are properly isolated."""
     storage = AsyncSqliteStorage()
@@ -418,7 +420,7 @@ async def test_multiple_pairs_different_keys(use_temp_dir: Any) -> None:
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00")
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_remove_nonexistent_pair(use_temp_dir: Any) -> None:
     """Test that removing a non-existent pair doesn't raise an error."""
     storage = AsyncSqliteStorage()
@@ -428,7 +430,7 @@ async def test_remove_nonexistent_pair(use_temp_dir: Any) -> None:
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00")
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_update_nonexistent_pair(use_temp_dir: Any) -> None:
     """Test that updating a non-existent pair returns None."""
     storage = AsyncSqliteStorage()
@@ -438,7 +440,7 @@ async def test_update_nonexistent_pair(use_temp_dir: Any) -> None:
 
 
 @pytest.mark.anyio
-@travel("2024-01-01 00:00:00")
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_add_response_to_nonexistent_pair(use_temp_dir: Any) -> None:
     """Test that adding a response to non-existent pair raises an error."""
     storage = AsyncSqliteStorage()
