@@ -16,6 +16,7 @@ from typing import (
 )
 
 from hishel._core._headers import Headers, Range, Vary, parse_cache_control
+from hishel._core.models import ResponseMetadata
 from hishel._utils import parse_date, partition
 
 if TYPE_CHECKING:
@@ -1601,7 +1602,6 @@ class CacheMiss(State):
         # Extract and parse the Cache-Control header to check caching directives
 
         request = self.request
-        request_cache_control = parse_cache_control(request.headers.get("cache-control"))
         response_cache_control = parse_cache_control(response.headers.get("cache-control"))
 
         # ============================================================================
@@ -1815,9 +1815,6 @@ class CacheMiss(State):
                         "See: https://www.rfc-editor.org/rfc/rfc9111.html#section-3-2.7.1"
                     )
 
-            # Mark response as not stored
-            response.metadata["hishel_stored"] = False  # type: ignore
-
             return CouldNotBeStored(
                 response=response, pair_id=pair_id, options=self.options, after_revalidation=self.after_revalidation
             )
@@ -1828,9 +1825,6 @@ class CacheMiss(State):
         # All storage requirements are met. The response will be cached.
 
         logger.debug("Storing response in cache")
-
-        # Mark response as stored
-        response.metadata["hishel_stored"] = True  # type: ignore
 
         # Remove headers that should not be stored
         # RFC 9111 Section 3.1: Storing Header and Trailer Fields
@@ -2325,11 +2319,14 @@ class StoreAndUse(State):
         self.pair_id = pair_id
         self.response = response
         self.after_revalidation = after_revalidation
-        self.response.metadata["hishel_from_cache"] = False
-        self.response.metadata["hishel_created_at"] = time.time()
-        self.response.metadata["hishel_spec_ignored"] = False
-        self.response.metadata["hishel_revalidated"] = after_revalidation
-        self.response.metadata["hishel_stored"] = True
+        response_meta = ResponseMetadata(
+            hishel_created_at=time.time(),
+            hishel_from_cache=False,
+            hishel_spec_ignored=False,
+            hishel_revalidated=after_revalidation,
+            hishel_stored=True,
+        )
+        self.response.metadata.update(response_meta)  # type: ignore
 
     def next(self) -> None:
         return None
@@ -2369,11 +2366,14 @@ class CouldNotBeStored(State):
         super().__init__(options)
         self.response = response
         self.pair_id = pair_id
-        self.response.metadata["hishel_from_cache"] = False
-        self.response.metadata["hishel_created_at"] = time.time()
-        self.response.metadata["hishel_spec_ignored"] = False
-        self.response.metadata["hishel_revalidated"] = after_revalidation
-        self.response.metadata["hishel_stored"] = False
+        response_meta = ResponseMetadata(
+            hishel_created_at=time.time(),
+            hishel_from_cache=False,
+            hishel_spec_ignored=False,
+            hishel_revalidated=after_revalidation,
+            hishel_stored=False,
+        )
+        self.response.metadata.update(response_meta)  # type: ignore
 
     def next(self) -> None:
         return None
@@ -2398,11 +2398,14 @@ class FromCache(State):
         super().__init__(options)
         self.pair = pair
         self.after_revalidation = after_revalidation
-        self.pair.response.metadata["hishel_from_cache"] = True
-        self.pair.response.metadata["hishel_created_at"] = pair.meta.created_at
-        self.pair.response.metadata["hishel_spec_ignored"] = False
-        self.pair.response.metadata["hishel_revalidated"] = after_revalidation
-        self.pair.response.metadata["hishel_stored"] = False
+        response_meta = ResponseMetadata(
+            hishel_created_at=pair.meta.created_at,
+            hishel_from_cache=True,
+            hishel_spec_ignored=False,
+            hishel_revalidated=after_revalidation,
+            hishel_stored=False,
+        )
+        self.pair.response.metadata.update(response_meta)  # type: ignore
 
     def next(self) -> None:
         return None

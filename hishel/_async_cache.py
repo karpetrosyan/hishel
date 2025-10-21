@@ -25,7 +25,7 @@ from hishel import (
     create_idle_state,
 )
 from hishel._core._spec import InvalidatePairs, vary_headers_match
-from hishel._core.models import CompletePair
+from hishel._core.models import CompletePair, ResponseMetadata
 
 logger = logging.getLogger("hishel.integrations.clients")
 
@@ -90,7 +90,14 @@ class AsyncCacheProxy:
                 logger.debug(
                     "Found matching cached response for the request",
                 )
-                pair.response.metadata["hishel_from_cache"] = True  # type: ignore
+                response_meta = ResponseMetadata(
+                    hishel_spec_ignored=True,
+                    hishel_from_cache=True,
+                    hishel_created_at=pair.meta.created_at,
+                    hishel_revalidated=False,
+                    hishel_stored=False,
+                )
+                pair.response.metadata.update(response_meta)  # type: ignore
                 await self._maybe_refresh_pair_ttl(pair)
                 return pair.response
 

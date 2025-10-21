@@ -981,80 +981,31 @@ Response metadata provides information about cache operations that occurred. The
         print(f"   Cache-Control: {response.headers.get('cache-control')}")
         print("   Check server caching headers")
 
-    # Monitor cache storage rate
-    stored_count = 0
-    not_stored_count = 0
-    
-    test_urls = [
-        "https://api.example.com/static",
-        "https://api.example.com/dynamic",
-        "https://api.example.com/private",
-    ]
-    
-    for url in test_urls:
-        resp = session.get(url)
-        if resp.headers.get("X-Hishel-Stored") == "true":
-            stored_count += 1
-            print(f"✓ {url} - cached")
-        else:
-            not_stored_count += 1
-            print(f"✗ {url} - not cached")
-    
-    storage_rate = (stored_count / len(test_urls)) * 100
-    print(f"\nStorage rate: {storage_rate}%")
+### hishel_created_at
 
-    # Validate caching after configuration changes
-    response = session.get(
-        "https://api.example.com/test",
-        headers={"X-Hishel-Ttl": "600"}
-    )
-    
-    if response.headers.get("X-Hishel-Stored") == "true":
-        print("✓ Configuration working - responses are being cached")
-    else:
-        print("✗ Configuration issue - check TTL and cache headers")
-    ```
+**Type:** `float | None`
 
----
+**Description:** POSIX timestamp (seconds since the epoch) indicating when the response entry was created in the cache. This value is set by Hishel when the response is stored and can be used with `hishel_ttl` to compute remaining freshness.
 
-## Metadata Reference Summary
+**Use Cases:**
 
-### Setting Request Metadata
+- Determine when an entry was cached for logging or debugging.
+- Compute remaining TTL: `remaining = hishel_ttl - (now - hishel_created_at)`.
 
-| Library | Method | Format |
-|---------|--------|--------|
-| **httpx** | `extensions` (recommended) | `extensions={"hishel_ttl": 3600}` (Python types) |
-| **httpx** | `headers` | `headers={"X-Hishel-Ttl": "3600"}` (string values) |
-| **requests** | `headers` | `headers={"X-Hishel-Ttl": "3600"}` (string values) |
+**Example (httpx extensions):**
 
-### Request Metadata Fields
+```python
+created = response.extensions.get("hishel_created_at")
+if created:
+    print("Cached at:", created)
+```
 
-| Field | Header | Type | Description |
-|-------|--------|------|-------------|
-| `hishel_ttl` | `X-Hishel-Ttl` | `float` / `string` | Custom TTL in seconds |
-| `hishel_refresh_ttl_on_access` | `X-Hishel-Refresh-Ttl-On-Access` | `bool` / `string` | Enable sliding expiration |
-| `hishel_spec_ignore` | `X-Hishel-Spec-Ignore` | `bool` / `string` | Ignore RFC 9111 rules |
-| `hishel_body_key` | `X-Hishel-Body-Key` | `bool` / `string` | Include body in cache key |
+**Example (requests headers):**
 
-### Reading Response Metadata
-
-| Library | Method | Example |
-|---------|--------|---------|
-| **httpx** | `extensions` dict | `response.extensions.get("hishel_from_cache")` |
-| **httpx** | `headers` | `response.headers.get("X-Hishel-From-Cache")` |
-| **requests** | `headers` | `response.headers.get("X-Hishel-From-Cache")` |
-
-### Response Metadata Fields
-
-| Field | Header | Type | Description |
-|-------|--------|------|-------------|
-| `hishel_from_cache` | `X-Hishel-From-Cache` | `bool` / `string` | Response from cache |
-| `hishel_revalidated` | `X-Hishel-Revalidated` | `bool` / `string` | Response was revalidated |
-| `hishel_spec_ignored` | `X-Hishel-Spec-Ignored` | `bool` / `string` | Spec was ignored |
-| `hishel_stored` | `X-Hishel-Stored` | `bool` / `string` | Response was stored |
-
-!!! note "Type Differences"
-    - **httpx extensions**: Native Python types (`bool`, `float`)
-    - **httpx/requests headers**: String values (`"true"`, `"false"`, `"3600"`)
+```python
+created = response.headers.get("X-Hishel-Created-At")
+if created:
+    print("Cached at:", created)
+```
 
 ---

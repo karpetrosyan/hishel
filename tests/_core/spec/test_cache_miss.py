@@ -603,7 +603,7 @@ class TestMetadataAndObservability:
         cache_miss.next(response, pair_id)
 
         # Assert
-        assert response.metadata.get("hishel_revalidated") is None
+        assert response.metadata.get("hishel_revalidated") is False
 
 
 # =============================================================================

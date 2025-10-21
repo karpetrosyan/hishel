@@ -109,17 +109,20 @@ class Request:
 
 class ResponseMetadata(TypedDict, total=False):
     # All the names here should be prefixed with "hishel_" to avoid collisions with user data
-    hishel_from_cache: bool | None
+    hishel_from_cache: bool
     """Indicates whether the response was served from cache."""
 
-    hishel_revalidated: bool | None
+    hishel_revalidated: bool
     """Indicates whether the response was revalidated with the origin server."""
 
-    hishel_spec_ignored: bool | None
+    hishel_spec_ignored: bool
     """Indicates whether the caching specification was ignored for this response."""
 
-    hishel_stored: bool | None
+    hishel_stored: bool
     """Indicates whether the response was stored in cache."""
+
+    hishel_created_at: float
+    """Timestamp when the response was cached."""
 
 
 @dataclass

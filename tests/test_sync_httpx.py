@@ -5,11 +5,13 @@ import httpx
 import pytest
 from httpx import ByteStream, MockTransport
 from inline_snapshot import snapshot
+from time_machine import travel
 
 from hishel.httpx import SyncCacheClient
 
 
 
+@travel("2024-01-01 00:00:00", tick=False)
 def test_simple_caching(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> None:
     client = SyncCacheClient()
 
@@ -27,10 +29,19 @@ def test_simple_caching(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> 
             "Handling state: FromCache",
         ]
     )
-    assert response.extensions == snapshot({"hishel_from_cache": True})
+    assert response.extensions == snapshot(
+        {
+            "hishel_from_cache": True,
+            "hishel_created_at": 1704052800.0,
+            "hishel_spec_ignored": False,
+            "hishel_revalidated": False,
+            "hishel_stored": False,
+        }
+    )
 
 
 
+@travel("2024-01-01 00:00:00", tick=False)
 def test_simple_caching_ignoring_spec(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> None:
     client = SyncCacheClient()
 
@@ -48,7 +59,15 @@ def test_simple_caching_ignoring_spec(use_temp_dir: Any, caplog: pytest.LogCaptu
             "Found matching cached response for the request",
         ]
     )
-    assert response.extensions == snapshot({"hishel_from_cache": True})
+    assert response.extensions == snapshot(
+        {
+            "hishel_spec_ignored": True,
+            "hishel_from_cache": True,
+            "hishel_created_at": 1704052800.0,
+            "hishel_revalidated": False,
+            "hishel_stored": False,
+        }
+    )
 
 
 
