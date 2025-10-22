@@ -194,7 +194,11 @@ class ASGICacheMiddleware:
         """
         # Build URL
         scheme = scope.get("scheme", "http")
-        server = scope.get("server", ("localhost", 80))
+        server = scope.get("server")
+
+        if server is None:
+            server = ("localhost", 80)
+
         host = server[0]
         port = server[1] if server[1] is not None else (443 if scheme == "https" else 80)
 

@@ -27,7 +27,7 @@ def cache(
     immutable: bool = False,
     stale_while_revalidate: int | None = None,
     stale_if_error: int | None = None,
-) -> t.Callable[[fastapi.Response], None]:
+) -> t.Any:
     """
     Add HTTP Cache-Control headers to FastAPI responses.
 
@@ -198,7 +198,7 @@ def cache(
         - RFC 5861: HTTP Cache-Control Extensions (https://www.rfc-editor.org/rfc/rfc5861.html)
     """
 
-    def add_cache_headers(response: fastapi.Response) -> None:
+    def add_cache_headers(response: fastapi.Response) -> t.Any:
         """Add Cache-Control headers to the response."""
         directives: list[str] = []
 
