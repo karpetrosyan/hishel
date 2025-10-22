@@ -42,6 +42,8 @@ nav:
   - Integrations:
       - httpx: integrations/httpx.md
       - requests: integrations/requests.md
+      - ASGI: integrations/asgi.md
+      - FastAPI: integrations/fastapi.md
   - Contributing: contributing.md
 extra_css:
   - docs/custom.css

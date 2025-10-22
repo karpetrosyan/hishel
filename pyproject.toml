@@ -49,6 +49,9 @@ httpx = [
     "anyio>=4.9.0",
     "anysqlite>=0.0.5",
 ]
+fastapi = [
+    "fastapi>=0.119.1",
+]
 
 [project.urls]
 Homepage = "https://hishel.com"
@@ -114,6 +117,7 @@ dev = [
     "anyio==4.9.0",
     "anysqlite>=0.0.5",
     "coverage==7.10.1",
+    "fastapi[standard]>=0.119.1",
     "hatch==1.14.1",
     "inline-snapshot>=0.28.0",
     "mike>=2.1.3",

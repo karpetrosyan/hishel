@@ -35,14 +35,15 @@
 ## ✨ Features
 
 - 🎯 **RFC 9111 Compliant** - Fully compliant with the latest HTTP caching specification
-- 🔌 **Easy Integration** - Drop-in support for HTTPX and Requests
+- 🔌 **Easy Integration** - Drop-in support for HTTPX, Requests, ASGI, and FastAPI
 - 💾 **Flexible Storage** - SQLite backend with more coming soon
 - ⚡ **High Performance** - Efficient caching with minimal overhead
 - 🔄 **Async & Sync** - Full support for both synchronous and asynchronous workflows
 - 🎨 **Type Safe** - Fully typed with comprehensive type hints
 - 🧪 **Well Tested** - Extensive test coverage and battle-tested
 - 🎛️ **Configurable** - Fine-grained control over caching behavior
-- 🌐 **Future Ready** - Designed for easy integration with any HTTP client/server
+- � **Memory Efficient** - Streaming support prevents loading large payloads into memory
+- 🌐 **Universal** - Works with any ASGI application (Starlette, Django, etc.)
 
 ## 📦 Installation
 
@@ -52,18 +53,22 @@ pip install hishel
 
 ### Optional Dependencies
 
-Install with specific HTTP client support:
+Install with specific integration support:
 
 ```bash
 pip install hishel[httpx]      # For HTTPX support
 pip install hishel[requests]   # For Requests support
+pip install hishel[fastapi]    # For FastAPI support (includes ASGI)
 ```
 
-Or install both:
+Or install multiple:
 
 ```bash
-pip install hishel[httpx,requests]
+pip install hishel[httpx,requests,fastapi]
 ```
+
+!!! note
+    ASGI middleware has no extra dependencies - it's included in the base installation.
 
 ## 🚀 Quick Start
 
@@ -116,6 +121,48 @@ response = session.get("https://api.example.com/data")
 # Second request - served from cache
 response = session.get("https://api.example.com/data")
 print(response.headers.get("X-Hishel-From-Cache"))  # "True"
+```
+
+### With ASGI Applications
+
+Add caching middleware to any ASGI application:
+
+```python
+from hishel.asgi import ASGICacheMiddleware
+
+# Wrap your ASGI app
+app = ASGICacheMiddleware(app)
+
+# Or configure with options
+from hishel import AsyncSqliteStorage, CacheOptions
+
+app = ASGICacheMiddleware(
+    app,
+    storage=AsyncSqliteStorage(),
+    cache_options=CacheOptions(shared=True)
+)
+```
+
+### With FastAPI
+
+Add Cache-Control headers using the `cache()` dependency:
+
+```python
+from fastapi import FastAPI
+from hishel.fastapi import cache
+
+app = FastAPI()
+
+@app.get("/api/data", dependencies=[cache(max_age=300, public=True)])
+async def get_data():
+    # Cache-Control: public, max-age=300
+    return {"data": "cached for 5 minutes"}
+  
+# Optionally wrap with ASGI middleware for local caching according to specified rules
+from hishel.asgi import ASGICacheMiddleware
+from hishel import AsyncSqliteStorage
+
+app = ASGICacheMiddleware(app, storage=AsyncSqliteStorage())
 ```
 
 ## 🎛️ Advanced Configuration
@@ -176,7 +223,10 @@ Comprehensive documentation is available at [https://hishel.com/dev](https://his
 - [Getting Started](https://hishel.com)
 - [HTTPX Integration](https://hishel.com/dev/integrations/httpx)
 - [Requests Integration](https://hishel.com/dev/integrations/requests)
+- [ASGI Integration](https://hishel.com/dev/asgi)
+- [FastAPI Integration](https://hishel.com/dev/fastapi)
 - [Storage Backends](https://hishel.com/dev/storages)
+- [Request/Response Metadata](https://hishel.com/dev/metadata)
 - [RFC 9111 Specification](https://hishel.com/dev/specification)
 
 ## 🤝 Contributing
