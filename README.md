@@ -165,6 +165,23 @@ from hishel import AsyncSqliteStorage
 app = ASGICacheMiddleware(app, storage=AsyncSqliteStorage())
 ```
 
+### With BlackSheep
+
+Use BlackSheep's native `cache_control` decorator with Hishel's ASGI middleware:
+
+```python
+from blacksheep import Application, get
+from blacksheep.server.headers.cache import cache_control
+
+app = Application()
+
+@get("/api/data")
+@cache_control(max_age=300, public=True)
+async def get_data():
+    # Cache-Control: public, max-age=300
+    return {"data": "cached for 5 minutes"}
+```
+
 ## 🎛️ Advanced Configuration
 
 ### Custom Cache Options
@@ -225,6 +242,7 @@ Comprehensive documentation is available at [https://hishel.com/dev](https://his
 - [Requests Integration](https://hishel.com/dev/integrations/requests)
 - [ASGI Integration](https://hishel.com/dev/asgi)
 - [FastAPI Integration](https://hishel.com/dev/fastapi)
+- [BlackSheep Integration](https://hishel.com/dev/integrations/blacksheep)
 - [Storage Backends](https://hishel.com/dev/storages)
 - [Request/Response Metadata](https://hishel.com/dev/metadata)
 - [RFC 9111 Specification](https://hishel.com/dev/specification)

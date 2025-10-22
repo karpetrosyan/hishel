@@ -449,7 +449,7 @@ try:
                 chunk_number += 1
 except ImportError:
 
-    class AsyncSqliteStorage(AsyncBaseStorage):  # type: ignore[no-redef]
+    class AsyncSqliteStorage:  # type: ignore[no-redef]
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             raise ImportError(
                 "The 'anysqlite' library is required to use the `AsyncSqliteStorage` integration. "
