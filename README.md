@@ -1,6 +1,3 @@
----
-icon: material/rocket
----
 
 <p align="center">
   <img alt="Hishel Logo" width="350" src="https://raw.githubusercontent.com/karpetrosyan/hishel/master/docs/static/Shelkopryad_350x250_yellow.png#gh-dark-mode-only">
