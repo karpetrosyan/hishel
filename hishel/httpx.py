@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ssl
 import typing as t
-from typing import AsyncIterator, Iterator, Union, overload
+from typing import AsyncIterable, AsyncIterator, Iterable, Iterator, Union, overload
 
 from hishel import Headers, Request, Response
 from hishel._async_cache import AsyncCacheProxy
@@ -36,11 +36,11 @@ class IteratorStream(httpx.SyncByteStream, httpx.AsyncByteStream):
         self.iterator = iterator
 
     def __iter__(self) -> Iterator[bytes]:
-        assert isinstance(self.iterator, (Iterator))
+        assert isinstance(self.iterator, (Iterator, Iterable))
         yield from self.iterator
 
     async def __aiter__(self) -> AsyncIterator[bytes]:
-        assert isinstance(self.iterator, (AsyncIterator))
+        assert isinstance(self.iterator, (AsyncIterator, AsyncIterable))
         async for chunk in self.iterator:
             yield chunk
 
