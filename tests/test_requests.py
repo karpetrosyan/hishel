@@ -108,5 +108,5 @@ def test_compressed_data() -> None:
     requests_response = internal_to_requests(internal_response)
 
     assert requests_response.status_code == 200
-    content = requests_response.iter_content(chunk_size=1024).__next__()
+    content = b"".join(requests_response.iter_content(chunk_size=1024))
     assert content == b"test content"
