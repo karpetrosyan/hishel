@@ -123,7 +123,7 @@ def internal_to_requests(model: Request | Response) -> requests.models.Response 
             headers={**model.headers, **{snake_to_header(k): str(v) for k, v in model.metadata.items()}},
             status=model.status_code,
             preload_content=False,
-            decode_content=False,
+            decode_content=True,
         )
 
         # Set up the response object
