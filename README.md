@@ -67,9 +67,9 @@ Or install multiple:
 pip install hishel[httpx,requests,fastapi]
 ```
 
-!!! note
-    ASGI middleware has no extra dependencies - it's included in the base installation.
-
+> [!NOTE]
+> ASGI middleware has no extra dependencies - it's included in the base installation.
+ 
 ## 🚀 Quick Start
 
 ### With HTTPX
