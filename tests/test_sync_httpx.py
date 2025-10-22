@@ -5,11 +5,12 @@ from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
+import zstandard as zstd
 from httpx import ByteStream, MockTransport
 from inline_snapshot import snapshot
 from time_machine import travel
 
-from hishel.httpx import SyncCacheClient
+from hishel.httpx import SyncCacheClient, httpx_to_internal, internal_to_httpx
 
 
 
@@ -96,3 +97,41 @@ def test_encoded_content_caching(use_temp_dir: Any) -> None:
         for chunk in second_response.iter_raw():
             content += chunk
         assert gzip.decompress(content) == response.content
+
+
+
+def test_compressed_data() -> None:
+    compressed_content = zstd.ZstdCompressor().compress(b"test content")
+
+    response = httpx.Response(
+        200,
+        stream=ByteStream(compressed_content),
+        headers={
+            "Content-Encoding": "zstd",
+            "Content-Type": "text/plain",
+            "Content-Length": str(len(compressed_content)),
+        },
+    )
+
+    internal_response = httpx_to_internal(response)
+
+    httpx_response = internal_to_httpx(internal_response)
+
+    assert httpx_response.status_code == response.status_code
+    assert httpx_response.headers == response.headers
+    assert httpx_response.read() == b"test content"
+
+
+
+def test_consumed_stream_conversion() -> None:
+    response = httpx.Response(
+        200,
+        stream=ByteStream(b"test"),
+        headers={
+            "Content-Type": "text/plain",
+        },
+    )
+    response.read()  # Consume the stream
+
+    with pytest.raises(ValueError, match="Cannot get the raw data of a consumed httpx.Response."):
+        httpx_to_internal(response)

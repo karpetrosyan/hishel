@@ -18,6 +18,7 @@ SUBS = [
     ("AsyncIterator", "Iterator"),
     ("AsyncIterable", "Iterable"),
     ("@pytest.mark.anyio", ""),
+    ("aread", "read"),
     (r"Awaitable\[([^\]]+)\]", r"\1"),
     # our public API
     ("AsyncCacheProxy", "SyncCacheProxy"),
@@ -29,6 +30,7 @@ SUBS = [
     ("aiter_raw", "iter_raw"),
     ("aprint_sqlite_state", "print_sqlite_state"),
     ("make_async_iterator", "make_sync_iterator"),
+    ("ahttpx_to_internal", "httpx_to_internal"),
 ]
 COMPILED_SUBS = [(re.compile(regex), repl) for regex, repl in SUBS]
 

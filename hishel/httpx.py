@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ssl
 import typing as t
-from typing import AsyncIterator, Iterable, Iterator, Union, overload
+from typing import AsyncIterator, Iterator, Union, overload
 
 from hishel import Headers, Request, Response
 from hishel._async_cache import AsyncCacheProxy
@@ -10,7 +10,6 @@ from hishel._core._base._storages._base import AsyncBaseStorage, SyncBaseStorage
 from hishel._core._spec import (
     CacheOptions,
 )
-from hishel._core.models import AnyIterable
 from hishel._sync_cache import SyncCacheProxy
 
 try:
@@ -91,24 +90,12 @@ def httpx_to_internal(
     """
     Convert httpx.Request/httpx.Response to internal Request/Response.
     """
-    stream: Union[Iterator[bytes], AsyncIterator[bytes]]
-    try:
-        stream = AnyIterable(value.content)
-    except (httpx.RequestNotRead, httpx.ResponseNotRead):
-        if isinstance(value, httpx.Response):
-            stream = (
-                value.iter_raw(chunk_size=CHUNK_SIZE)
-                if isinstance(value.stream, Iterable)
-                else value.aiter_raw(chunk_size=CHUNK_SIZE)
-            )
-        else:
-            stream = value.stream  # type: ignore
     if isinstance(value, httpx.Request):
         return Request(
             method=value.method,
             url=str(value.url),
             headers=Headers({key: value for key, value in value.headers.items()}),
-            stream=stream,
+            stream=value.stream,  # type: ignore
             metadata={
                 "hishel_refresh_ttl_on_access": value.extensions.get("hishel_refresh_ttl_on_access"),
                 "hishel_ttl": value.extensions.get("hishel_ttl"),
@@ -116,10 +103,49 @@ def httpx_to_internal(
             },
         )
     elif isinstance(value, httpx.Response):
+        if value.is_stream_consumed:
+            raise ValueError("Cannot get the raw data of a consumed httpx.Response.")
         return Response(
             status_code=value.status_code,
             headers=Headers({key: value for key, value in value.headers.items()}),
-            stream=stream,
+            stream=value.iter_raw(chunk_size=CHUNK_SIZE),
+            metadata={},
+        )
+
+
+@overload
+def ahttpx_to_internal(
+    value: httpx.Request,
+) -> Request: ...
+@overload
+def ahttpx_to_internal(
+    value: httpx.Response,
+) -> Response: ...
+def ahttpx_to_internal(
+    value: Union[httpx.Request, httpx.Response],
+) -> Union[Request, Response]:
+    """
+    Convert httpx.Request/httpx.Response to internal Request/Response.
+    """
+    if isinstance(value, httpx.Request):
+        return Request(
+            method=value.method,
+            url=str(value.url),
+            headers=Headers({key: value for key, value in value.headers.items()}),
+            stream=value.stream,  # type: ignore
+            metadata={
+                "hishel_refresh_ttl_on_access": value.extensions.get("hishel_refresh_ttl_on_access"),
+                "hishel_ttl": value.extensions.get("hishel_ttl"),
+                "hishel_spec_ignore": value.extensions.get("hishel_spec_ignore"),
+            },
+        )
+    elif isinstance(value, httpx.Response):
+        if value.is_stream_consumed:
+            raise ValueError("Cannot get the raw data of a consumed httpx.Response.")
+        return Response(
+            status_code=value.status_code,
+            headers=Headers({key: value for key, value in value.headers.items()}),
+            stream=value.aiter_raw(chunk_size=CHUNK_SIZE),  # type: ignore
             metadata={},
         )
 
@@ -257,7 +283,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         self,
         request: httpx.Request,
     ) -> httpx.Response:
-        internal_request = httpx_to_internal(request)
+        internal_request = ahttpx_to_internal(request)
         internal_response = await self._cache_proxy.handle_request(internal_request)
         response = internal_to_httpx(internal_response)
         return response
@@ -270,7 +296,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
     async def async_send_request(self, request: Request) -> Response:
         httpx_request = internal_to_httpx(request)
         httpx_response = await self.next_transport.handle_async_request(httpx_request)
-        return httpx_to_internal(httpx_response)
+        return ahttpx_to_internal(httpx_response)
 
 
 class AsyncCacheClient(httpx.AsyncClient):
