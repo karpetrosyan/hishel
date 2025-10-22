@@ -330,6 +330,24 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#with-asgi-applications" class="md-nav__link">
+    <span class="md-ellipsis">
+      With ASGI Applications
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#with-fastapi" class="md-nav__link">
+    <span class="md-ellipsis">
+      With FastAPI
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -601,6 +619,56 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="integrations/asgi/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.36 14c.08-.66.14-1.32.14-2s-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2m-5.15 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95a8.03 8.03 0 0 1-4.33 3.56M14.34 14H9.66c-.1-.66-.16-1.32-.16-2s.06-1.35.16-2h4.68c.09.65.16 1.32.16 2s-.07 1.34-.16 2M12 19.96c-.83-1.2-1.5-2.53-1.91-3.96h3.82c-.41 1.43-1.08 2.76-1.91 3.96M8 8H5.08A7.92 7.92 0 0 1 9.4 4.44C8.8 5.55 8.35 6.75 8 8m-2.92 8H8c.35 1.25.8 2.45 1.4 3.56A8 8 0 0 1 5.08 16m-.82-2C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2s.06 1.34.14 2M12 4.03c.83 1.2 1.5 2.54 1.91 3.97h-3.82c.41-1.43 1.08-2.77 1.91-3.97M18.92 8h-2.95a15.7 15.7 0 0 0-1.38-3.56c1.84.63 3.37 1.9 4.33 3.56M12 2C6.47 2 2 6.5 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg>
+  
+  <span class="md-ellipsis">
+    ASGI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="integrations/fastapi/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14z"/></svg>
+  
+  <span class="md-ellipsis">
+    FastAPI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -712,6 +780,24 @@
   <a href="#with-requests" class="md-nav__link">
     <span class="md-ellipsis">
       With Requests
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#with-asgi-applications" class="md-nav__link">
+    <span class="md-ellipsis">
+      With ASGI Applications
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#with-fastapi" class="md-nav__link">
+    <span class="md-ellipsis">
+      With FastAPI
     </span>
   </a>
   
@@ -871,26 +957,32 @@
 <h2 id="features">✨ Features</h2>
 <ul>
 <li>🎯 <strong>RFC 9111 Compliant</strong> - Fully compliant with the latest HTTP caching specification</li>
-<li>🔌 <strong>Easy Integration</strong> - Drop-in support for HTTPX and Requests</li>
+<li>🔌 <strong>Easy Integration</strong> - Drop-in support for HTTPX, Requests, ASGI, and FastAPI</li>
 <li>💾 <strong>Flexible Storage</strong> - SQLite backend with more coming soon</li>
 <li>⚡ <strong>High Performance</strong> - Efficient caching with minimal overhead</li>
 <li>🔄 <strong>Async &amp; Sync</strong> - Full support for both synchronous and asynchronous workflows</li>
 <li>🎨 <strong>Type Safe</strong> - Fully typed with comprehensive type hints</li>
 <li>🧪 <strong>Well Tested</strong> - Extensive test coverage and battle-tested</li>
 <li>🎛️ <strong>Configurable</strong> - Fine-grained control over caching behavior</li>
-<li>🌐 <strong>Future Ready</strong> - Designed for easy integration with any HTTP client/server</li>
+<li>� <strong>Memory Efficient</strong> - Streaming support prevents loading large payloads into memory</li>
+<li>🌐 <strong>Universal</strong> - Works with any ASGI application (Starlette, Django, etc.)</li>
 </ul>
 <h2 id="installation">📦 Installation</h2>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>hishel
 </code></pre></div>
 <h3 id="optional-dependencies">Optional Dependencies</h3>
-<p>Install with specific HTTP client support:</p>
+<p>Install with specific integration support:</p>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">[</span>httpx<span class="o">]</span><span class="w">      </span><span class="c1"># For HTTPX support</span>
 pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">[</span>requests<span class="o">]</span><span class="w">   </span><span class="c1"># For Requests support</span>
+pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">[</span>fastapi<span class="o">]</span><span class="w">    </span><span class="c1"># For FastAPI support (includes ASGI)</span>
 </code></pre></div>
-<p>Or install both:</p>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">[</span>httpx,requests<span class="o">]</span>
+<p>Or install multiple:</p>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">[</span>httpx,requests,fastapi<span class="o">]</span>
 </code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>ASGI middleware has no extra dependencies - it's included in the base installation.</p>
+</div>
 <h2 id="quick-start">🚀 Quick Start</h2>
 <h3 id="with-httpx">With HTTPX</h3>
 <p><strong>Synchronous:</strong></p>
@@ -932,6 +1024,40 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
 <span class="c1"># Second request - served from cache</span>
 <span class="n">response</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Hishel-From-Cache&quot;</span><span class="p">))</span>  <span class="c1"># &quot;True&quot;</span>
+</code></pre></div>
+<h3 id="with-asgi-applications">With ASGI Applications</h3>
+<p>Add caching middleware to any ASGI application:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.asgi</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASGICacheMiddleware</span>
+
+<span class="c1"># Wrap your ASGI app</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">ASGICacheMiddleware</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+
+<span class="c1"># Or configure with options</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSqliteStorage</span><span class="p">,</span> <span class="n">CacheOptions</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">ASGICacheMiddleware</span><span class="p">(</span>
+    <span class="n">app</span><span class="p">,</span>
+    <span class="n">storage</span><span class="o">=</span><span class="n">AsyncSqliteStorage</span><span class="p">(),</span>
+    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(</span><span class="n">shared</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="with-fastapi">With FastAPI</h3>
+<p>Add Cache-Control headers using the <code>cache()</code> dependency:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">cache</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/data&quot;</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">cache</span><span class="p">(</span><span class="n">max_age</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">public</span><span class="o">=</span><span class="kc">True</span><span class="p">)])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_data</span><span class="p">():</span>
+    <span class="c1"># Cache-Control: public, max-age=300</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;cached for 5 minutes&quot;</span><span class="p">}</span>
+
+<span class="c1"># Optionally wrap with ASGI middleware for local caching according to specified rules</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.asgi</span><span class="w"> </span><span class="kn">import</span> <span class="n">ASGICacheMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSqliteStorage</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">ASGICacheMiddleware</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">storage</span><span class="o">=</span><span class="n">AsyncSqliteStorage</span><span class="p">())</span>
 </code></pre></div>
 <h2 id="advanced-configuration">🎛️ Advanced Configuration</h2>
 <h3 id="custom-cache-options">Custom Cache Options</h3>
@@ -981,7 +1107,10 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
 <li><a href="https://hishel.com">Getting Started</a></li>
 <li><a href="https://hishel.com/dev/integrations/httpx">HTTPX Integration</a></li>
 <li><a href="https://hishel.com/dev/integrations/requests">Requests Integration</a></li>
+<li><a href="https://hishel.com/dev/asgi">ASGI Integration</a></li>
+<li><a href="https://hishel.com/dev/fastapi">FastAPI Integration</a></li>
 <li><a href="https://hishel.com/dev/storages">Storage Backends</a></li>
+<li><a href="https://hishel.com/dev/metadata">Request/Response Metadata</a></li>
 <li><a href="https://hishel.com/dev/specification">RFC 9111 Specification</a></li>
 </ul>
 <h2 id="contributing">🤝 Contributing</h2>
