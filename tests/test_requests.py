@@ -95,13 +95,13 @@ def test_compressed_data() -> None:
         },
         status=200,
         preload_content=False,
-        decode_content=True,
+        decode_content=False,
     )
 
     # Set up the response object
     response.raw = urllib_response
     response.status_code = 200
-    response.headers.update({"Content-Encoding": "zstd", "Content-Length": str(len(compressed_content))})
+    response.headers.update({"Content-Encoding": "gzip", "Content-Length": str(len(compressed_content))})
 
     internal_response = requests_to_internal(response)
 
