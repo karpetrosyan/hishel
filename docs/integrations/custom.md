@@ -4,23 +4,30 @@ icon: material/power-plug-battery
 
 # Custom Integrations
 
-Hishel was made to be very flexible and easy to integrate with any HTTP client or server.
+Hishel is designed to be flexible and easy to integrate with any HTTP client or server. This guide will help you build custom integrations for libraries that aren't yet supported out of the box.
 
 ## Converting Request/Response Models
 
-One of the core part to integrate Hishel with any library is to convert its request/response models to Hishel's internal `Request` and `Response` models.
+The core of any Hishel integration is converting your library's request/response models to Hishel's internal `Request` and `Response` models. This translation layer allows Hishel to cache responses regardless of which HTTP library you're using.
 
-In the codebase, you find find methods like `httpx_to_internal`, `requests_to_internal`, etc. that convert popular libraries' models to Hishel's internal models.
+In the Hishel codebase, you'll find conversion methods like `httpx_to_internal`, `requests_to_internal`, etc. that handle popular libraries. You can use these as reference implementations when building your own integration.
 
-There are some core principles to follow when converting models:
+### Core Conversion Principles
 
-- **Response Content**: Note that the content of request should be the actual data of the content, possible compressed, but decoded if was sent with transfer-encoding like chunked. Note that this body should be re-usedable, so if we store the compressed data, we should also store content-encoding header to be able to decode it later.
-- **Headers**: Headers are stored as-is, expect for headers that specification doesn't allow to be stored. Note that there is a case when before response reaches to the cache layer, it's stream already consumed and stored into a memory, in such cases, note that you can't create hishel Response model without removing content-encoding header, because the content is already decoded.
-- **Request**: Converting request models is relatively simpler then responses, we don't re-create the request from the cache and we don't even store it's stream, we only store the headers, method and url. The converted request might be modified by the hishel and be requested to be sent to the server, which is the responsibility of the integration layer, so there is not a critical requirement to store the request body exactly as it was sent.
+Follow these guidelines when converting models:
+
+**Response Content**
+: The response content should be the actual data, possibly compressed, but decoded if it was sent with transfer encoding (like chunked). This content must be reusable—if you store compressed data, also preserve the `Content-Encoding` header so it can be decoded later.
+
+**Headers**
+: Store headers as-is, except for headers that the HTTP specification doesn't allow caching. Important: If a response stream has already been consumed and decoded into memory before reaching the cache layer, you must remove the `Content-Encoding` header since the content is no longer encoded.
+
+**Requests**
+: Converting request models is simpler than responses. Hishel doesn't recreate requests from cache or store request body streams—only headers, method, and URL are needed. The converted request may be modified by Hishel before being sent to the server, but exact preservation of the request body isn't critical.
 
 ## Implementation Example
 
-The method that translates synchronous httpx Request/Response models to Hishel's internal models could look like this:
+Here's how to translate synchronous httpx Request/Response models to Hishel's internal models:
 
 ```python
 import httpx
@@ -82,44 +89,78 @@ def httpx_to_internal(
 ```
 
 !!! warning "Critical: Stream Must Be Available"
-    If stream was consumed and was not read into memory, there is no way to access the data so hishel will raise an error.
+    If a stream was consumed without being read into memory, there's no way to access the data. Hishel will raise an error in this case to prevent silent data loss.
 
 ## Common Pitfalls and Solutions
 
 ### Stream Consumption
 
-Always ensure consumed streams are stored in memory before conversion. If the response stream was consumed **without** being read into memory, there's no way to access the data. Hishel will raise an error in this case.
+Always ensure consumed streams are stored in memory before conversion. Check your library's documentation for methods like `is_stream_consumed` or `content` that indicate whether data is still available.
+
+**Best Practice**: Read the stream into memory before creating the Hishel Response:
+```python
+# Good: Stream is preserved
+if response.is_stream_consumed:
+    stream = make_iterator([response.content])
+else:
+    stream = response.iter_raw()
+
+# Bad: Stream was consumed elsewhere without storing
+# This will fail when Hishel tries to cache
+```
 
 ### Header Filtering
 
 !!! tip "Which Headers to Remove"
-    Remove these headers when caching:
+    Remove these headers when caching responses:
     
-    - `Content-Encoding` - When you've decoded the content
-    - `Transfer-Encoding` - Hop-by-hop header
-    - `Connection` - Hop-by-hop header
-    - `Keep-Alive` - Hop-by-hop header
-    - `Proxy-Authenticate` - Proxy-specific
-    - `Proxy-Authorization` - Proxy-specific
-    - `TE` - Hop-by-hop header
-    - `Trailers` - Hop-by-hop header
-    - `Upgrade` - Hop-by-hop header
+    **Hop-by-hop headers** (never cached):
+    
+    - `Connection`
+    - `Keep-Alive`
+    - `Proxy-Authenticate`
+    - `Proxy-Authorization`
+    - `TE`
+    - `Trailers`
+    - `Transfer-Encoding`
+    - `Upgrade`
+    
+    **Encoding headers** (remove only if content is decoded):
+    
+    - `Content-Encoding` - Remove when you've decoded the content
 
 ## Testing Your Integration
 
-When implementing a custom integration, ensure you test:
+When implementing a custom integration, test these scenarios:
 
-1. **Basic caching** - Request → Response → Cache → Retrieve
+1. **Basic caching flow** - Request → Response → Cache → Retrieve
 2. **Compressed responses** - gzip, deflate, brotli
-3. **Chunked transfer encoding**
-4. **Consumed vs. unconsumed streams**
-5. **Various status codes** - 200, 304, 404, 500, etc.
-6. **Different content types** - JSON, HTML, binary data
-7. **Request metadata** - Custom Hishel extensions
+3. **Chunked transfer encoding** - Verify proper handling
+4. **Stream states** - Both consumed and unconsumed streams
+5. **HTTP status codes** - 200, 304, 404, 500, etc.
+6. **Content types** - JSON, HTML, binary data, large files
+7. **Request metadata** - Custom Hishel extensions and TTL settings
 
-## Example Integration Template
+### Example Test Case
 
-Here's a template to get started with a new library:
+```python
+def test_basic_caching():
+    # Create a request
+    request = mylib.Request("GET", "https://example.com")
+    
+    # Convert to internal model
+    internal_request = mylib_to_internal(request)
+    
+    # Verify conversion
+    assert internal_request.method == "GET"
+    assert internal_request.url == "https://example.com"
+    assert "Transfer-Encoding" not in internal_request.headers
+```
+
+## Integration Template
+
+Here's a template to get started with integrating a new library:
+
 ```python
 from typing import Union, overload
 from hishel.models import Request, Response, Headers, RequestMetadata
@@ -136,29 +177,67 @@ def mylib_to_internal(
     """Convert MyLib models to Hishel internal models."""
     
     if isinstance(value, MyLibRequest):
-        # TODO: Extract method, url, headers from your library's request
-        # TODO: Handle request stream/body if needed
-        # TODO: Extract any Hishel metadata from extensions/extras
-        pass
+        # Extract method, URL, and headers
+        method = value.method
+        url = str(value.url)
+        headers = Headers({k: v for k, v in value.headers.items()})
+        
+        # Create request stream if body exists
+        stream = value.stream if hasattr(value, 'stream') else iter([])
+        
+        # Extract Hishel metadata from extensions/extras if available
+        metadata = {}
+        if hasattr(value, 'extensions'):
+            metadata = {
+                'hishel_ttl': value.extensions.get('hishel_ttl'),
+                # Add other metadata as needed
+            }
+        
+        return Request(
+            method=method,
+            url=url,
+            headers=headers,
+            stream=stream,
+            metadata=metadata,
+        )
     
     elif isinstance(value, MyLibResponse):
-        # TODO: Extract status code and headers
-        # TODO: Remove hop-by-hop and encoding headers if needed
-        # TODO: Handle stream consumption state
-        # TODO: Create appropriate stream iterator
-        pass
+        # Extract status code
+        status_code = value.status_code
+        
+        # Filter headers (remove hop-by-hop and encoding headers if needed)
+        headers = Headers({k: v for k, v in value.headers.items()})
+        # Remove Transfer-Encoding
+        headers = filter_headers(headers, ["Transfer-Encoding"])
+        
+        # Handle stream consumption state
+        if value.is_consumed:
+            # Stream was consumed, use stored content
+            stream = make_iterator([value.content])
+            # Remove Content-Encoding if content was decoded
+            headers = filter_headers(headers, ["Content-Encoding"])
+        else:
+            # Stream still available
+            stream = value.iter_content(chunk_size=131072)
+        
+        return Response(
+            status_code=status_code,
+            headers=headers,
+            stream=stream,
+            metadata={},
+        )
 ```
 
 ## Need Help?
 
 If you're building an integration and encounter issues:
 
-1. Check existing integrations in the Hishel codebase for reference
-2. Open an issue on GitHub with your use case
-3. Consider contributing your integration back to Hishel!
+1. **Check existing integrations** - Look at httpx, requests, and aiohttp implementations in the Hishel codebase
+2. **Open an issue** - Post your use case on [GitHub Issues](https://github.com/karpetrosyan/hishel/issues)
+3. **Contribute back** - Consider contributing your integration to help others!
 
 ## Related Documentation
 
 - [Storage Backends](../storage/) - Understanding where responses are cached
-- [Cache Policies](../policies/) - How Hishel decides what to cache
+- [Cache Policies](../policies/) - How Hishel decides what to cache  
 - [API Reference](../api/) - Detailed model specifications
