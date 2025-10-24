@@ -11,11 +11,11 @@ from inline_snapshot import snapshot
 from time_machine import travel
 
 from hishel import AsyncSqliteStorage, CacheOptions
-from hishel.asgi import ASGICacheMiddleware
+from hishel.asgi import ASGICacheMiddleware, _ASGIScope
 
 
 # Mock ASGI application that returns a simple response
-async def simple_asgi_app(scope: dict, receive: Any, send: Any) -> None:
+async def simple_asgi_app(scope: _ASGIScope, receive: Any, send: Any) -> None:
     """Simple ASGI app that returns a 200 OK response with cache headers."""
     if scope["type"] != "http":
         return
@@ -41,7 +41,7 @@ async def simple_asgi_app(scope: dict, receive: Any, send: Any) -> None:
 
 
 # Mock ASGI application that returns no-cache response
-async def no_cache_asgi_app(scope: dict, receive: Any, send: Any) -> None:
+async def no_cache_asgi_app(scope: _ASGIScope, receive: Any, send: Any) -> None:
     """ASGI app that returns a response without cache headers."""
     if scope["type"] != "http":
         return
@@ -67,7 +67,7 @@ async def no_cache_asgi_app(scope: dict, receive: Any, send: Any) -> None:
 
 
 # Mock ASGI application that returns gzipped content
-async def gzipped_asgi_app(scope: dict, receive: Any, send: Any) -> None:
+async def gzipped_asgi_app(scope: _ASGIScope, receive: Any, send: Any) -> None:
     """ASGI app that returns gzip-encoded content."""
     if scope["type"] != "http":
         return
@@ -95,7 +95,7 @@ async def gzipped_asgi_app(scope: dict, receive: Any, send: Any) -> None:
 
 
 # Mock ASGI application that streams response in chunks
-async def streaming_asgi_app(scope: dict, receive: Any, send: Any) -> None:
+async def streaming_asgi_app(scope: _ASGIScope, receive: Any, send: Any) -> None:
     """ASGI app that streams response in multiple chunks."""
     if scope["type"] != "http":
         return
@@ -132,7 +132,7 @@ async def streaming_asgi_app(scope: dict, receive: Any, send: Any) -> None:
 
 
 # Mock ASGI application that echoes the request method
-async def echo_method_asgi_app(scope: dict, receive: Any, send: Any) -> None:
+async def echo_method_asgi_app(scope: _ASGIScope, receive: Any, send: Any) -> None:
     """ASGI app that echoes the HTTP method in the response."""
     if scope["type"] != "http":
         return
@@ -166,7 +166,7 @@ def create_asgi_scope(
     path: str = "/",
     query_string: bytes = b"",
     headers: list[tuple[bytes, bytes]] | None = None,
-) -> dict:
+) -> _ASGIScope:
     """Create a basic ASGI HTTP scope dictionary."""
     return {
         "type": "http",
@@ -532,7 +532,7 @@ async def test_non_http_scope() -> None:
     # Track if the app was called
     app_called = False
 
-    async def websocket_app(scope: dict, receive: Any, send: Any) -> None:
+    async def websocket_app(scope: _ASGIScope, receive: Any, send: Any) -> None:
         nonlocal app_called
         app_called = True
 
@@ -544,7 +544,7 @@ async def test_non_http_scope() -> None:
         "path": "/ws",
     }
 
-    await middleware(scope, simple_receive, lambda msg: None)
+    await middleware(scope, simple_receive, lambda msg: None)  # type: ignore
 
     # App should have been called directly
     assert app_called
@@ -582,7 +582,7 @@ async def test_request_with_body() -> None:
     # Track if body was received
     received_body = []
 
-    async def body_echo_app(scope: dict, receive: Any, send: Any) -> None:
+    async def body_echo_app(scope: _ASGIScope, receive: Any, send: Any) -> None:
         """ASGI app that collects the request body."""
         if scope["type"] != "http":
             return

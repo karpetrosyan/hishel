@@ -11,7 +11,7 @@ from hishel._async_cache import AsyncCacheProxy
 logger = logging.getLogger(__name__)
 
 
-class ASGIScope(t.TypedDict, total=False):
+class _ASGIScope(t.TypedDict, total=False):
     """ASGI HTTP scope type."""
 
     type: str
@@ -29,13 +29,13 @@ class ASGIScope(t.TypedDict, total=False):
     extensions: dict[str, t.Any]
 
 
-Scope = ASGIScope
-Receive = t.Callable[[], t.Awaitable[dict[str, t.Any]]]
-Send = t.Callable[[dict[str, t.Any]], t.Awaitable[None]]
-ASGIApp = t.Callable[[Scope, Receive, Send], t.Awaitable[None]]
+_Scope = _ASGIScope
+_Receive = t.Callable[[], t.Awaitable[dict[str, t.Any]]]
+_Send = t.Callable[[dict[str, t.Any]], t.Awaitable[None]]
+_ASGIApp = t.Callable[[_Scope, _Receive, _Send], t.Awaitable[None]]
 
 
-async def empty_receive() -> dict[str, t.Any]:
+async def _empty_receive() -> dict[str, t.Any]:
     """Default receive callable that returns an empty message."""
     return {"type": "http.disconnect"}
 
@@ -77,7 +77,7 @@ class ASGICacheMiddleware:
 
     def __init__(
         self,
-        app: ASGIApp,
+        app: _ASGIApp,
         storage: AsyncBaseStorage | None = None,
         cache_options: CacheOptions | None = None,
         ignore_specification: bool = False,
@@ -93,7 +93,7 @@ class ASGICacheMiddleware:
             ignore_specification,
         )
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def __call__(self, scope: _Scope, receive: _Receive, send: _Send) -> None:
         """
         Handle an ASGI request.
 
@@ -250,7 +250,7 @@ class ASGICacheMiddleware:
             )
             raise
 
-    def _asgi_to_internal_request(self, scope: Scope, receive: Receive) -> Request:
+    def _asgi_to_internal_request(self, scope: _Scope, receive: _Receive) -> Request:
         """
         Convert an ASGI HTTP scope to an internal Request object.
 
@@ -317,7 +317,7 @@ class ASGICacheMiddleware:
             metadata={},
         )
 
-    async def _send_internal_response(self, response: Response, send: Send) -> None:
+    async def _send_internal_response(self, response: Response, send: _Send) -> None:
         """
         Send an internal Response to the ASGI send callable.
 

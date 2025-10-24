@@ -44,7 +44,7 @@ SOCKET_OPTION = t.Union[
 CHUNK_SIZE = 131072
 
 
-class IteratorStream(httpx.SyncByteStream, httpx.AsyncByteStream):
+class _IteratorStream(httpx.SyncByteStream, httpx.AsyncByteStream):
     def __init__(self, iterator: Iterator[bytes] | AsyncIterator[bytes]) -> None:
         self.iterator = iterator
 
@@ -59,14 +59,14 @@ class IteratorStream(httpx.SyncByteStream, httpx.AsyncByteStream):
 
 
 @overload
-def internal_to_httpx(
+def _internal_to_httpx(
     value: Request,
 ) -> httpx.Request: ...
 @overload
-def internal_to_httpx(
+def _internal_to_httpx(
     value: Response,
 ) -> httpx.Response: ...
-def internal_to_httpx(
+def _internal_to_httpx(
     value: Union[Request, Response],
 ) -> Union[httpx.Request, httpx.Response]:
     """
@@ -77,27 +77,27 @@ def internal_to_httpx(
             method=value.method,
             url=value.url,
             headers=value.headers,
-            stream=IteratorStream(value.stream),
+            stream=_IteratorStream(value.stream),
             extensions=value.metadata,
         )
     elif isinstance(value, Response):
         return httpx.Response(
             status_code=value.status_code,
             headers=value.headers,
-            stream=IteratorStream(value.stream),
+            stream=_IteratorStream(value.stream),
             extensions=value.metadata,
         )
 
 
 @overload
-def httpx_to_internal(
+def _httpx_to_internal(
     value: httpx.Request,
 ) -> Request: ...
 @overload
-def httpx_to_internal(
+def _httpx_to_internal(
     value: httpx.Response,
 ) -> Response: ...
-def httpx_to_internal(
+def _httpx_to_internal(
     value: Union[httpx.Request, httpx.Response],
 ) -> Union[Request, Response]:
     """
@@ -120,7 +120,7 @@ def httpx_to_internal(
 
         for key, val in extension_metadata.items():
             if key in value.extensions:
-                headers_metadata[key] = val
+                headers_metadata[key] = val  # type: ignore
 
         return Request(
             method=value.method,
@@ -143,14 +143,14 @@ def httpx_to_internal(
 
 
 @overload
-def ahttpx_to_internal(
+def _ahttpx_to_internal(
     value: httpx.Request,
 ) -> Request: ...
 @overload
-def ahttpx_to_internal(
+def _ahttpx_to_internal(
     value: httpx.Response,
 ) -> Response: ...
-def ahttpx_to_internal(
+def _ahttpx_to_internal(
     value: Union[httpx.Request, httpx.Response],
 ) -> Union[Request, Response]:
     """
@@ -173,7 +173,7 @@ def ahttpx_to_internal(
 
         for key, val in extension_metadata.items():
             if key in value.extensions:
-                headers_metadata[key] = val
+                headers_metadata[key] = val  # type: ignore
 
         return Request(
             method=value.method,
@@ -218,9 +218,9 @@ class SyncCacheTransport(httpx.BaseTransport):
         self,
         request: httpx.Request,
     ) -> httpx.Response:
-        internal_request = httpx_to_internal(request)
+        internal_request = _httpx_to_internal(request)
         internal_response = self._cache_proxy.handle_request(internal_request)
-        response = internal_to_httpx(internal_response)
+        response = _internal_to_httpx(internal_response)
         return response
 
     def close(self) -> None:
@@ -229,9 +229,9 @@ class SyncCacheTransport(httpx.BaseTransport):
         super().close()
 
     def sync_send_request(self, request: Request) -> Response:
-        httpx_request = internal_to_httpx(request)
+        httpx_request = _internal_to_httpx(request)
         httpx_response = self.next_transport.handle_request(httpx_request)
-        return httpx_to_internal(httpx_response)
+        return _httpx_to_internal(httpx_response)
 
 
 class SyncCacheClient(httpx.Client):
@@ -330,9 +330,9 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         self,
         request: httpx.Request,
     ) -> httpx.Response:
-        internal_request = ahttpx_to_internal(request)
+        internal_request = _ahttpx_to_internal(request)
         internal_response = await self._cache_proxy.handle_request(internal_request)
-        response = internal_to_httpx(internal_response)
+        response = _internal_to_httpx(internal_response)
         return response
 
     async def aclose(self) -> None:
@@ -341,9 +341,9 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         await super().aclose()
 
     async def async_send_request(self, request: Request) -> Response:
-        httpx_request = internal_to_httpx(request)
+        httpx_request = _internal_to_httpx(request)
         httpx_response = await self.next_transport.handle_async_request(httpx_request)
-        return ahttpx_to_internal(httpx_response)
+        return _ahttpx_to_internal(httpx_response)
 
 
 class AsyncCacheClient(httpx.AsyncClient):
