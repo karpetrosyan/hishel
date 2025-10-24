@@ -114,7 +114,6 @@ def main():
 
         print("This SUBS was not used")
         pprint(unused_subs)
-        exit(1)
 
 
 if __name__ == "__main__":
