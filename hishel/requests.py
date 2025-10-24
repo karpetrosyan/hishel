@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover
 CHUNK_SIZE = 131072
 
 
-class IteratorStream(RawIOBase):
+class _IteratorStream(RawIOBase):
     def __init__(self, iterator: Iterator[bytes]):
         self.iterator = iterator
         self.leftover = b""
@@ -61,18 +61,18 @@ class IteratorStream(RawIOBase):
 
 
 @overload
-def requests_to_internal(
+def _requests_to_internal(
     model: requests.models.PreparedRequest,
 ) -> Request: ...
 
 
 @overload
-def requests_to_internal(
+def _requests_to_internal(
     model: requests.models.Response,
 ) -> Response: ...
 
 
-def requests_to_internal(
+def _requests_to_internal(
     model: requests.models.PreparedRequest | requests.models.Response,
 ) -> Request | Response:
     if isinstance(model, requests.models.PreparedRequest):
@@ -108,17 +108,17 @@ def requests_to_internal(
 
 
 @overload
-def internal_to_requests(model: Request) -> requests.models.PreparedRequest: ...
+def _internal_to_requests(model: Request) -> requests.models.PreparedRequest: ...
 @overload
-def internal_to_requests(model: Response) -> requests.models.Response: ...
-def internal_to_requests(
+def _internal_to_requests(model: Response) -> requests.models.Response: ...
+def _internal_to_requests(
     model: Request | Response,
 ) -> requests.models.Response | requests.models.PreparedRequest:
     if isinstance(model, Response):
         response = requests.models.Response()
 
         assert isinstance(model.stream, Iterator)
-        stream = IteratorStream(model.stream)
+        stream = _IteratorStream(model.stream)
 
         urllib_response = HTTPResponse(
             body=stream,
@@ -168,7 +168,7 @@ class CacheAdapter(HTTPAdapter):
     ):
         super().__init__(pool_connections, pool_maxsize, max_retries, pool_block)
         self._cache_proxy = SyncCacheProxy(
-            send_request=self.send_request,
+            send_request=self._send_request,
             storage=storage,
             cache_options=cache_options,
             ignore_specification=ignore_specification,
@@ -184,9 +184,9 @@ class CacheAdapter(HTTPAdapter):
         cert: None | bytes | str | tuple[bytes | str, bytes | str] = None,
         proxies: Mapping[str, str] | None = None,
     ) -> requests.models.Response:
-        internal_request = requests_to_internal(request)
+        internal_request = _requests_to_internal(request)
         internal_response = self._cache_proxy.handle_request(internal_request)
-        response = internal_to_requests(internal_response)
+        response = _internal_to_requests(internal_response)
 
         # Set the original request on the response
         response.request = request
@@ -194,10 +194,10 @@ class CacheAdapter(HTTPAdapter):
 
         return response
 
-    def send_request(self, request: Request) -> Response:
-        requests_request = internal_to_requests(request)
+    def _send_request(self, request: Request) -> Response:
+        requests_request = _internal_to_requests(request)
         response = super().send(requests_request, stream=True)
-        return requests_to_internal(response)
+        return _requests_to_internal(response)
 
     def close(self) -> Any:
         self.storage.close()
