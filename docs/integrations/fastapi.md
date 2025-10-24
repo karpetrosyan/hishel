@@ -1,5 +1,5 @@
 ---
-icon: material/lightning-bolt
+icon: simple/fastapi
 ---
 
 # FastAPI Integration
