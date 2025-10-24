@@ -45,6 +45,7 @@ nav:
       - ASGI: integrations/asgi.md
       - FastAPI: integrations/fastapi.md
       - Blacksheep: integrations/blacksheep.md
+      - Custom Integrations: integrations/custom.md
   - Contributing: contributing.md
 extra_css:
   - docs/custom.css

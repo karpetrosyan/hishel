@@ -111,7 +111,9 @@ def requests_to_internal(
 def internal_to_requests(model: Request) -> requests.models.PreparedRequest: ...
 @overload
 def internal_to_requests(model: Response) -> requests.models.Response: ...
-def internal_to_requests(model: Request | Response) -> requests.models.Response | requests.models.PreparedRequest:
+def internal_to_requests(
+    model: Request | Response,
+) -> requests.models.Response | requests.models.PreparedRequest:
     if isinstance(model, Response):
         response = requests.models.Response()
 
@@ -120,7 +122,10 @@ def internal_to_requests(model: Request | Response) -> requests.models.Response 
 
         urllib_response = HTTPResponse(
             body=stream,
-            headers={**model.headers, **{snake_to_header(k): str(v) for k, v in model.metadata.items()}},
+            headers={
+                **model.headers,
+                **{snake_to_header(k): str(v) for k, v in model.metadata.items()},
+            },
             status=model.status_code,
             preload_content=False,
             decode_content=True,

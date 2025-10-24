@@ -607,7 +607,12 @@ class TestMakeConditionalRequest:
         """
         # Arrange
         request = create_request()
-        response = create_response(headers={"etag": '"abc123"', "last-modified": "Mon, 01 Jan 2024 00:00:00 GMT"})
+        response = create_response(
+            headers={
+                "etag": '"abc123"',
+                "last-modified": "Mon, 01 Jan 2024 00:00:00 GMT",
+            }
+        )
 
         # Act
         conditional = make_conditional_request(request, response)
@@ -621,7 +626,12 @@ class TestMakeConditionalRequest:
         Test: Original request headers are preserved.
         """
         # Arrange
-        request = create_request(headers={"accept": "application/json", "authorization": "Bearer token"})
+        request = create_request(
+            headers={
+                "accept": "application/json",
+                "authorization": "Bearer token",
+            }
+        )
         response = create_response(headers={"etag": '"abc123"'})
 
         # Act
@@ -682,7 +692,11 @@ class TestExcludeUnstorableHeaders:
         """
         # Arrange
         response = create_response(
-            headers={header: "value", "cache-control": "max-age=3600", "content-type": "application/json"}
+            headers={
+                header: "value",
+                "cache-control": "max-age=3600",
+                "content-type": "application/json",
+            }
         )
 
         # Act
@@ -787,7 +801,12 @@ class TestRefreshResponseHeaders:
         stored response, replacing field values that are already present"
         """
         # Arrange
-        stored = create_response(headers={"cache-control": "max-age=3600", "content-type": "application/json"})
+        stored = create_response(
+            headers={
+                "cache-control": "max-age=3600",
+                "content-type": "application/json",
+            }
+        )
         revalidation = create_response(status_code=304, headers={"cache-control": "max-age=7200"})
 
         # Act
@@ -806,7 +825,12 @@ class TestRefreshResponseHeaders:
         Content-Range) MUST NOT be updated"
         """
         # Arrange
-        stored = create_response(headers={"content-type": "application/json", "cache-control": "max-age=3600"})
+        stored = create_response(
+            headers={
+                "content-type": "application/json",
+                "cache-control": "max-age=3600",
+            }
+        )
         revalidation = create_response(
             status_code=304,
             headers={
@@ -827,7 +851,12 @@ class TestRefreshResponseHeaders:
         Test: Content-Encoding is NOT updated from 304 response.
         """
         # Arrange
-        stored = create_response(headers={"content-encoding": "gzip", "content-type": "application/json"})
+        stored = create_response(
+            headers={
+                "content-encoding": "gzip",
+                "content-type": "application/json",
+            }
+        )
         revalidation = create_response(
             status_code=304,
             headers={
@@ -848,7 +877,10 @@ class TestRefreshResponseHeaders:
         """
         # Arrange
         stored = create_response(
-            headers={"content-range": "bytes 0-1023/2048", "content-type": "application/octet-stream"}
+            headers={
+                "content-range": "bytes 0-1023/2048",
+                "content-type": "application/octet-stream",
+            }
         )
         revalidation = create_response(
             status_code=304,
@@ -870,10 +902,18 @@ class TestRefreshResponseHeaders:
         """
         # Arrange
         stored = create_response(
-            headers={"date": "Mon, 01 Jan 2024 00:00:00 GMT", "etag": '"old123"', "content-type": "application/json"}
+            headers={
+                "date": "Mon, 01 Jan 2024 00:00:00 GMT",
+                "etag": '"old123"',
+                "content-type": "application/json",
+            }
         )
         revalidation = create_response(
-            status_code=304, headers={"date": "Mon, 01 Jan 2024 12:00:00 GMT", "etag": '"new456"'}
+            status_code=304,
+            headers={
+                "date": "Mon, 01 Jan 2024 12:00:00 GMT",
+                "etag": '"new456"',
+            },
         )
 
         # Act

@@ -69,7 +69,10 @@ class AsyncCacheProxy:
         if pair.request.metadata.get("hishel_refresh_ttl_on_access"):
             await self.storage.update_pair(
                 pair.id,
-                lambda complete_pair: replace(complete_pair, meta=replace(complete_pair.meta, created_at=time.time())),
+                lambda complete_pair: replace(
+                    complete_pair,
+                    meta=replace(complete_pair.meta, created_at=time.time()),
+                ),
             )
 
     async def _handle_request_ignoring_spec(self, request: Request) -> Response:
@@ -108,7 +111,9 @@ class AsyncCacheProxy:
 
         logger.debug("Storing response in cache ignoring specification")
         complete_pair = await self.storage.add_response(
-            incomplete_pair.id, response, await self._get_key_for_request(request)
+            incomplete_pair.id,
+            response,
+            await self._get_key_for_request(request),
         )
         return complete_pair.response
 
@@ -150,7 +155,9 @@ class AsyncCacheProxy:
 
     async def _handle_store_and_use(self, state: StoreAndUse, request: Request) -> Response:
         complete_pair = await self.storage.add_response(
-            state.pair_id, state.response, await self._get_key_for_request(request)
+            state.pair_id,
+            state.response,
+            await self._get_key_for_request(request),
         )
         return complete_pair.response
 
@@ -163,7 +170,8 @@ class AsyncCacheProxy:
             await self.storage.update_pair(
                 pair.id,
                 lambda complete_pair: replace(
-                    complete_pair, response=replace(pair.response, headers=pair.response.headers)
+                    complete_pair,
+                    response=replace(pair.response, headers=pair.response.headers),
                 ),
             )
         return state.next()

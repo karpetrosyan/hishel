@@ -50,9 +50,33 @@ def partition(iterable: tp.Iterable[T], predicate: tp.Callable[[T], bool]) -> tp
     return matching, non_matching
 
 
-async def make_async_iterator(iterable: Iterable[bytes]) -> AsyncIterator[bytes]:
+async def make_async_iterator(
+    iterable: Iterable[bytes],
+) -> AsyncIterator[bytes]:
     for item in iterable:
         yield item
+
+
+def filter_mapping(mapping: tp.Mapping[str, T], keys_to_exclude: tp.Iterable[str]) -> tp.Dict[str, T]:
+    """
+        Filter out specified keys from a string-keyed mapping using case-insensitive comparison.
+
+        Args:
+            mapping: The input mapping with string keys to filter.
+            keys_to_exclude: An iterable of string keys to exclude (case-insensitive).
+
+        Returns:
+            A new dictionary with the specified keys excluded.
+
+        Example:
+    ```python
+            original = {'a': 1, 'B': 2, 'c': 3}
+            filtered = filter_mapping(original, ['b'])
+            # filtered will be {'a': 1, 'c': 3}
+    ```
+    """
+    exclude_set = {k.lower() for k in keys_to_exclude}
+    return {k: v for k, v in mapping.items() if k.lower() not in exclude_set}
 
 
 def make_sync_iterator(iterable: Iterable[bytes]) -> Iterator[bytes]:

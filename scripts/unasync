@@ -31,6 +31,7 @@ SUBS = [
     ("aprint_sqlite_state", "print_sqlite_state"),
     ("make_async_iterator", "make_sync_iterator"),
     ("ahttpx_to_internal", "httpx_to_internal"),
+    ("AsyncCacheTransport", "SyncCacheTransport"),
 ]
 COMPILED_SUBS = [(re.compile(regex), repl) for regex, repl in SUBS]
 

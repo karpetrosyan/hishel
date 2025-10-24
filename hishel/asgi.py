@@ -52,6 +52,9 @@ class ASGICacheMiddleware:
     into memory. This is particularly important for large file uploads
     or downloads.
 
+    This implementation is thread-safe by creating a new cache proxy for
+    each request with closures that capture the request context.
+
     Args:
         app: The ASGI application to wrap.
         storage: The storage backend to use for caching. Defaults to AsyncSqliteStorage.
@@ -80,17 +83,13 @@ class ASGICacheMiddleware:
         ignore_specification: bool = False,
     ) -> None:
         self.app = app
-        self._cache_proxy = AsyncCacheProxy(
-            send_request=self._send_request_to_app,
-            storage=storage,
-            cache_options=cache_options,
-            ignore_specification=ignore_specification,
-        )
-        self.storage = self._cache_proxy.storage
+        self.storage = storage
+        self._cache_options = cache_options
+        self._ignore_specification = ignore_specification
 
         logger.info(
             "Initialized ASGICacheMiddleware with storage=%s, ignore_specification=%s",
-            type(self.storage).__name__,
+            type(storage).__name__ if storage else "None",
             ignore_specification,
         )
 
@@ -116,20 +115,126 @@ class ASGICacheMiddleware:
 
         logger.debug("Incoming HTTP request: method=%s path=%s", method, full_path)
 
-        # Store original scope and receive for later use
-        self._current_scope = scope
-        self._current_receive = receive
-
         try:
+            # Create a closure that captures scope and receive for this specific request
+            # This makes the code thread-safe by avoiding shared instance state
+            async def send_request_to_app(request: Request) -> Response:
+                """
+                Send a request to the wrapped ASGI application and return the response.
+                This closure captures 'scope' and 'receive' from the outer function scope.
+                """
+                logger.debug("Sending request to wrapped application: url=%s", request.url)
+
+                # Create a buffered receive callable that replays the request body from the stream
+                body_iterator = request.aiter_stream()
+                body_exhausted = False
+                bytes_received = 0
+
+                async def inner_receive() -> dict[str, t.Any]:
+                    nonlocal body_exhausted, bytes_received
+                    if body_exhausted:
+                        return {"type": "http.disconnect"}
+
+                    try:
+                        chunk = await body_iterator.__anext__()
+                        bytes_received += len(chunk)
+                        logger.debug("Received request body chunk: size=%d bytes", len(chunk))
+                        return {
+                            "type": "http.request",
+                            "body": chunk,
+                            "more_body": True,
+                        }
+                    except StopAsyncIteration:
+                        body_exhausted = True
+                        logger.debug(
+                            "Request body fully consumed: total_bytes=%d",
+                            bytes_received,
+                        )
+                        return {
+                            "type": "http.request",
+                            "body": b"",
+                            "more_body": False,
+                        }
+
+                # Collect response from the app
+                response_started = False
+                status_code = 200
+                response_headers: list[tuple[bytes, bytes]] = []
+                response_body_chunks: list[bytes] = []
+                bytes_sent = 0
+
+                async def inner_send(message: dict[str, t.Any]) -> None:
+                    nonlocal response_started, status_code, response_headers, bytes_sent
+                    if message["type"] == "http.response.start":
+                        response_started = True
+                        status_code = message["status"]
+                        response_headers = message.get("headers", [])
+                        logger.debug("Application response started: status=%d", status_code)
+                    elif message["type"] == "http.response.body":
+                        body_chunk = message.get("body", b"")
+                        if body_chunk:
+                            response_body_chunks.append(body_chunk)
+                            bytes_sent += len(body_chunk)
+                            logger.debug(
+                                "Received response body chunk: size=%d bytes",
+                                len(body_chunk),
+                            )
+
+                try:
+                    # Call the wrapped application with captured scope
+                    await self.app(scope, inner_receive, inner_send)
+                    logger.info(
+                        "Application response complete: status=%d total_bytes=%d chunks=%d",
+                        status_code,
+                        bytes_sent,
+                        len(response_body_chunks),
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Error calling wrapped application: url=%s error=%s",
+                        request.url,
+                        str(e),
+                        exc_info=True,
+                    )
+                    raise
+
+                # Convert to internal Response
+                headers_dict = {key.decode("latin1"): value.decode("latin1") for key, value in response_headers}
+
+                async def response_stream() -> AsyncIterator[bytes]:
+                    for chunk in response_body_chunks:
+                        yield chunk
+
+                return Response(
+                    status_code=status_code,
+                    headers=Headers(headers_dict),
+                    stream=response_stream(),
+                    metadata={},
+                )
+
+            # Create a new cache proxy for this request with the closure
+            # This ensures complete isolation between concurrent requests
+            cache_proxy = AsyncCacheProxy(
+                send_request=send_request_to_app,
+                storage=self.storage,
+                cache_options=self._cache_options,
+                ignore_specification=self._ignore_specification,
+            )
+
             # Convert ASGI request to internal Request (using async iterator, not reading into memory)
             request = self._asgi_to_internal_request(scope, receive)
             logger.debug("Converted ASGI request to internal format: url=%s", request.url)
 
             # Handle request through cache proxy
             logger.debug("Handling request through cache proxy")
-            response = await self._cache_proxy.handle_request(request)
+            response = await cache_proxy.handle_request(request)
 
-            logger.info("Request processed: method=%s path=%s status=%d", method, full_path, response.status_code)
+            logger.info(
+                "Request processed: method=%s path=%s status=%d",
+                method,
+                full_path,
+                response.status_code,
+            )
 
             # Send the cached or fresh response
             await self._send_internal_response(response, send)
@@ -137,99 +242,13 @@ class ASGICacheMiddleware:
 
         except Exception as e:
             logger.error(
-                "Error processing request: method=%s path=%s error=%s", method, full_path, str(e), exc_info=True
+                "Error processing request: method=%s path=%s error=%s",
+                method,
+                full_path,
+                str(e),
+                exc_info=True,
             )
             raise
-
-    async def _send_request_to_app(self, request: Request) -> Response:
-        """
-        Send a request to the wrapped ASGI application and return the response.
-
-        This is the callback used by AsyncCacheProxy to get fresh responses.
-
-        Args:
-            request: The internal Request object.
-
-        Returns:
-            The internal Response object from the application.
-        """
-        logger.debug("Sending request to wrapped application: url=%s", request.url)
-
-        # Create a buffered receive callable that replays the request body from the stream
-        body_iterator = request.aiter_stream()
-        body_exhausted = False
-        bytes_received = 0
-
-        async def receive() -> dict[str, t.Any]:
-            nonlocal body_exhausted, bytes_received
-            if body_exhausted:
-                return {"type": "http.disconnect"}
-
-            try:
-                chunk = await body_iterator.__anext__()
-                bytes_received += len(chunk)
-                logger.debug("Received request body chunk: size=%d bytes", len(chunk))
-                return {
-                    "type": "http.request",
-                    "body": chunk,
-                    "more_body": True,
-                }
-            except StopAsyncIteration:
-                body_exhausted = True
-                logger.debug("Request body fully consumed: total_bytes=%d", bytes_received)
-                return {
-                    "type": "http.request",
-                    "body": b"",
-                    "more_body": False,
-                }
-
-        # Collect response from the app
-        response_started = False
-        status_code = 200
-        response_headers: list[tuple[bytes, bytes]] = []
-        response_body_chunks: list[bytes] = []
-        bytes_sent = 0
-
-        async def send(message: dict[str, t.Any]) -> None:
-            nonlocal response_started, status_code, response_headers, bytes_sent
-            if message["type"] == "http.response.start":
-                response_started = True
-                status_code = message["status"]
-                response_headers = message.get("headers", [])
-                logger.debug("Application response started: status=%d", status_code)
-            elif message["type"] == "http.response.body":
-                body_chunk = message.get("body", b"")
-                if body_chunk:
-                    response_body_chunks.append(body_chunk)
-                    bytes_sent += len(body_chunk)
-                    logger.debug("Received response body chunk: size=%d bytes", len(body_chunk))
-
-        try:
-            # Call the wrapped application
-            await self.app(self._current_scope, receive, send)
-            logger.info(
-                "Application response complete: status=%d total_bytes=%d chunks=%d",
-                status_code,
-                bytes_sent,
-                len(response_body_chunks),
-            )
-        except Exception as e:
-            logger.error("Error calling wrapped application: url=%s error=%s", request.url, str(e), exc_info=True)
-            raise
-
-        # Convert to internal Response
-        headers_dict = {key.decode("latin1"): value.decode("latin1") for key, value in response_headers}
-
-        async def response_stream() -> AsyncIterator[bytes]:
-            for chunk in response_body_chunks:
-                yield chunk
-
-        return Response(
-            status_code=status_code,
-            headers=Headers(headers_dict),
-            stream=response_stream(),
-            metadata={},
-        )
 
     def _asgi_to_internal_request(self, scope: Scope, receive: Receive) -> Request:
         """
@@ -268,7 +287,12 @@ class ASGICacheMiddleware:
         # Extract headers
         headers_dict = {key.decode("latin1"): value.decode("latin1") for key, value in scope.get("headers", [])}
 
-        logger.debug("Building internal request: method=%s url=%s headers_count=%d", method, url, len(headers_dict))
+        logger.debug(
+            "Building internal request: method=%s url=%s headers_count=%d",
+            method,
+            url,
+            len(headers_dict),
+        )
 
         # Create async iterator for request body that reads from ASGI receive
         async def request_stream() -> AsyncIterator[bytes]:
@@ -289,6 +313,7 @@ class ASGICacheMiddleware:
             url=url,
             headers=Headers(headers_dict),
             stream=request_stream(),
+            # Metadatas don't make sense in ASGI scope, so we leave it empty
             metadata={},
         )
 
@@ -301,7 +326,9 @@ class ASGICacheMiddleware:
             send: The ASGI send callable.
         """
         logger.debug(
-            "Sending response to client: status=%d headers_count=%d", response.status_code, len(response.headers)
+            "Sending response to client: status=%d headers_count=%d",
+            response.status_code,
+            len(response.headers),
         )
 
         # Convert headers to ASGI format
@@ -344,19 +371,28 @@ class ASGICacheMiddleware:
                 }
             )
             logger.info(
-                "Response fully sent: status=%d total_bytes=%d chunks=%d", response.status_code, bytes_sent, chunk_count
+                "Response fully sent: status=%d total_bytes=%d chunks=%d",
+                response.status_code,
+                bytes_sent,
+                chunk_count,
             )
 
         except Exception as e:
-            logger.error("Error sending response: status=%d error=%s", response.status_code, str(e), exc_info=True)
+            logger.error(
+                "Error sending response: status=%d error=%s",
+                response.status_code,
+                str(e),
+                exc_info=True,
+            )
             raise
 
     async def aclose(self) -> None:
         """Close the storage backend and release resources."""
         logger.info("Closing ASGICacheMiddleware and storage backend")
         try:
-            await self.storage.close()
-            logger.info("Storage backend closed successfully")
+            if self.storage:
+                await self.storage.close()
+                logger.info("Storage backend closed successfully")
         except Exception as e:
             logger.error("Error closing storage backend: %s", str(e), exc_info=True)
             raise

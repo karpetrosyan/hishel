@@ -338,7 +338,9 @@ class TestTransitionToCacheMiss:
         # Arrange
         request = create_request()
         response = create_response(
-            age_seconds=0, max_age_seconds=3600, headers={"cache-control": "no-cache, max-age=3600"}
+            age_seconds=0,
+            max_age_seconds=3600,
+            headers={"cache-control": "no-cache, max-age=3600"},
         )
         cached_pair = create_pair(request=request, response=response)
 
@@ -582,7 +584,10 @@ class TestTransitionToFromCache:
         response = create_response(
             age_seconds=1000,
             max_age_seconds=3600,
-            headers={"vary": "Accept, Accept-Encoding", "content-type": "application/json"},
+            headers={
+                "vary": "Accept, Accept-Encoding",
+                "content-type": "application/json",
+            },
         )
 
         cached_pair = create_pair(request=request, response=response)
@@ -656,7 +661,10 @@ class TestTransitionToNeedRevalidation:
         stale_response = create_response(
             age_seconds=7200,
             max_age_seconds=3600,
-            headers={"etag": '"abc123"', "last-modified": "Mon, 01 Jan 2024 00:00:00 GMT"},
+            headers={
+                "etag": '"abc123"',
+                "last-modified": "Mon, 01 Jan 2024 00:00:00 GMT",
+            },
         )
         cached_pair = create_pair(request=request, response=stale_response)
 
@@ -690,7 +698,9 @@ class TestTransitionToNeedRevalidation:
 
         # Stale response with must-revalidate
         stale_response = create_response(
-            age_seconds=7200, max_age_seconds=3600, headers={"cache-control": "max-age=3600, must-revalidate"}
+            age_seconds=7200,
+            max_age_seconds=3600,
+            headers={"cache-control": "max-age=3600, must-revalidate"},
         )
         cached_pair = create_pair(request=request, response=stale_response)
 
@@ -817,7 +827,10 @@ class TestEdgeCasesAndCompliance:
         assert next_state_cache.options == idle_client.options
 
         # Test NeedRevalidation
-        stale_pair = create_pair(request=request, response=create_response(age_seconds=7200, max_age_seconds=3600))
+        stale_pair = create_pair(
+            request=request,
+            response=create_response(age_seconds=7200, max_age_seconds=3600),
+        )
         next_state_revalidate = idle_client.next(request, [stale_pair])
         assert next_state_revalidate.options == idle_client.options
 
@@ -933,7 +946,10 @@ class TestIntegrationScenarios:
         on Accept headers (e.g., JSON vs XML).
         """
         # Arrange: Original request for JSON
-        json_request = create_request(url="https://api.example.com/data", headers={"accept": "application/json"})
+        json_request = create_request(
+            url="https://api.example.com/data",
+            headers={"accept": "application/json"},
+        )
         json_response = create_response(
             headers={
                 "vary": "Accept",
@@ -947,7 +963,10 @@ class TestIntegrationScenarios:
         assert isinstance(next_state_json, FromCache)
 
         # Act 2: Request for XML (should miss cache)
-        xml_request = create_request(url="https://api.example.com/data", headers={"accept": "application/xml"})
+        xml_request = create_request(
+            url="https://api.example.com/data",
+            headers={"accept": "application/xml"},
+        )
         next_state_xml = idle_client.next(xml_request, [cached_json])
         assert isinstance(next_state_xml, CacheMiss)
 
@@ -1011,14 +1030,22 @@ class TestIntegrationScenarios:
         """
         # Arrange
         original_request = create_request(
-            headers={"accept": "application/json", "accept-encoding": "gzip", "accept-language": "en-US"}
+            headers={
+                "accept": "application/json",
+                "accept-encoding": "gzip",
+                "accept-language": "en-US",
+            }
         )
         response = create_response(headers={"vary": "Accept, Accept-Encoding, Accept-Language"})
         cached_pair = create_pair(request=original_request, response=response)
 
         # Act 1: Request with all matching headers (should hit)
         matching_request = create_request(
-            headers={"accept": "application/json", "accept-encoding": "gzip", "accept-language": "en-US"}
+            headers={
+                "accept": "application/json",
+                "accept-encoding": "gzip",
+                "accept-language": "en-US",
+            }
         )
         next_state_match = idle_client.next(matching_request, [cached_pair])
         assert isinstance(next_state_match, FromCache)

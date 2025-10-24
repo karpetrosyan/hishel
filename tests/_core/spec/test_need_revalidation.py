@@ -111,7 +111,11 @@ class TestNotModifiedResponses:
 
         # Cached response with matching ETag
         cached_response = create_response(
-            headers={"etag": '"abc123"', "cache-control": "max-age=3600", "date": "Mon, 01 Jan 2024 00:00:00 GMT"}
+            headers={
+                "etag": '"abc123"',
+                "cache-control": "max-age=3600",
+                "date": "Mon, 01 Jan 2024 00:00:00 GMT",
+            }
         )
         cached_pair = create_pair(request=original_request, response=cached_response)
 
@@ -156,7 +160,10 @@ class TestNotModifiedResponses:
 
         # Cached response with Last-Modified
         cached_response = create_response(
-            headers={"last-modified": "Mon, 01 Jan 2024 00:00:00 GMT", "cache-control": "max-age=3600"}
+            headers={
+                "last-modified": "Mon, 01 Jan 2024 00:00:00 GMT",
+                "cache-control": "max-age=3600",
+            }
         )
         cached_pair = create_pair(request=original_request, response=cached_response)
 
@@ -200,7 +207,10 @@ class TestNotModifiedResponses:
 
         # Cached response with Last-Modified
         cached_response = create_response(
-            headers={"last-modified": "Mon, 01 Jan 2024 00:00:00 GMT", "cache-control": "max-age=3600"}
+            headers={
+                "last-modified": "Mon, 01 Jan 2024 00:00:00 GMT",
+                "cache-control": "max-age=3600",
+            }
         )
         cached_pair = create_pair(request=original_request, response=cached_response)
 
@@ -213,7 +223,11 @@ class TestNotModifiedResponses:
 
         # 304 response with same Last-Modified
         revalidation_response = create_response(
-            status_code=304, headers={"last-modified": "Mon, 01 Jan 2024 00:00:00 GMT", "cache-control": "max-age=7200"}
+            status_code=304,
+            headers={
+                "last-modified": "Mon, 01 Jan 2024 00:00:00 GMT",
+                "cache-control": "max-age=7200",
+            },
         )
 
         # Act
@@ -273,10 +287,12 @@ class TestNotModifiedResponses:
 
         # Multiple cached responses without validators
         cached_pair_1 = create_pair(
-            request=original_request, response=create_response(headers={"cache-control": "max-age=3600"})
+            request=original_request,
+            response=create_response(headers={"cache-control": "max-age=3600"}),
         )
         cached_pair_2 = create_pair(
-            request=original_request, response=create_response(headers={"cache-control": "max-age=1800"})
+            request=original_request,
+            response=create_response(headers={"cache-control": "max-age=1800"}),
         )
 
         need_revalidation = NeedRevalidation(
@@ -322,7 +338,8 @@ class TestNotModifiedResponses:
 
         # 304 response with different ETag
         revalidation_response = create_response(
-            status_code=304, headers={"etag": '"new456"', "cache-control": "max-age=7200"}
+            status_code=304,
+            headers={"etag": '"new456"', "cache-control": "max-age=7200"},
         )
 
         # Act
@@ -353,7 +370,12 @@ class TestNotModifiedResponses:
         )
         cached_pair_2 = create_pair(
             request=original_request,
-            response=create_response(headers={"etag": '"nomatch456"', "cache-control": "max-age=3600"}),
+            response=create_response(
+                headers={
+                    "etag": '"nomatch456"',
+                    "cache-control": "max-age=3600",
+                }
+            ),
         )
 
         need_revalidation = NeedRevalidation(
@@ -365,7 +387,8 @@ class TestNotModifiedResponses:
 
         # 304 response matches first cached response's ETag
         revalidation_response = create_response(
-            status_code=304, headers={"etag": '"match123"', "cache-control": "max-age=7200"}
+            status_code=304,
+            headers={"etag": '"match123"', "cache-control": "max-age=7200"},
         )
 
         # Act
@@ -425,7 +448,8 @@ class TestSuccessResponses:
 
         # New response with different content
         new_response = create_response(
-            status_code=status_code, headers={"etag": '"new123"', "cache-control": "max-age=7200"}
+            status_code=status_code,
+            headers={"etag": '"new123"', "cache-control": "max-age=7200"},
         )
 
         # Act
@@ -704,7 +728,10 @@ class TestEdgeCases:
         """
         # Arrange
         original_request = create_request(url="https://example.com/test")
-        conditional_request = create_request(url="https://example.com/test", headers={"if-none-match": '"abc123"'})
+        conditional_request = create_request(
+            url="https://example.com/test",
+            headers={"if-none-match": '"abc123"'},
+        )
         cached_pair = create_pair()
 
         need_revalidation = NeedRevalidation(

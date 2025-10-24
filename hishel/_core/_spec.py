@@ -1816,7 +1816,10 @@ class CacheMiss(State):
                     )
 
             return CouldNotBeStored(
-                response=response, pair_id=pair_id, options=self.options, after_revalidation=self.after_revalidation
+                response=response,
+                pair_id=pair_id,
+                options=self.options,
+                after_revalidation=self.after_revalidation,
             )
 
         # --------------------------------------------------------------------
@@ -2016,7 +2019,10 @@ class NeedRevalidation(State):
                     request=self.original_request,
                     options=self.options,
                     after_revalidation=True,  # Mark that this occurred during revalidation
-                ).next(revalidation_response, pair_id=self.revalidating_pairs[-1].id),
+                ).next(
+                    revalidation_response,
+                    pair_id=self.revalidating_pairs[-1].id,
+                ),
             )
 
         # ============================================================================
@@ -2052,7 +2058,10 @@ class NeedRevalidation(State):
                     request=self.original_request,
                     options=self.options,
                     after_revalidation=True,
-                ).next(revalidation_response, pair_id=self.revalidating_pairs[-1].id),
+                ).next(
+                    revalidation_response,
+                    pair_id=self.revalidating_pairs[-1].id,
+                ),
             )
         elif revalidation_response.status_code // 100 == 3:
             # 3xx Redirects should have been followed by the HTTP client
@@ -2221,12 +2230,18 @@ class NeedRevalidation(State):
         else:
             if len(self.revalidating_pairs) == 1:
                 # Only one cached response - it must be the matching one
-                identified_for_revalidation, need_to_be_invalidated = [self.revalidating_pairs[0]], []
+                identified_for_revalidation, need_to_be_invalidated = (
+                    [self.revalidating_pairs[0]],
+                    [],
+                )
             else:
                 # Multiple cached responses but no validators to match them
                 # We cannot determine which (if any) are valid
                 # Conservative approach: invalidate all of them
-                identified_for_revalidation, need_to_be_invalidated = [], self.revalidating_pairs
+                identified_for_revalidation, need_to_be_invalidated = (
+                    [],
+                    self.revalidating_pairs,
+                )
 
         # ============================================================================
         # STEP 2: Update Matching Responses or Create Cache Miss
@@ -2324,7 +2339,11 @@ class StoreAndUse(State):
     """
 
     def __init__(
-        self, pair_id: uuid.UUID, response: Response, options: CacheOptions, after_revalidation: bool = False
+        self,
+        pair_id: uuid.UUID,
+        response: Response,
+        options: CacheOptions,
+        after_revalidation: bool = False,
     ) -> None:
         super().__init__(options)
         self.pair_id = pair_id
@@ -2372,7 +2391,11 @@ class CouldNotBeStored(State):
     """
 
     def __init__(
-        self, response: Response, pair_id: uuid.UUID, options: CacheOptions, after_revalidation: bool = False
+        self,
+        response: Response,
+        pair_id: uuid.UUID,
+        options: CacheOptions,
+        after_revalidation: bool = False,
     ) -> None:
         super().__init__(options)
         self.response = response
@@ -2405,7 +2428,12 @@ class InvalidatePairs(State):
 
 
 class FromCache(State):
-    def __init__(self, pair: CompletePair, options: CacheOptions, after_revalidation: bool = False) -> None:
+    def __init__(
+        self,
+        pair: CompletePair,
+        options: CacheOptions,
+        after_revalidation: bool = False,
+    ) -> None:
         super().__init__(options)
         self.pair = pair
         self.after_revalidation = after_revalidation

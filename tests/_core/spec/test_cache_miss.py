@@ -216,7 +216,10 @@ class TestTransitionToStoreAndUse:
 
     @pytest.mark.parametrize("status_code", HEURISTICALLY_CACHEABLE_STATUS_CODES)
     def test_heuristically_cacheable_status_codes_are_stored(
-        self, default_options: CacheOptions, pair_id: uuid.UUID, status_code: int
+        self,
+        default_options: CacheOptions,
+        pair_id: uuid.UUID,
+        status_code: int,
     ) -> None:
         """
         Test: Responses with heuristically cacheable status codes are stored.
@@ -333,7 +336,10 @@ class TestTransitionToCouldNotBeStored:
 
     @pytest.mark.parametrize("status_code", [100, 101, 102, 103])
     def test_informational_status_codes_cannot_be_stored(
-        self, default_options: CacheOptions, pair_id: uuid.UUID, status_code: int
+        self,
+        default_options: CacheOptions,
+        pair_id: uuid.UUID,
+        status_code: int,
     ) -> None:
         """
         Test: 1xx informational responses cannot be stored.
@@ -359,7 +365,10 @@ class TestTransitionToCouldNotBeStored:
 
     @pytest.mark.parametrize("status_code", [206, 304])
     def test_special_status_codes_cannot_be_stored(
-        self, default_options: CacheOptions, pair_id: uuid.UUID, status_code: int
+        self,
+        default_options: CacheOptions,
+        pair_id: uuid.UUID,
+        status_code: int,
     ) -> None:
         """
         Test: 206 and 304 status codes cannot be stored (simplified implementation).

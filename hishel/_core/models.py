@@ -64,7 +64,9 @@ class RequestMetadata(TypedDict, total=False):
     """
 
 
-def extract_metadata_from_headers(headers: Mapping[str, str]) -> RequestMetadata:
+def extract_metadata_from_headers(
+    headers: Mapping[str, str],
+) -> RequestMetadata:
     metadata: RequestMetadata = {}
     if "X-Hishel-Ttl" in headers:
         try:
@@ -176,4 +178,10 @@ class CompletePair(Pair):
         response: Response,
         request: Request,
     ) -> "CompletePair":  # pragma: nocover
-        return cls(id=uuid.uuid4(), request=request, response=response, meta=PairMeta(), cache_key=b"")
+        return cls(
+            id=uuid.uuid4(),
+            request=request,
+            response=response,
+            meta=PairMeta(),
+            cache_key=b"",
+        )

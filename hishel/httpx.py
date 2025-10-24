@@ -2,7 +2,15 @@ from __future__ import annotations
 
 import ssl
 import typing as t
-from typing import AsyncIterable, AsyncIterator, Iterable, Iterator, Union, overload
+from typing import (
+    AsyncIterable,
+    AsyncIterator,
+    Iterable,
+    Iterator,
+    Union,
+    cast,
+    overload,
+)
 
 from hishel import Headers, Request, Response
 from hishel._async_cache import AsyncCacheProxy
@@ -10,7 +18,12 @@ from hishel._core._base._storages._base import AsyncBaseStorage, SyncBaseStorage
 from hishel._core._spec import (
     CacheOptions,
 )
+from hishel._core.models import RequestMetadata, extract_metadata_from_headers
 from hishel._sync_cache import SyncCacheProxy
+from hishel._utils import (
+    filter_mapping,
+    make_sync_iterator,
+)
 
 try:
     import httpx
@@ -90,25 +103,41 @@ def httpx_to_internal(
     """
     Convert httpx.Request/httpx.Response to internal Request/Response.
     """
+    headers = Headers(
+        filter_mapping(
+            Headers({key: value for key, value in value.headers.items()}),
+            ["Transfer-Encoding"],
+        )
+    )
     if isinstance(value, httpx.Request):
+        extension_metadata = RequestMetadata(
+            hishel_refresh_ttl_on_access=value.extensions.get("hishel_refresh_ttl_on_access"),
+            hishel_ttl=value.extensions.get("hishel_ttl"),
+            hishel_spec_ignore=value.extensions.get("hishel_spec_ignore"),
+            hishel_body_key=value.extensions.get("hishel_body_key"),
+        )
+        headers_metadata = extract_metadata_from_headers(value.headers)
+
+        for key, val in extension_metadata.items():
+            if key in value.extensions:
+                headers_metadata[key] = val
+
         return Request(
             method=value.method,
             url=str(value.url),
-            headers=Headers({key: value for key, value in value.headers.items()}),
-            stream=value.stream,  # type: ignore
-            metadata={
-                "hishel_refresh_ttl_on_access": value.extensions.get("hishel_refresh_ttl_on_access"),
-                "hishel_ttl": value.extensions.get("hishel_ttl"),
-                "hishel_spec_ignore": value.extensions.get("hishel_spec_ignore"),
-            },
+            headers=headers,
+            stream=cast(Iterator[bytes], value.stream),
+            metadata=headers_metadata,
         )
     elif isinstance(value, httpx.Response):
-        if value.is_stream_consumed:
-            raise ValueError("Cannot get the raw data of a consumed httpx.Response.")
+        stream = (
+            make_sync_iterator([value.content]) if value.is_stream_consumed else value.iter_raw(chunk_size=CHUNK_SIZE)
+        )
+
         return Response(
             status_code=value.status_code,
-            headers=Headers({key: value for key, value in value.headers.items()}),
-            stream=value.iter_raw(chunk_size=CHUNK_SIZE),
+            headers=headers,
+            stream=stream,
             metadata={},
         )
 
@@ -127,25 +156,43 @@ def ahttpx_to_internal(
     """
     Convert httpx.Request/httpx.Response to internal Request/Response.
     """
+    headers = Headers(
+        filter_mapping(
+            Headers({key: value for key, value in value.headers.items()}),
+            ["Transfer-Encoding"],
+        )
+    )
     if isinstance(value, httpx.Request):
+        extension_metadata = RequestMetadata(
+            hishel_refresh_ttl_on_access=value.extensions.get("hishel_refresh_ttl_on_access"),
+            hishel_ttl=value.extensions.get("hishel_ttl"),
+            hishel_spec_ignore=value.extensions.get("hishel_spec_ignore"),
+            hishel_body_key=value.extensions.get("hishel_body_key"),
+        )
+        headers_metadata = extract_metadata_from_headers(value.headers)
+
+        for key, val in extension_metadata.items():
+            if key in value.extensions:
+                headers_metadata[key] = val
+
         return Request(
             method=value.method,
             url=str(value.url),
-            headers=Headers({key: value for key, value in value.headers.items()}),
-            stream=value.stream,  # type: ignore
-            metadata={
-                "hishel_refresh_ttl_on_access": value.extensions.get("hishel_refresh_ttl_on_access"),
-                "hishel_ttl": value.extensions.get("hishel_ttl"),
-                "hishel_spec_ignore": value.extensions.get("hishel_spec_ignore"),
-            },
+            headers=headers,
+            stream=cast(Iterator[bytes], value.stream),
+            metadata=headers_metadata,
         )
     elif isinstance(value, httpx.Response):
-        if value.is_stream_consumed:
-            raise ValueError("Cannot get the raw data of a consumed httpx.Response.")
+        if value.is_stream_consumed and "content-encoding" in value.headers:
+            raise RuntimeError("Can't get the raw stream of a response with `Content-Encoding` header.")
+        stream = (
+            make_sync_iterator([value.content]) if value.is_stream_consumed else value.aiter_raw(chunk_size=CHUNK_SIZE)
+        )
+
         return Response(
             status_code=value.status_code,
-            headers=Headers({key: value for key, value in value.headers.items()}),
-            stream=value.aiter_raw(chunk_size=CHUNK_SIZE),  # type: ignore
+            headers=headers,
+            stream=stream,
             metadata={},
         )
 

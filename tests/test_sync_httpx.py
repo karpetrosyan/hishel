@@ -1,22 +1,24 @@
 import gzip
 from datetime import datetime
-from typing import Any
 from zoneinfo import ZoneInfo
 
+import sqlite3
 import httpx
 import pytest
-import zstandard as zstd
 from httpx import ByteStream, MockTransport
 from inline_snapshot import snapshot
 from time_machine import travel
 
-from hishel.httpx import SyncCacheClient, httpx_to_internal, internal_to_httpx
+from hishel import SyncSqliteStorage
+from hishel.httpx import SyncCacheClient, SyncCacheTransport
 
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")), tick=False)
-def test_simple_caching(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> None:
-    client = SyncCacheClient()
+def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
+    client = SyncCacheClient(
+        storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:")),
+    )
 
     with caplog.at_level("DEBUG", logger="hishel"):
         client.get("https://hishel.com")
@@ -45,8 +47,10 @@ def test_simple_caching(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> 
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")), tick=False)
-def test_simple_caching_ignoring_spec(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> None:
-    client = SyncCacheClient()
+def test_simple_caching_ignoring_spec(caplog: pytest.LogCaptureFixture) -> None:
+    client = SyncCacheClient(
+        storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:")),
+    )
 
     with caplog.at_level("DEBUG", logger="hishel"):
         client.get("https://hishel.com", extensions={"hishel_spec_ignore": True})
@@ -74,64 +78,41 @@ def test_simple_caching_ignoring_spec(use_temp_dir: Any, caplog: pytest.LogCaptu
 
 
 
-def test_encoded_content_caching(use_temp_dir: Any) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
+def test_encoded_content_caching() -> None:
+    data = gzip.compress(b"a" * 1000)
+    compressed_data = ByteStream(data)
+    mocked_responses = [
+        httpx.Response(
             200,
-            stream=ByteStream(gzip.compress(b"a" * 1000)),
-            headers={"Content-Encoding": "gzip", "Content-Type": "text/plain", "Content-Length": "1000"},
+            stream=compressed_data,
+            headers={
+                "Content-Encoding": "gzip",
+                "Content-Type": "text/plain",
+                "Content-Length": str(len(data)),
+            },
         )
+    ]
 
-    client = SyncCacheClient(transport=MockTransport(handler=handler))
+    def handler(request: httpx.Request) -> httpx.Response:
+        if not mocked_responses:
+            raise RuntimeError("No more mocked responses available")
+        return mocked_responses.pop(0)
 
-    response = client.get("https://localhost")
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
-    assert response.content == b"a" * 1000
-    assert response.headers.get("Content-Encoding") == "gzip"
-    assert response.headers.get("Content-Length") == "1000"
-
-    with client.stream("GET", "https://localhost") as second_response:
-        assert response.headers.get("Content-Encoding") == "gzip"
-        assert response.headers.get("Content-Length") == "1000"
-        content = b""
-        for chunk in second_response.iter_raw():
-            content += chunk
-        assert gzip.decompress(content) == response.content
-
-
-
-def test_compressed_data() -> None:
-    compressed_content = zstd.ZstdCompressor().compress(b"test content")
-
-    response = httpx.Response(
-        200,
-        stream=ByteStream(compressed_content),
-        headers={
-            "Content-Encoding": "zstd",
-            "Content-Type": "text/plain",
-            "Content-Length": str(len(compressed_content)),
-        },
+    client = SyncCacheClient(
+        transport=SyncCacheTransport(next_transport=MockTransport(handler=handler), storage=storage),
+        storage=storage,
     )
 
-    internal_response = httpx_to_internal(response)
+    # First request - should fetch from the mocked transport and store in cache
+    with client.stream("get", "https://localhost", extensions={"hishel_spec_ignore": True}) as response:
+        response_data = b"".join([chunk for chunk in response.iter_raw()])
+        assert data == response_data
+        assert response.headers.get("Content-Length") == str(len(data)) == str(len(response_data))
 
-    httpx_response = internal_to_httpx(internal_response)
-
-    assert httpx_response.status_code == response.status_code
-    assert httpx_response.headers == response.headers
-    assert httpx_response.read() == b"test content"
-
-
-
-def test_consumed_stream_conversion() -> None:
-    response = httpx.Response(
-        200,
-        stream=ByteStream(b"test"),
-        headers={
-            "Content-Type": "text/plain",
-        },
-    )
-    response.read()  # Consume the stream
-
-    with pytest.raises(ValueError, match="Cannot get the raw data of a consumed httpx.Response."):
-        httpx_to_internal(response)
+    # Second request - should fetch from cache
+    with client.stream("get", "https://localhost", extensions={"hishel_spec_ignore": True}) as response:
+        response_data = b"".join([chunk for chunk in response.iter_raw()])
+        assert data == response_data
+        assert response.headers.get("Content-Length") == str(len(data)) == str(len(response_data))

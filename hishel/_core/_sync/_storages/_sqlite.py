@@ -9,12 +9,14 @@ from typing import (
     Iterator,
     Callable,
     List,
-    Literal,
     Optional,
     Union,
 )
 
-from hishel._core._base._storages._base import SyncBaseStorage, ensure_cache_dict
+from hishel._core._base._storages._base import (
+    SyncBaseStorage,
+    ensure_cache_dict,
+)
 from hishel._core._base._storages._packing import pack, unpack
 from hishel._core.models import (
     CompletePair,
@@ -38,7 +40,6 @@ try:
     import sqlite3
 
     class SyncSqliteStorage(SyncBaseStorage):
-        _STREAM_KIND = {"request": 0, "response": 1}
         _COMPLETE_CHUNK_NUMBER = -1
 
         def __init__(
@@ -85,14 +86,13 @@ try:
                 )
             """)
 
-            # Table for storing stream chunks
+            # Table for storing response stream chunks only
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS streams (
                     entry_id BLOB NOT NULL,
-                    kind INTEGER NOT NULL,
                     chunk_number INTEGER NOT NULL,
                     chunk_data BLOB NOT NULL,
-                    PRIMARY KEY (entry_id, kind, chunk_number),
+                    PRIMARY KEY (entry_id, chunk_number),
                     FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
                 )
             """)
@@ -100,8 +100,6 @@ try:
             # Indexes for performance
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_deleted_at ON entries(deleted_at)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_cache_key ON entries(cache_key)")
-            # Note: PRIMARY KEY (entry_id, kind, chunk_number) already provides an index
-            # for queries like: entry_id = ? AND kind = ? AND chunk_number = ?
 
             self.connection.commit()
 
@@ -127,17 +125,8 @@ try:
             )
             connection.commit()
 
-            assert isinstance(request.stream, Iterable), "Request stream must be an Iterable, not Iterable"
-
-            request = Request(
-                method=request.method,
-                url=request.url,
-                headers=request.headers,
-                metadata=request.metadata,
-                stream=self._save_stream(request.stream, pair_id.bytes, "request"),
-            )
-
-            return replace(pair, request=request)
+            # Request stream is not saved to storage, pass through as-is
+            return pair
 
         def add_response(
             self,
@@ -161,11 +150,20 @@ try:
             pair = unpack(result[0], kind="pair")
 
             assert isinstance(response.stream, (Iterator, Iterable))
-            response = replace(response, stream=self._save_stream(response.stream, pair_id.bytes, "response"))
+            response = replace(
+                response,
+                stream=self._save_stream(response.stream, pair_id.bytes),
+            )
 
-            self._delete_stream(pair.id.bytes, cursor, type="response")
+            # Delete any existing response stream before saving new one
+            self._delete_stream(pair.id.bytes, cursor)
+
             complete_pair = CompletePair(
-                id=pair.id, request=pair.request, response=response, meta=pair.meta, cache_key=key
+                id=pair.id,
+                request=pair.request,
+                response=response,
+                meta=pair.meta,
+                cache_key=key,
             )
 
             # Update the entry with the complete pair and set cache_key
@@ -191,7 +189,10 @@ try:
             connection = self._ensure_connection()
             cursor = connection.cursor()
             # Query entries directly by cache_key
-            cursor.execute("SELECT id, data FROM entries WHERE cache_key = ?", (key.encode("utf-8"),))
+            cursor.execute(
+                "SELECT id, data FROM entries WHERE cache_key = ?",
+                (key.encode("utf-8"),),
+            )
 
             for row in cursor.fetchall():
                 pair_data = unpack(row[1], kind="pair")
@@ -203,17 +204,14 @@ try:
 
             pairs_with_streams: List[CompletePair] = []
 
+            # Only restore response streams from cache
             for pair in final_pairs:
                 pairs_with_streams.append(
                     replace(
                         pair,
                         response=replace(
                             pair.response,
-                            stream=self._stream_data_from_cache(pair.id.bytes, "response"),
-                        ),
-                        request=replace(
-                            pair.request,
-                            stream=self._stream_data_from_cache(pair.id.bytes, "request"),
+                            stream=self._stream_data_from_cache(pair.id.bytes),
                         ),
                     )
                 )
@@ -246,7 +244,8 @@ try:
                 raise ValueError("Pair ID mismatch")
 
             cursor.execute(
-                "UPDATE entries SET data = ? WHERE id = ?", (pack(complete_pair, kind="pair"), id.bytes)
+                "UPDATE entries SET data = ? WHERE id = ?",
+                (pack(complete_pair, kind="pair"), id.bytes),
             )
 
             if pair.cache_key != complete_pair.cache_key:
@@ -272,25 +271,30 @@ try:
             self._soft_delete_pair(pair, cursor)
             connection.commit()
 
-        def _is_stream_complete(
-            self, kind: Literal["request", "response"], pair_id: uuid.UUID, cursor: sqlite3.Cursor
-        ) -> bool:
-            kind_id = self._STREAM_KIND[kind]
-            # Check if there's a completion marker (chunk_number = -1)
+        def _is_stream_complete(self, pair_id: uuid.UUID, cursor: sqlite3.Cursor) -> bool:
+            # Check if there's a completion marker (chunk_number = -1) for response stream
             cursor.execute(
-                "SELECT 1 FROM streams WHERE entry_id = ? AND kind = ? AND chunk_number = ? LIMIT 1",
-                (pair_id.bytes, kind_id, self._COMPLETE_CHUNK_NUMBER),
+                "SELECT 1 FROM streams WHERE entry_id = ? AND chunk_number = ? LIMIT 1",
+                (pair_id.bytes, self._COMPLETE_CHUNK_NUMBER),
             )
             return cursor.fetchone() is not None
 
-        def _soft_delete_pair(self, pair: Union[CompletePair, IncompletePair], cursor: sqlite3.Cursor) -> None:
+        def _soft_delete_pair(
+            self,
+            pair: Union[CompletePair, IncompletePair],
+            cursor: sqlite3.Cursor,
+        ) -> None:
             """
             Mark the pair as deleted by setting the deleted_at timestamp.
             """
             marked_pair = self.mark_pair_as_deleted(pair)
             cursor.execute(
                 "UPDATE entries SET data = ?, deleted_at = ? WHERE id = ?",
-                (pack(marked_pair, kind="pair"), marked_pair.meta.deleted_at, pair.id.bytes),
+                (
+                    pack(marked_pair, kind="pair"),
+                    marked_pair.meta.deleted_at,
+                    pair.id.bytes,
+                ),
             )
 
         def _is_pair_expired(self, pair: Pair, cursor: sqlite3.Cursor) -> bool:
@@ -319,7 +323,10 @@ try:
             chunk_size = BATCH_CLEANUP_CHUNK_SIZE
             offset = 0
             while True:
-                cursor.execute("SELECT id, data FROM entries LIMIT ? OFFSET ?", (chunk_size, offset))
+                cursor.execute(
+                    "SELECT id, data FROM entries LIMIT ? OFFSET ?",
+                    (chunk_size, offset),
+                )
                 rows = cursor.fetchall()
                 if not rows:
                     break
@@ -355,7 +362,8 @@ try:
             if pair.meta.created_at + 3600 < time.time() and isinstance(pair, IncompletePair):
                 return True
 
-            if isinstance(pair, CompletePair) and not self._is_stream_complete("request", pair.id, cursor):
+            # Check if response stream is complete for CompletePair
+            if isinstance(pair, CompletePair) and not self._is_stream_complete(pair.id, cursor):
                 return True
             return False
 
@@ -365,46 +373,36 @@ try:
             """
             cursor.execute("DELETE FROM entries WHERE id = ?", (pair.id.bytes,))
 
-            # Delete all streams (both request and response) for this entry
+            # Delete response stream for this entry
             self._delete_stream(pair.id.bytes, cursor)
 
         def _delete_stream(
             self,
             entry_id: bytes,
             cursor: sqlite3.Cursor,
-            type: Literal["request", "response", "all"] = "all",
         ) -> None:
             """
-            Delete all streams (both request and response) associated with the given entry ID.
+            Delete response stream associated with the given entry ID.
             """
-            if type == "request":
-                cursor.execute(
-                    "DELETE FROM streams WHERE entry_id = ? AND kind = ?", (entry_id, self._STREAM_KIND["request"])
-                )
-            elif type == "response":
-                cursor.execute(
-                    "DELETE FROM streams WHERE entry_id = ? AND kind = ?", (entry_id, self._STREAM_KIND["response"])
-                )
-            elif type == "all":
-                cursor.execute("DELETE FROM streams WHERE entry_id = ?", (entry_id,))
+            cursor.execute("DELETE FROM streams WHERE entry_id = ?", (entry_id,))
 
         def _save_stream(
             self,
             stream: Iterator[bytes],
             entry_id: bytes,
-            kind: Literal["response", "request"],
         ) -> Iterator[bytes]:
             """
-            Wrapper around an async iterator that also saves the data to the cache in chunks.
+            Wrapper around an async iterator that also saves the response data to the cache in chunks.
             """
-            kind_id = self._STREAM_KIND[kind]
             chunk_number = 0
+            content_length = 0
             for chunk in stream:
+                content_length += len(chunk)
                 connection = self._ensure_connection()
                 cursor = connection.cursor()
                 cursor.execute(
-                    "INSERT INTO streams (entry_id, kind, chunk_number, chunk_data) VALUES (?, ?, ?, ?)",
-                    (entry_id, kind_id, chunk_number, chunk),
+                    "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
+                    (entry_id, chunk_number, chunk),
                 )
                 connection.commit()
                 chunk_number += 1
@@ -414,28 +412,26 @@ try:
             connection = self._ensure_connection()
             cursor = connection.cursor()
             cursor.execute(
-                "INSERT INTO streams (entry_id, kind, chunk_number, chunk_data) VALUES (?, ?, ?, ?)",
-                (entry_id, kind_id, self._COMPLETE_CHUNK_NUMBER, b""),
+                "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
+                (entry_id, self._COMPLETE_CHUNK_NUMBER, b""),
             )
             connection.commit()
 
         def _stream_data_from_cache(
             self,
             entry_id: bytes,
-            kind: Literal["response", "request"],
         ) -> Iterator[bytes]:
             """
-            Get an async iterator that yields the stream data from the cache.
+            Get an async iterator that yields the response stream data from the cache.
             """
-            kind_id = self._STREAM_KIND[kind]
             chunk_number = 0
 
             connection = self._ensure_connection()
             while True:
                 cursor = connection.cursor()
                 cursor.execute(
-                    "SELECT chunk_data FROM streams WHERE entry_id = ? AND kind = ? AND chunk_number = ?",
-                    (entry_id, kind_id, chunk_number),
+                    "SELECT chunk_data FROM streams WHERE entry_id = ? AND chunk_number = ?",
+                    (entry_id, chunk_number),
                 )
                 result = cursor.fetchone()
 

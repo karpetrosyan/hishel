@@ -92,25 +92,9 @@ Rows: 1
 
 TABLE: streams
 --------------------------------------------------------------------------------
-Rows: 3
+Rows: 0
 
-  Row 1:
-    entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
-    kind            = 0
-    chunk_number    = 0
-    chunk_data      = (str) 'chunk1'
-
-  Row 2:
-    entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
-    kind            = 0
-    chunk_number    = 1
-    chunk_data      = (str) 'chunk2'
-
-  Row 3:
-    entry_id        = (bytes) 0x00000000000000000000000000000001 (16 bytes)
-    kind            = 0
-    chunk_number    = -1
-    chunk_data      = (str) ''
+  (empty)
 
 ================================================================================\
 """)
@@ -166,23 +150,15 @@ Rows: 1
 
 TABLE: streams
 --------------------------------------------------------------------------------
-Rows: 3
+Rows: 2
 
   Row 1:
     entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
-    kind            = 0
-    chunk_number    = -1
-    chunk_data      = (str) ''
-
-  Row 2:
-    entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
-    kind            = 1
     chunk_number    = 0
     chunk_data      = (str) 'response data'
 
-  Row 3:
+  Row 2:
     entry_id        = (bytes) 0x00000000000000000000000000000002 (16 bytes)
-    kind            = 1
     chunk_number    = -1
     chunk_data      = (str) ''
 
@@ -252,7 +228,10 @@ async def test_get_pairs_filters_incomplete(use_temp_dir: Any) -> None:
     # Update cache_key manually without adding response
     conn = await storage._ensure_connection()
     cursor = await conn.cursor()
-    await cursor.execute("UPDATE entries SET cache_key = ? WHERE id = ?", (b"test_key", incomplete_id.bytes))
+    await cursor.execute(
+        "UPDATE entries SET cache_key = ? WHERE id = ?",
+        (b"test_key", incomplete_id.bytes),
+    )
     await conn.commit()
 
     # Should only return the complete pair
@@ -381,15 +360,10 @@ async def test_stream_persistence(use_temp_dir: Any) -> None:
     pairs = await storage.get_pairs("stream_test")
     assert len(pairs) == 1
 
-    retrieved_request_chunks = []
-    async for chunk in pairs[0].request.aiter_stream():
-        retrieved_request_chunks.append(chunk)
-
     retrieved_response_chunks = []
     async for chunk in pairs[0].response.aiter_stream():
         retrieved_response_chunks.append(chunk)
 
-    assert retrieved_request_chunks == request_chunks
     assert retrieved_response_chunks == response_chunks
 
 
@@ -408,7 +382,10 @@ async def test_multiple_pairs_different_keys(use_temp_dir: Any) -> None:
         )
         await storage.add_response(
             pair_id=pair_id,
-            response=Response(status_code=200, stream=make_async_iterator([f"data{i}".encode()])),
+            response=Response(
+                status_code=200,
+                stream=make_async_iterator([f"data{i}".encode()]),
+            ),
             key=f"key_{i}",
         )
 

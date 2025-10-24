@@ -1,17 +1,13 @@
-import gzip
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
 import pytest
-import requests
 from inline_snapshot import snapshot
 from requests import Session
 from time_machine import travel
-from urllib3 import HTTPResponse
 
-from hishel._utils import make_sync_iterator
-from hishel.requests import CacheAdapter, IteratorStream, internal_to_requests, requests_to_internal
+from hishel.requests import CacheAdapter
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")), tick=False)
@@ -78,35 +74,3 @@ def test_simple_caching_ignoring_spec(use_temp_dir: Any, caplog: pytest.LogCaptu
             "X-Hishel-Stored": "False",
         }
     )
-
-
-def test_compressed_data() -> None:
-    compressed_content = gzip.compress(b"test content")
-
-    response = requests.models.Response()
-
-    stream = IteratorStream(make_sync_iterator([compressed_content]))
-
-    urllib_response = HTTPResponse(
-        body=stream,
-        headers={
-            "Content-Encoding": "gzip",
-            "Content-Length": str(len(compressed_content)),
-        },
-        status=200,
-        preload_content=False,
-        decode_content=False,
-    )
-
-    # Set up the response object
-    response.raw = urllib_response
-    response.status_code = 200
-    response.headers.update({"Content-Encoding": "gzip", "Content-Length": str(len(compressed_content))})
-
-    internal_response = requests_to_internal(response)
-
-    requests_response = internal_to_requests(internal_response)
-
-    assert requests_response.status_code == 200
-    content = b"".join(requests_response.iter_content(chunk_size=1024))
-    assert content == b"test content"

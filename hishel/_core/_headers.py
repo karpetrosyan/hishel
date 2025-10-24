@@ -1,7 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterator, List, Literal, Mapping, MutableMapping, Optional, Union, cast
+from typing import (
+    Any,
+    Iterator,
+    List,
+    Literal,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Union,
+    cast,
+)
 
 """
 HTTP token and quoted-string parsing utilities.
