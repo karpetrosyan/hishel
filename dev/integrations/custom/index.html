@@ -543,6 +543,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Converting Request/Response Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-conversion-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core Conversion Principles
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -594,12 +609,27 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Testing Your Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-test-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Test Case
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
-  <a href="#example-integration-template" class="md-nav__link">
+  <a href="#integration-template" class="md-nav__link">
     <span class="md-ellipsis">
-      Example Integration Template
+      Integration Template
     </span>
   </a>
   
@@ -696,6 +726,21 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Converting Request/Response Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-conversion-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core Conversion Principles
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -747,12 +792,27 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Testing Your Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-test-case" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Test Case
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
-  <a href="#example-integration-template" class="md-nav__link">
+  <a href="#integration-template" class="md-nav__link">
     <span class="md-ellipsis">
-      Example Integration Template
+      Integration Template
     </span>
   </a>
   
@@ -796,18 +856,20 @@
 
 
 <h1 id="custom-integrations">Custom Integrations</h1>
-<p>Hishel was made to be very flexible and easy to integrate with any HTTP client or server.</p>
+<p>Hishel is designed to be flexible and easy to integrate with any HTTP client or server. This guide will help you build custom integrations for libraries that aren't yet supported out of the box.</p>
 <h2 id="converting-requestresponse-models">Converting Request/Response Models</h2>
-<p>One of the core part to integrate Hishel with any library is to convert its request/response models to Hishel's internal <code>Request</code> and <code>Response</code> models.</p>
-<p>In the codebase, you find find methods like <code>httpx_to_internal</code>, <code>requests_to_internal</code>, etc. that convert popular libraries' models to Hishel's internal models.</p>
-<p>There are some core principles to follow when converting models:</p>
-<ul>
-<li><strong>Response Content</strong>: Note that the content of request should be the actual data of the content, possible compressed, but decoded if was sent with transfer-encoding like chunked. Note that this body should be re-usedable, so if we store the compressed data, we should also store content-encoding header to be able to decode it later.</li>
-<li><strong>Headers</strong>: Headers are stored as-is, expect for headers that specification doesn't allow to be stored. Note that there is a case when before response reaches to the cache layer, it's stream already consumed and stored into a memory, in such cases, note that you can't create hishel Response model without removing content-encoding header, because the content is already decoded.</li>
-<li><strong>Request</strong>: Converting request models is relatively simpler then responses, we don't re-create the request from the cache and we don't even store it's stream, we only store the headers, method and url. The converted request might be modified by the hishel and be requested to be sent to the server, which is the responsibility of the integration layer, so there is not a critical requirement to store the request body exactly as it was sent.</li>
-</ul>
+<p>The core of any Hishel integration is converting your library's request/response models to Hishel's internal <code>Request</code> and <code>Response</code> models. This translation layer allows Hishel to cache responses regardless of which HTTP library you're using.</p>
+<p>In the Hishel codebase, you'll find conversion methods like <code>httpx_to_internal</code>, <code>requests_to_internal</code>, etc. that handle popular libraries. You can use these as reference implementations when building your own integration.</p>
+<h3 id="core-conversion-principles">Core Conversion Principles</h3>
+<p>Follow these guidelines when converting models:</p>
+<p><strong>Response Content</strong>
+: The response content should be the actual data, possibly compressed, but decoded if it was sent with transfer encoding (like chunked). This content must be reusable—if you store compressed data, also preserve the <code>Content-Encoding</code> header so it can be decoded later.</p>
+<p><strong>Headers</strong>
+: Store headers as-is, except for headers that the HTTP specification doesn't allow caching. Important: If a response stream has already been consumed and decoded into memory before reaching the cache layer, you must remove the <code>Content-Encoding</code> header since the content is no longer encoded.</p>
+<p><strong>Requests</strong>
+: Converting request models is simpler than responses. Hishel doesn't recreate requests from cache or store request body streams—only headers, method, and URL are needed. The converted request may be modified by Hishel before being sent to the server, but exact preservation of the request body isn't critical.</p>
 <h2 id="implementation-example">Implementation Example</h2>
-<p>The method that translates synchronous httpx Request/Response models to Hishel's internal models could look like this:</p>
+<p>Here's how to translate synchronous httpx Request/Response models to Hishel's internal models:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span><span class="p">,</span> <span class="n">overload</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">hishel.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Response</span><span class="p">,</span> <span class="n">RequestMetadata</span><span class="p">,</span> <span class="n">Headers</span>
@@ -867,40 +929,67 @@
 </code></pre></div>
 <div class="admonition warning">
 <p class="admonition-title">Critical: Stream Must Be Available</p>
-<p>If stream was consumed and was not read into memory, there is no way to access the data so hishel will raise an error.</p>
+<p>If a stream was consumed without being read into memory, there's no way to access the data. Hishel will raise an error in this case to prevent silent data loss.</p>
 </div>
 <h2 id="common-pitfalls-and-solutions">Common Pitfalls and Solutions</h2>
 <h3 id="stream-consumption">Stream Consumption</h3>
-<p>Always ensure consumed streams are stored in memory before conversion. If the response stream was consumed <strong>without</strong> being read into memory, there's no way to access the data. Hishel will raise an error in this case.</p>
+<p>Always ensure consumed streams are stored in memory before conversion. Check your library's documentation for methods like <code>is_stream_consumed</code> or <code>content</code> that indicate whether data is still available.</p>
+<p><strong>Best Practice</strong>: Read the stream into memory before creating the Hishel Response:
+<div class="highlight"><pre><span></span><code><span class="c1"># Good: Stream is preserved</span>
+<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">is_stream_consumed</span><span class="p">:</span>
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">make_iterator</span><span class="p">([</span><span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">])</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">stream</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">iter_raw</span><span class="p">()</span>
+
+<span class="c1"># Bad: Stream was consumed elsewhere without storing</span>
+<span class="c1"># This will fail when Hishel tries to cache</span>
+</code></pre></div></p>
 <h3 id="header-filtering">Header Filtering</h3>
 <div class="admonition tip">
 <p class="admonition-title">Which Headers to Remove</p>
-<p>Remove these headers when caching:</p>
+<p>Remove these headers when caching responses:</p>
+<p><strong>Hop-by-hop headers</strong> (never cached):</p>
 <ul>
-<li><code>Content-Encoding</code> - When you've decoded the content</li>
-<li><code>Transfer-Encoding</code> - Hop-by-hop header</li>
-<li><code>Connection</code> - Hop-by-hop header</li>
-<li><code>Keep-Alive</code> - Hop-by-hop header</li>
-<li><code>Proxy-Authenticate</code> - Proxy-specific</li>
-<li><code>Proxy-Authorization</code> - Proxy-specific</li>
-<li><code>TE</code> - Hop-by-hop header</li>
-<li><code>Trailers</code> - Hop-by-hop header</li>
-<li><code>Upgrade</code> - Hop-by-hop header</li>
+<li><code>Connection</code></li>
+<li><code>Keep-Alive</code></li>
+<li><code>Proxy-Authenticate</code></li>
+<li><code>Proxy-Authorization</code></li>
+<li><code>TE</code></li>
+<li><code>Trailers</code></li>
+<li><code>Transfer-Encoding</code></li>
+<li><code>Upgrade</code></li>
+</ul>
+<p><strong>Encoding headers</strong> (remove only if content is decoded):</p>
+<ul>
+<li><code>Content-Encoding</code> - Remove when you've decoded the content</li>
 </ul>
 </div>
 <h2 id="testing-your-integration">Testing Your Integration</h2>
-<p>When implementing a custom integration, ensure you test:</p>
+<p>When implementing a custom integration, test these scenarios:</p>
 <ol>
-<li><strong>Basic caching</strong> - Request → Response → Cache → Retrieve</li>
+<li><strong>Basic caching flow</strong> - Request → Response → Cache → Retrieve</li>
 <li><strong>Compressed responses</strong> - gzip, deflate, brotli</li>
-<li><strong>Chunked transfer encoding</strong></li>
-<li><strong>Consumed vs. unconsumed streams</strong></li>
-<li><strong>Various status codes</strong> - 200, 304, 404, 500, etc.</li>
-<li><strong>Different content types</strong> - JSON, HTML, binary data</li>
-<li><strong>Request metadata</strong> - Custom Hishel extensions</li>
+<li><strong>Chunked transfer encoding</strong> - Verify proper handling</li>
+<li><strong>Stream states</strong> - Both consumed and unconsumed streams</li>
+<li><strong>HTTP status codes</strong> - 200, 304, 404, 500, etc.</li>
+<li><strong>Content types</strong> - JSON, HTML, binary data, large files</li>
+<li><strong>Request metadata</strong> - Custom Hishel extensions and TTL settings</li>
 </ol>
-<h2 id="example-integration-template">Example Integration Template</h2>
-<p>Here's a template to get started with a new library:
+<h3 id="example-test-case">Example Test Case</h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">test_basic_caching</span><span class="p">():</span>
+    <span class="c1"># Create a request</span>
+    <span class="n">request</span> <span class="o">=</span> <span class="n">mylib</span><span class="o">.</span><span class="n">Request</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;https://example.com&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Convert to internal model</span>
+    <span class="n">internal_request</span> <span class="o">=</span> <span class="n">mylib_to_internal</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+    <span class="c1"># Verify conversion</span>
+    <span class="k">assert</span> <span class="n">internal_request</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;GET&quot;</span>
+    <span class="k">assert</span> <span class="n">internal_request</span><span class="o">.</span><span class="n">url</span> <span class="o">==</span> <span class="s2">&quot;https://example.com&quot;</span>
+    <span class="k">assert</span> <span class="s2">&quot;Transfer-Encoding&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">internal_request</span><span class="o">.</span><span class="n">headers</span>
+</code></pre></div>
+<h2 id="integration-template">Integration Template</h2>
+<p>Here's a template to get started with integrating a new library:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">overload</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">hishel.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Response</span><span class="p">,</span> <span class="n">Headers</span><span class="p">,</span> <span class="n">RequestMetadata</span>
 
@@ -916,29 +1005,67 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert MyLib models to Hishel internal models.&quot;&quot;&quot;</span>
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">MyLibRequest</span><span class="p">):</span>
-        <span class="c1"># TODO: Extract method, url, headers from your library&#39;s request</span>
-        <span class="c1"># TODO: Handle request stream/body if needed</span>
-        <span class="c1"># TODO: Extract any Hishel metadata from extensions/extras</span>
-        <span class="k">pass</span>
+        <span class="c1"># Extract method, URL, and headers</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">method</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="n">Headers</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
+
+        <span class="c1"># Create request stream if body exists</span>
+        <span class="n">stream</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">stream</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s1">&#39;stream&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="nb">iter</span><span class="p">([])</span>
+
+        <span class="c1"># Extract Hishel metadata from extensions/extras if available</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s1">&#39;extensions&#39;</span><span class="p">):</span>
+            <span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;hishel_ttl&#39;</span><span class="p">:</span> <span class="n">value</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hishel_ttl&#39;</span><span class="p">),</span>
+                <span class="c1"># Add other metadata as needed</span>
+            <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">Request</span><span class="p">(</span>
+            <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+            <span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+            <span class="n">stream</span><span class="o">=</span><span class="n">stream</span><span class="p">,</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
+        <span class="p">)</span>
 
     <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">MyLibResponse</span><span class="p">):</span>
-        <span class="c1"># TODO: Extract status code and headers</span>
-        <span class="c1"># TODO: Remove hop-by-hop and encoding headers if needed</span>
-        <span class="c1"># TODO: Handle stream consumption state</span>
-        <span class="c1"># TODO: Create appropriate stream iterator</span>
-        <span class="k">pass</span>
-</code></pre></div></p>
+        <span class="c1"># Extract status code</span>
+        <span class="n">status_code</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">status_code</span>
+
+        <span class="c1"># Filter headers (remove hop-by-hop and encoding headers if needed)</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="n">Headers</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
+        <span class="c1"># Remove Transfer-Encoding</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="n">filter_headers</span><span class="p">(</span><span class="n">headers</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Transfer-Encoding&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Handle stream consumption state</span>
+        <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">is_consumed</span><span class="p">:</span>
+            <span class="c1"># Stream was consumed, use stored content</span>
+            <span class="n">stream</span> <span class="o">=</span> <span class="n">make_iterator</span><span class="p">([</span><span class="n">value</span><span class="o">.</span><span class="n">content</span><span class="p">])</span>
+            <span class="c1"># Remove Content-Encoding if content was decoded</span>
+            <span class="n">headers</span> <span class="o">=</span> <span class="n">filter_headers</span><span class="p">(</span><span class="n">headers</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Content-Encoding&quot;</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Stream still available</span>
+            <span class="n">stream</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">iter_content</span><span class="p">(</span><span class="n">chunk_size</span><span class="o">=</span><span class="mi">131072</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span>
+            <span class="n">status_code</span><span class="o">=</span><span class="n">status_code</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+            <span class="n">stream</span><span class="o">=</span><span class="n">stream</span><span class="p">,</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="p">{},</span>
+        <span class="p">)</span>
+</code></pre></div>
 <h2 id="need-help">Need Help?</h2>
 <p>If you're building an integration and encounter issues:</p>
 <ol>
-<li>Check existing integrations in the Hishel codebase for reference</li>
-<li>Open an issue on GitHub with your use case</li>
-<li>Consider contributing your integration back to Hishel!</li>
+<li><strong>Check existing integrations</strong> - Look at httpx, requests, and aiohttp implementations in the Hishel codebase</li>
+<li><strong>Open an issue</strong> - Post your use case on <a href="https://github.com/karpetrosyan/hishel/issues">GitHub Issues</a></li>
+<li><strong>Contribute back</strong> - Consider contributing your integration to help others!</li>
 </ol>
 <h2 id="related-documentation">Related Documentation</h2>
 <ul>
 <li><a href="../storage/">Storage Backends</a> - Understanding where responses are cached</li>
-<li><a href="../policies/">Cache Policies</a> - How Hishel decides what to cache</li>
+<li><a href="../policies/">Cache Policies</a> - How Hishel decides what to cache  </li>
 <li><a href="../api/">API Reference</a> - Detailed model specifications</li>
 </ul>
 
