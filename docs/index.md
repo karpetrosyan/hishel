@@ -38,7 +38,7 @@ icon: material/rocket
 ## ✨ Features
 
 - 🎯 **RFC 9111 Compliant** - Fully compliant with the latest HTTP caching specification
-- 🔌 **Easy Integration** - Drop-in support for HTTPX, Requests, ASGI, and FastAPI
+- 🔌 **Easy Integration** - Drop-in support for HTTPX, Requests, ASGI, FastAPI, and BlackSheep
 - 💾 **Flexible Storage** - SQLite backend with more coming soon
 - ⚡ **High Performance** - Efficient caching with minimal overhead
 - 🔄 **Async & Sync** - Full support for both synchronous and asynchronous workflows
@@ -46,7 +46,7 @@ icon: material/rocket
 - 🧪 **Well Tested** - Extensive test coverage and battle-tested
 - 🎛️ **Configurable** - Fine-grained control over caching behavior
 - � **Memory Efficient** - Streaming support prevents loading large payloads into memory
-- 🌐 **Universal** - Works with any ASGI application (Starlette, Django, etc.)
+- 🌐 **Universal** - Works with any ASGI application (Starlette, Litestar, BlackSheep, etc.)
 
 ## 📦 Installation
 
