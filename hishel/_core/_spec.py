@@ -1957,7 +1957,7 @@ class NeedRevalidation(State):
         >>> need_revalidation = NeedRevalidation(
         ...     request=conditional_request,
         ...     original_request=original_request,
-        ...     revalidating_entries=[cached_pair],
+        ...     revalidating_entries=[cached_entry],
         ...     options=default_options
         ... )
         >>> response_304 = Response(status_code=304, headers=Headers({"etag": '"abc123"'}))
@@ -2011,7 +2011,7 @@ class NeedRevalidation(State):
             # The last entry's ID will be reused for the new response
             return InvalidateEntries(
                 options=self.options,
-                entry_ids=[pair.id for pair in self.revalidating_entries[:-1]],
+                entry_ids=[entry.id for entry in self.revalidating_entries[:-1]],
                 # After invalidation, attempt to cache the new response
                 next_state=CacheMiss(
                     request=self.original_request,
@@ -2050,7 +2050,7 @@ class NeedRevalidation(State):
             # This ensures clients see the error rather than potentially stale data
             return InvalidateEntries(
                 options=self.options,
-                entry_ids=[pair.id for pair in self.revalidating_entries[:-1]],
+                entry_ids=[entry.id for entry in self.revalidating_entries[:-1]],
                 next_state=CacheMiss(
                     request=self.original_request,
                     options=self.options,
@@ -2298,7 +2298,7 @@ class NeedRevalidation(State):
             # Wrap the next state in an invalidation operation
             return InvalidateEntries(
                 options=self.options,
-                entry_ids=[pair.id for pair in need_to_be_invalidated],
+                entry_ids=[entry.id for entry in need_to_be_invalidated],
                 next_state=next_state,
             )
 
