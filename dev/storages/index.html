@@ -361,45 +361,45 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#creating-pairs" class="md-nav__link">
+  <a href="#creating-entries" class="md-nav__link">
     <span class="md-ellipsis">
-      Creating Pairs
+      Creating Entries
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#adding-responses" class="md-nav__link">
+  <a href="#custom-entry-ids" class="md-nav__link">
     <span class="md-ellipsis">
-      Adding Responses
+      Custom Entry IDs
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#retrieving-cached-pairs" class="md-nav__link">
+  <a href="#retrieving-cached-entries" class="md-nav__link">
     <span class="md-ellipsis">
-      Retrieving Cached Pairs
+      Retrieving Cached Entries
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#updating-pairs" class="md-nav__link">
+  <a href="#updating-entries" class="md-nav__link">
     <span class="md-ellipsis">
-      Updating Pairs
+      Updating Entries
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#removing-pairs" class="md-nav__link">
+  <a href="#removing-entries" class="md-nav__link">
     <span class="md-ellipsis">
-      Removing Pairs
+      Removing Entries
     </span>
   </a>
   
@@ -457,9 +457,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#custom-pair-ids" class="md-nav__link">
+  <a href="#custom-entry-ids_1" class="md-nav__link">
     <span class="md-ellipsis">
-      Custom Pair IDs
+      Custom Entry IDs
     </span>
   </a>
   
@@ -877,45 +877,45 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#creating-pairs" class="md-nav__link">
+  <a href="#creating-entries" class="md-nav__link">
     <span class="md-ellipsis">
-      Creating Pairs
+      Creating Entries
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#adding-responses" class="md-nav__link">
+  <a href="#custom-entry-ids" class="md-nav__link">
     <span class="md-ellipsis">
-      Adding Responses
+      Custom Entry IDs
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#retrieving-cached-pairs" class="md-nav__link">
+  <a href="#retrieving-cached-entries" class="md-nav__link">
     <span class="md-ellipsis">
-      Retrieving Cached Pairs
+      Retrieving Cached Entries
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#updating-pairs" class="md-nav__link">
+  <a href="#updating-entries" class="md-nav__link">
     <span class="md-ellipsis">
-      Updating Pairs
+      Updating Entries
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#removing-pairs" class="md-nav__link">
+  <a href="#removing-entries" class="md-nav__link">
     <span class="md-ellipsis">
-      Removing Pairs
+      Removing Entries
     </span>
   </a>
   
@@ -973,9 +973,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#custom-pair-ids" class="md-nav__link">
+  <a href="#custom-entry-ids_1" class="md-nav__link">
     <span class="md-ellipsis">
-      Custom Pair IDs
+      Custom Entry IDs
     </span>
   </a>
   
@@ -1052,11 +1052,11 @@
 <h2 id="overview">Overview</h2>
 <p>Storage backends handle:</p>
 <ul>
-<li>✅ <strong>Pair Management</strong>: Store incomplete and complete request-response pairs</li>
+<li>✅ <strong>Entry Management</strong>: Store complete request-response pairs (entries)</li>
 <li>✅ <strong>Stream Handling</strong>: Efficiently store and retrieve large request/response bodies</li>
 <li>✅ <strong>TTL Management</strong>: Automatic expiration and cleanup of old entries</li>
 <li>✅ <strong>Soft Deletion</strong>: Mark entries as deleted without immediate removal</li>
-<li>✅ <strong>Cache Keys</strong>: Group multiple pairs under a single cache key</li>
+<li>✅ <strong>Cache Keys</strong>: Group multiple entries under a single cache key</li>
 </ul>
 <h2 id="available-storages">Available Storages</h2>
 <p>Currently available:
@@ -1068,7 +1068,7 @@
 </ul>
 <hr />
 <h2 id="sqlite-storage">SQLite Storage</h2>
-<p>SQLite storage provides persistent, file-based caching with excellent performance characteristics. It uses two tables: one for request-response pairs and another for streaming data chunks.</p>
+<p>SQLite storage provides persistent, file-based caching with excellent performance characteristics. It uses two tables: one for request-response entries and another for streaming data chunks.</p>
 <h3 id="initialization">Initialization</h3>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Async</label><label for="__tabbed_1_2">Sync</label></div>
 <div class="tabbed-content">
@@ -1155,213 +1155,209 @@
 </table>
 <hr />
 <h2 id="basic-usage">Basic Usage</h2>
-<h3 id="creating-pairs">Creating Pairs</h3>
-<p>A "pair" consists of an HTTP request and response. Storage operations start by creating an incomplete pair (request only), then adding the response later.</p>
+<h3 id="creating-entries">Creating Entries</h3>
+<p>An "entry" consists of an HTTP request and its corresponding response. With the new API, you create a complete entry in one operation by providing both the request and response together.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Async</label><label for="__tabbed_2_2">Sync</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSqliteStorage</span><span class="p">,</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Headers</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSqliteStorage</span><span class="p">,</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Response</span><span class="p">,</span> <span class="n">Headers</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_async_iterator</span>
 
 <span class="n">storage</span> <span class="o">=</span> <span class="n">AsyncSqliteStorage</span><span class="p">()</span>
 
-<span class="c1"># Create incomplete pair with request</span>
-<span class="n">incomplete_pair</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_pair</span><span class="p">(</span>
+<span class="c1"># Create a complete entry with request and response</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/users&quot;</span><span class="p">,</span>
         <span class="n">headers</span><span class="o">=</span><span class="n">Headers</span><span class="p">({</span><span class="s2">&quot;User-Agent&quot;</span><span class="p">:</span> <span class="s2">&quot;MyApp/1.0&quot;</span><span class="p">})</span>
-    <span class="p">)</span>
+    <span class="p">),</span>
+    <span class="n">response</span><span class="o">=</span><span class="n">Response</span><span class="p">(</span>
+        <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">Headers</span><span class="p">({</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}),</span>
+        <span class="n">stream</span><span class="o">=</span><span class="n">make_async_iterator</span><span class="p">([</span><span class="sa">b</span><span class="s1">&#39;{&quot;users&quot;: []}&#39;</span><span class="p">])</span>
+    <span class="p">),</span>
+    <span class="n">key</span><span class="o">=</span><span class="s2">&quot;GET:https://api.example.com/users&quot;</span>  <span class="c1"># Cache key</span>
 <span class="p">)</span>
 
-<span class="c1"># incomplete_pair has:</span>
+<span class="c1"># Consume the response stream to save it</span>
+<span class="k">async</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
+    <span class="k">pass</span>
+
+<span class="c1"># entry has:</span>
 <span class="c1"># - id: UUID</span>
 <span class="c1"># - request: Request</span>
+<span class="c1"># - response: Response</span>
+<span class="c1"># - cache_key: bytes</span>
 <span class="c1"># - meta: PairMeta (created_at timestamp)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created pair with ID: </span><span class="si">{</span><span class="n">incomplete_pair</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created entry with ID: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Response status: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncSqliteStorage</span><span class="p">,</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Headers</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncSqliteStorage</span><span class="p">,</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Response</span><span class="p">,</span> <span class="n">Headers</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel._utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_iterator</span>
 
 <span class="n">storage</span> <span class="o">=</span> <span class="n">SyncSqliteStorage</span><span class="p">()</span>
 
-<span class="c1"># Create incomplete pair with request</span>
-<span class="n">incomplete_pair</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_pair</span><span class="p">(</span>
+<span class="c1"># Create a complete entry with request and response</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/users&quot;</span><span class="p">,</span>
         <span class="n">headers</span><span class="o">=</span><span class="n">Headers</span><span class="p">({</span><span class="s2">&quot;User-Agent&quot;</span><span class="p">:</span> <span class="s2">&quot;MyApp/1.0&quot;</span><span class="p">})</span>
-    <span class="p">)</span>
+    <span class="p">),</span>
+    <span class="n">response</span><span class="o">=</span><span class="n">Response</span><span class="p">(</span>
+        <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">Headers</span><span class="p">({</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}),</span>
+        <span class="n">stream</span><span class="o">=</span><span class="n">make_iterator</span><span class="p">([</span><span class="sa">b</span><span class="s1">&#39;{&quot;users&quot;: []}&#39;</span><span class="p">])</span>
+    <span class="p">),</span>
+    <span class="n">key</span><span class="o">=</span><span class="s2">&quot;GET:https://api.example.com/users&quot;</span>  <span class="c1"># Cache key</span>
 <span class="p">)</span>
 
-<span class="c1"># incomplete_pair has:</span>
+<span class="c1"># Consume the response stream to save it</span>
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
+    <span class="k">pass</span>
+
+<span class="c1"># entry has:</span>
 <span class="c1"># - id: UUID</span>
 <span class="c1"># - request: Request</span>
+<span class="c1"># - response: Response</span>
+<span class="c1"># - cache_key: bytes</span>
 <span class="c1"># - meta: PairMeta (created_at timestamp)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created pair with ID: </span><span class="si">{</span><span class="n">incomplete_pair</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created entry with ID: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Response status: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 </div>
-<h3 id="adding-responses">Adding Responses</h3>
-<p>After receiving a response from the origin server, complete the pair by adding the response.</p>
+<h3 id="custom-entry-ids">Custom Entry IDs</h3>
+<p>You can optionally provide a custom UUID for the entry (useful for testing or specific use cases):</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Async</label><label for="__tabbed_3_2">Sync</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">Response</span><span class="p">,</span> <span class="n">Headers</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
 
-<span class="c1"># Add response to complete the pair</span>
-<span class="n">complete_pair</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_response</span><span class="p">(</span>
-    <span class="n">pair_id</span><span class="o">=</span><span class="n">incomplete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
-    <span class="n">response</span><span class="o">=</span><span class="n">Response</span><span class="p">(</span>
-        <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
-        <span class="n">headers</span><span class="o">=</span><span class="n">Headers</span><span class="p">({</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}),</span>
-        <span class="n">stream</span><span class="o">=...</span><span class="p">,</span>  <span class="c1"># Response body stream</span>
-    <span class="p">),</span>
-    <span class="n">key</span><span class="o">=</span><span class="s2">&quot;GET:https://api.example.com/users&quot;</span>  <span class="c1"># Cache key</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+    <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
+    <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
+    <span class="n">key</span><span class="o">=</span><span class="s2">&quot;my_cache_key&quot;</span><span class="p">,</span>
+    <span class="n">id_</span><span class="o">=</span><span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">(</span><span class="nb">int</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Custom UUID</span>
 <span class="p">)</span>
-
-<span class="c1"># complete_pair has:</span>
-<span class="c1"># - id: UUID</span>
-<span class="c1"># - request: Request</span>
-<span class="c1"># - response: Response</span>
-<span class="c1"># - cache_key: bytes</span>
-<span class="c1"># - meta: PairMeta</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Stored response with status </span><span class="si">{</span><span class="n">complete_pair</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">Response</span><span class="p">,</span> <span class="n">Headers</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
 
-<span class="c1"># Add response to complete the pair</span>
-<span class="n">complete_pair</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_response</span><span class="p">(</span>
-    <span class="n">pair_id</span><span class="o">=</span><span class="n">incomplete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
-    <span class="n">response</span><span class="o">=</span><span class="n">Response</span><span class="p">(</span>
-        <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
-        <span class="n">headers</span><span class="o">=</span><span class="n">Headers</span><span class="p">({</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}),</span>
-        <span class="n">stream</span><span class="o">=...</span><span class="p">,</span>  <span class="c1"># Response body stream</span>
-    <span class="p">),</span>
-    <span class="n">key</span><span class="o">=</span><span class="s2">&quot;GET:https://api.example.com/users&quot;</span>  <span class="c1"># Cache key</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+    <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
+    <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
+    <span class="n">key</span><span class="o">=</span><span class="s2">&quot;my_cache_key&quot;</span><span class="p">,</span>
+    <span class="n">id_</span><span class="o">=</span><span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">(</span><span class="nb">int</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Custom UUID</span>
 <span class="p">)</span>
-
-<span class="c1"># complete_pair has:</span>
-<span class="c1"># - id: UUID</span>
-<span class="c1"># - request: Request</span>
-<span class="c1"># - response: Response</span>
-<span class="c1"># - cache_key: bytes</span>
-<span class="c1"># - meta: PairMeta</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Stored response with status </span><span class="si">{</span><span class="n">complete_pair</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 </div>
-<h3 id="retrieving-cached-pairs">Retrieving Cached Pairs</h3>
-<p>Retrieve all complete pairs associated with a cache key.</p>
+<h3 id="retrieving-cached-entries">Retrieving Cached Entries</h3>
+<p>Retrieve all entries associated with a cache key.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Async</label><label for="__tabbed_4_2">Sync</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="c1"># Get all pairs for a cache key</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Get all entries for a cache key</span>
 <span class="n">cache_key</span> <span class="o">=</span> <span class="s2">&quot;GET:https://api.example.com/users&quot;</span>
-<span class="n">pairs</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_pairs</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
+<span class="n">entries</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_entries</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
 
-<span class="c1"># pairs is a list of CompletePair objects</span>
-<span class="k">for</span> <span class="n">pair</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cached response: </span><span class="si">{</span><span class="n">pair</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="c1"># entries is a list of Entry objects</span>
+<span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cached response: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-    <span class="c1"># Access request/response bodies through streams</span>
-    <span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">pair</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Request chunk: </span><span class="si">{</span><span class="n">chunk</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">pair</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
+    <span class="c1"># Access response body through stream</span>
+    <span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Response chunk: </span><span class="si">{</span><span class="n">chunk</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="c1"># Get all pairs for a cache key</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Get all entries for a cache key</span>
 <span class="n">cache_key</span> <span class="o">=</span> <span class="s2">&quot;GET:https://api.example.com/users&quot;</span>
-<span class="n">pairs</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_pairs</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
+<span class="n">entries</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_entries</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
 
-<span class="c1"># pairs is a list of CompletePair objects</span>
-<span class="k">for</span> <span class="n">pair</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cached response: </span><span class="si">{</span><span class="n">pair</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="c1"># entries is a list of Entry objects</span>
+<span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cached response: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-    <span class="c1"># Access request/response bodies through streams</span>
-    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">pair</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Request chunk: </span><span class="si">{</span><span class="n">chunk</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">pair</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
+    <span class="c1"># Access response body through stream</span>
+    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Response chunk: </span><span class="si">{</span><span class="n">chunk</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 </div>
-<h3 id="updating-pairs">Updating Pairs</h3>
-<p>Update an existing pair with new information.</p>
+<h3 id="updating-entries">Updating Entries</h3>
+<p>Update an existing entry with new information.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Async</label><label for="__tabbed_5_2">Sync</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
 
-<span class="c1"># Option 1: Update with a new pair object</span>
-<span class="n">updated_pair</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span>
-    <span class="n">complete_pair</span><span class="p">,</span>
-    <span class="n">meta</span><span class="o">=</span><span class="n">replace</span><span class="p">(</span><span class="n">complete_pair</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span> <span class="n">created_at</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+<span class="c1"># Option 1: Update with a new entry object</span>
+<span class="n">updated_entry</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span>
+    <span class="n">entry</span><span class="p">,</span>
+    <span class="n">meta</span><span class="o">=</span><span class="n">replace</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">meta</span><span class="p">,</span> <span class="n">created_at</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
 <span class="p">)</span>
-<span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">update_pair</span><span class="p">(</span><span class="n">complete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">updated_pair</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">update_entry</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">updated_entry</span><span class="p">)</span>
 
 <span class="c1"># Option 2: Update using a callable</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">update_cache_key</span><span class="p">(</span><span class="n">pair</span><span class="p">):</span>
-    <span class="k">return</span> <span class="n">replace</span><span class="p">(</span><span class="n">pair</span><span class="p">,</span> <span class="n">cache_key</span><span class="o">=</span><span class="sa">b</span><span class="s2">&quot;new_key&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">update_cache_key</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">replace</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">cache_key</span><span class="o">=</span><span class="sa">b</span><span class="s2">&quot;new_key&quot;</span><span class="p">)</span>
 
-<span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">update_pair</span><span class="p">(</span><span class="n">complete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">update_cache_key</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">update_entry</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">update_cache_key</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Pair not found or is incomplete&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Entry not found&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
 
-<span class="c1"># Option 1: Update with a new pair object</span>
-<span class="n">updated_pair</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span>
-    <span class="n">complete_pair</span><span class="p">,</span>
-    <span class="n">response</span><span class="o">=</span><span class="n">replace</span><span class="p">(</span><span class="n">complete_pair</span><span class="o">.</span><span class="n">response</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">304</span><span class="p">)</span>
+<span class="c1"># Option 1: Update with a new entry object</span>
+<span class="n">updated_entry</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span>
+    <span class="n">entry</span><span class="p">,</span>
+    <span class="n">response</span><span class="o">=</span><span class="n">replace</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">304</span><span class="p">)</span>
 <span class="p">)</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">update_pair</span><span class="p">(</span><span class="n">complete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">updated_pair</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">update_entry</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">updated_entry</span><span class="p">)</span>
 
 <span class="c1"># Option 2: Update using a callable</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">update_cache_key</span><span class="p">(</span><span class="n">pair</span><span class="p">):</span>
-    <span class="k">return</span> <span class="n">replace</span><span class="p">(</span><span class="n">pair</span><span class="p">,</span> <span class="n">cache_key</span><span class="o">=</span><span class="sa">b</span><span class="s2">&quot;new_key&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">update_cache_key</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">replace</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">cache_key</span><span class="o">=</span><span class="sa">b</span><span class="s2">&quot;new_key&quot;</span><span class="p">)</span>
 
-<span class="n">result</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">update_pair</span><span class="p">(</span><span class="n">complete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">update_cache_key</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">update_entry</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">update_cache_key</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Pair not found or is incomplete&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Entry not found&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
 </div>
-<h3 id="removing-pairs">Removing Pairs</h3>
-<p>Remove pairs from the cache (soft deletion - marked as deleted but not immediately removed).</p>
+<h3 id="removing-entries">Removing Entries</h3>
+<p>Remove entries from the cache (soft deletion - marked as deleted but not immediately removed).</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">Async</label><label for="__tabbed_6_2">Sync</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="c1"># Soft delete a pair</span>
-<span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">pair_id</span><span class="o">=</span><span class="n">complete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Soft delete an entry</span>
+<span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">remove_entry</span><span class="p">(</span><span class="n">entry_id</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 
-<span class="c1"># The pair is marked as deleted and will be removed during cleanup</span>
+<span class="c1"># The entry is marked as deleted and will be removed during cleanup</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="c1"># Soft delete a pair</span>
-<span class="n">storage</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">pair_id</span><span class="o">=</span><span class="n">complete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Soft delete an entry</span>
+<span class="n">storage</span><span class="o">.</span><span class="n">remove_entry</span><span class="p">(</span><span class="n">entry_id</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 
-<span class="c1"># The pair is marked as deleted and will be removed during cleanup</span>
+<span class="c1"># The entry is marked as deleted and will be removed during cleanup</span>
 </code></pre></div>
 </div>
 </div>
@@ -1385,22 +1381,13 @@
 <span class="c1"># Create cache key</span>
 <span class="n">cache_key</span> <span class="o">=</span> <span class="s2">&quot;GET:https://api.example.com/users&quot;</span>
 
-<span class="c1"># Step 1: Create incomplete pair</span>
-<span class="n">incomplete_pair</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_pair</span><span class="p">(</span>
+<span class="c1"># Step 1: Create a complete entry with request and response</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/users&quot;</span><span class="p">,</span>
         <span class="n">stream</span><span class="o">=</span><span class="n">make_async_iterator</span><span class="p">([</span><span class="sa">b</span><span class="s2">&quot;request body&quot;</span><span class="p">]),</span>
-    <span class="p">)</span>
-<span class="p">)</span>
-
-<span class="c1"># Consume request stream to store it</span>
-<span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">incomplete_pair</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
-    <span class="k">pass</span>  <span class="c1"># Storage automatically saves chunks</span>
-
-<span class="c1"># Step 2: Add response to complete the pair</span>
-<span class="n">complete_pair</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_response</span><span class="p">(</span>
-    <span class="n">pair_id</span><span class="o">=</span><span class="n">incomplete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+    <span class="p">),</span>
     <span class="n">response</span><span class="o">=</span><span class="n">Response</span><span class="p">(</span>
         <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
         <span class="n">headers</span><span class="o">=</span><span class="n">Headers</span><span class="p">({</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}),</span>
@@ -1414,37 +1401,40 @@
     <span class="n">key</span><span class="o">=</span><span class="n">cache_key</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="c1"># Consume response stream to store it</span>
-<span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">complete_pair</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
+<span class="c1"># Consume streams to store them</span>
+<span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
     <span class="k">pass</span>  <span class="c1"># Storage automatically saves chunks</span>
 
-<span class="c1"># Step 3: Retrieve cached pairs</span>
-<span class="n">cached_pairs</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_pairs</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
+    <span class="k">pass</span>  <span class="c1"># Storage automatically saves chunks</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cached_pairs</span><span class="p">)</span><span class="si">}</span><span class="s2"> cached pair(s)&quot;</span><span class="p">)</span>
+<span class="c1"># Step 2: Retrieve cached entries</span>
+<span class="n">cached_entries</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_entries</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
 
-<span class="k">for</span> <span class="n">pair</span> <span class="ow">in</span> <span class="n">cached_pairs</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Request: </span><span class="si">{</span><span class="n">pair</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">pair</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Response: </span><span class="si">{</span><span class="n">pair</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cached_entries</span><span class="p">)</span><span class="si">}</span><span class="s2"> cached entry/entries&quot;</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">cached_entries</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Request: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Response: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="c1"># Read response body</span>
     <span class="n">body_chunks</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">pair</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
+    <span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
         <span class="n">body_chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
     <span class="n">body</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">body_chunks</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Body: </span><span class="si">{</span><span class="n">body</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-<span class="c1"># Step 4: Update pair if needed</span>
+<span class="c1"># Step 3: Update entry if needed</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
 
-<span class="n">updated_pair</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span>
-    <span class="n">complete_pair</span><span class="p">,</span>
+<span class="n">updated_entry</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span>
+    <span class="n">entry</span><span class="p">,</span>
     <span class="n">cache_key</span><span class="o">=</span><span class="sa">b</span><span class="s2">&quot;updated_key&quot;</span>
 <span class="p">)</span>
-<span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">update_pair</span><span class="p">(</span><span class="n">complete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">updated_pair</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">update_entry</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">updated_entry</span><span class="p">)</span>
 
-<span class="c1"># Step 5: Remove pair when no longer needed</span>
-<span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">complete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+<span class="c1"># Step 4: Remove entry when no longer needed</span>
+<span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">remove_entry</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -1461,22 +1451,13 @@
 <span class="c1"># Create cache key</span>
 <span class="n">cache_key</span> <span class="o">=</span> <span class="s2">&quot;GET:https://api.example.com/users&quot;</span>
 
-<span class="c1"># Step 1: Create incomplete pair</span>
-<span class="n">incomplete_pair</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_pair</span><span class="p">(</span>
+<span class="c1"># Step 1: Create a complete entry with request and response</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/users&quot;</span><span class="p">,</span>
         <span class="n">stream</span><span class="o">=</span><span class="n">make_iterator</span><span class="p">([</span><span class="sa">b</span><span class="s2">&quot;request body&quot;</span><span class="p">]),</span>
-    <span class="p">)</span>
-<span class="p">)</span>
-
-<span class="c1"># Consume request stream to store it</span>
-<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">incomplete_pair</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
-    <span class="k">pass</span>  <span class="c1"># Storage automatically saves chunks</span>
-
-<span class="c1"># Step 2: Add response to complete the pair</span>
-<span class="n">complete_pair</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_response</span><span class="p">(</span>
-    <span class="n">pair_id</span><span class="o">=</span><span class="n">incomplete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+    <span class="p">),</span>
     <span class="n">response</span><span class="o">=</span><span class="n">Response</span><span class="p">(</span>
         <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
         <span class="n">headers</span><span class="o">=</span><span class="n">Headers</span><span class="p">({</span><span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}),</span>
@@ -1490,37 +1471,40 @@
     <span class="n">key</span><span class="o">=</span><span class="n">cache_key</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="c1"># Consume response stream to store it</span>
-<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">complete_pair</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
+<span class="c1"># Consume streams to store them</span>
+<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
     <span class="k">pass</span>  <span class="c1"># Storage automatically saves chunks</span>
 
-<span class="c1"># Step 3: Retrieve cached pairs</span>
-<span class="n">cached_pairs</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_pairs</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
+    <span class="k">pass</span>  <span class="c1"># Storage automatically saves chunks</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cached_pairs</span><span class="p">)</span><span class="si">}</span><span class="s2"> cached pair(s)&quot;</span><span class="p">)</span>
+<span class="c1"># Step 2: Retrieve cached entries</span>
+<span class="n">cached_entries</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_entries</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
 
-<span class="k">for</span> <span class="n">pair</span> <span class="ow">in</span> <span class="n">cached_pairs</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Request: </span><span class="si">{</span><span class="n">pair</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">pair</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Response: </span><span class="si">{</span><span class="n">pair</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cached_entries</span><span class="p">)</span><span class="si">}</span><span class="s2"> cached entry/entries&quot;</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">cached_entries</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Request: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Response: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="c1"># Read response body</span>
     <span class="n">body_chunks</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">pair</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
         <span class="n">body_chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
     <span class="n">body</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">body_chunks</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Body: </span><span class="si">{</span><span class="n">body</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-<span class="c1"># Step 4: Update pair if needed</span>
+<span class="c1"># Step 3: Update entry if needed</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
 
-<span class="n">updated_pair</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span>
-    <span class="n">complete_pair</span><span class="p">,</span>
+<span class="n">updated_entry</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span>
+    <span class="n">entry</span><span class="p">,</span>
     <span class="n">cache_key</span><span class="o">=</span><span class="sa">b</span><span class="s2">&quot;updated_key&quot;</span>
 <span class="p">)</span>
-<span class="n">storage</span><span class="o">.</span><span class="n">update_pair</span><span class="p">(</span><span class="n">complete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">updated_pair</span><span class="p">)</span>
+<span class="n">storage</span><span class="o">.</span><span class="n">update_entry</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">updated_entry</span><span class="p">)</span>
 
-<span class="c1"># Step 5: Remove pair when no longer needed</span>
-<span class="n">storage</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">complete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+<span class="c1"># Step 4: Remove entry when no longer needed</span>
+<span class="n">storage</span><span class="o">.</span><span class="n">remove_entry</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 </code></pre></div>
 </div>
 </div>
@@ -1529,12 +1513,12 @@
 <h2 id="advanced-topics">Advanced Topics</h2>
 <h3 id="stream-handling">Stream Handling</h3>
 <p>Hishel storages efficiently handle large request and response bodies using streams. Streams are automatically chunked and stored as you consume them.</p>
-<p><strong>Important</strong>: You must consume streams (iterate through them) for the data to be stored. Simply creating a pair with a stream doesn't store the stream data.</p>
+<p><strong>Important</strong>: You must consume streams (iterate through them) for the data to be stored. Simply creating an entry with a stream doesn't store the stream data.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="8:2"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">Async</label><label for="__tabbed_8_2">Sync</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="c1"># Create pair with streaming body</span>
-<span class="n">incomplete_pair</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_pair</span><span class="p">(</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create entry with streaming body</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;POST&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/upload&quot;</span><span class="p">,</span>
@@ -1543,24 +1527,33 @@
             <span class="sa">b</span><span class="s2">&quot;chunk2&quot;</span><span class="p">,</span>
             <span class="sa">b</span><span class="s2">&quot;chunk3&quot;</span><span class="p">,</span>
         <span class="p">])</span>
-    <span class="p">)</span>
+    <span class="p">),</span>
+    <span class="n">response</span><span class="o">=</span><span class="n">Response</span><span class="p">(</span>
+        <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">Headers</span><span class="p">({}),</span>
+        <span class="n">stream</span><span class="o">=</span><span class="n">make_async_iterator</span><span class="p">([</span><span class="sa">b</span><span class="s2">&quot;OK&quot;</span><span class="p">])</span>
+    <span class="p">),</span>
+    <span class="n">key</span><span class="o">=</span><span class="n">cache_key</span>
 <span class="p">)</span>
 
-<span class="c1"># IMPORTANT: Consume the stream to store it</span>
-<span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">incomplete_pair</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
+<span class="c1"># IMPORTANT: Consume the streams to store them</span>
+<span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
     <span class="c1"># Each chunk is stored as you iterate</span>
     <span class="k">pass</span>
 
-<span class="c1"># Now the request stream is fully stored</span>
-<span class="c1"># You can retrieve it later:</span>
-<span class="n">pairs</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_pairs</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
+<span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
+    <span class="k">pass</span>
+
+<span class="c1"># Now the streams are fully stored</span>
+<span class="c1"># You can retrieve them later:</span>
+<span class="n">entries</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_entries</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Chunk: </span><span class="si">{</span><span class="n">chunk</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="c1"># Create pair with streaming body</span>
-<span class="n">incomplete_pair</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_pair</span><span class="p">(</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create entry with streaming body</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;POST&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/upload&quot;</span><span class="p">,</span>
@@ -1569,18 +1562,27 @@
             <span class="sa">b</span><span class="s2">&quot;chunk2&quot;</span><span class="p">,</span>
             <span class="sa">b</span><span class="s2">&quot;chunk3&quot;</span><span class="p">,</span>
         <span class="p">])</span>
-    <span class="p">)</span>
+    <span class="p">),</span>
+    <span class="n">response</span><span class="o">=</span><span class="n">Response</span><span class="p">(</span>
+        <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">Headers</span><span class="p">({}),</span>
+        <span class="n">stream</span><span class="o">=</span><span class="n">make_iterator</span><span class="p">([</span><span class="sa">b</span><span class="s2">&quot;OK&quot;</span><span class="p">])</span>
+    <span class="p">),</span>
+    <span class="n">key</span><span class="o">=</span><span class="n">cache_key</span>
 <span class="p">)</span>
 
-<span class="c1"># IMPORTANT: Consume the stream to store it</span>
-<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">incomplete_pair</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
+<span class="c1"># IMPORTANT: Consume the streams to store them</span>
+<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
     <span class="c1"># Each chunk is stored as you iterate</span>
     <span class="k">pass</span>
 
-<span class="c1"># Now the request stream is fully stored</span>
-<span class="c1"># You can retrieve it later:</span>
-<span class="n">pairs</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_pairs</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">pairs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
+<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
+    <span class="k">pass</span>
+
+<span class="c1"># Now the streams are fully stored</span>
+<span class="c1"># You can retrieve them later:</span>
+<span class="n">entries</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_entries</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Chunk: </span><span class="si">{</span><span class="n">chunk</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 </div>
@@ -1595,12 +1597,14 @@
 <span class="n">storage</span> <span class="o">=</span> <span class="n">AsyncSqliteStorage</span><span class="p">(</span><span class="n">default_ttl</span><span class="o">=</span><span class="mf">3600.0</span><span class="p">)</span>  <span class="c1"># 1 hour</span>
 
 <span class="c1"># Override TTL for specific requests using metadata</span>
-<span class="n">incomplete_pair</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_pair</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">,</span>
         <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mf">7200.0</span><span class="p">}</span>  <span class="c1"># 2 hours for this entry</span>
-    <span class="p">)</span>
+    <span class="p">),</span>
+    <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
+    <span class="n">key</span><span class="o">=</span><span class="n">cache_key</span>
 <span class="p">)</span>
 
 <span class="c1"># Disable TTL refresh on access</span>
@@ -1615,12 +1619,14 @@
 <span class="n">storage</span> <span class="o">=</span> <span class="n">SyncSqliteStorage</span><span class="p">(</span><span class="n">default_ttl</span><span class="o">=</span><span class="mf">3600.0</span><span class="p">)</span>  <span class="c1"># 1 hour</span>
 
 <span class="c1"># Override TTL for specific requests using metadata</span>
-<span class="n">incomplete_pair</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_pair</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">,</span>
         <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;hishel_ttl&quot;</span><span class="p">:</span> <span class="mf">7200.0</span><span class="p">}</span>  <span class="c1"># 2 hours for this entry</span>
-    <span class="p">)</span>
+    <span class="p">),</span>
+    <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
+    <span class="n">key</span><span class="o">=</span><span class="n">cache_key</span>
 <span class="p">)</span>
 
 <span class="c1"># Disable TTL refresh on access</span>
@@ -1638,12 +1644,11 @@
 <ul>
 <li>Expired entries (past their TTL)</li>
 <li>Entries marked as deleted for more than 7 days</li>
-<li>Incomplete pairs older than 1 hour (considered corrupted)</li>
-<li>Pairs with missing or incomplete streams</li>
+<li>Entries with missing or incomplete streams</li>
 </ul>
 <p>The cleanup process is automatic and doesn't require manual intervention.</p>
-<h3 id="custom-pair-ids">Custom Pair IDs</h3>
-<p>By default, pair IDs are auto-generated UUIDs. You can provide custom IDs if needed:</p>
+<h3 id="custom-entry-ids_1">Custom Entry IDs</h3>
+<p>By default, entry IDs are auto-generated UUIDs. You can provide custom IDs if needed:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="10:2"><input checked="checked" id="__tabbed_10_1" name="__tabbed_10" type="radio" /><input id="__tabbed_10_2" name="__tabbed_10" type="radio" /><div class="tabbed-labels"><label for="__tabbed_10_1">Async</label><label for="__tabbed_10_2">Sync</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
@@ -1651,12 +1656,14 @@
 
 <span class="c1"># Provide custom UUID</span>
 <span class="n">custom_id</span> <span class="o">=</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span>
-<span class="n">incomplete_pair</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_pair</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com&quot;</span><span class="p">),</span>
-    <span class="nb">id</span><span class="o">=</span><span class="n">custom_id</span>
+    <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
+    <span class="n">key</span><span class="o">=</span><span class="n">cache_key</span><span class="p">,</span>
+    <span class="n">id_</span><span class="o">=</span><span class="n">custom_id</span>
 <span class="p">)</span>
 
-<span class="k">assert</span> <span class="n">incomplete_pair</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">custom_id</span>
+<span class="k">assert</span> <span class="n">entry</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">custom_id</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -1664,12 +1671,14 @@
 
 <span class="c1"># Provide custom UUID</span>
 <span class="n">custom_id</span> <span class="o">=</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span>
-<span class="n">incomplete_pair</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_pair</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com&quot;</span><span class="p">),</span>
-    <span class="nb">id</span><span class="o">=</span><span class="n">custom_id</span>
+    <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
+    <span class="n">key</span><span class="o">=</span><span class="n">cache_key</span><span class="p">,</span>
+    <span class="n">id_</span><span class="o">=</span><span class="n">custom_id</span>
 <span class="p">)</span>
 
-<span class="k">assert</span> <span class="n">incomplete_pair</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">custom_id</span>
+<span class="k">assert</span> <span class="n">entry</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">custom_id</span>
 </code></pre></div>
 </div>
 </div>
@@ -1678,7 +1687,7 @@
 <h2 id="database-schema">Database Schema</h2>
 <p>For reference, here's the SQLite database schema used by the storage:</p>
 <h3 id="entries-table"><code>entries</code> Table</h3>
-<p>Stores request-response pair metadata.</p>
+<p>Stores request-response entry metadata.</p>
 <table>
 <thead>
 <tr>
@@ -1691,22 +1700,22 @@
 <tr>
 <td><code>id</code></td>
 <td>BLOB</td>
-<td>Primary key - UUID of the pair</td>
+<td>Primary key - UUID of the entry</td>
 </tr>
 <tr>
 <td><code>cache_key</code></td>
 <td>BLOB</td>
-<td>Cache key for grouping pairs (NULL for incomplete pairs)</td>
+<td>Cache key for grouping entries</td>
 </tr>
 <tr>
 <td><code>data</code></td>
 <td>BLOB</td>
-<td>Serialized pair data (request, response, metadata)</td>
+<td>Serialized entry data (request, response, metadata)</td>
 </tr>
 <tr>
 <td><code>created_at</code></td>
 <td>REAL</td>
-<td>Timestamp when the pair was created</td>
+<td>Timestamp when the entry was created</td>
 </tr>
 <tr>
 <td><code>deleted_at</code></td>
@@ -1776,40 +1785,37 @@
 <span class="c1"># Get cache key for request</span>
 <span class="n">cache_key</span> <span class="o">=</span> <span class="s2">&quot;GET:https://api.example.com/users&quot;</span>
 
-<span class="c1"># Retrieve cached pairs</span>
-<span class="n">cached_pairs</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_pairs</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
+<span class="c1"># Retrieve cached entries</span>
+<span class="n">cached_entries</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_entries</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
 
 <span class="c1"># Start state machine</span>
 <span class="n">state</span> <span class="o">=</span> <span class="n">create_idle_state</span><span class="p">(</span><span class="s2">&quot;client&quot;</span><span class="p">)</span>
 <span class="n">request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/users&quot;</span><span class="p">)</span>
 
-<span class="c1"># Transition based on cached pairs</span>
-<span class="n">next_state</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">cached_pairs</span><span class="p">)</span>
+<span class="c1"># Transition based on cached entries</span>
+<span class="n">next_state</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">cached_entries</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">next_state</span><span class="p">,</span> <span class="n">FromCache</span><span class="p">):</span>
     <span class="c1"># Use cached response</span>
-    <span class="n">response</span> <span class="o">=</span> <span class="n">next_state</span><span class="o">.</span><span class="n">pair</span><span class="o">.</span><span class="n">response</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">next_state</span><span class="o">.</span><span class="n">entry</span><span class="o">.</span><span class="n">response</span>
 
 <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">next_state</span><span class="p">,</span> <span class="n">CacheMiss</span><span class="p">):</span>
     <span class="c1"># Fetch from origin and store</span>
     <span class="n">origin_response</span> <span class="o">=</span> <span class="o">...</span>  <span class="c1"># fetch from server</span>
 
-    <span class="c1"># Create pair in storage</span>
-    <span class="n">incomplete_pair</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_pair</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">incomplete_pair</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
-        <span class="k">pass</span>
-
     <span class="c1"># Evaluate if we should store it</span>
-    <span class="n">storage_state</span> <span class="o">=</span> <span class="n">next_state</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="n">origin_response</span><span class="p">,</span> <span class="n">incomplete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="n">storage_state</span> <span class="o">=</span> <span class="n">next_state</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="n">origin_response</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">storage_state</span><span class="p">,</span> <span class="n">StoreAndUse</span><span class="p">):</span>
-        <span class="c1"># Add response to storage</span>
-        <span class="n">complete_pair</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_response</span><span class="p">(</span>
-            <span class="n">pair_id</span><span class="o">=</span><span class="n">incomplete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+        <span class="c1"># Add entry to storage</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+            <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
             <span class="n">response</span><span class="o">=</span><span class="n">origin_response</span><span class="p">,</span>
             <span class="n">key</span><span class="o">=</span><span class="n">cache_key</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="k">async</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">complete_pair</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
+        <span class="k">async</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
+            <span class="k">pass</span>
+        <span class="k">async</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">aiter_stream</span><span class="p">():</span>
             <span class="k">pass</span>
 
     <span class="n">response</span> <span class="o">=</span> <span class="n">origin_response</span>
@@ -1830,40 +1836,37 @@
 <span class="c1"># Get cache key for request</span>
 <span class="n">cache_key</span> <span class="o">=</span> <span class="s2">&quot;GET:https://api.example.com/users&quot;</span>
 
-<span class="c1"># Retrieve cached pairs</span>
-<span class="n">cached_pairs</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_pairs</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
+<span class="c1"># Retrieve cached entries</span>
+<span class="n">cached_entries</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">get_entries</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
 
 <span class="c1"># Start state machine</span>
 <span class="n">state</span> <span class="o">=</span> <span class="n">create_idle_state</span><span class="p">(</span><span class="s2">&quot;client&quot;</span><span class="p">)</span>
 <span class="n">request</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/users&quot;</span><span class="p">)</span>
 
-<span class="c1"># Transition based on cached pairs</span>
-<span class="n">next_state</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">cached_pairs</span><span class="p">)</span>
+<span class="c1"># Transition based on cached entries</span>
+<span class="n">next_state</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">cached_entries</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">next_state</span><span class="p">,</span> <span class="n">FromCache</span><span class="p">):</span>
     <span class="c1"># Use cached response</span>
-    <span class="n">response</span> <span class="o">=</span> <span class="n">next_state</span><span class="o">.</span><span class="n">pair</span><span class="o">.</span><span class="n">response</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">next_state</span><span class="o">.</span><span class="n">entry</span><span class="o">.</span><span class="n">response</span>
 
 <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">next_state</span><span class="p">,</span> <span class="n">CacheMiss</span><span class="p">):</span>
     <span class="c1"># Fetch from origin and store</span>
     <span class="n">origin_response</span> <span class="o">=</span> <span class="o">...</span>  <span class="c1"># fetch from server</span>
 
-    <span class="c1"># Create pair in storage</span>
-    <span class="n">incomplete_pair</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_pair</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">incomplete_pair</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
-        <span class="k">pass</span>
-
     <span class="c1"># Evaluate if we should store it</span>
-    <span class="n">storage_state</span> <span class="o">=</span> <span class="n">next_state</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="n">origin_response</span><span class="p">,</span> <span class="n">incomplete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="n">storage_state</span> <span class="o">=</span> <span class="n">next_state</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="n">origin_response</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">storage_state</span><span class="p">,</span> <span class="n">StoreAndUse</span><span class="p">):</span>
-        <span class="c1"># Add response to storage</span>
-        <span class="n">complete_pair</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_response</span><span class="p">(</span>
-            <span class="n">pair_id</span><span class="o">=</span><span class="n">incomplete_pair</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+        <span class="c1"># Add entry to storage</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+            <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
             <span class="n">response</span><span class="o">=</span><span class="n">origin_response</span><span class="p">,</span>
             <span class="n">key</span><span class="o">=</span><span class="n">cache_key</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">complete_pair</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
+            <span class="k">pass</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">iter_stream</span><span class="p">():</span>
             <span class="k">pass</span>
 
     <span class="n">response</span> <span class="o">=</span> <span class="n">origin_response</span>

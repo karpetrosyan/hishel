@@ -508,9 +508,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#invalidatepairs" class="md-nav__link">
+  <a href="#invalidateentries" class="md-nav__link">
     <span class="md-ellipsis">
-      InvalidatePairs
+      InvalidateEntries
     </span>
   </a>
   
@@ -946,9 +946,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#invalidatepairs" class="md-nav__link">
+  <a href="#invalidateentries" class="md-nav__link">
     <span class="md-ellipsis">
-      InvalidatePairs
+      InvalidateEntries
     </span>
   </a>
   
@@ -1000,7 +1000,7 @@
     <span class="n">NeedToBeUpdated</span><span class="p">,</span>
     <span class="n">StoreAndUse</span><span class="p">,</span>
     <span class="n">CouldNotBeStored</span><span class="p">,</span>
-    <span class="n">InvalidatePairs</span><span class="p">,</span>
+    <span class="n">InvalidateEntries</span><span class="p">,</span>
 
     <span class="c1"># Configuration</span>
     <span class="n">CacheOptions</span><span class="p">,</span>
@@ -1043,9 +1043,9 @@
   CacheMiss --&gt;|Response not&lt;br/&gt;cacheable| CouldNotBeStored[CouldNotBeStored&lt;br/&gt;Return without storing]
 
   NeedRevalidation --&gt;|304 Not&lt;br/&gt;Modified| NeedToBeUpdated[NeedToBeUpdated&lt;br/&gt;Freshen Cache]
-  NeedRevalidation --&gt;|2xx/5xx&lt;br/&gt;Response| InvalidatePairs[InvalidatePairs&lt;br/&gt;Delete Old Cache]
+  NeedRevalidation --&gt;|2xx/5xx&lt;br/&gt;Response| InvalidateEntries[InvalidateEntries&lt;br/&gt;Delete Old Cache]
 
-  InvalidatePairs --&gt; CacheMiss
+  InvalidateEntries --&gt; CacheMiss
   NeedToBeUpdated --&gt; FromCache
 
   FromCache -.-&gt;|Terminal| End1((End))
@@ -1057,14 +1057,14 @@
   style StoreAndUse fill:#c8e6c9
   style CouldNotBeStored fill:#ffcdd2
   style NeedRevalidation fill:#fff9c4
-  style InvalidatePairs fill:#ffe0b2</code></pre>
+  style InvalidateEntries fill:#ffe0b2</code></pre>
 <p><strong>Legend:</strong></p>
 <ul>
 <li><strong>Blue</strong>: Entry state (IdleClient)</li>
 <li><strong>Green</strong>: Success states (FromCache, StoreAndUse)</li>
 <li><strong>Red</strong>: Failure state (CouldNotBeStored)</li>
 <li><strong>Yellow</strong>: Intermediate states requiring I/O</li>
-<li><strong>Orange</strong>: Action states (InvalidatePairs)</li>
+<li><strong>Orange</strong>: Action states (InvalidateEntries)</li>
 </ul>
 <hr />
 <h2 id="state-flow-examples">State Flow Examples</h2>
@@ -1089,7 +1089,7 @@
 <strong>Scenario:</strong> Cached <code>/api/data</code> is stale, origin confirms it's unchanged<br />
 <strong>Actions:</strong> Send conditional request, receive 304, update cache metadata, return cached content</p>
 <h3 id="example-5-failed-revalidation-200">Example 5: Failed Revalidation (200)</h3>
-<p><div class="highlight"><pre><span></span><code>Request → IdleClient → NeedRevalidation → InvalidatePairs → CacheMiss → StoreAndUse → End
+<p><div class="highlight"><pre><span></span><code>Request → IdleClient → NeedRevalidation → InvalidateEntries → CacheMiss → StoreAndUse → End
 </code></pre></div>
 <strong>Scenario:</strong> Cached <code>/api/status</code> is stale, origin returns new content<br />
 <strong>Actions:</strong> Send conditional request, receive 200 with new content, delete old cache, store new response</p>
@@ -1182,7 +1182,7 @@
 <p><strong>Transitions:</strong></p>
 <ul>
 <li><strong>→ NeedToBeUpdated</strong>: Origin responds with 304 Not Modified - cached responses are still valid and can be freshened</li>
-<li><strong>→ InvalidatePairs + CacheMiss</strong>: Origin responds with 2xx/5xx - cached responses are outdated and must be replaced</li>
+<li><strong>→ InvalidateEntries + CacheMiss</strong>: Origin responds with 2xx/5xx - cached responses are outdated and must be replaced</li>
 <li><strong>→ CacheMiss</strong>: No matching responses found during the freshening process</li>
 </ul>
 <p><strong>Validation Process:</strong></p>
@@ -1200,13 +1200,13 @@
 <span class="n">need_revalidation</span> <span class="o">=</span> <span class="n">NeedRevalidation</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">conditional_request</span><span class="p">,</span>
     <span class="n">original_request</span><span class="o">=</span><span class="n">original_request</span><span class="p">,</span>
-    <span class="n">revalidating_pairs</span><span class="o">=</span><span class="p">[</span><span class="n">stale_pair</span><span class="p">],</span>
+    <span class="n">revalidating_entries</span><span class="o">=</span><span class="p">[</span><span class="n">stale_pair</span><span class="p">],</span>
     <span class="n">options</span><span class="o">=</span><span class="n">options</span>
 <span class="p">)</span>
 
 <span class="c1"># Handle validation response</span>
 <span class="n">next_state</span> <span class="o">=</span> <span class="n">need_revalidation</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="n">validation_response</span><span class="p">)</span>
-<span class="c1"># Returns: NeedToBeUpdated | InvalidatePairs | CacheMiss</span>
+<span class="c1"># Returns: NeedToBeUpdated | InvalidateEntries | CacheMiss</span>
 </code></pre></div></p>
 <hr />
 <h3 id="fromcache">FromCache</h3>
@@ -1354,7 +1354,7 @@
 <span class="c1"># Return response without storing</span>
 </code></pre></div></p>
 <hr />
-<h3 id="invalidatepairs">InvalidatePairs</h3>
+<h3 id="invalidateentries">InvalidateEntries</h3>
 <p><strong>What it means:</strong> One or more cached response pairs need to be invalidated (deleted) from the cache before proceeding to the next state. This is a wrapper state that performs cleanup before transitioning.</p>
 <p><strong>When you're in this state:</strong></p>
 <ul>
@@ -1379,10 +1379,10 @@
 <li>Transition to the next state specified</li>
 </ol>
 <p><strong>Example:</strong>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">InvalidatePairs</span><span class="p">,</span> <span class="n">CacheMiss</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">InvalidateEntries</span><span class="p">,</span> <span class="n">CacheMiss</span>
 
 <span class="c1"># During revalidation with new response</span>
-<span class="n">invalidate</span> <span class="o">=</span> <span class="n">InvalidatePairs</span><span class="p">(</span>
+<span class="n">invalidate</span> <span class="o">=</span> <span class="n">InvalidateEntries</span><span class="p">(</span>
     <span class="n">pair_ids</span><span class="o">=</span><span class="p">[</span><span class="n">old_pair_id1</span><span class="p">,</span> <span class="n">old_pair_id2</span><span class="p">],</span>
     <span class="n">next_state</span><span class="o">=</span><span class="n">CacheMiss</span><span class="p">(</span><span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">),</span>
     <span class="n">options</span><span class="o">=</span><span class="n">options</span>
