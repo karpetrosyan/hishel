@@ -154,34 +154,10 @@ class PairMeta:
 
 
 @dataclass
-class Pair:
+class Entry:
     id: uuid.UUID
     request: Request
     meta: PairMeta
-
-
-# class used by storage
-@dataclass
-class IncompletePair(Pair):
-    extra: Mapping[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class CompletePair(Pair):
     response: Response
     cache_key: bytes
     extra: Mapping[str, Any] = field(default_factory=dict)
-
-    @classmethod
-    def create(
-        cls,
-        response: Response,
-        request: Request,
-    ) -> "CompletePair":  # pragma: nocover
-        return cls(
-            id=uuid.uuid4(),
-            request=request,
-            response=response,
-            meta=PairMeta(),
-            cache_key=b"",
-        )

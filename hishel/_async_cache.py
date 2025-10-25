@@ -24,8 +24,8 @@ from hishel import (
     StoreAndUse,
     create_idle_state,
 )
-from hishel._core._spec import InvalidatePairs, vary_headers_match
-from hishel._core.models import CompletePair, ResponseMetadata
+from hishel._core._spec import InvalidateEntries, vary_headers_match
+from hishel._core.models import Entry, ResponseMetadata
 
 logger = logging.getLogger("hishel.integrations.clients")
 
@@ -65,9 +65,9 @@ class AsyncCacheProxy:
             return f"{str(request.url)}-{hash_}"
         return str(request.url)
 
-    async def _maybe_refresh_pair_ttl(self, pair: CompletePair) -> None:
+    async def _maybe_refresh_pair_ttl(self, pair: Entry) -> None:
         if pair.request.metadata.get("hishel_refresh_ttl_on_access"):
-            await self.storage.update_pair(
+            await self.storage.update_entry(
                 pair.id,
                 lambda complete_pair: replace(
                     complete_pair,
@@ -77,11 +77,11 @@ class AsyncCacheProxy:
 
     async def _handle_request_ignoring_spec(self, request: Request) -> Response:
         logger.debug("Trying to get cached response ignoring specification")
-        pairs = await self.storage.get_pairs(await self._get_key_for_request(request))
+        entries = await self.storage.get_entries(await self._get_key_for_request(request))
 
-        logger.debug(f"Found {len(pairs)} cached pairs for the request")
+        logger.debug(f"Found {len(entries)} cached entries for the request")
 
-        for pair in pairs:
+        for pair in entries:
             if (
                 str(pair.request.url) == str(request.url)
                 and pair.request.method == request.method
@@ -104,18 +104,15 @@ class AsyncCacheProxy:
                 await self._maybe_refresh_pair_ttl(pair)
                 return pair.response
 
-        incomplete_pair = await self.storage.create_pair(
-            request,
-        )
-        response = await self.send_request(incomplete_pair.request)
+        response = await self.send_request(request)
 
         logger.debug("Storing response in cache ignoring specification")
-        complete_pair = await self.storage.add_response(
-            incomplete_pair.id,
+        entry = await self.storage.add_entry(
+            request,
             response,
             await self._get_key_for_request(request),
         )
-        return complete_pair.response
+        return entry.response
 
     async def _handle_request_respecting_spec(self, request: Request) -> Response:
         state: AnyState = create_idle_state("client", self.cache_options)
@@ -137,25 +134,24 @@ class AsyncCacheProxy:
                 return state.pair.response
             elif isinstance(state, NeedToBeUpdated):
                 state = await self._handle_update(state)
-            elif isinstance(state, InvalidatePairs):
-                state = await self._handle_invalidate_pairs(state)
+            elif isinstance(state, InvalidateEntries):
+                state = await self._handle_invalidate_entries(state)
             else:
                 assert_never(state)
 
         raise RuntimeError("Unreachable")
 
     async def _handle_idle_state(self, state: IdleClient, request: Request) -> AnyState:
-        stored_pairs = await self.storage.get_pairs(await self._get_key_for_request(request))
-        return state.next(request, stored_pairs)
+        stored_entries = await self.storage.get_entries(await self._get_key_for_request(request))
+        return state.next(request, stored_entries)
 
     async def _handle_cache_miss(self, state: CacheMiss) -> AnyState:
-        incomplete_pair = await self.storage.create_pair(state.request)
-        response = await self.send_request(incomplete_pair.request)
-        return state.next(response, incomplete_pair.id)
+        response = await self.send_request(state.request)
+        return state.next(response)
 
     async def _handle_store_and_use(self, state: StoreAndUse, request: Request) -> Response:
-        complete_pair = await self.storage.add_response(
-            state.pair_id,
+        complete_pair = await self.storage.add_entry(
+            request,
             state.response,
             await self._get_key_for_request(request),
         )
@@ -166,17 +162,17 @@ class AsyncCacheProxy:
         return state.next(revalidation_response)
 
     async def _handle_update(self, state: NeedToBeUpdated) -> AnyState:
-        for pair in state.updating_pairs:
-            await self.storage.update_pair(
-                pair.id,
+        for entry in state.updating_entries:
+            await self.storage.update_entry(
+                entry.id,
                 lambda complete_pair: replace(
                     complete_pair,
-                    response=replace(pair.response, headers=pair.response.headers),
+                    response=replace(entry.response, headers=entry.response.headers),
                 ),
             )
         return state.next()
 
-    async def _handle_invalidate_pairs(self, state: InvalidatePairs) -> AnyState:
-        for pair_id in state.pair_ids:
-            await self.storage.remove(pair_id)
+    async def _handle_invalidate_entries(self, state: InvalidateEntries) -> AnyState:
+        for entry_id in state.entry_ids:
+            await self.storage.remove_entry(entry_id)
         return state.next()

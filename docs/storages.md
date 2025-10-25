@@ -10,11 +10,11 @@ Hishel provides storage backends for persisting HTTP request-response pairs. The
 
 Storage backends handle:
 
-- ✅ **Pair Management**: Store incomplete and complete request-response pairs
+- ✅ **Entry Management**: Store complete request-response pairs (entries)
 - ✅ **Stream Handling**: Efficiently store and retrieve large request/response bodies
 - ✅ **TTL Management**: Automatic expiration and cleanup of old entries
 - ✅ **Soft Deletion**: Mark entries as deleted without immediate removal
-- ✅ **Cache Keys**: Group multiple pairs under a single cache key
+- ✅ **Cache Keys**: Group multiple entries under a single cache key
 
 ## Available Storages
 
@@ -29,7 +29,7 @@ Coming soon:
 
 ## SQLite Storage
 
-SQLite storage provides persistent, file-based caching with excellent performance characteristics. It uses two tables: one for request-response pairs and another for streaming data chunks.
+SQLite storage provides persistent, file-based caching with excellent performance characteristics. It uses two tables: one for request-response entries and another for streaming data chunks.
 
 ### Initialization
 
@@ -92,159 +92,155 @@ SQLite storage provides persistent, file-based caching with excellent performanc
 
 ## Basic Usage
 
-### Creating Pairs
+### Creating Entries
 
-A "pair" consists of an HTTP request and response. Storage operations start by creating an incomplete pair (request only), then adding the response later.
+An "entry" consists of an HTTP request and its corresponding response. With the new API, you create a complete entry in one operation by providing both the request and response together.
 
 === "Async"
 
     ```python
-    from hishel import AsyncSqliteStorage, Request, Headers
+    from hishel import AsyncSqliteStorage, Request, Response, Headers
+    from hishel._utils import make_async_iterator
     
     storage = AsyncSqliteStorage()
     
-    # Create incomplete pair with request
-    incomplete_pair = await storage.create_pair(
+    # Create a complete entry with request and response
+    entry = await storage.add_entry(
         request=Request(
             method="GET",
             url="https://api.example.com/users",
             headers=Headers({"User-Agent": "MyApp/1.0"})
-        )
+        ),
+        response=Response(
+            status_code=200,
+            headers=Headers({"Content-Type": "application/json"}),
+            stream=make_async_iterator([b'{"users": []}'])
+        ),
+        key="GET:https://api.example.com/users"  # Cache key
     )
     
-    # incomplete_pair has:
+    # Consume the response stream to save it
+    async for _ in entry.response.aiter_stream():
+        pass
+    
+    # entry has:
     # - id: UUID
     # - request: Request
+    # - response: Response
+    # - cache_key: bytes
     # - meta: PairMeta (created_at timestamp)
     
-    print(f"Created pair with ID: {incomplete_pair.id}")
+    print(f"Created entry with ID: {entry.id}")
+    print(f"Response status: {entry.response.status_code}")
     ```
 
 === "Sync"
 
     ```python
-    from hishel import SyncSqliteStorage, Request, Headers
+    from hishel import SyncSqliteStorage, Request, Response, Headers
+    from hishel._utils import make_iterator
     
     storage = SyncSqliteStorage()
     
-    # Create incomplete pair with request
-    incomplete_pair = storage.create_pair(
+    # Create a complete entry with request and response
+    entry = storage.add_entry(
         request=Request(
             method="GET",
             url="https://api.example.com/users",
             headers=Headers({"User-Agent": "MyApp/1.0"})
-        )
+        ),
+        response=Response(
+            status_code=200,
+            headers=Headers({"Content-Type": "application/json"}),
+            stream=make_iterator([b'{"users": []}'])
+        ),
+        key="GET:https://api.example.com/users"  # Cache key
     )
     
-    # incomplete_pair has:
+    # Consume the response stream to save it
+    for _ in entry.response.iter_stream():
+        pass
+    
+    # entry has:
     # - id: UUID
     # - request: Request
+    # - response: Response
+    # - cache_key: bytes
     # - meta: PairMeta (created_at timestamp)
     
-    print(f"Created pair with ID: {incomplete_pair.id}")
+    print(f"Created entry with ID: {entry.id}")
+    print(f"Response status: {entry.response.status_code}")
     ```
 
-### Adding Responses
+### Custom Entry IDs
 
-After receiving a response from the origin server, complete the pair by adding the response.
+You can optionally provide a custom UUID for the entry (useful for testing or specific use cases):
 
 === "Async"
 
     ```python
-    from hishel import Response, Headers
+    import uuid
     
-    # Add response to complete the pair
-    complete_pair = await storage.add_response(
-        pair_id=incomplete_pair.id,
-        response=Response(
-            status_code=200,
-            headers=Headers({"Content-Type": "application/json"}),
-            stream=...,  # Response body stream
-        ),
-        key="GET:https://api.example.com/users"  # Cache key
+    entry = await storage.add_entry(
+        request=request,
+        response=response,
+        key="my_cache_key",
+        id_=uuid.UUID(int=0)  # Custom UUID
     )
-    
-    # complete_pair has:
-    # - id: UUID
-    # - request: Request
-    # - response: Response
-    # - cache_key: bytes
-    # - meta: PairMeta
-    
-    print(f"Stored response with status {complete_pair.response.status_code}")
     ```
 
 === "Sync"
 
     ```python
-    from hishel import Response, Headers
+    import uuid
     
-    # Add response to complete the pair
-    complete_pair = storage.add_response(
-        pair_id=incomplete_pair.id,
-        response=Response(
-            status_code=200,
-            headers=Headers({"Content-Type": "application/json"}),
-            stream=...,  # Response body stream
-        ),
-        key="GET:https://api.example.com/users"  # Cache key
+    entry = storage.add_entry(
+        request=request,
+        response=response,
+        key="my_cache_key",
+        id_=uuid.UUID(int=0)  # Custom UUID
     )
-    
-    # complete_pair has:
-    # - id: UUID
-    # - request: Request
-    # - response: Response
-    # - cache_key: bytes
-    # - meta: PairMeta
-    
-    print(f"Stored response with status {complete_pair.response.status_code}")
     ```
 
-### Retrieving Cached Pairs
+### Retrieving Cached Entries
 
-Retrieve all complete pairs associated with a cache key.
+Retrieve all entries associated with a cache key.
 
 === "Async"
 
     ```python
-    # Get all pairs for a cache key
+    # Get all entries for a cache key
     cache_key = "GET:https://api.example.com/users"
-    pairs = await storage.get_pairs(cache_key)
+    entries = await storage.get_entries(cache_key)
     
-    # pairs is a list of CompletePair objects
-    for pair in pairs:
-        print(f"Cached response: {pair.response.status_code}")
+    # entries is a list of Entry objects
+    for entry in entries:
+        print(f"Cached response: {entry.response.status_code}")
         
-        # Access request/response bodies through streams
-        async for chunk in pair.request.aiter_stream():
-            print(f"Request chunk: {chunk}")
-        
-        async for chunk in pair.response.aiter_stream():
+        # Access response body through stream
+        async for chunk in entry.response.aiter_stream():
             print(f"Response chunk: {chunk}")
     ```
 
 === "Sync"
 
     ```python
-    # Get all pairs for a cache key
+    # Get all entries for a cache key
     cache_key = "GET:https://api.example.com/users"
-    pairs = storage.get_pairs(cache_key)
+    entries = storage.get_entries(cache_key)
     
-    # pairs is a list of CompletePair objects
-    for pair in pairs:
-        print(f"Cached response: {pair.response.status_code}")
+    # entries is a list of Entry objects
+    for entry in entries:
+        print(f"Cached response: {entry.response.status_code}")
         
-        # Access request/response bodies through streams
-        for chunk in pair.request.iter_stream():
-            print(f"Request chunk: {chunk}")
-        
-        for chunk in pair.response.iter_stream():
+        # Access response body through stream
+        for chunk in entry.response.iter_stream():
             print(f"Response chunk: {chunk}")
     ```
 
-### Updating Pairs
+### Updating Entries
 
-Update an existing pair with new information.
+Update an existing entry with new information.
 
 === "Async"
 
@@ -252,21 +248,21 @@ Update an existing pair with new information.
     import time
     from dataclasses import replace
     
-    # Option 1: Update with a new pair object
-    updated_pair = replace(
-        complete_pair,
-        meta=replace(complete_pair.meta, created_at=time.time())
+    # Option 1: Update with a new entry object
+    updated_entry = replace(
+        entry,
+        meta=replace(entry.meta, created_at=time.time())
     )
-    result = await storage.update_pair(complete_pair.id, updated_pair)
+    result = await storage.update_entry(entry.id, updated_entry)
     
     # Option 2: Update using a callable
-    def update_cache_key(pair):
-        return replace(pair, cache_key=b"new_key")
+    def update_cache_key(entry):
+        return replace(entry, cache_key=b"new_key")
     
-    result = await storage.update_pair(complete_pair.id, update_cache_key)
+    result = await storage.update_entry(entry.id, update_cache_key)
     
     if result is None:
-        print("Pair not found or is incomplete")
+        print("Entry not found")
     ```
 
 === "Sync"
@@ -274,43 +270,43 @@ Update an existing pair with new information.
     ```python
     from dataclasses import replace
     
-    # Option 1: Update with a new pair object
-    updated_pair = replace(
-        complete_pair,
-        response=replace(complete_pair.response, status_code=304)
+    # Option 1: Update with a new entry object
+    updated_entry = replace(
+        entry,
+        response=replace(entry.response, status_code=304)
     )
-    result = storage.update_pair(complete_pair.id, updated_pair)
+    result = storage.update_entry(entry.id, updated_entry)
     
     # Option 2: Update using a callable
-    def update_cache_key(pair):
-        return replace(pair, cache_key=b"new_key")
+    def update_cache_key(entry):
+        return replace(entry, cache_key=b"new_key")
     
-    result = storage.update_pair(complete_pair.id, update_cache_key)
+    result = storage.update_entry(entry.id, update_cache_key)
     
     if result is None:
-        print("Pair not found or is incomplete")
+        print("Entry not found")
     ```
 
-### Removing Pairs
+### Removing Entries
 
-Remove pairs from the cache (soft deletion - marked as deleted but not immediately removed).
+Remove entries from the cache (soft deletion - marked as deleted but not immediately removed).
 
 === "Async"
 
     ```python
-    # Soft delete a pair
-    await storage.remove(pair_id=complete_pair.id)
+    # Soft delete an entry
+    await storage.remove_entry(entry_id=entry.id)
     
-    # The pair is marked as deleted and will be removed during cleanup
+    # The entry is marked as deleted and will be removed during cleanup
     ```
 
 === "Sync"
 
     ```python
-    # Soft delete a pair
-    storage.remove(pair_id=complete_pair.id)
+    # Soft delete an entry
+    storage.remove_entry(entry_id=entry.id)
     
-    # The pair is marked as deleted and will be removed during cleanup
+    # The entry is marked as deleted and will be removed during cleanup
     ```
 
 ---
@@ -335,22 +331,13 @@ Here's a complete example showing the full lifecycle of cache storage:
     # Create cache key
     cache_key = "GET:https://api.example.com/users"
     
-    # Step 1: Create incomplete pair
-    incomplete_pair = await storage.create_pair(
+    # Step 1: Create a complete entry with request and response
+    entry = await storage.add_entry(
         request=Request(
             method="GET",
             url="https://api.example.com/users",
             stream=make_async_iterator([b"request body"]),
-        )
-    )
-    
-    # Consume request stream to store it
-    async for chunk in incomplete_pair.request.aiter_stream():
-        pass  # Storage automatically saves chunks
-    
-    # Step 2: Add response to complete the pair
-    complete_pair = await storage.add_response(
-        pair_id=incomplete_pair.id,
+        ),
         response=Response(
             status_code=200,
             headers=Headers({"Content-Type": "application/json"}),
@@ -364,37 +351,40 @@ Here's a complete example showing the full lifecycle of cache storage:
         key=cache_key,
     )
     
-    # Consume response stream to store it
-    async for chunk in complete_pair.response.aiter_stream():
+    # Consume streams to store them
+    async for chunk in entry.request.aiter_stream():
         pass  # Storage automatically saves chunks
     
-    # Step 3: Retrieve cached pairs
-    cached_pairs = await storage.get_pairs(cache_key)
+    async for chunk in entry.response.aiter_stream():
+        pass  # Storage automatically saves chunks
     
-    print(f"Found {len(cached_pairs)} cached pair(s)")
+    # Step 2: Retrieve cached entries
+    cached_entries = await storage.get_entries(cache_key)
     
-    for pair in cached_pairs:
-        print(f"Request: {pair.request.method} {pair.request.url}")
-        print(f"Response: {pair.response.status_code}")
+    print(f"Found {len(cached_entries)} cached entry/entries")
+    
+    for entry in cached_entries:
+        print(f"Request: {entry.request.method} {entry.request.url}")
+        print(f"Response: {entry.response.status_code}")
         
         # Read response body
         body_chunks = []
-        async for chunk in pair.response.aiter_stream():
+        async for chunk in entry.response.aiter_stream():
             body_chunks.append(chunk)
         body = b"".join(body_chunks)
         print(f"Body: {body.decode()}")
     
-    # Step 4: Update pair if needed
+    # Step 3: Update entry if needed
     from dataclasses import replace
     
-    updated_pair = replace(
-        complete_pair,
+    updated_entry = replace(
+        entry,
         cache_key=b"updated_key"
     )
-    await storage.update_pair(complete_pair.id, updated_pair)
+    await storage.update_entry(entry.id, updated_entry)
     
-    # Step 5: Remove pair when no longer needed
-    await storage.remove(complete_pair.id)
+    # Step 4: Remove entry when no longer needed
+    await storage.remove_entry(entry.id)
     ```
 
 === "Sync"
@@ -413,22 +403,13 @@ Here's a complete example showing the full lifecycle of cache storage:
     # Create cache key
     cache_key = "GET:https://api.example.com/users"
     
-    # Step 1: Create incomplete pair
-    incomplete_pair = storage.create_pair(
+    # Step 1: Create a complete entry with request and response
+    entry = storage.add_entry(
         request=Request(
             method="GET",
             url="https://api.example.com/users",
             stream=make_iterator([b"request body"]),
-        )
-    )
-    
-    # Consume request stream to store it
-    for chunk in incomplete_pair.request.iter_stream():
-        pass  # Storage automatically saves chunks
-    
-    # Step 2: Add response to complete the pair
-    complete_pair = storage.add_response(
-        pair_id=incomplete_pair.id,
+        ),
         response=Response(
             status_code=200,
             headers=Headers({"Content-Type": "application/json"}),
@@ -442,37 +423,40 @@ Here's a complete example showing the full lifecycle of cache storage:
         key=cache_key,
     )
     
-    # Consume response stream to store it
-    for chunk in complete_pair.response.iter_stream():
+    # Consume streams to store them
+    for chunk in entry.request.iter_stream():
         pass  # Storage automatically saves chunks
     
-    # Step 3: Retrieve cached pairs
-    cached_pairs = storage.get_pairs(cache_key)
+    for chunk in entry.response.iter_stream():
+        pass  # Storage automatically saves chunks
     
-    print(f"Found {len(cached_pairs)} cached pair(s)")
+    # Step 2: Retrieve cached entries
+    cached_entries = storage.get_entries(cache_key)
     
-    for pair in cached_pairs:
-        print(f"Request: {pair.request.method} {pair.request.url}")
-        print(f"Response: {pair.response.status_code}")
+    print(f"Found {len(cached_entries)} cached entry/entries")
+    
+    for entry in cached_entries:
+        print(f"Request: {entry.request.method} {entry.request.url}")
+        print(f"Response: {entry.response.status_code}")
         
         # Read response body
         body_chunks = []
-        for chunk in pair.response.iter_stream():
+        for chunk in entry.response.iter_stream():
             body_chunks.append(chunk)
         body = b"".join(body_chunks)
         print(f"Body: {body.decode()}")
     
-    # Step 4: Update pair if needed
+    # Step 3: Update entry if needed
     from dataclasses import replace
     
-    updated_pair = replace(
-        complete_pair,
+    updated_entry = replace(
+        entry,
         cache_key=b"updated_key"
     )
-    storage.update_pair(complete_pair.id, updated_pair)
+    storage.update_entry(entry.id, updated_entry)
     
-    # Step 5: Remove pair when no longer needed
-    storage.remove(complete_pair.id)
+    # Step 4: Remove entry when no longer needed
+    storage.remove_entry(entry.id)
     ```
 
 ---
@@ -483,13 +467,13 @@ Here's a complete example showing the full lifecycle of cache storage:
 
 Hishel storages efficiently handle large request and response bodies using streams. Streams are automatically chunked and stored as you consume them.
 
-**Important**: You must consume streams (iterate through them) for the data to be stored. Simply creating a pair with a stream doesn't store the stream data.
+**Important**: You must consume streams (iterate through them) for the data to be stored. Simply creating an entry with a stream doesn't store the stream data.
 
 === "Async"
 
     ```python
-    # Create pair with streaming body
-    incomplete_pair = await storage.create_pair(
+    # Create entry with streaming body
+    entry = await storage.add_entry(
         request=Request(
             method="POST",
             url="https://api.example.com/upload",
@@ -498,26 +482,35 @@ Hishel storages efficiently handle large request and response bodies using strea
                 b"chunk2",
                 b"chunk3",
             ])
-        )
+        ),
+        response=Response(
+            status_code=200,
+            headers=Headers({}),
+            stream=make_async_iterator([b"OK"])
+        ),
+        key=cache_key
     )
     
-    # IMPORTANT: Consume the stream to store it
-    async for chunk in incomplete_pair.request.aiter_stream():
+    # IMPORTANT: Consume the streams to store them
+    async for chunk in entry.request.aiter_stream():
         # Each chunk is stored as you iterate
         pass
     
-    # Now the request stream is fully stored
-    # You can retrieve it later:
-    pairs = await storage.get_pairs(cache_key)
-    async for chunk in pairs[0].request.aiter_stream():
+    async for chunk in entry.response.aiter_stream():
+        pass
+    
+    # Now the streams are fully stored
+    # You can retrieve them later:
+    entries = await storage.get_entries(cache_key)
+    async for chunk in entries[0].request.aiter_stream():
         print(f"Chunk: {chunk}")
     ```
 
 === "Sync"
 
     ```python
-    # Create pair with streaming body
-    incomplete_pair = storage.create_pair(
+    # Create entry with streaming body
+    entry = storage.add_entry(
         request=Request(
             method="POST",
             url="https://api.example.com/upload",
@@ -526,18 +519,27 @@ Hishel storages efficiently handle large request and response bodies using strea
                 b"chunk2",
                 b"chunk3",
             ])
-        )
+        ),
+        response=Response(
+            status_code=200,
+            headers=Headers({}),
+            stream=make_iterator([b"OK"])
+        ),
+        key=cache_key
     )
     
-    # IMPORTANT: Consume the stream to store it
-    for chunk in incomplete_pair.request.iter_stream():
+    # IMPORTANT: Consume the streams to store them
+    for chunk in entry.request.iter_stream():
         # Each chunk is stored as you iterate
         pass
     
-    # Now the request stream is fully stored
-    # You can retrieve it later:
-    pairs = storage.get_pairs(cache_key)
-    for chunk in pairs[0].request.iter_stream():
+    for chunk in entry.response.iter_stream():
+        pass
+    
+    # Now the streams are fully stored
+    # You can retrieve them later:
+    entries = storage.get_entries(cache_key)
+    for chunk in entries[0].request.iter_stream():
         print(f"Chunk: {chunk}")
     ```
 
@@ -552,12 +554,14 @@ Control how long cached entries remain valid:
     storage = AsyncSqliteStorage(default_ttl=3600.0)  # 1 hour
     
     # Override TTL for specific requests using metadata
-    incomplete_pair = await storage.create_pair(
+    entry = await storage.add_entry(
         request=Request(
             method="GET",
             url="https://api.example.com/data",
             metadata={"hishel_ttl": 7200.0}  # 2 hours for this entry
-        )
+        ),
+        response=response,
+        key=cache_key
     )
     
     # Disable TTL refresh on access
@@ -574,12 +578,14 @@ Control how long cached entries remain valid:
     storage = SyncSqliteStorage(default_ttl=3600.0)  # 1 hour
     
     # Override TTL for specific requests using metadata
-    incomplete_pair = storage.create_pair(
+    entry = storage.add_entry(
         request=Request(
             method="GET",
             url="https://api.example.com/data",
             metadata={"hishel_ttl": 7200.0}  # 2 hours for this entry
-        )
+        ),
+        response=response,
+        key=cache_key
     )
     
     # Disable TTL refresh on access
@@ -597,14 +603,13 @@ Storage automatically performs cleanup operations to remove expired and deleted 
 
 - Expired entries (past their TTL)
 - Entries marked as deleted for more than 7 days
-- Incomplete pairs older than 1 hour (considered corrupted)
-- Pairs with missing or incomplete streams
+- Entries with missing or incomplete streams
 
 The cleanup process is automatic and doesn't require manual intervention.
 
-### Custom Pair IDs
+### Custom Entry IDs
 
-By default, pair IDs are auto-generated UUIDs. You can provide custom IDs if needed:
+By default, entry IDs are auto-generated UUIDs. You can provide custom IDs if needed:
 
 === "Async"
 
@@ -613,12 +618,14 @@ By default, pair IDs are auto-generated UUIDs. You can provide custom IDs if nee
     
     # Provide custom UUID
     custom_id = uuid.uuid4()
-    incomplete_pair = await storage.create_pair(
+    entry = await storage.add_entry(
         request=Request(method="GET", url="https://api.example.com"),
-        id=custom_id
+        response=response,
+        key=cache_key,
+        id_=custom_id
     )
     
-    assert incomplete_pair.id == custom_id
+    assert entry.id == custom_id
     ```
 
 === "Sync"
@@ -628,12 +635,14 @@ By default, pair IDs are auto-generated UUIDs. You can provide custom IDs if nee
     
     # Provide custom UUID
     custom_id = uuid.uuid4()
-    incomplete_pair = storage.create_pair(
+    entry = storage.add_entry(
         request=Request(method="GET", url="https://api.example.com"),
-        id=custom_id
+        response=response,
+        key=cache_key,
+        id_=custom_id
     )
     
-    assert incomplete_pair.id == custom_id
+    assert entry.id == custom_id
     ```
 
 ---
@@ -643,14 +652,14 @@ By default, pair IDs are auto-generated UUIDs. You can provide custom IDs if nee
 For reference, here's the SQLite database schema used by the storage:
 
 ### `entries` Table
-Stores request-response pair metadata.
+Stores request-response entry metadata.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `id` | BLOB | Primary key - UUID of the pair |
-| `cache_key` | BLOB | Cache key for grouping pairs (NULL for incomplete pairs) |
-| `data` | BLOB | Serialized pair data (request, response, metadata) |
-| `created_at` | REAL | Timestamp when the pair was created |
+| `id` | BLOB | Primary key - UUID of the entry |
+| `cache_key` | BLOB | Cache key for grouping entries |
+| `data` | BLOB | Serialized entry data (request, response, metadata) |
+| `created_at` | REAL | Timestamp when the entry was created |
 | `deleted_at` | REAL | Timestamp when soft deleted (NULL if not deleted) |
 
 **Indexes:**
@@ -697,40 +706,37 @@ Storage is designed to work seamlessly with Hishel's RFC 9111 state machine. Her
     # Get cache key for request
     cache_key = "GET:https://api.example.com/users"
     
-    # Retrieve cached pairs
-    cached_pairs = await storage.get_pairs(cache_key)
+    # Retrieve cached entries
+    cached_entries = await storage.get_entries(cache_key)
     
     # Start state machine
     state = create_idle_state("client")
     request = Request(method="GET", url="https://api.example.com/users")
     
-    # Transition based on cached pairs
-    next_state = state.next(request, cached_pairs)
+    # Transition based on cached entries
+    next_state = state.next(request, cached_entries)
     
     if isinstance(next_state, FromCache):
         # Use cached response
-        response = next_state.pair.response
+        response = next_state.entry.response
     
     elif isinstance(next_state, CacheMiss):
         # Fetch from origin and store
         origin_response = ...  # fetch from server
         
-        # Create pair in storage
-        incomplete_pair = await storage.create_pair(request)
-        async for _ in incomplete_pair.request.aiter_stream():
-            pass
-        
         # Evaluate if we should store it
-        storage_state = next_state.next(origin_response, incomplete_pair.id)
+        storage_state = next_state.next(origin_response)
         
         if isinstance(storage_state, StoreAndUse):
-            # Add response to storage
-            complete_pair = await storage.add_response(
-                pair_id=incomplete_pair.id,
+            # Add entry to storage
+            entry = await storage.add_entry(
+                request=request,
                 response=origin_response,
                 key=cache_key,
             )
-            async for _ in complete_pair.response.aiter_stream():
+            async for _ in entry.request.aiter_stream():
+                pass
+            async for _ in entry.response.aiter_stream():
                 pass
         
         response = origin_response
@@ -753,40 +759,37 @@ Storage is designed to work seamlessly with Hishel's RFC 9111 state machine. Her
     # Get cache key for request
     cache_key = "GET:https://api.example.com/users"
     
-    # Retrieve cached pairs
-    cached_pairs = storage.get_pairs(cache_key)
+    # Retrieve cached entries
+    cached_entries = storage.get_entries(cache_key)
     
     # Start state machine
     state = create_idle_state("client")
     request = Request(method="GET", url="https://api.example.com/users")
     
-    # Transition based on cached pairs
-    next_state = state.next(request, cached_pairs)
+    # Transition based on cached entries
+    next_state = state.next(request, cached_entries)
     
     if isinstance(next_state, FromCache):
         # Use cached response
-        response = next_state.pair.response
+        response = next_state.entry.response
     
     elif isinstance(next_state, CacheMiss):
         # Fetch from origin and store
         origin_response = ...  # fetch from server
         
-        # Create pair in storage
-        incomplete_pair = storage.create_pair(request)
-        for _ in incomplete_pair.request.iter_stream():
-            pass
-        
         # Evaluate if we should store it
-        storage_state = next_state.next(origin_response, incomplete_pair.id)
+        storage_state = next_state.next(origin_response)
         
         if isinstance(storage_state, StoreAndUse):
-            # Add response to storage
-            complete_pair = storage.add_response(
-                pair_id=incomplete_pair.id,
+            # Add entry to storage
+            entry = storage.add_entry(
+                request=request,
                 response=origin_response,
                 key=cache_key,
             )
-            for _ in complete_pair.response.iter_stream():
+            for _ in entry.request.iter_stream():
+                pass
+            for _ in entry.response.iter_stream():
                 pass
         
         response = origin_response

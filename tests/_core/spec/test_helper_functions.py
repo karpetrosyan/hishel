@@ -22,7 +22,7 @@ from typing import Dict, Optional
 
 import pytest
 
-from hishel import CompletePair, PairMeta, Request, Response
+from hishel import Entry, PairMeta, Request, Response
 from hishel._core._headers import Headers
 from hishel._core._spec import (
     allowed_stale,
@@ -69,9 +69,9 @@ def create_response(
 def create_pair(
     request: Optional[Request] = None,
     response: Optional[Response] = None,
-) -> CompletePair:
+) -> Entry:
     """Helper to create a request-response pair."""
-    return CompletePair(
+    return Entry(
         id=uuid.uuid4(),
         request=request or create_request(),
         response=response or create_response(),

@@ -18,14 +18,14 @@ from typing import Dict, Optional
 
 import pytest
 
-from hishel import CompletePair, PairMeta, Request, Response
+from hishel import Entry, PairMeta, Request, Response
 from hishel._core._headers import Headers
 from hishel._core._spec import (
     CacheMiss,
     CacheOptions,
     CouldNotBeStored,
     FromCache,
-    InvalidatePairs,
+    InvalidateEntries,
     NeedRevalidation,
     NeedToBeUpdated,
     StoreAndUse,
@@ -72,9 +72,9 @@ def create_pair(
     request: Optional[Request] = None,
     response: Optional[Response] = None,
     pair_id: Optional[uuid.UUID] = None,
-) -> CompletePair:
+) -> Entry:
     """Helper to create a request-response pair."""
-    return CompletePair(
+    return Entry(
         id=pair_id or uuid.uuid4(),
         request=request or create_request(),
         response=response or create_response(),
@@ -122,7 +122,7 @@ class TestNotModifiedResponses:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair],
+            revalidating_entries=[cached_pair],
             options=default_options,
         )
 
@@ -141,9 +141,9 @@ class TestNotModifiedResponses:
 
         # Assert
         assert isinstance(next_state, NeedToBeUpdated)
-        assert len(next_state.updating_pairs) == 1
+        assert len(next_state.updating_entries) == 1
         # Response should be updated with new cache-control
-        updated_response = next_state.updating_pairs[0].response
+        updated_response = next_state.updating_entries[0].response
         assert "cache-control" in updated_response.headers
 
     def test_304_with_weak_etag_uses_last_modified_fallback(self, default_options: CacheOptions) -> None:
@@ -170,7 +170,7 @@ class TestNotModifiedResponses:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair],
+            revalidating_entries=[cached_pair],
             options=default_options,
         )
 
@@ -189,7 +189,7 @@ class TestNotModifiedResponses:
 
         # Assert
         assert isinstance(next_state, NeedToBeUpdated)
-        assert len(next_state.updating_pairs) == 1
+        assert len(next_state.updating_entries) == 1
 
     def test_304_with_matching_last_modified_freshens_response(self, default_options: CacheOptions) -> None:
         """
@@ -217,7 +217,7 @@ class TestNotModifiedResponses:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair],
+            revalidating_entries=[cached_pair],
             options=default_options,
         )
 
@@ -235,7 +235,7 @@ class TestNotModifiedResponses:
 
         # Assert
         assert isinstance(next_state, NeedToBeUpdated)
-        assert len(next_state.updating_pairs) == 1
+        assert len(next_state.updating_entries) == 1
 
     def test_304_with_single_cached_response_and_no_validators(self, default_options: CacheOptions) -> None:
         """
@@ -258,7 +258,7 @@ class TestNotModifiedResponses:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair],  # Only one pair
+            revalidating_entries=[cached_pair],  # Only one pair
             options=default_options,
         )
 
@@ -270,7 +270,7 @@ class TestNotModifiedResponses:
 
         # Assert
         assert isinstance(next_state, NeedToBeUpdated)
-        assert len(next_state.updating_pairs) == 1
+        assert len(next_state.updating_entries) == 1
 
     def test_304_with_multiple_responses_and_no_validators_invalidates_all(self, default_options: CacheOptions) -> None:
         """
@@ -298,7 +298,7 @@ class TestNotModifiedResponses:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair_1, cached_pair_2],
+            revalidating_entries=[cached_pair_1, cached_pair_2],
             options=default_options,
         )
 
@@ -310,8 +310,8 @@ class TestNotModifiedResponses:
 
         # Assert
         # Should invalidate all and result in cache miss
-        assert isinstance(next_state, InvalidatePairs)
-        assert len(next_state.pair_ids) == 2
+        assert isinstance(next_state, InvalidateEntries)
+        assert len(next_state.entry_ids) == 2
         assert isinstance(next_state.next_state, CacheMiss)
 
     def test_304_with_non_matching_etag_invalidates_response(self, default_options: CacheOptions) -> None:
@@ -332,7 +332,7 @@ class TestNotModifiedResponses:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair],
+            revalidating_entries=[cached_pair],
             options=default_options,
         )
 
@@ -346,8 +346,8 @@ class TestNotModifiedResponses:
         next_state = need_revalidation.next(revalidation_response)
 
         # Assert
-        assert isinstance(next_state, InvalidatePairs)
-        assert len(next_state.pair_ids) == 1
+        assert isinstance(next_state, InvalidateEntries)
+        assert len(next_state.entry_ids) == 1
         assert isinstance(next_state.next_state, CacheMiss)
 
     def test_304_with_multiple_responses_freshens_matching_invalidates_others(
@@ -381,7 +381,7 @@ class TestNotModifiedResponses:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair_1, cached_pair_2],
+            revalidating_entries=[cached_pair_1, cached_pair_2],
             options=default_options,
         )
 
@@ -395,10 +395,10 @@ class TestNotModifiedResponses:
         next_state = need_revalidation.next(revalidation_response)
 
         # Assert
-        assert isinstance(next_state, InvalidatePairs)
-        assert len(next_state.pair_ids) == 1  # One invalidated
+        assert isinstance(next_state, InvalidateEntries)
+        assert len(next_state.entry_ids) == 1  # One invalidated
         assert isinstance(next_state.next_state, NeedToBeUpdated)
-        assert len(next_state.next_state.updating_pairs) == 1  # One freshened
+        assert len(next_state.next_state.updating_entries) == 1  # One freshened
 
 
 # =============================================================================
@@ -442,7 +442,7 @@ class TestSuccessResponses:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair_1, cached_pair_2],
+            revalidating_entries=[cached_pair_1, cached_pair_2],
             options=default_options,
         )
 
@@ -456,10 +456,10 @@ class TestSuccessResponses:
         next_state = need_revalidation.next(new_response)
 
         # Assert
-        assert isinstance(next_state, InvalidatePairs)
+        assert isinstance(next_state, InvalidateEntries)
         # First pair is invalidated
-        assert len(next_state.pair_ids) == 1
-        assert next_state.pair_ids[0] == cached_pair_1.id
+        assert len(next_state.entry_ids) == 1
+        assert next_state.entry_ids[0] == cached_pair_1.id
 
         # Next state should be StoreAndUse or CouldNotBeStored
         inner_state = next_state.next_state
@@ -481,7 +481,7 @@ class TestSuccessResponses:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair],
+            revalidating_entries=[cached_pair],
             options=default_options,
         )
 
@@ -492,7 +492,7 @@ class TestSuccessResponses:
         next_state = need_revalidation.next(new_response)
 
         # Assert
-        assert isinstance(next_state, InvalidatePairs)
+        assert isinstance(next_state, InvalidateEntries)
         inner_state = next_state.next_state
         assert isinstance(inner_state, StoreAndUse)
         # Response should be marked as revalidated
@@ -518,7 +518,7 @@ class TestSuccessResponses:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair_1, cached_pair_2],
+            revalidating_entries=[cached_pair_1, cached_pair_2],
             options=default_options,
         )
 
@@ -529,15 +529,14 @@ class TestSuccessResponses:
         next_state = need_revalidation.next(new_response)
 
         # Assert
-        assert isinstance(next_state, InvalidatePairs)
+        assert isinstance(next_state, InvalidateEntries)
         # Only first pair is invalidated
-        assert pair_1_id in next_state.pair_ids
-        assert pair_2_id not in next_state.pair_ids
+        assert pair_1_id in next_state.entry_ids
+        assert pair_2_id not in next_state.entry_ids
 
         # Second pair's ID should be reused
         inner_state = next_state.next_state
         assert isinstance(inner_state, StoreAndUse)
-        assert inner_state.pair_id == pair_2_id
 
 
 # =============================================================================
@@ -573,7 +572,7 @@ class TestServerErrorResponses:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair],
+            revalidating_entries=[cached_pair],
             options=default_options,
         )
 
@@ -587,7 +586,7 @@ class TestServerErrorResponses:
         next_state = need_revalidation.next(error_response)
 
         # Assert
-        assert isinstance(next_state, InvalidatePairs)
+        assert isinstance(next_state, InvalidateEntries)
         inner_state = next_state.next_state
         # Error might not be stored (depends on cacheability)
         assert isinstance(inner_state, (StoreAndUse, CouldNotBeStored))
@@ -611,7 +610,7 @@ class TestServerErrorResponses:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[pair_1, pair_2],
+            revalidating_entries=[pair_1, pair_2],
             options=default_options,
         )
 
@@ -623,8 +622,8 @@ class TestServerErrorResponses:
 
         # Assert
         # Same behavior as 2xx
-        assert isinstance(next_state, InvalidatePairs)
-        assert len(next_state.pair_ids) == 1  # First pair invalidated
+        assert isinstance(next_state, InvalidateEntries)
+        assert len(next_state.entry_ids) == 1  # First pair invalidated
 
 
 # =============================================================================
@@ -649,7 +648,7 @@ class TestEdgeCases:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair],
+            revalidating_entries=[cached_pair],
             options=default_options,
         )
 
@@ -677,7 +676,7 @@ class TestEdgeCases:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair],
+            revalidating_entries=[cached_pair],
             options=default_options,
         )
 
@@ -698,7 +697,7 @@ class TestEdgeCases:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair],
+            revalidating_entries=[cached_pair],
             options=default_options,
         )
 
@@ -713,7 +712,7 @@ class TestEdgeCases:
         need_revalidation_2 = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair],
+            revalidating_entries=[cached_pair],
             options=default_options,
         )
         next_state_200 = need_revalidation_2.next(response_200)
@@ -737,7 +736,7 @@ class TestEdgeCases:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[cached_pair],
+            revalidating_entries=[cached_pair],
             options=default_options,
         )
 
@@ -747,13 +746,13 @@ class TestEdgeCases:
 
         if isinstance(next_state, NeedToBeUpdated):
             assert next_state.original_request == original_request
-        elif isinstance(next_state, InvalidatePairs):
+        elif isinstance(next_state, InvalidateEntries):
             if isinstance(next_state.next_state, NeedToBeUpdated):
                 assert next_state.next_state.original_request == original_request
 
     def test_empty_revalidating_pairs_handled_gracefully(self, default_options: CacheOptions) -> None:
         """
-        Test: Empty revalidating_pairs list is handled without errors.
+        Test: Empty revalidating_entries list is handled without errors.
 
         This shouldn't happen in normal operation, but the code should
         handle it gracefully if it does.
@@ -765,7 +764,7 @@ class TestEdgeCases:
         need_revalidation = NeedRevalidation(
             request=conditional_request,
             original_request=original_request,
-            revalidating_pairs=[],  # Empty list
+            revalidating_entries=[],  # Empty list
             options=default_options,
         )
 

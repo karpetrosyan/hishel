@@ -32,6 +32,10 @@ SUBS = [
     ("make_async_iterator", "make_sync_iterator"),
     ("ahttpx_to_internal", "httpx_to_internal"),
     ("AsyncCacheTransport", "SyncCacheTransport"),
+    (
+        "hishel._core._storages._async_base",
+        "hishel._core._storages._sync_base",
+    ),
 ]
 COMPILED_SUBS = [(re.compile(regex), repl) for regex, repl in SUBS]
 
@@ -89,15 +93,13 @@ def main():
 
     FILES = [
         (
-            "hishel/_core/_async/_storages/_sqlite.py",
-            "hishel/_core/_sync/_storages/_sqlite.py",
-        ),
-        (
             "tests/_core/_async/test_sqlite_storage.py",
             "tests/_core/_sync/test_sqlite_storage.py",
         ),
         ("tests/test_async_httpx.py", "tests/test_sync_httpx.py"),
         ("hishel/_async_cache.py", "hishel/_sync_cache.py"),
+        ("hishel/_core/_storages/_async_base.py", "hishel/_core/_storages/_sync_base.py"),
+        ("hishel/_core/_storages/_async_sqlite.py", "hishel/_core/_storages/_sync_sqlite.py"),
     ]
 
     for in_path, out_path in FILES:

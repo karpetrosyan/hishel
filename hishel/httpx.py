@@ -14,10 +14,11 @@ from typing import (
 
 from hishel import Headers, Request, Response
 from hishel._async_cache import AsyncCacheProxy
-from hishel._core._base._storages._base import AsyncBaseStorage, SyncBaseStorage
 from hishel._core._spec import (
     CacheOptions,
 )
+from hishel._core._storages._async_base import AsyncBaseStorage
+from hishel._core._storages._sync_base import SyncBaseStorage
 from hishel._core.models import RequestMetadata, extract_metadata_from_headers
 from hishel._sync_cache import SyncCacheProxy
 from hishel._utils import (

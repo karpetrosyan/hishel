@@ -20,7 +20,7 @@ from hishel import (
     NeedToBeUpdated,
     StoreAndUse,
     CouldNotBeStored,
-    InvalidatePairs,
+    InvalidateEntries,
     
     # Configuration
     CacheOptions,
@@ -70,9 +70,9 @@ graph TB
   CacheMiss -->|Response not<br/>cacheable| CouldNotBeStored[CouldNotBeStored<br/>Return without storing]
 
   NeedRevalidation -->|304 Not<br/>Modified| NeedToBeUpdated[NeedToBeUpdated<br/>Freshen Cache]
-  NeedRevalidation -->|2xx/5xx<br/>Response| InvalidatePairs[InvalidatePairs<br/>Delete Old Cache]
+  NeedRevalidation -->|2xx/5xx<br/>Response| InvalidateEntries[InvalidateEntries<br/>Delete Old Cache]
   
-  InvalidatePairs --> CacheMiss
+  InvalidateEntries --> CacheMiss
   NeedToBeUpdated --> FromCache
 
   FromCache -.->|Terminal| End1((End))
@@ -84,7 +84,7 @@ graph TB
   style StoreAndUse fill:#c8e6c9
   style CouldNotBeStored fill:#ffcdd2
   style NeedRevalidation fill:#fff9c4
-  style InvalidatePairs fill:#ffe0b2
+  style InvalidateEntries fill:#ffe0b2
 ```
 
 **Legend:**
@@ -93,7 +93,7 @@ graph TB
 - **Green**: Success states (FromCache, StoreAndUse)
 - **Red**: Failure state (CouldNotBeStored)
 - **Yellow**: Intermediate states requiring I/O
-- **Orange**: Action states (InvalidatePairs)
+- **Orange**: Action states (InvalidateEntries)
 
 ---
 
@@ -129,7 +129,7 @@ Request → IdleClient → NeedRevalidation → NeedToBeUpdated → FromCache �
 
 ### Example 5: Failed Revalidation (200)
 ```
-Request → IdleClient → NeedRevalidation → InvalidatePairs → CacheMiss → StoreAndUse → End
+Request → IdleClient → NeedRevalidation → InvalidateEntries → CacheMiss → StoreAndUse → End
 ```
 **Scenario:** Cached `/api/status` is stale, origin returns new content  
 **Actions:** Send conditional request, receive 200 with new content, delete old cache, store new response
@@ -246,7 +246,7 @@ next_state = cache_miss.next(response, pair_id=uuid.uuid4())
 **Transitions:**
 
 - **→ NeedToBeUpdated**: Origin responds with 304 Not Modified - cached responses are still valid and can be freshened
-- **→ InvalidatePairs + CacheMiss**: Origin responds with 2xx/5xx - cached responses are outdated and must be replaced
+- **→ InvalidateEntries + CacheMiss**: Origin responds with 2xx/5xx - cached responses are outdated and must be replaced
 - **→ CacheMiss**: No matching responses found during the freshening process
 
 **Validation Process:**
@@ -266,13 +266,13 @@ from hishel import NeedRevalidation
 need_revalidation = NeedRevalidation(
     request=conditional_request,
     original_request=original_request,
-    revalidating_pairs=[stale_pair],
+    revalidating_entries=[stale_pair],
     options=options
 )
 
 # Handle validation response
 next_state = need_revalidation.next(validation_response)
-# Returns: NeedToBeUpdated | InvalidatePairs | CacheMiss
+# Returns: NeedToBeUpdated | InvalidateEntries | CacheMiss
 ```
 
 ---
@@ -447,7 +447,7 @@ assert could_not_store.next() is None
 
 ---
 
-### InvalidatePairs
+### InvalidateEntries
 
 **What it means:** One or more cached response pairs need to be invalidated (deleted) from the cache before proceeding to the next state. This is a wrapper state that performs cleanup before transitioning.
 
@@ -475,10 +475,10 @@ assert could_not_store.next() is None
 
 **Example:**
 ```python
-from hishel import InvalidatePairs, CacheMiss
+from hishel import InvalidateEntries, CacheMiss
 
 # During revalidation with new response
-invalidate = InvalidatePairs(
+invalidate = InvalidateEntries(
     pair_ids=[old_pair_id1, old_pair_id2],
     next_state=CacheMiss(request=request, options=options),
     options=options

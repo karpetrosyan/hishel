@@ -6,8 +6,8 @@ from typing import Any, Iterator, Mapping, Optional, overload
 from typing_extensions import assert_never
 
 from hishel import Headers, Request, Response as Response
-from hishel._core._base._storages._base import SyncBaseStorage
 from hishel._core._spec import CacheOptions
+from hishel._core._storages._sync_base import SyncBaseStorage
 from hishel._core.models import extract_metadata_from_headers
 from hishel._sync_cache import SyncCacheProxy
 from hishel._utils import snake_to_header

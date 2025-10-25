@@ -4,6 +4,7 @@ import calendar
 import time
 import typing as tp
 from email.utils import parsedate_tz
+from pathlib import Path
 from typing import AsyncIterator, Iterable, Iterator
 
 HEADERS_ENCODING = "iso-8859-1"
@@ -104,3 +105,15 @@ def snake_to_header(text: str) -> str:
     """
     # Split by underscore, capitalize each word, join with dash, add X- prefix
     return "X-" + "-".join(word.capitalize() for word in text.split("_"))
+
+
+def ensure_cache_dict(base_path: str | None = None) -> Path:
+    _base_path = Path(base_path) if base_path is not None else Path(".cache/hishel")
+    _gitignore_file = _base_path / ".gitignore"
+
+    _base_path.mkdir(parents=True, exist_ok=True)
+
+    if not _gitignore_file.is_file():
+        with open(_gitignore_file, "w", encoding="utf-8") as f:
+            f.write("# Automatically created by Hishel\n*")
+    return _base_path

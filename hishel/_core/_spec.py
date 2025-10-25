@@ -20,7 +20,7 @@ from hishel._core.models import ResponseMetadata
 from hishel._utils import parse_date, partition
 
 if TYPE_CHECKING:
-    from hishel import CompletePair, Request, Response
+    from hishel import Entry, Request, Response
 
 
 TState = TypeVar("TState", bound="State")
@@ -145,7 +145,7 @@ class State(ABC):
 
 def vary_headers_match(
     original_request: Request,
-    associated_pair: CompletePair,
+    associated_entry: Entry,
 ) -> bool:
     """
     Determines if request headers match the Vary requirements of a cached response.
@@ -161,8 +161,8 @@ def vary_headers_match(
     ----------
     original_request : Request
         The new incoming request that we're trying to satisfy
-    associated_pair : CompletePair
-        A cached request-response pair that might match the new request
+    associated_entry : Entry
+        A cached request-response entry that might match the new request
 
     Returns:
     -------
@@ -195,31 +195,31 @@ def vary_headers_match(
     >>> # No Vary header - always matches
     >>> request = Request(headers=Headers({"accept": "application/json"}))
     >>> response = Response(headers=Headers({}))  # No Vary
-    >>> pair = CompletePair(request=request, response=response)
-    >>> vary_headers_match(request, pair)
+    >>> entry = Entry(request=request, response=response)
+    >>> vary_headers_match(request, entry)
     True
 
     >>> # Vary: Accept with matching Accept header
     >>> request1 = Request(headers=Headers({"accept": "application/json"}))
     >>> response = Response(headers=Headers({"vary": "Accept"}))
-    >>> pair = CompletePair(request=request1, response=response)
+    >>> entry = Entry(request=request1, response=response)
     >>> request2 = Request(headers=Headers({"accept": "application/json"}))
-    >>> vary_headers_match(request2, pair)
+    >>> vary_headers_match(request2, entry)
     True
 
     >>> # Vary: Accept with non-matching Accept header
     >>> request2 = Request(headers=Headers({"accept": "application/xml"}))
-    >>> vary_headers_match(request2, pair)
+    >>> vary_headers_match(request2, entry)
     False
 
     >>> # Vary: * always fails
     >>> response = Response(headers=Headers({"vary": "*"}))
-    >>> pair = CompletePair(request=request1, response=response)
-    >>> vary_headers_match(request2, pair)
+    >>> entry = Entry(request=request1, response=response)
+    >>> vary_headers_match(request2, entry)
     False
     """
     # Extract the Vary header from the cached response
-    vary_header = associated_pair.response.headers.get("vary")
+    vary_header = associated_entry.response.headers.get("vary")
 
     # If no Vary header exists, any request matches
     # The response doesn't vary based on request headers
@@ -242,7 +242,7 @@ def vary_headers_match(
 
         # Compare the specific header value between original and new request
         # Both headers must have the same value (or both be absent)
-        if original_request.headers.get(vary_header) != associated_pair.request.headers.get(vary_header):
+        if original_request.headers.get(vary_header) != associated_entry.request.headers.get(vary_header):
             return False
 
     # All Vary headers matched
@@ -1121,7 +1121,7 @@ AnyState = Union[
     "NeedToBeUpdated",
     "NeedRevalidation",
     "IdleClient",
-    "InvalidatePairs",
+    "InvalidateEntries",
 ]
 
 # Defined in https://www.rfc-editor.org/rfc/rfc9110#name-safe-methods
@@ -1167,7 +1167,7 @@ class IdleClient(State):
     """
 
     def next(
-        self, request: Request, associated_pairs: list[CompletePair]
+        self, request: Request, associated_entries: list[Entry]
     ) -> Union["CacheMiss", "FromCache", "NeedRevalidation"]:
         """
         Determines the next state transition based on the request and available cached responses.
@@ -1180,9 +1180,9 @@ class IdleClient(State):
         ----------
         request : Request
             The incoming HTTP request from the client
-        associated_pairs : list[CompletePair]
-            List of request-response pairs previously stored in the cache that may match
-            this request. These pairs are pre-filtered by cache key (typically URI).
+        associated_entries : list[Entry]
+            List of request-response entries previously stored in the cache that may match
+            this request. These entries are pre-filtered by cache key (typically URI).
 
         Returns:
         -------
@@ -1317,7 +1317,7 @@ class IdleClient(State):
         #
         # If a cached response has Cache-Control: no-cache, it cannot be reused without
         # validation, regardless of its freshness.
-        def no_cache_missing(pair: CompletePair) -> bool:
+        def no_cache_missing(pair: Entry) -> bool:
             """Check if the cached response lacks the no-cache directive."""
             return parse_cache_control(pair.response.headers.get("cache-control")).no_cache is False
 
@@ -1332,7 +1332,7 @@ class IdleClient(State):
         #
         # Note: Condition 5.3 (successfully validated) is handled in the
         # NeedRevalidation state, not here.
-        def fresh_or_allowed_stale(pair: CompletePair) -> bool:
+        def fresh_or_allowed_stale(pair: Entry) -> bool:
             """
             Determine if a cached response is fresh or allowed to be served stale.
 
@@ -1361,7 +1361,7 @@ class IdleClient(State):
         # "ready to use" and "needs revalidation" groups.
         filtered_pairs = [
             pair
-            for pair in associated_pairs
+            for pair in associated_entries
             if url_matches(pair) and method_matches(pair) and vary_headers_same(pair) and no_cache_missing(pair)  # type: ignore[no-untyped-call]
         ]
 
@@ -1455,7 +1455,7 @@ class IdleClient(State):
             # (ETag, Last-Modified) from the cached response.
             return NeedRevalidation(
                 request=make_conditional_request(request, need_revalidation[-1].response),
-                revalidating_pairs=need_revalidation,
+                revalidating_entries=need_revalidation,
                 options=self.options,
                 original_request=request,
             )
@@ -1525,7 +1525,7 @@ class CacheMiss(State):
     Indicates whether the cache miss occurred after a revalidation attempt.
     """
 
-    def next(self, response: Response, pair_id: uuid.UUID) -> Union["StoreAndUse", "CouldNotBeStored"]:
+    def next(self, response: Response) -> Union["StoreAndUse", "CouldNotBeStored"]:
         """
         Evaluates whether a response can be stored in the cache.
 
@@ -1582,7 +1582,7 @@ class CacheMiss(State):
         ...     status_code=200,
         ...     headers=Headers({"cache-control": "max-age=3600"})
         ... )
-        >>> next_state = cache_miss.next(response, uuid.uuid4())
+        >>> next_state = cache_miss.next(response)
         >>> isinstance(next_state, StoreAndUse)
         True
 
@@ -1591,7 +1591,7 @@ class CacheMiss(State):
         ...     status_code=200,
         ...     headers=Headers({"cache-control": "no-store"})
         ... )
-        >>> next_state = cache_miss.next(response, uuid.uuid4())
+        >>> next_state = cache_miss.next(response)
         >>> isinstance(next_state, CouldNotBeStored)
         True
         """
@@ -1817,7 +1817,6 @@ class CacheMiss(State):
 
             return CouldNotBeStored(
                 response=response,
-                pair_id=pair_id,
                 options=self.options,
                 after_revalidation=self.after_revalidation,
             )
@@ -1836,7 +1835,6 @@ class CacheMiss(State):
         cleaned_response = exclude_unstorable_headers(response, self.options.shared)
 
         return StoreAndUse(
-            pair_id=pair_id,
             response=cleaned_response,
             options=self.options,
             after_revalidation=self.after_revalidation,
@@ -1859,7 +1857,7 @@ class NeedRevalidation(State):
     State Transitions:
     -----------------
     - NeedToBeUpdated: 304 response received, cached responses can be freshened
-    - InvalidatePairs + CacheMiss: 2xx/5xx response received, new response must be cached
+    - InvalidateEntries + CacheMiss: 2xx/5xx response received, new response must be cached
     - CacheMiss: No matching responses found during freshening
 
     RFC 9111 References:
@@ -1880,8 +1878,8 @@ class NeedRevalidation(State):
     original_request : Request
         The original client request (without conditional headers) that initiated
         this revalidation. This is used when creating new cache entries.
-    revalidating_pairs : list[CompletePair]
-        The cached request-response pairs that are being revalidated. These are
+    revalidating_entries : list[Entry]
+        The cached request-response entries that are being revalidated. These are
         stale responses that might still be usable if the server confirms they
         haven't changed (304 response).
     options : CacheOptions
@@ -1895,14 +1893,14 @@ class NeedRevalidation(State):
 
     original_request: Request
 
-    revalidating_pairs: list[CompletePair]
+    revalidating_entries: list[Entry]
     """
-    The stored pairs that the request was sent for revalidation.
+    The stored entries that the request was sent for revalidation.
     """
 
     def next(
         self, revalidation_response: Response
-    ) -> Union["NeedToBeUpdated", "InvalidatePairs", "CacheMiss", "FromCache"]:
+    ) -> Union["NeedToBeUpdated", "InvalidateEntries", "CacheMiss", "FromCache"]:
         """
         Handles the response to a conditional request and determines the next state.
 
@@ -1922,9 +1920,9 @@ class NeedRevalidation(State):
 
         Returns:
         -------
-        Union[NeedToBeUpdated, InvalidatePairs, CacheMiss]
+        Union[NeedToBeUpdated, InvalidateEntries, CacheMiss]
             - NeedToBeUpdated: When 304 response allows cached responses to be freshened
-            - InvalidatePairs: When old responses must be invalidated (wraps next state)
+            - InvalidateEntries: When old responses must be invalidated (wraps next state)
             - CacheMiss: When no matching responses found or storing new response
 
         RFC 9111 Compliance:
@@ -1959,7 +1957,7 @@ class NeedRevalidation(State):
         >>> need_revalidation = NeedRevalidation(
         ...     request=conditional_request,
         ...     original_request=original_request,
-        ...     revalidating_pairs=[cached_pair],
+        ...     revalidating_entries=[cached_pair],
         ...     options=default_options
         ... )
         >>> response_304 = Response(status_code=304, headers=Headers({"etag": '"abc123"'}))
@@ -1970,7 +1968,7 @@ class NeedRevalidation(State):
         >>> # 200 OK - use new response
         >>> response_200 = Response(status_code=200, headers=Headers({"cache-control": "max-age=3600"}))
         >>> next_state = need_revalidation.next(response_200)
-        >>> isinstance(next_state, InvalidatePairs)
+        >>> isinstance(next_state, InvalidateEntries)
         True
         """
 
@@ -2009,11 +2007,11 @@ class NeedRevalidation(State):
         # 2. Store the new response (if cacheable)
         # 3. Use the new response to satisfy the request
         elif revalidation_response.status_code // 100 == 2:
-            # Invalidate all old pairs except the last one
-            # The last pair's ID will be reused for the new response
-            return InvalidatePairs(
+            # Invalidate all old entries except the last one
+            # The last entry's ID will be reused for the new response
+            return InvalidateEntries(
                 options=self.options,
-                pair_ids=[pair.id for pair in self.revalidating_pairs[:-1]],
+                entry_ids=[pair.id for pair in self.revalidating_entries[:-1]],
                 # After invalidation, attempt to cache the new response
                 next_state=CacheMiss(
                     request=self.original_request,
@@ -2021,7 +2019,6 @@ class NeedRevalidation(State):
                     after_revalidation=True,  # Mark that this occurred during revalidation
                 ).next(
                     revalidation_response,
-                    pair_id=self.revalidating_pairs[-1].id,
                 ),
             )
 
@@ -2051,23 +2048,22 @@ class NeedRevalidation(State):
         elif revalidation_response.status_code // 100 == 5:
             # Same as 2xx: invalidate old responses and store the error response
             # This ensures clients see the error rather than potentially stale data
-            return InvalidatePairs(
+            return InvalidateEntries(
                 options=self.options,
-                pair_ids=[pair.id for pair in self.revalidating_pairs[:-1]],
+                entry_ids=[pair.id for pair in self.revalidating_entries[:-1]],
                 next_state=CacheMiss(
                     request=self.original_request,
                     options=self.options,
                     after_revalidation=True,
                 ).next(
                     revalidation_response,
-                    pair_id=self.revalidating_pairs[-1].id,
                 ),
             )
         elif revalidation_response.status_code // 100 == 3:
             # 3xx Redirects should have been followed by the HTTP client
             return FromCache(
                 pair=replace(
-                    self.revalidating_pairs[-1],
+                    self.revalidating_entries[-1],
                     response=revalidation_response,
                 ),
                 options=self.options,
@@ -2090,7 +2086,7 @@ class NeedRevalidation(State):
 
     def freshening_stored_responses(
         self, revalidation_response: Response
-    ) -> "NeedToBeUpdated" | "InvalidatePairs" | "CacheMiss":
+    ) -> "NeedToBeUpdated" | "InvalidateEntries" | "CacheMiss":
         """
         Freshens cached responses after receiving a 304 Not Modified response.
 
@@ -2113,9 +2109,9 @@ class NeedRevalidation(State):
 
         Returns:
         -------
-        Union[NeedToBeUpdated, InvalidatePairs, CacheMiss]
+        Union[NeedToBeUpdated, InvalidateEntries, CacheMiss]
             - NeedToBeUpdated: When matching responses are found and updated
-            - InvalidatePairs: Wraps NeedToBeUpdated if non-matching responses exist
+            - InvalidateEntries: Wraps NeedToBeUpdated if non-matching responses exist
             - CacheMiss: When no matching responses are found
 
         RFC 9111 Compliance:
@@ -2176,7 +2172,7 @@ class NeedRevalidation(State):
         # Priority 2: Last-Modified timestamp
         # Priority 3: Single response assumption
 
-        identified_for_revalidation: list[CompletePair]
+        identified_for_revalidation: list[Entry]
 
         # MATCHING STRATEGY 1: Strong ETag
         # RFC 9110 Section 8.8.3: ETag
@@ -2196,7 +2192,7 @@ class NeedRevalidation(State):
             # Found a strong ETag in the 304 response
             # Partition cached responses: matching vs non-matching ETags
             identified_for_revalidation, need_to_be_invalidated = partition(
-                self.revalidating_pairs,
+                self.revalidating_entries,
                 lambda pair: pair.response.headers.get("etag") == revalidation_response.headers.get("etag"),  # type: ignore[no-untyped-call]
             )
 
@@ -2214,7 +2210,7 @@ class NeedRevalidation(State):
             # Found Last-Modified in the 304 response
             # Partition cached responses: matching vs non-matching timestamps
             identified_for_revalidation, need_to_be_invalidated = partition(
-                self.revalidating_pairs,
+                self.revalidating_entries,
                 lambda pair: pair.response.headers.get("last-modified")
                 == revalidation_response.headers.get("last-modified"),  # type: ignore[no-untyped-call]
             )
@@ -2228,10 +2224,10 @@ class NeedRevalidation(State):
         # we can safely assume that single response is the one being confirmed.
         # This handles cases where the server doesn't return validators in the 304.
         else:
-            if len(self.revalidating_pairs) == 1:
+            if len(self.revalidating_entries) == 1:
                 # Only one cached response - it must be the matching one
                 identified_for_revalidation, need_to_be_invalidated = (
-                    [self.revalidating_pairs[0]],
+                    [self.revalidating_entries[0]],
                     [],
                 )
             else:
@@ -2240,7 +2236,7 @@ class NeedRevalidation(State):
                 # Conservative approach: invalidate all of them
                 identified_for_revalidation, need_to_be_invalidated = (
                     [],
-                    self.revalidating_pairs,
+                    self.revalidating_entries,
                 )
 
         # ============================================================================
@@ -2266,7 +2262,7 @@ class NeedRevalidation(State):
             # while excluding certain headers that shouldn't be updated
             # (Content-Encoding, Content-Type, Content-Range).
             next_state = NeedToBeUpdated(
-                updating_pairs=[
+                updating_entries=[
                     replace(
                         pair,
                         response=refresh_response_headers(pair.response, revalidation_response),
@@ -2300,28 +2296,14 @@ class NeedRevalidation(State):
 
         if need_to_be_invalidated:
             # Wrap the next state in an invalidation operation
-            return InvalidatePairs(
+            return InvalidateEntries(
                 options=self.options,
-                pair_ids=[pair.id for pair in need_to_be_invalidated],
+                entry_ids=[pair.id for pair in need_to_be_invalidated],
                 next_state=next_state,
             )
 
         # No invalidations needed, return the next state directly
         return next_state
-
-
-# @dataclass
-# class StoreAndUse(State):
-#     """
-#     The state that indicates that the response can be stored in the cache and used.
-#     """
-
-#     pair_id: uuid.UUID
-
-#     response: Response
-
-#     def next(self) -> None:
-#         return None  # pragma: nocover
 
 
 class StoreAndUse(State):
@@ -2330,8 +2312,6 @@ class StoreAndUse(State):
 
     Attributes:
     ----------
-    pair_id : uuid.UUID
-        The unique identifier for the cache pair.
     response : Response
         The HTTP response to be stored in the cache.
     after_revalidation : bool
@@ -2340,13 +2320,11 @@ class StoreAndUse(State):
 
     def __init__(
         self,
-        pair_id: uuid.UUID,
         response: Response,
         options: CacheOptions,
         after_revalidation: bool = False,
     ) -> None:
         super().__init__(options)
-        self.pair_id = pair_id
         self.response = response
         self.after_revalidation = after_revalidation
         response_meta = ResponseMetadata(
@@ -2393,13 +2371,11 @@ class CouldNotBeStored(State):
     def __init__(
         self,
         response: Response,
-        pair_id: uuid.UUID,
         options: CacheOptions,
         after_revalidation: bool = False,
     ) -> None:
         super().__init__(options)
         self.response = response
-        self.pair_id = pair_id
         response_meta = ResponseMetadata(
             hishel_created_at=time.time(),
             hishel_from_cache=False,
@@ -2414,12 +2390,12 @@ class CouldNotBeStored(State):
 
 
 @dataclass
-class InvalidatePairs(State):
+class InvalidateEntries(State):
     """
-    The state that represents the deletion of cache pairs.
+    The state that represents the deletion of cache entries.
     """
 
-    pair_ids: list[uuid.UUID]
+    entry_ids: list[uuid.UUID]
 
     next_state: AnyState
 
@@ -2430,7 +2406,7 @@ class InvalidatePairs(State):
 class FromCache(State):
     def __init__(
         self,
-        pair: CompletePair,
+        pair: Entry,
         options: CacheOptions,
         after_revalidation: bool = False,
     ) -> None:
@@ -2452,8 +2428,8 @@ class FromCache(State):
 
 @dataclass
 class NeedToBeUpdated(State):
-    updating_pairs: list[CompletePair]
+    updating_entries: list[Entry]
     original_request: Request
 
     def next(self) -> FromCache:
-        return FromCache(pair=self.updating_pairs[-1], options=self.options)  # pragma: nocover
+        return FromCache(pair=self.updating_entries[-1], options=self.options)  # pragma: nocover

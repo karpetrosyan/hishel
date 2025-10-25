@@ -59,10 +59,10 @@ async def test_simple_caching_ignoring_spec(caplog: pytest.LogCaptureFixture) ->
     assert caplog.messages == snapshot(
         [
             "Trying to get cached response ignoring specification",
-            "Found 0 cached pairs for the request",
+            'Found 0 cached entries for the request',
             "Storing response in cache ignoring specification",
             "Trying to get cached response ignoring specification",
-            "Found 1 cached pairs for the request",
+            'Found 1 cached entries for the request',
             "Found matching cached response for the request",
         ]
     )

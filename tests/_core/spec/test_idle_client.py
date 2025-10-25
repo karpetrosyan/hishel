@@ -18,7 +18,7 @@ from typing import Any, Dict, Optional
 
 import pytest
 
-from hishel import CompletePair, PairMeta, Request, Response
+from hishel import Entry, PairMeta, Request, Response
 from hishel._core._headers import Headers
 from hishel._core._spec import (
     CacheMiss,
@@ -122,9 +122,9 @@ def create_pair(
     response: Optional[Response] = None,
     pair_id: Optional[uuid.UUID] = None,
     cache_key: bytes = b"test-cache-key",
-) -> CompletePair:
+) -> Entry:
     """Helper to create a request-response pair."""
-    return CompletePair(
+    return Entry(
         id=pair_id or uuid.uuid4(),
         request=request or create_request(),
         response=response or create_response(),
@@ -161,7 +161,7 @@ class TestTransitionToCacheMiss:
         """
         # Arrange
         request = create_request()
-        associated_pairs: list[CompletePair] = []  # Empty cache
+        associated_pairs: list[Entry] = []  # Empty cache
 
         # Act
         next_state = idle_client.next(request, associated_pairs)
@@ -640,8 +640,8 @@ class TestTransitionToNeedRevalidation:
         # Assert
         assert isinstance(next_state, NeedRevalidation)
         assert next_state.original_request == request
-        assert len(next_state.revalidating_pairs) == 1
-        assert next_state.revalidating_pairs[0] == cached_pair
+        assert len(next_state.revalidating_entries) == 1
+        assert next_state.revalidating_entries[0] == cached_pair
 
     def test_conditional_request_created_for_revalidation(self, idle_client: IdleClient) -> None:
         """
@@ -734,7 +734,7 @@ class TestTransitionToNeedRevalidation:
 
         # Assert
         assert isinstance(next_state, NeedRevalidation)
-        assert len(next_state.revalidating_pairs) == 2
+        assert len(next_state.revalidating_entries) == 2
 
 
 # =============================================================================
