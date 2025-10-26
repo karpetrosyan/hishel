@@ -228,13 +228,11 @@ Hishel uses a **sans-I/O state machine** architecture that separates HTTP cachin
 
 ## 🔮 Roadmap
 
-While Hishel currently supports HTTPX and Requests, we're actively working on:
+We're actively working on:
 
-- 🎯 Additional HTTP client integrations
-- 🎯 Server-side caching support
-- 🎯 More storage backends
-- 🎯 Advanced caching strategies
 - 🎯 Performance optimizations
+- 🎯 More integrations
+- 🎯 Partial responses support
 
 ## 📚 Documentation
 
