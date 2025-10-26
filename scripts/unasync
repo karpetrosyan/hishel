@@ -17,8 +17,7 @@ SUBS = [
     ("async for", "for"),
     ("AsyncIterator", "Iterator"),
     ("AsyncIterable", "Iterable"),
-    ("@pytest.mark.anyio", ""),
-    ("aread", "read"),
+    ("__aiter__", "__iter__"),
     (r"Awaitable\[([^\]]+)\]", r"\1"),
     # our public API
     ("AsyncCacheProxy", "SyncCacheProxy"),
@@ -36,6 +35,14 @@ SUBS = [
         "hishel._core._storages._async_base",
         "hishel._core._storages._sync_base",
     ),
+    # Third-party libraries
+    ("AsyncClient", "Client"),
+    ("@pytest.mark.anyio", ""),
+    ("aread", "read"),
+    ("aclose", "close"),
+    ("handle_async_request", "handle_request"),
+    ("AsyncBaseTransport", "BaseTransport"),
+    ("AsyncHTTPTransport", "HTTPTransport"),
 ]
 COMPILED_SUBS = [(re.compile(regex), repl) for regex, repl in SUBS]
 
@@ -100,6 +107,7 @@ def main():
         ("hishel/_async_cache.py", "hishel/_sync_cache.py"),
         ("hishel/_core/_storages/_async_base.py", "hishel/_core/_storages/_sync_base.py"),
         ("hishel/_core/_storages/_async_sqlite.py", "hishel/_core/_storages/_sync_sqlite.py"),
+        ("hishel/_async_httpx.py", "hishel/_sync_httpx.py"),
     ]
 
     for in_path, out_path in FILES:

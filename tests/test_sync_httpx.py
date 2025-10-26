@@ -110,9 +110,11 @@ def test_encoded_content_caching() -> None:
         response_data = b"".join([chunk for chunk in response.iter_raw()])
         assert data == response_data
         assert response.headers.get("Content-Length") == str(len(data)) == str(len(response_data))
+        assert response.headers.get("Content-Encoding") == "gzip"
 
     # Second request - should fetch from cache
     with client.stream("get", "https://localhost", extensions={"hishel_spec_ignore": True}) as response:
         response_data = b"".join([chunk for chunk in response.iter_raw()])
         assert data == response_data
         assert response.headers.get("Content-Length") == str(len(data)) == str(len(response_data))
+        assert response.headers.get("Content-Encoding") == "gzip"

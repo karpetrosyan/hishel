@@ -72,3 +72,22 @@ def test_simple_caching_ignoring_spec(use_temp_dir: Any, caplog: pytest.LogCaptu
             "X-Hishel-Stored": "False",
         }
     )
+
+
+def test_encoded_content_caching(use_temp_dir: Any) -> None:
+    """Test that gzip-encoded content is properly cached and retrieved."""
+    session = Session()
+    adapter = CacheAdapter()
+    session.mount("https://", adapter)
+
+    # First request - should fetch from mock and store in cache
+    response1 = session.get("https://httpbingo.org/gzip", headers={"x-hishel-spec-ignore": "True"})
+    # just check that we can read the content and decode it properly
+    response1.json()
+    assert response1.headers.get("Content-Encoding") == "gzip"
+
+    # Second request - should fetch from cache (no additional mock call)
+    response2 = session.get("https://httpbingo.org/gzip", headers={"x-hishel-spec-ignore": "True"})
+    # just check that we can read the content and decode it properly
+    response2.json()
+    assert response2.headers.get("Content-Encoding") == "gzip"

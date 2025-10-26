@@ -22,6 +22,8 @@ from hishel._core.models import (
     Request as Request,
     Response,
 )
+from hishel._async_cache import AsyncCacheProxy as AsyncCacheProxy
+from hishel._sync_cache import SyncCacheProxy as SyncCacheProxy
 
 __all__ = (
     # New API
@@ -50,4 +52,7 @@ __all__ = (
     "AsyncBaseStorage",
     "SyncSqliteStorage",
     "AsyncSqliteStorage",
+    # Proxy
+    "AsyncCacheProxy",
+    "SyncCacheProxy",
 )

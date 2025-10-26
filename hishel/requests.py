@@ -128,7 +128,7 @@ def _internal_to_requests(
             },
             status=model.status_code,
             preload_content=False,
-            decode_content=True,
+            decode_content=False,
         )
 
         # Set up the response object
@@ -196,7 +196,10 @@ class CacheAdapter(HTTPAdapter):
 
     def _send_request(self, request: Request) -> Response:
         requests_request = _internal_to_requests(request)
-        response = super().send(requests_request, stream=True)
+        response = super().send(
+            requests_request,
+            stream=True,
+        )
         return _requests_to_internal(response)
 
     def close(self) -> Any:
