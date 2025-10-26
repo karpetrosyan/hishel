@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import typing as t
 
+from hishel._utils import generate_http_date
+
 try:
     import fastapi
 except ImportError as e:
@@ -201,6 +203,9 @@ def cache(
     def add_cache_headers(response: fastapi.Response) -> t.Any:
         """Add Cache-Control headers to the response."""
         directives: list[str] = []
+
+        # IMPORTANT
+        response.headers["Date"] = generate_http_date()
 
         # Add directives with values
         if max_age is not None:

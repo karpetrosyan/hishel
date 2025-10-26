@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import typing as t
+from email.utils import formatdate
 from typing import AsyncIterator
 
 from hishel import AsyncBaseStorage, CacheOptions, Headers, Request, Response
@@ -33,11 +34,6 @@ _Scope = _ASGIScope
 _Receive = t.Callable[[], t.Awaitable[dict[str, t.Any]]]
 _Send = t.Callable[[dict[str, t.Any]], t.Awaitable[None]]
 _ASGIApp = t.Callable[[_Scope, _Receive, _Send], t.Awaitable[None]]
-
-
-async def _empty_receive() -> dict[str, t.Any]:
-    """Default receive callable that returns an empty message."""
-    return {"type": "http.disconnect"}
 
 
 class ASGICacheMiddleware:
@@ -200,6 +196,12 @@ class ASGICacheMiddleware:
 
                 # Convert to internal Response
                 headers_dict = {key.decode("latin1"): value.decode("latin1") for key, value in response_headers}
+
+                # Add Date header if not present
+                if not any(key.lower() == "date" for key in headers_dict.keys()):
+                    date_header = formatdate(timeval=None, localtime=False, usegmt=True)
+                    headers_dict["Date"] = date_header
+                    logger.debug("Added Date header to response: %s", date_header)
 
                 async def response_stream() -> AsyncIterator[bytes]:
                     for chunk in response_body_chunks:

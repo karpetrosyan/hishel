@@ -3,7 +3,7 @@ from __future__ import annotations
 import calendar
 import time
 import typing as tp
-from email.utils import parsedate_tz
+from email.utils import formatdate, parsedate_tz
 from pathlib import Path
 from typing import AsyncIterator, Iterable, Iterator
 
@@ -117,3 +117,13 @@ def ensure_cache_dict(base_path: str | None = None) -> Path:
         with open(_gitignore_file, "w", encoding="utf-8") as f:
             f.write("# Automatically created by Hishel\n*")
     return _base_path
+
+
+def generate_http_date() -> str:
+    """
+    Generate a Date header value for HTTP responses.
+    Returns date in RFC 1123 format (required by HTTP/1.1).
+
+    Example output: 'Sun, 26 Oct 2025 12:34:56 GMT'
+    """
+    return formatdate(timeval=None, localtime=False, usegmt=True)
