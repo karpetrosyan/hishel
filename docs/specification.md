@@ -79,12 +79,12 @@ graph TB
   StoreAndUse -.->|Terminal| End2((End))
   CouldNotBeStored -.->|Terminal| End3((End))
 
-  style IdleClient fill:#e1f5ff
-  style FromCache fill:#c8e6c9
-  style StoreAndUse fill:#c8e6c9
-  style CouldNotBeStored fill:#ffcdd2
-  style NeedRevalidation fill:#fff9c4
-  style InvalidateEntries fill:#ffe0b2
+  style IdleClient fill:#8a94a3,stroke:#6c757d,color:#fff
+  style FromCache fill:#7ba88a,stroke:#5d8a6f,color:#fff
+  style StoreAndUse fill:#7ba88a,stroke:#5d8a6f,color:#fff
+  style CouldNotBeStored fill:#c97a7a,stroke:#a86565,color:#fff
+  style NeedRevalidation fill:#c9a961,stroke:#a88b4f,color:#fff
+  style InvalidateEntries fill:#b89a7f,stroke:#9a7d66,color:#fff
 ```
 
 **Legend:**
