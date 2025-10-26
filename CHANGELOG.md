@@ -2,10 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.0.0.dev3 - 2025-10-26
+### ♻️ Refactoring
+- Replace pairs with entries, simplify storage API
+- Automatically generate httpx sync integration from async
+
+### ⚙️ Miscellaneous Tasks
+- Simplify metadata docs
+- Add custom integrations docs
+- More robust compressed response caching
+
+### 🐛 Bug Fixes
+- Add missing permissions into `publish.yml`
+- Raise on consumed httpx streams, which we can't store as is (it's already decoded)
+- Fix compressed data caching for requests
+- Handle httpx iterable usage instead of iterator correctly
+- Add date header for proper age calculation
+
+### 🚀 Features
+- Add integrations with fastapi and asgi
+- Add blacksheep integration examples
+- Add logging for asgi
+
 ## 1.0.0.dev2 - 2025-10-21
 ### ⚙️ Miscellaneous Tasks
 - Remove redundant utils and tests
 - Add import without extras check in ci
+- Fix time travel date, explicitly specify the timezone
 
 ### 🐛 Bug Fixes
 - Fix check for storing auth requests
