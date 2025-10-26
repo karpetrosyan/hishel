@@ -64,7 +64,7 @@ class AsyncCacheProxy:
             collected = b"".join([chunk async for chunk in request.stream])
             hash_ = hashlib.sha256(collected).hexdigest()
             request.stream = make_async_iterator([collected])
-            return f"{str(request.url)}-{hash_}"
+            return hash_
         return hashlib.sha256(str(request.url).encode("utf-8")).hexdigest()
 
     async def _maybe_refresh_pair_ttl(self, pair: Entry) -> None:
@@ -79,17 +79,18 @@ class AsyncCacheProxy:
 
     async def _handle_request_ignoring_spec(self, request: Request) -> Response:
         logger.debug("Trying to get cached response ignoring specification")
-        entries = await self.storage.get_entries(await self._get_key_for_request(request))
+        cache_key = await self._get_key_for_request(request)
+        entries = await self.storage.get_entries(cache_key)
 
         logger.debug(f"Found {len(entries)} cached entries for the request")
 
-        for pair in entries:
+        for entry in entries:
             if (
-                str(pair.request.url) == str(request.url)
-                and pair.request.method == request.method
+                str(entry.request.url) == str(request.url)
+                and entry.request.method == request.method
                 and vary_headers_match(
                     request,
-                    pair,
+                    entry,
                 )
             ):
                 logger.debug(
@@ -98,21 +99,29 @@ class AsyncCacheProxy:
                 response_meta = ResponseMetadata(
                     hishel_spec_ignored=True,
                     hishel_from_cache=True,
-                    hishel_created_at=pair.meta.created_at,
+                    hishel_created_at=entry.meta.created_at,
                     hishel_revalidated=False,
                     hishel_stored=False,
                 )
-                pair.response.metadata.update(response_meta)  # type: ignore
-                await self._maybe_refresh_pair_ttl(pair)
-                return pair.response
+                entry.response.metadata.update(response_meta)  # type: ignore
+                await self._maybe_refresh_pair_ttl(entry)
+                return entry.response
 
         response = await self.send_request(request)
+        response_meta = ResponseMetadata(
+            hishel_spec_ignored=True,
+            hishel_from_cache=False,
+            hishel_created_at=time.time(),
+            hishel_revalidated=False,
+            hishel_stored=True,
+        )
+        response.metadata.update(response_meta)  # type: ignore
 
         logger.debug("Storing response in cache ignoring specification")
         entry = await self.storage.create_entry(
             request,
             response,
-            await self._get_key_for_request(request),
+            cache_key,
         )
         return entry.response
 
