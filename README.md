@@ -44,6 +44,7 @@
 - 🎛️ **Configurable** - Fine-grained control over caching behavior
 - � **Memory Efficient** - Streaming support prevents loading large payloads into memory
 - 🌐 **Universal** - Works with any ASGI application (Starlette, Litestar, BlackSheep, etc.)
+- 🎯 **GraphQL Support** - Cache GraphQL queries with body-sensitive content caching
 
 ## 📦 Installation
 
@@ -212,6 +213,39 @@ storage = SyncSqliteStorage(
 )
 
 client = SyncCacheClient(storage=storage)
+```
+
+### GraphQL and Body-Sensitive Caching
+
+Cache GraphQL queries and other POST requests by including the request body in the cache key:
+
+```python
+from hishel.httpx import SyncCacheClient
+
+client = SyncCacheClient()
+
+# Cache GraphQL queries - different queries get different cache entries
+graphql_query = """
+    query GetUser($id: ID!) {
+        user(id: $id) {
+            name
+            email
+        }
+    }
+"""
+
+response = client.post(
+    "https://api.example.com/graphql",
+    json={"query": graphql_query, "variables": {"id": "123"}},
+    headers={"X-Hishel-Body-Key": "true"}  # Enable body-based caching
+)
+
+# Different query will be cached separately
+response = client.post(
+    "https://api.example.com/graphql",
+    json={"query": graphql_query, "variables": {"id": "456"}},
+    headers={"X-Hishel-Body-Key": "true"}
+)
 ```
 
 ## 🏗️ Architecture
