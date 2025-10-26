@@ -25,6 +25,139 @@ Follow these guidelines when converting models:
 **Requests**
 : Converting request models is simpler than responses. Hishel doesn't recreate requests from cache or store request body streams—only headers, method, and URL are needed. The converted request may be modified by Hishel before being sent to the server, but exact preservation of the request body isn't critical.
 
+## Using Cache Proxy Classes
+
+Hishel provides `AsyncCacheProxy` and `SyncCacheProxy` helper classes that handle all the caching logic for you. These classes are independent of any specific HTTP library and work only with Hishel's internal models, making them perfect for building new integrations.
+
+### AsyncCacheProxy
+
+The `AsyncCacheProxy` class manages the entire HTTP caching state machine. You simply provide it with a function that sends requests, and it handles:
+
+- Cache key generation
+- Storage operations
+- RFC 9111 compliance
+- State machine transitions
+- TTL management
+
+**Basic Usage:**
+
+```python
+from hishel import AsyncCacheProxy, AsyncSqliteStorage, CacheOptions
+
+async def send_request(request: Request) -> Response:
+    # Your code to send the HTTP request
+    # This is where you convert from internal models to your library
+    # and back
+    pass
+
+# Create the cache proxy
+cache_proxy = AsyncCacheProxy(
+    request_sender=send_request,
+    storage=AsyncSqliteStorage(),  # Optional, defaults to AsyncSqliteStorage
+    cache_options=CacheOptions(),   # Optional, defaults to CacheOptions()
+    ignore_specification=False,     # Optional, set True to bypass RFC 9111
+)
+
+# Handle a request with caching
+response = await cache_proxy.handle_request(request)
+```
+
+**Key Features:**
+
+- **Automatic cache key generation**: Based on URL and optional request body hashing
+- **Spec-compliant caching**: Full RFC 9111 state machine handling
+- **Spec-ignoring mode**: Simple cache lookup without RFC 9111 rules
+- **TTL refresh**: Automatic TTL updates on cache access if configured
+- **Vary header support**: Proper handling of content negotiation
+
+### SyncCacheProxy
+
+The synchronous version works identically but for blocking I/O:
+
+```python
+from hishel import SyncCacheProxy, SyncSqliteStorage
+
+def send_request(request: Request) -> Response:
+    # Your synchronous request sending code
+    pass
+
+cache_proxy = SyncCacheProxy(
+    request_sender=send_request,
+    storage=SyncSqliteStorage(),
+    cache_options=CacheOptions(),
+    ignore_specification=False,
+)
+
+response = cache_proxy.handle_request(request)
+```
+
+### Integration Example: httpx
+
+Here's how the httpx integration uses `AsyncCacheProxy`:
+
+```python
+from hishel import AsyncCacheProxy, Request, Response
+import httpx
+
+class AsyncCacheTransport(httpx.AsyncBaseTransport):
+    def __init__(
+        self,
+        next_transport: httpx.AsyncBaseTransport,
+        storage: AsyncBaseStorage | None = None,
+        cache_options: CacheOptions | None = None,
+    ):
+        self._transport = next_transport
+        
+        # Define how to send a request using the underlying transport
+        async def send_request(internal_request: Request) -> Response:
+            # Convert internal Request to httpx.Request
+            httpx_request = internal_to_httpx(internal_request)
+            
+            # Send using underlying transport
+            httpx_response = await self._transport.handle_async_request(httpx_request)
+            
+            # Convert httpx.Response to internal Response
+            return httpx_to_internal(httpx_response)
+        
+        # Create the cache proxy with our send function
+        self._cache_proxy = AsyncCacheProxy(
+            request_sender=send_request,
+            storage=storage,
+            cache_options=cache_options,
+        )
+    
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        # Convert httpx.Request to internal Request
+        internal_request = httpx_to_internal(request)
+        
+        # Let the cache proxy handle the request
+        internal_response = await self._cache_proxy.handle_request(internal_request)
+        
+        # Convert internal Response back to httpx.Response
+        return internal_to_httpx(internal_response)
+```
+
+### When to Use Cache Proxy Classes
+
+**Use `AsyncCacheProxy`/`SyncCacheProxy` when:**
+
+- ✅ Building a new integration from scratch
+- ✅ You want automatic RFC 9111 compliance
+- ✅ You need both spec-respecting and spec-ignoring modes
+- ✅ You want to focus on model conversion, not caching logic
+
+
+### Configuration Options
+
+Both proxy classes accept these parameters:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `request_sender` | `Callable` | **Required** | Function that sends requests using your HTTP library |
+| `storage` | `AsyncBaseStorage` / `SyncBaseStorage` | `AsyncSqliteStorage()` / `SyncSqliteStorage()` | Where to store cached responses |
+| `cache_options` | `CacheOptions` | `CacheOptions()` | RFC 9111 behavior configuration |
+| `ignore_specification` | `bool` | `False` | Set `True` to bypass RFC 9111 and cache everything |
+
 ## Implementation Example
 
 Here's how to translate synchronous httpx Request/Response models to Hishel's internal models:

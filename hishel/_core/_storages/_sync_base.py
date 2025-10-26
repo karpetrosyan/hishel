@@ -10,7 +10,7 @@ from ..models import Entry, Request, Response
 
 class SyncBaseStorage(abc.ABC):
     @abc.abstractmethod
-    def add_entry(self, request: Request, response: Response, key: str, id_: uuid.UUID | None = None) -> Entry:
+    def create_entry(self, request: Request, response: Response, key: str, id_: uuid.UUID | None = None) -> Entry:
         raise NotImplementedError()
 
     @abc.abstractmethod

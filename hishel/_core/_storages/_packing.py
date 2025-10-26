@@ -7,7 +7,7 @@ import msgpack
 from typing_extensions import Literal, cast
 
 from hishel._core._headers import Headers
-from hishel._core.models import PairMeta, Request, Response
+from hishel._core.models import EntryMeta, Request, Response
 
 
 def filter_out_hishel_metadata(data: Mapping[str, Any]) -> dict[str, Any]:
@@ -136,7 +136,7 @@ def unpack(
                     stream=iter([]),
                 )
             ),
-            meta=PairMeta(
+            meta=EntryMeta(
                 created_at=data["meta"]["created_at"],
                 deleted_at=data["meta"]["deleted_at"],
             ),

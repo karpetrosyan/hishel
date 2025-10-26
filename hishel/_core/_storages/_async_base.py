@@ -10,7 +10,7 @@ from ..models import Entry, Request, Response
 
 class AsyncBaseStorage(abc.ABC):
     @abc.abstractmethod
-    async def add_entry(self, request: Request, response: Response, key: str, id_: uuid.UUID | None = None) -> Entry:
+    async def create_entry(self, request: Request, response: Response, key: str, id_: uuid.UUID | None = None) -> Entry:
         raise NotImplementedError()
 
     @abc.abstractmethod

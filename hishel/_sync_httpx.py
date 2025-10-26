@@ -154,7 +154,7 @@ class SyncCacheTransport(httpx.BaseTransport):
     ) -> None:
         self.next_transport = next_transport
         self._cache_proxy: SyncCacheProxy = SyncCacheProxy(
-            send_request=self.request_sender,
+            request_sender=self.request_sender,
             storage=storage,
             cache_options=cache_options,
             ignore_specification=ignore_specification,

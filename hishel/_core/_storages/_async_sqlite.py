@@ -17,7 +17,7 @@ from hishel._core._storages._async_base import AsyncBaseStorage
 from hishel._core._storages._packing import pack, unpack
 from hishel._core.models import (
     Entry,
-    PairMeta,
+    EntryMeta,
     Request,
     Response,
 )
@@ -99,7 +99,7 @@ try:
 
             await self.connection.commit()
 
-        async def add_entry(
+        async def create_entry(
             self, request: Request, response: Response, key: str, id_: uuid.UUID | None = None
         ) -> Entry:
             key_bytes = key.encode("utf-8")
@@ -109,7 +109,7 @@ try:
 
             # Create a new entry directly with both request and response
             pair_id = id_ if id_ is not None else uuid.uuid4()
-            pair_meta = PairMeta(
+            pair_meta = EntryMeta(
                 created_at=time.time(),
             )
 

@@ -33,7 +33,7 @@ from hishel import (
 state = create_idle_state("client")  # "client" or "server" (server in development)
 
 # The state machine guides you through the caching logic
-next_state = state.next(request, associated_pairs=[])
+next_state = state.next(request, associated_entries=[])
 
 # Each state has a specific signature for its next() method
 # Type hints tell you exactly what parameters are needed
@@ -146,7 +146,7 @@ state = create_idle_state("client")  # client or server (server still in develop
 # signature will look like:
 #   (method) def next(
 #       request: Request,
-#       associated_pairs: list[CompletePair]
+#       associated_entries: list[Entry]
 #  )  -> (CacheMiss | FromCache | NeedRevalidation)
 next_state = state.next(...)
 ```
@@ -184,8 +184,8 @@ from hishel import IdleClient, CacheOptions
 # Create idle state
 idle = IdleClient(options=CacheOptions())
 
-# Transition based on request and cached pairs
-next_state = idle.next(request, associated_pairs=[])
+# Transition based on request and cached entries
+next_state = idle.next(request, associated_entries=[])
 # Returns: CacheMiss | FromCache | NeedRevalidation
 ```
 
@@ -226,7 +226,7 @@ from hishel import CacheMiss
 cache_miss = CacheMiss(request=request, options=options)
 
 # Evaluate response for storage
-next_state = cache_miss.next(response, pair_id=uuid.uuid4())
+next_state = cache_miss.next(response)
 # Returns: StoreAndUse | CouldNotBeStored
 ```
 
@@ -266,7 +266,7 @@ from hishel import NeedRevalidation
 need_revalidation = NeedRevalidation(
     request=conditional_request,
     original_request=original_request,
-    revalidating_entries=[stale_pair],
+    revalidating_entries=[stale_entry],
     options=options
 )
 
@@ -304,12 +304,12 @@ next_state = need_revalidation.next(validation_response)
 from hishel import FromCache
 
 # When a fresh response is found
-from_cache = FromCache(pair=cached_pair, options=options)
+from_cache = FromCache(entry=cached_entry, options=options)
 
 # This is a terminal state
 assert from_cache.next() is None
 
-# Use cached_pair.response to satisfy the request
+# Use cached_entry.response to satisfy the request
 ```
 
 ---
@@ -343,7 +343,7 @@ from hishel import NeedToBeUpdated
 
 # After 304 Not Modified
 need_update = NeedToBeUpdated(
-    updating_pairs=[cached_pair],
+    updating_entries=[cached_entry],
     original_request=original_request,
     options=options
 )
@@ -371,7 +371,7 @@ next_state = need_update.next()
 
 **What to do:**
 
-1. Store the request-response pair in your cache storage
+1. Store the request-response entry in your cache storage
 2. Store any stream data (request/response bodies)
 3. Return the response to the client
 4. The response is now available for future requests
@@ -384,7 +384,7 @@ from hishel import StoreAndUse
 
 # After determining response is cacheable
 store_and_use = StoreAndUse(
-    pair_id=pair_id,
+    entry_id=entry_id,
     response=response,
     options=options
 )
@@ -392,7 +392,7 @@ store_and_use = StoreAndUse(
 # This is a terminal state
 assert store_and_use.next() is None
 
-# Store the pair and return the response
+# Store the entry and return the response
 ```
 
 ---
@@ -435,7 +435,7 @@ from hishel import CouldNotBeStored
 # After determining response is not cacheable
 could_not_store = CouldNotBeStored(
     response=response,
-    pair_id=pair_id,
+    entry_id=entry_id,
     options=options
 )
 
@@ -449,7 +449,7 @@ assert could_not_store.next() is None
 
 ### InvalidateEntries
 
-**What it means:** One or more cached response pairs need to be invalidated (deleted) from the cache before proceeding to the next state. This is a wrapper state that performs cleanup before transitioning.
+**What it means:** One or more cached response entries need to be invalidated (deleted) from the cache before proceeding to the next state. This is a wrapper state that performs cleanup before transitioning.
 
 **When you're in this state:**
 
@@ -459,7 +459,7 @@ assert could_not_store.next() is None
 
 **Transitions:**
 
-- **→ next_state**: After invalidating pairs, transition to the wrapped next state (typically `CacheMiss` or `NeedToBeUpdated`)
+- **→ next_state**: After invalidating entries, transition to the wrapped next state (typically `CacheMiss` or `NeedToBeUpdated`)
 
 **Common Scenarios:**
 
@@ -469,7 +469,7 @@ assert could_not_store.next() is None
 
 **What to do:**
 
-1. Delete the specified pairs from cache storage
+1. Delete the specified entries from cache storage
 2. Delete associated stream data
 3. Transition to the next state specified
 
@@ -479,7 +479,7 @@ from hishel import InvalidateEntries, CacheMiss
 
 # During revalidation with new response
 invalidate = InvalidateEntries(
-    pair_ids=[old_pair_id1, old_pair_id2],
+    entry_ids=[old_entry_id1, old_entry_id2],
     next_state=CacheMiss(request=request, options=options),
     options=options
 )

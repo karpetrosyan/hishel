@@ -215,7 +215,7 @@ class ASGICacheMiddleware:
             # Create a new cache proxy for this request with the closure
             # This ensures complete isolation between concurrent requests
             cache_proxy = AsyncCacheProxy(
-                send_request=send_request_to_app,
+                request_sender=send_request_to_app,
                 storage=self.storage,
                 cache_options=self._cache_options,
                 ignore_specification=self._ignore_specification,

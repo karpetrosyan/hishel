@@ -105,7 +105,7 @@ An "entry" consists of an HTTP request and its corresponding response. With the 
     storage = AsyncSqliteStorage()
     
     # Create a complete entry with request and response
-    entry = await storage.add_entry(
+    entry = await storage.create_entry(
         request=Request(
             method="GET",
             url="https://api.example.com/users",
@@ -128,8 +128,8 @@ An "entry" consists of an HTTP request and its corresponding response. With the 
     # - request: Request
     # - response: Response
     # - cache_key: bytes
-    # - meta: PairMeta (created_at timestamp)
-    
+    # - meta: EntryMeta (created_at timestamp)
+
     print(f"Created entry with ID: {entry.id}")
     print(f"Response status: {entry.response.status_code}")
     ```
@@ -143,7 +143,7 @@ An "entry" consists of an HTTP request and its corresponding response. With the 
     storage = SyncSqliteStorage()
     
     # Create a complete entry with request and response
-    entry = storage.add_entry(
+    entry = storage.create_entry(
         request=Request(
             method="GET",
             url="https://api.example.com/users",
@@ -166,7 +166,7 @@ An "entry" consists of an HTTP request and its corresponding response. With the 
     # - request: Request
     # - response: Response
     # - cache_key: bytes
-    # - meta: PairMeta (created_at timestamp)
+    # - meta: EntryMeta (created_at timestamp)
     
     print(f"Created entry with ID: {entry.id}")
     print(f"Response status: {entry.response.status_code}")
@@ -181,7 +181,7 @@ You can optionally provide a custom UUID for the entry (useful for testing or sp
     ```python
     import uuid
     
-    entry = await storage.add_entry(
+    entry = await storage.create_entry(
         request=request,
         response=response,
         key="my_cache_key",
@@ -194,7 +194,7 @@ You can optionally provide a custom UUID for the entry (useful for testing or sp
     ```python
     import uuid
     
-    entry = storage.add_entry(
+    entry = storage.create_entry(
         request=request,
         response=response,
         key="my_cache_key",
@@ -332,7 +332,7 @@ Here's a complete example showing the full lifecycle of cache storage:
     cache_key = "GET:https://api.example.com/users"
     
     # Step 1: Create a complete entry with request and response
-    entry = await storage.add_entry(
+    entry = await storage.create_entry(
         request=Request(
             method="GET",
             url="https://api.example.com/users",
@@ -404,7 +404,7 @@ Here's a complete example showing the full lifecycle of cache storage:
     cache_key = "GET:https://api.example.com/users"
     
     # Step 1: Create a complete entry with request and response
-    entry = storage.add_entry(
+    entry = storage.create_entry(
         request=Request(
             method="GET",
             url="https://api.example.com/users",
@@ -473,7 +473,7 @@ Hishel storages efficiently handle large request and response bodies using strea
 
     ```python
     # Create entry with streaming body
-    entry = await storage.add_entry(
+    entry = await storage.create_entry(
         request=Request(
             method="POST",
             url="https://api.example.com/upload",
@@ -510,7 +510,7 @@ Hishel storages efficiently handle large request and response bodies using strea
 
     ```python
     # Create entry with streaming body
-    entry = storage.add_entry(
+    entry = storage.create_entry(
         request=Request(
             method="POST",
             url="https://api.example.com/upload",
@@ -554,7 +554,7 @@ Control how long cached entries remain valid:
     storage = AsyncSqliteStorage(default_ttl=3600.0)  # 1 hour
     
     # Override TTL for specific requests using metadata
-    entry = await storage.add_entry(
+    entry = await storage.create_entry(
         request=Request(
             method="GET",
             url="https://api.example.com/data",
@@ -578,7 +578,7 @@ Control how long cached entries remain valid:
     storage = SyncSqliteStorage(default_ttl=3600.0)  # 1 hour
     
     # Override TTL for specific requests using metadata
-    entry = storage.add_entry(
+    entry = storage.create_entry(
         request=Request(
             method="GET",
             url="https://api.example.com/data",
@@ -618,7 +618,7 @@ By default, entry IDs are auto-generated UUIDs. You can provide custom IDs if ne
     
     # Provide custom UUID
     custom_id = uuid.uuid4()
-    entry = await storage.add_entry(
+    entry = await storage.create_entry(
         request=Request(method="GET", url="https://api.example.com"),
         response=response,
         key=cache_key,
@@ -635,7 +635,7 @@ By default, entry IDs are auto-generated UUIDs. You can provide custom IDs if ne
     
     # Provide custom UUID
     custom_id = uuid.uuid4()
-    entry = storage.add_entry(
+    entry = storage.create_entry(
         request=Request(method="GET", url="https://api.example.com"),
         response=response,
         key=cache_key,
@@ -729,7 +729,7 @@ Storage is designed to work seamlessly with Hishel's RFC 9111 state machine. Her
         
         if isinstance(storage_state, StoreAndUse):
             # Add entry to storage
-            entry = await storage.add_entry(
+            entry = await storage.create_entry(
                 request=request,
                 response=origin_response,
                 key=cache_key,
@@ -782,7 +782,7 @@ Storage is designed to work seamlessly with Hishel's RFC 9111 state machine. Her
         
         if isinstance(storage_state, StoreAndUse):
             # Add entry to storage
-            entry = storage.add_entry(
+            entry = storage.create_entry(
                 request=request,
                 response=origin_response,
                 key=cache_key,

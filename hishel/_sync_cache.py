@@ -4,7 +4,7 @@ import hashlib
 import logging
 import time
 from dataclasses import replace
-from typing import Iterator, Awaitable, Callable
+from typing import Iterable, Iterator, Awaitable, Callable
 
 from typing_extensions import assert_never
 
@@ -26,6 +26,7 @@ from hishel import (
 )
 from hishel._core._spec import InvalidateEntries, vary_headers_match
 from hishel._core.models import Entry, ResponseMetadata
+from hishel._utils import make_sync_iterator
 
 logger = logging.getLogger("hishel.integrations.clients")
 
@@ -42,12 +43,12 @@ class SyncCacheProxy:
 
     def __init__(
         self,
-        send_request: Callable[[Request], Response],
+        request_sender: Callable[[Request], Response],
         storage: SyncBaseStorage | None = None,
         cache_options: CacheOptions | None = None,
         ignore_specification: bool = False,
     ) -> None:
-        self.send_request = send_request
+        self.send_request = request_sender
         self.storage = storage if storage is not None else SyncSqliteStorage()
         self.cache_options = cache_options if cache_options is not None else CacheOptions()
         self.ignore_specification = ignore_specification
@@ -59,11 +60,12 @@ class SyncCacheProxy:
 
     def _get_key_for_request(self, request: Request) -> str:
         if request.metadata.get("hishel_body_key"):
-            assert isinstance(request.stream, Iterator)
+            assert isinstance(request.stream, (Iterator, Iterable))
             collected = b"".join([chunk for chunk in request.stream])
             hash_ = hashlib.sha256(collected).hexdigest()
+            request.stream = make_sync_iterator([collected])
             return f"{str(request.url)}-{hash_}"
-        return str(request.url)
+        return hashlib.sha256(str(request.url).encode("utf-8")).hexdigest()
 
     def _maybe_refresh_pair_ttl(self, pair: Entry) -> None:
         if pair.request.metadata.get("hishel_refresh_ttl_on_access"):
@@ -107,7 +109,7 @@ class SyncCacheProxy:
         response = self.send_request(request)
 
         logger.debug("Storing response in cache ignoring specification")
-        entry = self.storage.add_entry(
+        entry = self.storage.create_entry(
             request,
             response,
             self._get_key_for_request(request),
@@ -150,7 +152,7 @@ class SyncCacheProxy:
         return state.next(response)
 
     def _handle_store_and_use(self, state: StoreAndUse, request: Request) -> Response:
-        complete_pair = self.storage.add_entry(
+        complete_pair = self.storage.create_entry(
             request,
             state.response,
             self._get_key_for_request(request),

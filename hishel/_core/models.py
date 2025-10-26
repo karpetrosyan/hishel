@@ -148,7 +148,7 @@ class Response:
 
 
 @dataclass
-class PairMeta:
+class EntryMeta:
     created_at: float = field(default_factory=time.time)
     deleted_at: Optional[float] = None
 
@@ -157,7 +157,7 @@ class PairMeta:
 class Entry:
     id: uuid.UUID
     request: Request
-    meta: PairMeta
+    meta: EntryMeta
     response: Response
     cache_key: bytes
     extra: Mapping[str, Any] = field(default_factory=dict)

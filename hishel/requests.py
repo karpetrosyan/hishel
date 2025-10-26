@@ -168,7 +168,7 @@ class CacheAdapter(HTTPAdapter):
     ):
         super().__init__(pool_connections, pool_maxsize, max_retries, pool_block)
         self._cache_proxy = SyncCacheProxy(
-            send_request=self._send_request,
+            request_sender=self._send_request,
             storage=storage,
             cache_options=cache_options,
             ignore_specification=ignore_specification,

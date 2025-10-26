@@ -10,6 +10,7 @@ from hishel._core._spec import (
     CouldNotBeStored as CouldNotBeStored,
     FromCache as FromCache,
     IdleClient as IdleClient,
+    InvalidateEntries,
     NeedRevalidation as NeedRevalidation,
     NeedToBeUpdated as NeedToBeUpdated,
     State as State,
@@ -18,7 +19,7 @@ from hishel._core._spec import (
 )
 from hishel._core.models import (
     Entry as Entry,
-    PairMeta as PairMeta,
+    EntryMeta as EntryMeta,
     Request as Request,
     Response,
 )
@@ -39,12 +40,13 @@ __all__ = (
     "State",
     "StoreAndUse",
     "CouldNotBeStored",
+    "InvalidateEntries",
     "create_idle_state",
     ## Models
     "Request",
     "Response",
     "Entry",
-    "PairMeta",
+    "EntryMeta",
     ## Headers
     "Headers",
     ## Storages

@@ -18,7 +18,7 @@ from typing import Dict, Optional
 
 import pytest
 
-from hishel import Entry, PairMeta, Request, Response
+from hishel import Entry, EntryMeta, Request, Response
 from hishel._core._headers import Headers
 from hishel._core._spec import (
     CacheMiss,
@@ -78,7 +78,7 @@ def create_pair(
         id=pair_id or uuid.uuid4(),
         request=request or create_request(),
         response=response or create_response(),
-        meta=PairMeta(),
+        meta=EntryMeta(),
         cache_key=b"test-cache-key",
     )
 

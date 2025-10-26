@@ -19,7 +19,7 @@ def test_add_entry(use_temp_dir: Any) -> None:
     """Test adding a complete entry with request and response."""
     storage = SyncSqliteStorage()
 
-    entry = storage.add_entry(
+    entry = storage.create_entry(
         request=Request(
             method="GET",
             url="https://example.com",
@@ -77,7 +77,7 @@ def test_add_entry_with_stream(use_temp_dir: Any) -> None:
     """Test adding an entry with a streaming response body."""
     storage = SyncSqliteStorage()
 
-    entry = storage.add_entry(
+    entry = storage.create_entry(
         request=Request(
             method="POST",
             url="https://example.com/upload",
@@ -142,14 +142,14 @@ def test_get_entries(use_temp_dir: Any) -> None:
     storage = SyncSqliteStorage()
 
     # Create two entries with the same cache key
-    storage.add_entry(
+    storage.create_entry(
         request=Request(method="GET", url="https://example.com/1"),
         response=Response(status_code=200, stream=make_sync_iterator([b"response1"])),
         key="shared_key",
         id_=uuid.UUID(int=1),
     )
 
-    storage.add_entry(
+    storage.create_entry(
         request=Request(method="GET", url="https://example.com/2"),
         response=Response(status_code=200, stream=make_sync_iterator([b"response2"])),
         key="shared_key",
@@ -169,14 +169,14 @@ def test_multiple_entries_same_key(use_temp_dir: Any) -> None:
     storage = SyncSqliteStorage()
 
     # Create multiple complete entries with the same key
-    storage.add_entry(
+    storage.create_entry(
         request=Request(method="GET", url="https://example.com/1"),
         response=Response(status_code=200, stream=make_sync_iterator([b"response1"])),
         key="shared_key",
         id_=uuid.UUID(int=3),
     )
 
-    storage.add_entry(
+    storage.create_entry(
         request=Request(method="GET", url="https://example.com/2"),
         response=Response(status_code=200, stream=make_sync_iterator([b"response2"])),
         key="shared_key",
@@ -195,7 +195,7 @@ def test_update_entry(use_temp_dir: Any) -> None:
     """Test updating an existing entry."""
     storage = SyncSqliteStorage()
 
-    entry = storage.add_entry(
+    entry = storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
         response=Response(status_code=200, stream=make_sync_iterator([b"original"])),
         key="original_key",
@@ -222,7 +222,7 @@ def test_update_entry_with_new_entry(use_temp_dir: Any) -> None:
     """Test updating an entry by providing a new entry directly."""
     storage = SyncSqliteStorage()
 
-    entry = storage.add_entry(
+    entry = storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
         response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
         key="key1",
@@ -243,7 +243,7 @@ def test_remove_entry(use_temp_dir: Any) -> None:
     """Test soft-deleting an entry."""
     storage = SyncSqliteStorage()
 
-    entry = storage.add_entry(
+    entry = storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
         response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
         key="test_key",
@@ -270,7 +270,7 @@ def test_stream_persistence(use_temp_dir: Any) -> None:
 
     response_chunks = [b"resp1", b"resp2"]
 
-    entry = storage.add_entry(
+    entry = storage.create_entry(
         request=Request(
             method="POST",
             url="https://example.com",
@@ -302,7 +302,7 @@ def test_multiple_entries_different_keys(use_temp_dir: Any) -> None:
 
     # Create entries with different keys
     for i in range(3):
-        storage.add_entry(
+        storage.create_entry(
             request=Request(method="GET", url=f"https://example.com/{i}"),
             response=Response(
                 status_code=200,
