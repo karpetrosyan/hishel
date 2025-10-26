@@ -561,6 +561,66 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#using-cache-proxy-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Cache Proxy Classes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using Cache Proxy Classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#asynccacheproxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      AsyncCacheProxy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#synccacheproxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      SyncCacheProxy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-example-httpx" class="md-nav__link">
+    <span class="md-ellipsis">
+      Integration Example: httpx
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-cache-proxy-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      When to Use Cache Proxy Classes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Options
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#implementation-example" class="md-nav__link">
     <span class="md-ellipsis">
       Implementation Example
@@ -744,6 +804,66 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#using-cache-proxy-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using Cache Proxy Classes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Using Cache Proxy Classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#asynccacheproxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      AsyncCacheProxy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#synccacheproxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      SyncCacheProxy
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#integration-example-httpx" class="md-nav__link">
+    <span class="md-ellipsis">
+      Integration Example: httpx
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-use-cache-proxy-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      When to Use Cache Proxy Classes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Options
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#implementation-example" class="md-nav__link">
     <span class="md-ellipsis">
       Implementation Example
@@ -868,6 +988,150 @@
 : Store headers as-is, except for headers that the HTTP specification doesn't allow caching. Important: If a response stream has already been consumed and decoded into memory before reaching the cache layer, you must remove the <code>Content-Encoding</code> header since the content is no longer encoded.</p>
 <p><strong>Requests</strong>
 : Converting request models is simpler than responses. Hishel doesn't recreate requests from cache or store request body streams—only headers, method, and URL are needed. The converted request may be modified by Hishel before being sent to the server, but exact preservation of the request body isn't critical.</p>
+<h2 id="using-cache-proxy-classes">Using Cache Proxy Classes</h2>
+<p>Hishel provides <code>AsyncCacheProxy</code> and <code>SyncCacheProxy</code> helper classes that handle all the caching logic for you. These classes are independent of any specific HTTP library and work only with Hishel's internal models, making them perfect for building new integrations.</p>
+<h3 id="asynccacheproxy">AsyncCacheProxy</h3>
+<p>The <code>AsyncCacheProxy</code> class manages the entire HTTP caching state machine. You simply provide it with a function that sends requests, and it handles:</p>
+<ul>
+<li>Cache key generation</li>
+<li>Storage operations</li>
+<li>RFC 9111 compliance</li>
+<li>State machine transitions</li>
+<li>TTL management</li>
+</ul>
+<p><strong>Basic Usage:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheProxy</span><span class="p">,</span> <span class="n">AsyncSqliteStorage</span><span class="p">,</span> <span class="n">CacheOptions</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_request</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+    <span class="c1"># Your code to send the HTTP request</span>
+    <span class="c1"># This is where you convert from internal models to your library</span>
+    <span class="c1"># and back</span>
+    <span class="k">pass</span>
+
+<span class="c1"># Create the cache proxy</span>
+<span class="n">cache_proxy</span> <span class="o">=</span> <span class="n">AsyncCacheProxy</span><span class="p">(</span>
+    <span class="n">request_sender</span><span class="o">=</span><span class="n">send_request</span><span class="p">,</span>
+    <span class="n">storage</span><span class="o">=</span><span class="n">AsyncSqliteStorage</span><span class="p">(),</span>  <span class="c1"># Optional, defaults to AsyncSqliteStorage</span>
+    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(),</span>   <span class="c1"># Optional, defaults to CacheOptions()</span>
+    <span class="n">ignore_specification</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>     <span class="c1"># Optional, set True to bypass RFC 9111</span>
+<span class="p">)</span>
+
+<span class="c1"># Handle a request with caching</span>
+<span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cache_proxy</span><span class="o">.</span><span class="n">handle_request</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li><strong>Automatic cache key generation</strong>: Based on URL and optional request body hashing</li>
+<li><strong>Spec-compliant caching</strong>: Full RFC 9111 state machine handling</li>
+<li><strong>Spec-ignoring mode</strong>: Simple cache lookup without RFC 9111 rules</li>
+<li><strong>TTL refresh</strong>: Automatic TTL updates on cache access if configured</li>
+<li><strong>Vary header support</strong>: Proper handling of content negotiation</li>
+</ul>
+<h3 id="synccacheproxy">SyncCacheProxy</h3>
+<p>The synchronous version works identically but for blocking I/O:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheProxy</span><span class="p">,</span> <span class="n">SyncSqliteStorage</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">send_request</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+    <span class="c1"># Your synchronous request sending code</span>
+    <span class="k">pass</span>
+
+<span class="n">cache_proxy</span> <span class="o">=</span> <span class="n">SyncCacheProxy</span><span class="p">(</span>
+    <span class="n">request_sender</span><span class="o">=</span><span class="n">send_request</span><span class="p">,</span>
+    <span class="n">storage</span><span class="o">=</span><span class="n">SyncSqliteStorage</span><span class="p">(),</span>
+    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(),</span>
+    <span class="n">ignore_specification</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">cache_proxy</span><span class="o">.</span><span class="n">handle_request</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="integration-example-httpx">Integration Example: httpx</h3>
+<p>Here's how the httpx integration uses <code>AsyncCacheProxy</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheProxy</span><span class="p">,</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Response</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AsyncCacheTransport</span><span class="p">(</span><span class="n">httpx</span><span class="o">.</span><span class="n">AsyncBaseTransport</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">next_transport</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncBaseTransport</span><span class="p">,</span>
+        <span class="n">storage</span><span class="p">:</span> <span class="n">AsyncBaseStorage</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">cache_options</span><span class="p">:</span> <span class="n">CacheOptions</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_transport</span> <span class="o">=</span> <span class="n">next_transport</span>
+
+        <span class="c1"># Define how to send a request using the underlying transport</span>
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_request</span><span class="p">(</span><span class="n">internal_request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+            <span class="c1"># Convert internal Request to httpx.Request</span>
+            <span class="n">httpx_request</span> <span class="o">=</span> <span class="n">internal_to_httpx</span><span class="p">(</span><span class="n">internal_request</span><span class="p">)</span>
+
+            <span class="c1"># Send using underlying transport</span>
+            <span class="n">httpx_response</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transport</span><span class="o">.</span><span class="n">handle_async_request</span><span class="p">(</span><span class="n">httpx_request</span><span class="p">)</span>
+
+            <span class="c1"># Convert httpx.Response to internal Response</span>
+            <span class="k">return</span> <span class="n">httpx_to_internal</span><span class="p">(</span><span class="n">httpx_response</span><span class="p">)</span>
+
+        <span class="c1"># Create the cache proxy with our send function</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache_proxy</span> <span class="o">=</span> <span class="n">AsyncCacheProxy</span><span class="p">(</span>
+            <span class="n">request_sender</span><span class="o">=</span><span class="n">send_request</span><span class="p">,</span>
+            <span class="n">storage</span><span class="o">=</span><span class="n">storage</span><span class="p">,</span>
+            <span class="n">cache_options</span><span class="o">=</span><span class="n">cache_options</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_async_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">httpx</span><span class="o">.</span><span class="n">Response</span><span class="p">:</span>
+        <span class="c1"># Convert httpx.Request to internal Request</span>
+        <span class="n">internal_request</span> <span class="o">=</span> <span class="n">httpx_to_internal</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+        <span class="c1"># Let the cache proxy handle the request</span>
+        <span class="n">internal_response</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache_proxy</span><span class="o">.</span><span class="n">handle_request</span><span class="p">(</span><span class="n">internal_request</span><span class="p">)</span>
+
+        <span class="c1"># Convert internal Response back to httpx.Response</span>
+        <span class="k">return</span> <span class="n">internal_to_httpx</span><span class="p">(</span><span class="n">internal_response</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="when-to-use-cache-proxy-classes">When to Use Cache Proxy Classes</h3>
+<p><strong>Use <code>AsyncCacheProxy</code>/<code>SyncCacheProxy</code> when:</strong></p>
+<ul>
+<li>✅ Building a new integration from scratch</li>
+<li>✅ You want automatic RFC 9111 compliance</li>
+<li>✅ You need both spec-respecting and spec-ignoring modes</li>
+<li>✅ You want to focus on model conversion, not caching logic</li>
+</ul>
+<h3 id="configuration-options">Configuration Options</h3>
+<p>Both proxy classes accept these parameters:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>request_sender</code></td>
+<td><code>Callable</code></td>
+<td><strong>Required</strong></td>
+<td>Function that sends requests using your HTTP library</td>
+</tr>
+<tr>
+<td><code>storage</code></td>
+<td><code>AsyncBaseStorage</code> / <code>SyncBaseStorage</code></td>
+<td><code>AsyncSqliteStorage()</code> / <code>SyncSqliteStorage()</code></td>
+<td>Where to store cached responses</td>
+</tr>
+<tr>
+<td><code>cache_options</code></td>
+<td><code>CacheOptions</code></td>
+<td><code>CacheOptions()</code></td>
+<td>RFC 9111 behavior configuration</td>
+</tr>
+<tr>
+<td><code>ignore_specification</code></td>
+<td><code>bool</code></td>
+<td><code>False</code></td>
+<td>Set <code>True</code> to bypass RFC 9111 and cache everything</td>
+</tr>
+</tbody>
+</table>
 <h2 id="implementation-example">Implementation Example</h2>
 <p>Here's how to translate synchronous httpx Request/Response models to Hishel's internal models:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>

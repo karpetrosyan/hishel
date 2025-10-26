@@ -1166,7 +1166,7 @@
 <span class="n">storage</span> <span class="o">=</span> <span class="n">AsyncSqliteStorage</span><span class="p">()</span>
 
 <span class="c1"># Create a complete entry with request and response</span>
-<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/users&quot;</span><span class="p">,</span>
@@ -1189,7 +1189,7 @@
 <span class="c1"># - request: Request</span>
 <span class="c1"># - response: Response</span>
 <span class="c1"># - cache_key: bytes</span>
-<span class="c1"># - meta: PairMeta (created_at timestamp)</span>
+<span class="c1"># - meta: EntryMeta (created_at timestamp)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created entry with ID: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Response status: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -1202,7 +1202,7 @@
 <span class="n">storage</span> <span class="o">=</span> <span class="n">SyncSqliteStorage</span><span class="p">()</span>
 
 <span class="c1"># Create a complete entry with request and response</span>
-<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/users&quot;</span><span class="p">,</span>
@@ -1225,7 +1225,7 @@
 <span class="c1"># - request: Request</span>
 <span class="c1"># - response: Response</span>
 <span class="c1"># - cache_key: bytes</span>
-<span class="c1"># - meta: PairMeta (created_at timestamp)</span>
+<span class="c1"># - meta: EntryMeta (created_at timestamp)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created entry with ID: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Response status: </span><span class="si">{</span><span class="n">entry</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -1240,7 +1240,7 @@
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
 
-<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
     <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
     <span class="n">key</span><span class="o">=</span><span class="s2">&quot;my_cache_key&quot;</span><span class="p">,</span>
@@ -1251,7 +1251,7 @@
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
 
-<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
     <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
     <span class="n">key</span><span class="o">=</span><span class="s2">&quot;my_cache_key&quot;</span><span class="p">,</span>
@@ -1382,7 +1382,7 @@
 <span class="n">cache_key</span> <span class="o">=</span> <span class="s2">&quot;GET:https://api.example.com/users&quot;</span>
 
 <span class="c1"># Step 1: Create a complete entry with request and response</span>
-<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/users&quot;</span><span class="p">,</span>
@@ -1452,7 +1452,7 @@
 <span class="n">cache_key</span> <span class="o">=</span> <span class="s2">&quot;GET:https://api.example.com/users&quot;</span>
 
 <span class="c1"># Step 1: Create a complete entry with request and response</span>
-<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/users&quot;</span><span class="p">,</span>
@@ -1518,7 +1518,7 @@
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="c1"># Create entry with streaming body</span>
-<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;POST&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/upload&quot;</span><span class="p">,</span>
@@ -1553,7 +1553,7 @@
 </div>
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="c1"># Create entry with streaming body</span>
-<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;POST&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/upload&quot;</span><span class="p">,</span>
@@ -1597,7 +1597,7 @@
 <span class="n">storage</span> <span class="o">=</span> <span class="n">AsyncSqliteStorage</span><span class="p">(</span><span class="n">default_ttl</span><span class="o">=</span><span class="mf">3600.0</span><span class="p">)</span>  <span class="c1"># 1 hour</span>
 
 <span class="c1"># Override TTL for specific requests using metadata</span>
-<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">,</span>
@@ -1619,7 +1619,7 @@
 <span class="n">storage</span> <span class="o">=</span> <span class="n">SyncSqliteStorage</span><span class="p">(</span><span class="n">default_ttl</span><span class="o">=</span><span class="mf">3600.0</span><span class="p">)</span>  <span class="c1"># 1 hour</span>
 
 <span class="c1"># Override TTL for specific requests using metadata</span>
-<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span>
         <span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span>
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com/data&quot;</span><span class="p">,</span>
@@ -1656,7 +1656,7 @@
 
 <span class="c1"># Provide custom UUID</span>
 <span class="n">custom_id</span> <span class="o">=</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span>
-<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com&quot;</span><span class="p">),</span>
     <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
     <span class="n">key</span><span class="o">=</span><span class="n">cache_key</span><span class="p">,</span>
@@ -1671,7 +1671,7 @@
 
 <span class="c1"># Provide custom UUID</span>
 <span class="n">custom_id</span> <span class="o">=</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span>
-<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+<span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
     <span class="n">request</span><span class="o">=</span><span class="n">Request</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://api.example.com&quot;</span><span class="p">),</span>
     <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
     <span class="n">key</span><span class="o">=</span><span class="n">cache_key</span><span class="p">,</span>
@@ -1808,7 +1808,7 @@
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">storage_state</span><span class="p">,</span> <span class="n">StoreAndUse</span><span class="p">):</span>
         <span class="c1"># Add entry to storage</span>
-        <span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="k">await</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
             <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
             <span class="n">response</span><span class="o">=</span><span class="n">origin_response</span><span class="p">,</span>
             <span class="n">key</span><span class="o">=</span><span class="n">cache_key</span><span class="p">,</span>
@@ -1859,7 +1859,7 @@
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">storage_state</span><span class="p">,</span> <span class="n">StoreAndUse</span><span class="p">):</span>
         <span class="c1"># Add entry to storage</span>
-        <span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">add_entry</span><span class="p">(</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">storage</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
             <span class="n">request</span><span class="o">=</span><span class="n">request</span><span class="p">,</span>
             <span class="n">response</span><span class="o">=</span><span class="n">origin_response</span><span class="p">,</span>
             <span class="n">key</span><span class="o">=</span><span class="n">cache_key</span><span class="p">,</span>
