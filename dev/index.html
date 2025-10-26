@@ -390,6 +390,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#graphql-and-body-sensitive-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      GraphQL and Body-Sensitive Caching
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -904,6 +913,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#graphql-and-body-sensitive-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      GraphQL and Body-Sensitive Caching
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1034,6 +1052,7 @@
 <li>🎛️ <strong>Configurable</strong> - Fine-grained control over caching behavior</li>
 <li>� <strong>Memory Efficient</strong> - Streaming support prevents loading large payloads into memory</li>
 <li>🌐 <strong>Universal</strong> - Works with any ASGI application (Starlette, Litestar, BlackSheep, etc.)</li>
+<li>🎯 <strong>GraphQL Support</strong> - Cache GraphQL queries with body-sensitive content caching</li>
 </ul>
 <h2 id="installation">📦 Installation</h2>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>hishel
@@ -1164,6 +1183,35 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
 <span class="p">)</span>
 
 <span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="n">storage</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="graphql-and-body-sensitive-caching">GraphQL and Body-Sensitive Caching</h3>
+<p>Cache GraphQL queries and other POST requests by including the request body in the cache key:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
+
+<span class="c1"># Cache GraphQL queries - different queries get different cache entries</span>
+<span class="n">graphql_query</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    query GetUser($id: ID!) {</span>
+<span class="s2">        user(id: $id) {</span>
+<span class="s2">            name</span>
+<span class="s2">            email</span>
+<span class="s2">        }</span>
+<span class="s2">    }</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="s2">&quot;https://api.example.com/graphql&quot;</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="n">graphql_query</span><span class="p">,</span> <span class="s2">&quot;variables&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;123&quot;</span><span class="p">}},</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Hishel-Body-Key&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">}</span>  <span class="c1"># Enable body-based caching</span>
+<span class="p">)</span>
+
+<span class="c1"># Different query will be cached separately</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="s2">&quot;https://api.example.com/graphql&quot;</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="n">graphql_query</span><span class="p">,</span> <span class="s2">&quot;variables&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;456&quot;</span><span class="p">}},</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Hishel-Body-Key&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">}</span>
+<span class="p">)</span>
 </code></pre></div>
 <h2 id="architecture">🏗️ Architecture</h2>
 <p>Hishel uses a <strong>sans-I/O state machine</strong> architecture that separates HTTP caching logic from I/O operations:</p>
