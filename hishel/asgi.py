@@ -56,6 +56,7 @@ class ASGICacheMiddleware:
         storage: The storage backend to use for caching. Defaults to AsyncSqliteStorage.
         cache_options: Configuration options for caching behavior.
         ignore_specification: If True, bypasses HTTP caching rules and caches all responses.
+        use_body_key: If True, includes request body in cache key generation for all requests.
 
     Example:
         ```python
@@ -77,16 +78,19 @@ class ASGICacheMiddleware:
         storage: AsyncBaseStorage | None = None,
         cache_options: CacheOptions | None = None,
         ignore_specification: bool = False,
+        use_body_key: bool = False,
     ) -> None:
         self.app = app
         self.storage = storage
         self._cache_options = cache_options
         self._ignore_specification = ignore_specification
+        self._use_body_key = use_body_key
 
         logger.info(
-            "Initialized ASGICacheMiddleware with storage=%s, ignore_specification=%s",
+            "Initialized ASGICacheMiddleware with storage=%s, ignore_specification=%s, use_body_key=%s",
             type(storage).__name__ if storage else "None",
             ignore_specification,
+            use_body_key,
         )
 
     async def __call__(self, scope: _Scope, receive: _Receive, send: _Send) -> None:
@@ -221,6 +225,7 @@ class ASGICacheMiddleware:
                 storage=self.storage,
                 cache_options=self._cache_options,
                 ignore_specification=self._ignore_specification,
+                use_body_key=self._use_body_key,
             )
 
             # Convert ASGI request to internal Request (using async iterator, not reading into memory)

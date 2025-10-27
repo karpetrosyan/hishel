@@ -39,6 +39,15 @@ class SyncCacheProxy:
     It delegates request execution to a user-provided callable, making it compatible with any
     HTTP client. Caching behavior can be configured to either fully respect HTTP
     caching rules or bypass them entirely.
+
+    Args:
+        request_sender: Callable that sends HTTP requests and returns responses.
+        storage: Storage backend for cache entries. Defaults to SyncSqliteStorage.
+        cache_options: Configuration options for caching behavior. Defaults to CacheOptions().
+        ignore_specification: If True, bypasses HTTP caching rules and caches all responses.
+        use_body_key: If True, includes request body in cache key generation for all requests.
+            Useful for caching POST requests like GraphQL queries. Can be overridden per-request
+            using the 'hishel_body_key' metadata field.
     """
 
     def __init__(
@@ -47,11 +56,13 @@ class SyncCacheProxy:
         storage: SyncBaseStorage | None = None,
         cache_options: CacheOptions | None = None,
         ignore_specification: bool = False,
+        use_body_key: bool = False,
     ) -> None:
         self.send_request = request_sender
         self.storage = storage if storage is not None else SyncSqliteStorage()
         self.cache_options = cache_options if cache_options is not None else CacheOptions()
         self.ignore_specification = ignore_specification
+        self.use_body_key = use_body_key
 
     def handle_request(self, request: Request) -> Response:
         if self.ignore_specification or request.metadata.get("hishel_spec_ignore"):
@@ -59,7 +70,7 @@ class SyncCacheProxy:
         return self._handle_request_respecting_spec(request)
 
     def _get_key_for_request(self, request: Request) -> str:
-        if request.metadata.get("hishel_body_key"):
+        if self.use_body_key or request.metadata.get("hishel_body_key"):
             assert isinstance(request.stream, (Iterator, Iterable))
             collected = b"".join([chunk for chunk in request.stream])
             hash_ = hashlib.sha256(collected).hexdigest()

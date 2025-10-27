@@ -220,7 +220,9 @@ client = SyncCacheClient(storage=storage)
 
 ### GraphQL and Body-Sensitive Caching
 
-Cache GraphQL queries and other POST requests by including the request body in the cache key:
+Cache GraphQL queries and other POST requests by including the request body in the cache key.
+
+**Using per-request header:**
 
 ```python
 from hishel.httpx import SyncCacheClient
@@ -251,6 +253,21 @@ response = client.post(
 )
 ```
 
+**Using global configuration:**
+
+```python
+from hishel.httpx import SyncCacheClient
+
+# Enable body-based caching for all requests
+client = SyncCacheClient(use_body_key=True)
+
+# All POST requests automatically include body in cache key
+response = client.post(
+    "https://api.example.com/graphql",
+    json={"query": graphql_query, "variables": {"id": "123"}}
+)
+```
+
 ## 🏗️ Architecture
 
 Hishel uses a **sans-I/O state machine** architecture that separates HTTP caching logic from I/O operations:
@@ -278,6 +295,7 @@ Comprehensive documentation is available at [https://hishel.com/dev](https://his
 - [ASGI Integration](https://hishel.com/dev/asgi)
 - [FastAPI Integration](https://hishel.com/dev/fastapi)
 - [BlackSheep Integration](https://hishel.com/dev/integrations/blacksheep)
+- [GraphQL Integration](https://hishel.com/dev/integrations/graphql)
 - [Storage Backends](https://hishel.com/dev/storages)
 - [Request/Response Metadata](https://hishel.com/dev/metadata)
 - [RFC 9111 Specification](https://hishel.com/dev/specification)

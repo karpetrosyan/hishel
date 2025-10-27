@@ -151,6 +151,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         storage: AsyncBaseStorage | None = None,
         cache_options: CacheOptions | None = None,
         ignore_specification: bool = False,
+        use_body_key: bool = False,
     ) -> None:
         self.next_transport = next_transport
         self._cache_proxy: AsyncCacheProxy = AsyncCacheProxy(
@@ -158,6 +159,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
             storage=storage,
             cache_options=cache_options,
             ignore_specification=ignore_specification,
+            use_body_key=use_body_key,
         )
         self.storage = self._cache_proxy.storage
 
@@ -186,6 +188,7 @@ class AsyncCacheClient(httpx.AsyncClient):
         self.storage: AsyncBaseStorage | None = kwargs.pop("storage", None)
         self.cache_options: CacheOptions | None = kwargs.pop("cache_options", None)
         self.ignore_specification: bool = kwargs.pop("ignore_specification", False)
+        self.use_body_key: bool = kwargs.pop("use_body_key", False)
         super().__init__(*args, **kwargs)
 
     def _init_transport(
@@ -214,6 +217,7 @@ class AsyncCacheClient(httpx.AsyncClient):
             storage=self.storage,
             cache_options=self.cache_options,
             ignore_specification=False,
+            use_body_key=self.use_body_key,
         )
 
     def _init_proxy_transport(
@@ -240,4 +244,5 @@ class AsyncCacheClient(httpx.AsyncClient):
             storage=self.storage,
             cache_options=self.cache_options,
             ignore_specification=self.ignore_specification,
+            use_body_key=self.use_body_key,
         )
