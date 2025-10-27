@@ -1185,7 +1185,8 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
 <span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="n">storage</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="graphql-and-body-sensitive-caching">GraphQL and Body-Sensitive Caching</h3>
-<p>Cache GraphQL queries and other POST requests by including the request body in the cache key:</p>
+<p>Cache GraphQL queries and other POST requests by including the request body in the cache key.</p>
+<p><strong>Using per-request header:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
 
 <span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
@@ -1213,6 +1214,18 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
     <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Hishel-Body-Key&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">}</span>
 <span class="p">)</span>
 </code></pre></div>
+<p><strong>Using global configuration:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
+
+<span class="c1"># Enable body-based caching for all requests</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">(</span><span class="n">use_body_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># All POST requests automatically include body in cache key</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="s2">&quot;https://api.example.com/graphql&quot;</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="n">graphql_query</span><span class="p">,</span> <span class="s2">&quot;variables&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;123&quot;</span><span class="p">}}</span>
+<span class="p">)</span>
+</code></pre></div>
 <h2 id="architecture">🏗️ Architecture</h2>
 <p>Hishel uses a <strong>sans-I/O state machine</strong> architecture that separates HTTP caching logic from I/O operations:</p>
 <ul>
@@ -1237,6 +1250,7 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
 <li><a href="https://hishel.com/dev/asgi">ASGI Integration</a></li>
 <li><a href="https://hishel.com/dev/fastapi">FastAPI Integration</a></li>
 <li><a href="https://hishel.com/dev/integrations/blacksheep">BlackSheep Integration</a></li>
+<li><a href="https://hishel.com/dev/integrations/graphql">GraphQL Integration</a></li>
 <li><a href="https://hishel.com/dev/storages">Storage Backends</a></li>
 <li><a href="https://hishel.com/dev/metadata">Request/Response Metadata</a></li>
 <li><a href="https://hishel.com/dev/specification">RFC 9111 Specification</a></li>
