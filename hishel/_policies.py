@@ -16,7 +16,8 @@ T = t.TypeVar("T", Request, Response)
 
 
 class CachePolicy(abc.ABC):
-    pass
+    use_body_key: bool = False
+    """Whether to include request body in cache key calculation."""
 
 
 class BaseFilter(abc.ABC, Generic[T]):

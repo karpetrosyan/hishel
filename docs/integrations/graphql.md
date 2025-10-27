@@ -71,13 +71,14 @@ response = client.post(
 
 ### Global Configuration
 
-Enable body-based caching for all requests to simplify GraphQL API interactions:
+Enable body-based caching for all requests using FilterPolicy:
 
 ```python
 from hishel.httpx import SyncCacheClient
+from hishel import FilterPolicy
 
-# All requests will use body in cache key
-client = SyncCacheClient(use_body_key=True)
+# All requests will use body in cache key through FilterPolicy
+client = SyncCacheClient(policy=FilterPolicy(use_body_key=True))
 
 query = """
     query GetPosts($limit: Int!) {
@@ -105,9 +106,10 @@ Hishel fully supports async GraphQL clients:
 
 ```python
 from hishel.httpx import AsyncCacheClient
+from hishel import FilterPolicy
 
 async def fetch_user_data():
-    async with AsyncCacheClient(use_body_key=True) as client:
+    async with AsyncCacheClient(policy=FilterPolicy(use_body_key=True)) as client:
         query = """
             query GetUser($id: ID!) {
                 user(id: $id) {
@@ -158,10 +160,11 @@ You can integrate Hishel with gql in two ways:
     from gql import gql, Client
     from gql.transport.httpx import HTTPXAsyncTransport
     from hishel.httpx import AsyncCacheClient
+    from hishel import FilterPolicy
 
     async def main():
         # Create a cached HTTPX client
-        httpx_client = AsyncCacheClient(use_body_key=True)
+        httpx_client = AsyncCacheClient(policy=FilterPolicy(use_body_key=True))
 
         # Use it as transport for GQL
         transport = HTTPXAsyncTransport(
@@ -196,9 +199,10 @@ You can integrate Hishel with gql in two ways:
     from gql import gql, Client
     from gql.transport.httpx import HTTPXTransport
     from hishel.httpx import SyncCacheClient
+    from hishel import FilterPolicy
 
     # Create a cached HTTPX client
-    httpx_client = SyncCacheClient(use_body_key=True)
+    httpx_client = SyncCacheClient(policy=FilterPolicy(use_body_key=True))
 
     # Use it as transport for GQL
     transport = HTTPXTransport(
@@ -287,8 +291,7 @@ This approach gives you fine-grained control over the transport layer:
         url="https://countries.trevorblades.com/graphql",
         transport=SyncCacheTransport(
             next_transport=HTTPTransport(),
-            use_body_key=True,  # Enable body-based caching for GraphQL
-            policy=FilterPolicy()  # Customize caching policy as needed
+            policy=FilterPolicy(use_body_key=True)  # Customize caching policy as needed
         ),
     )
 
@@ -327,12 +330,12 @@ Here's a complete example querying the GitHub GraphQL API with caching:
     from gql import gql, Client
     from gql.transport.httpx import HTTPXAsyncTransport
     from hishel.httpx import AsyncCacheClient
-    from hishel import AsyncSqliteStorage
+    from hishel import AsyncSqliteStorage, FilterPolicy
 
     async def fetch_github_repos(username: str, token: str):
         # Create cached client with persistent storage
         client = AsyncCacheClient(
-            use_body_key=True,
+            policy=FilterPolicy(use_body_key=True),
             storage=AsyncSqliteStorage(
                 database_path="github_cache.db",
                 default_ttl=3600.0  # Cache for 1 hour
@@ -381,12 +384,12 @@ Here's a complete example querying the GitHub GraphQL API with caching:
     from gql import gql, Client
     from gql.transport.httpx import HTTPXTransport
     from hishel.httpx import SyncCacheClient
-    from hishel import SyncSqliteStorage
+    from hishel import SyncSqliteStorage, FilterPolicy
 
     def fetch_github_repos(username: str, token: str):
         # Create cached client with persistent storage
         client = SyncCacheClient(
-            use_body_key=True,
+            policy=FilterPolicy(use_body_key=True),
             storage=SyncSqliteStorage(
                 database_path="github_cache.db",
                 default_ttl=3600.0  # Cache for 1 hour
@@ -431,7 +434,7 @@ Here's a complete example querying the GitHub GraphQL API with caching:
 
 ## Best Practices
 
-1. **Use `use_body_key=True`** for GraphQL clients to automatically enable body-based caching
+1. **Use `FilterPolicy(use_body_key=True)`** for GraphQL clients to enable body-based caching
 2. **Don't cache mutations** - Use `Cache-Control: no-store` or disable caching for mutations
 3. **Set appropriate TTLs** - GraphQL responses may vary in freshness requirements
 4. **Monitor cache hit rates** - Check `hishel_from_cache` in response extensions

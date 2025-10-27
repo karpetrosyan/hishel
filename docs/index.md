@@ -293,9 +293,10 @@ response = client.post(
 
 ```python
 from hishel.httpx import SyncCacheClient
+from hishel import FilterPolicy
 
 # Enable body-based caching for all requests
-client = SyncCacheClient(use_body_key=True)
+client = SyncCacheClient(policy=FilterPolicy(use_body_key=True))
 
 # All POST requests automatically include body in cache key
 response = client.post(

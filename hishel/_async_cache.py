@@ -61,7 +61,7 @@ class AsyncCacheProxy:
         return await self._handle_request_respecting_spec(request)
 
     async def _get_key_for_request(self, request: Request) -> str:
-        if request.metadata.get("hishel_body_key"):
+        if self.policy.use_body_key or request.metadata.get("hishel_body_key"):
             assert isinstance(request.stream, (AsyncIterator, AsyncIterable))
             collected = b"".join([chunk async for chunk in request.stream])
             hash_ = hashlib.sha256(collected).hexdigest()
