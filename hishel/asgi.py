@@ -8,6 +8,7 @@ from typing import AsyncIterator
 from hishel import AsyncBaseStorage, Headers, Request, Response
 from hishel._async_cache import AsyncCacheProxy
 from hishel._policies import CachePolicy
+from hishel._utils import filter_mapping
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
@@ -209,7 +210,7 @@ class ASGICacheMiddleware:
 
                 return Response(
                     status_code=status_code,
-                    headers=Headers(headers_dict),
+                    headers=Headers(filter_mapping(headers_dict, ["Transfer-Encoding"])),
                     stream=response_stream(),
                     metadata={},
                 )
