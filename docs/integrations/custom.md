@@ -42,7 +42,7 @@ The `AsyncCacheProxy` class manages the entire HTTP caching state machine. You s
 **Basic Usage:**
 
 ```python
-from hishel import AsyncCacheProxy, AsyncSqliteStorage, CacheOptions
+from hishel import AsyncCacheProxy, AsyncSqliteStorage, CacheOptions, SpecificationPolicy
 
 async def send_request(request: Request) -> Response:
     # Your code to send the HTTP request
@@ -54,8 +54,7 @@ async def send_request(request: Request) -> Response:
 cache_proxy = AsyncCacheProxy(
     request_sender=send_request,
     storage=AsyncSqliteStorage(),  # Optional, defaults to AsyncSqliteStorage
-    cache_options=CacheOptions(),   # Optional, defaults to CacheOptions()
-    ignore_specification=False,     # Optional, set True to bypass RFC 9111
+    policy=SpecificationPolicy(),   # Optional, defaults to SpecificationPolicy()
 )
 
 # Handle a request with caching
@@ -75,7 +74,7 @@ response = await cache_proxy.handle_request(request)
 The synchronous version works identically but for blocking I/O:
 
 ```python
-from hishel import SyncCacheProxy, SyncSqliteStorage
+from hishel import SyncCacheProxy, SyncSqliteStorage, SpecificationPolicy
 
 def send_request(request: Request) -> Response:
     # Your synchronous request sending code
@@ -84,8 +83,7 @@ def send_request(request: Request) -> Response:
 cache_proxy = SyncCacheProxy(
     request_sender=send_request,
     storage=SyncSqliteStorage(),
-    cache_options=CacheOptions(),
-    ignore_specification=False,
+    policy=SpecificationPolicy(),
 )
 
 response = cache_proxy.handle_request(request)
@@ -155,8 +153,7 @@ Both proxy classes accept these parameters:
 |-----------|------|---------|-------------|
 | `request_sender` | `Callable` | **Required** | Function that sends requests using your HTTP library |
 | `storage` | `AsyncBaseStorage` / `SyncBaseStorage` | `AsyncSqliteStorage()` / `SyncSqliteStorage()` | Where to store cached responses |
-| `cache_options` | `CacheOptions` | `CacheOptions()` | RFC 9111 behavior configuration |
-| `ignore_specification` | `bool` | `False` | Set `True` to bypass RFC 9111 and cache everything |
+| `policy` | `CachePolicy` | `SpecificationPolicy()` | Caching policy to use |
 
 ## Implementation Example
 
@@ -192,7 +189,6 @@ def httpx_to_internal(
         extension_metadata = RequestMetadata(
             hishel_refresh_ttl_on_access=value.extensions.get("hishel_refresh_ttl_on_access"),
             hishel_ttl=value.extensions.get("hishel_ttl"),
-            hishel_spec_ignore=value.extensions.get("hishel_spec_ignore"),
             hishel_body_key=value.extensions.get("hishel_body_key"),
         )
         headers_metadata = extract_metadata_from_headers(value.headers)
@@ -371,6 +367,6 @@ If you're building an integration and encounter issues:
 
 ## Related Documentation
 
-- [Storage Backends](../storage/) - Understanding where responses are cached
-- [Cache Policies](../policies/) - How Hishel decides what to cache  
-- [API Reference](../api/) - Detailed model specifications
+- [ASGI Integration](asgi.md) - Full ASGI middleware for caching
+- [HTTPX Integration](httpx.md) - Async HTTP client with caching
+- [Requests Integration](requests.md) - Synchronous HTTP client with caching

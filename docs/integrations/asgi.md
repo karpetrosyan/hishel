@@ -114,6 +114,6 @@ pip install hishel fastapi aiohttp litestar blacksheep uvicorn
 
 ## See Also
 
-- [Storage Backends](storages.md) - Configure cache storage
-- [Request/Response Metadata](metadata.md) - Control caching behavior
+- [Storage Backends](../storages.md) - Configure cache storage
+- [Request/Response Metadata](../metadata.md) - Control caching behavior
 - [FastAPI Integration](fastapi.md) - FastAPI-specific helpers

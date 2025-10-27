@@ -13,7 +13,6 @@ from hishel import (
     SyncBaseStorage,
     SyncSqliteStorage,
     CacheMiss,
-    CacheOptions,
     CouldNotBeStored,
     FromCache,
     IdleClient,
@@ -22,10 +21,10 @@ from hishel import (
     Request,
     Response,
     StoreAndUse,
-    create_idle_state,
 )
 from hishel._core._spec import InvalidateEntries, vary_headers_match
 from hishel._core.models import Entry, ResponseMetadata
+from hishel._policies import CachePolicy, FilterPolicy, SpecificationPolicy
 from hishel._utils import make_sync_iterator
 
 logger = logging.getLogger("hishel.integrations.clients")
@@ -37,40 +36,32 @@ class SyncCacheProxy:
 
     This class is independent of any specific HTTP library and works only with internal models.
     It delegates request execution to a user-provided callable, making it compatible with any
-    HTTP client. Caching behavior can be configured to either fully respect HTTP
-    caching rules or bypass them entirely.
+    HTTP client. Caching behavior is determined by the policy object.
 
     Args:
         request_sender: Callable that sends HTTP requests and returns responses.
         storage: Storage backend for cache entries. Defaults to SyncSqliteStorage.
-        cache_options: Configuration options for caching behavior. Defaults to CacheOptions().
-        ignore_specification: If True, bypasses HTTP caching rules and caches all responses.
-        use_body_key: If True, includes request body in cache key generation for all requests.
-            Useful for caching POST requests like GraphQL queries. Can be overridden per-request
-            using the 'hishel_body_key' metadata field.
+        policy: Caching policy to use. Can be SpecificationPolicy (respects RFC 9111) or
+            FilterPolicy (user-defined filtering). Defaults to SpecificationPolicy().
     """
 
     def __init__(
         self,
         request_sender: Callable[[Request], Response],
         storage: SyncBaseStorage | None = None,
-        cache_options: CacheOptions | None = None,
-        ignore_specification: bool = False,
-        use_body_key: bool = False,
+        policy: CachePolicy | None = None,
     ) -> None:
         self.send_request = request_sender
         self.storage = storage if storage is not None else SyncSqliteStorage()
-        self.cache_options = cache_options if cache_options is not None else CacheOptions()
-        self.ignore_specification = ignore_specification
-        self.use_body_key = use_body_key
+        self.policy = policy if policy is not None else SpecificationPolicy()
 
     def handle_request(self, request: Request) -> Response:
-        if self.ignore_specification or request.metadata.get("hishel_spec_ignore"):
-            return self._handle_request_ignoring_spec(request)
+        if isinstance(self.policy, FilterPolicy):
+            return self._handle_request_with_filters(request)
         return self._handle_request_respecting_spec(request)
 
     def _get_key_for_request(self, request: Request) -> str:
-        if self.use_body_key or request.metadata.get("hishel_body_key"):
+        if request.metadata.get("hishel_body_key"):
             assert isinstance(request.stream, (Iterator, Iterable))
             collected = b"".join([chunk for chunk in request.stream])
             hash_ = hashlib.sha256(collected).hexdigest()
@@ -78,17 +69,30 @@ class SyncCacheProxy:
             return hash_
         return hashlib.sha256(str(request.url).encode("utf-8")).hexdigest()
 
-    def _maybe_refresh_pair_ttl(self, pair: Entry) -> None:
-        if pair.request.metadata.get("hishel_refresh_ttl_on_access"):
+    def _maybe_refresh_entry_ttl(self, entry: Entry) -> None:
+        if entry.request.metadata.get("hishel_refresh_ttl_on_access"):
             self.storage.update_entry(
-                pair.id,
-                lambda complete_pair: replace(
-                    complete_pair,
-                    meta=replace(complete_pair.meta, created_at=time.time()),
+                entry.id,
+                lambda current_entry: replace(
+                    current_entry,
+                    meta=replace(current_entry.meta, created_at=time.time()),
                 ),
             )
 
-    def _handle_request_ignoring_spec(self, request: Request) -> Response:
+    def _handle_request_with_filters(self, request: Request) -> Response:
+        assert isinstance(self.policy, FilterPolicy)
+
+        for request_filter in self.policy.request_filters:
+            if request_filter.needs_body():
+                body = request.read()
+                if not request_filter.apply(request, body):
+                    logger.debug("Request filtered out by request filter")
+                    return self.send_request(request)
+            else:
+                if not request_filter.apply(request, None):
+                    logger.debug("Request filtered out by request filter")
+                    return self.send_request(request)
+
         logger.debug("Trying to get cached response ignoring specification")
         cache_key = self._get_key_for_request(request)
         entries = self.storage.get_entries(cache_key)
@@ -108,19 +112,27 @@ class SyncCacheProxy:
                     "Found matching cached response for the request",
                 )
                 response_meta = ResponseMetadata(
-                    hishel_spec_ignored=True,
                     hishel_from_cache=True,
                     hishel_created_at=entry.meta.created_at,
                     hishel_revalidated=False,
                     hishel_stored=False,
                 )
                 entry.response.metadata.update(response_meta)  # type: ignore
-                self._maybe_refresh_pair_ttl(entry)
+                self._maybe_refresh_entry_ttl(entry)
                 return entry.response
 
         response = self.send_request(request)
+        for response_filter in self.policy.response_filters:
+            if response_filter.needs_body():
+                body = response.read()
+                if not response_filter.apply(response, body):
+                    logger.debug("Response filtered out by response filter")
+                    return response
+            else:
+                if not response_filter.apply(response, None):
+                    logger.debug("Response filtered out by response filter")
+                    return response
         response_meta = ResponseMetadata(
-            hishel_spec_ignored=True,
             hishel_from_cache=False,
             hishel_created_at=time.time(),
             hishel_revalidated=False,
@@ -137,7 +149,8 @@ class SyncCacheProxy:
         return entry.response
 
     def _handle_request_respecting_spec(self, request: Request) -> Response:
-        state: AnyState = create_idle_state("client", self.cache_options)
+        assert isinstance(self.policy, SpecificationPolicy)
+        state: AnyState = IdleClient(options=self.policy.cache_options)
 
         while state:
             logger.debug(f"Handling state: {state.__class__.__name__}")
@@ -152,8 +165,8 @@ class SyncCacheProxy:
             elif isinstance(state, NeedRevalidation):
                 state = self._handle_revalidation(state)
             elif isinstance(state, FromCache):
-                self._maybe_refresh_pair_ttl(state.pair)
-                return state.pair.response
+                self._maybe_refresh_entry_ttl(state.entry)
+                return state.entry.response
             elif isinstance(state, NeedToBeUpdated):
                 state = self._handle_update(state)
             elif isinstance(state, InvalidateEntries):
@@ -172,12 +185,12 @@ class SyncCacheProxy:
         return state.next(response)
 
     def _handle_store_and_use(self, state: StoreAndUse, request: Request) -> Response:
-        complete_pair = self.storage.create_entry(
+        entry = self.storage.create_entry(
             request,
             state.response,
             self._get_key_for_request(request),
         )
-        return complete_pair.response
+        return entry.response
 
     def _handle_revalidation(self, state: NeedRevalidation) -> AnyState:
         revalidation_response = self.send_request(state.request)
@@ -187,8 +200,8 @@ class SyncCacheProxy:
         for entry in state.updating_entries:
             self.storage.update_entry(
                 entry.id,
-                lambda complete_pair: replace(
-                    complete_pair,
+                lambda entry: replace(
+                    entry,
                     response=replace(entry.response, headers=entry.response.headers),
                 ),
             )

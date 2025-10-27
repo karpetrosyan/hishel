@@ -527,7 +527,6 @@ class TestMetadataAndObservability:
 
         # Assert
         assert isinstance(next_state, StoreAndUse)
-        assert response.metadata.get("hishel_spec_ignored") is False
         assert response.metadata.get("hishel_from_cache") is False
         assert response.metadata.get("hishel_stored") is True
 
@@ -546,7 +545,6 @@ class TestMetadataAndObservability:
 
         # Assert
         assert isinstance(next_state, CouldNotBeStored)
-        assert response.metadata.get("hishel_spec_ignored") is False
         assert response.metadata.get("hishel_from_cache") is False
         assert response.metadata.get("hishel_stored") is False
 

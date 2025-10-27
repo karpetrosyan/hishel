@@ -10,6 +10,7 @@ from inline_snapshot import snapshot
 from time_machine import travel
 
 from hishel import SyncSqliteStorage
+from hishel._policies import FilterPolicy
 from hishel.httpx import SyncCacheClient, SyncCacheTransport
 
 
@@ -38,7 +39,6 @@ def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
         {
             "hishel_from_cache": True,
             "hishel_created_at": 1704067200.0,
-            "hishel_spec_ignored": False,
             "hishel_revalidated": False,
             "hishel_stored": False,
         }
@@ -50,6 +50,7 @@ def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
 def test_simple_caching_ignoring_spec(caplog: pytest.LogCaptureFixture) -> None:
     client = SyncCacheClient(
         storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:")),
+        policy=FilterPolicy(),
     )
 
     with caplog.at_level("DEBUG", logger="hishel"):
@@ -68,7 +69,6 @@ def test_simple_caching_ignoring_spec(caplog: pytest.LogCaptureFixture) -> None:
     )
     assert response.extensions == snapshot(
         {
-            "hishel_spec_ignored": True,
             "hishel_from_cache": True,
             "hishel_created_at": 1704067200.0,
             "hishel_revalidated": False,
@@ -101,8 +101,9 @@ def test_encoded_content_caching() -> None:
     storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
     client = SyncCacheClient(
-        transport=SyncCacheTransport(next_transport=MockTransport(handler=handler), storage=storage),
-        storage=storage,
+        transport=SyncCacheTransport(
+            next_transport=MockTransport(handler=handler), storage=storage, policy=FilterPolicy()
+        ),
     )
 
     # First request - should fetch from the mocked transport and store in cache

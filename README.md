@@ -41,8 +41,8 @@
 - 🔄 **Async & Sync** - Full support for both synchronous and asynchronous workflows
 - 🎨 **Type Safe** - Fully typed with comprehensive type hints
 - 🧪 **Well Tested** - Extensive test coverage and battle-tested
-- 🎛️ **Configurable** - Fine-grained control over caching behavior
-- � **Memory Efficient** - Streaming support prevents loading large payloads into memory
+- 🎛️ **Configurable** - Fine-grained control over caching behavior with flexible policies
+- 💨 **Memory Efficient** - Streaming support prevents loading large payloads into memory
 - 🌐 **Universal** - Works with any ASGI application (Starlette, Litestar, BlackSheep, etc.)
 - 🎯 **GraphQL Support** - Cache GraphQL queries with body-sensitive content caching
 
@@ -135,12 +135,14 @@ from hishel.asgi import ASGICacheMiddleware
 app = ASGICacheMiddleware(app)
 
 # Or configure with options
-from hishel import AsyncSqliteStorage, CacheOptions
+from hishel import AsyncSqliteStorage, CacheOptions, SpecificationPolicy
 
 app = ASGICacheMiddleware(
     app,
     storage=AsyncSqliteStorage(),
-    cache_options=CacheOptions(shared=True)
+    policy=SpecificationPolicy(
+      cache_options=CacheOptions(shared=True)
+    ),
 )
 ```
 
@@ -185,20 +187,48 @@ async def get_data():
 
 ## 🎛️ Advanced Configuration
 
-### Custom Cache Options
+### Caching Policies
+
+Hishel supports two types of caching policies:
+
+**SpecificationPolicy** - RFC 9111 compliant HTTP caching (default):
 
 ```python
-from hishel import CacheOptions
+from hishel import CacheOptions, SpecificationPolicy
 from hishel.httpx import SyncCacheClient
 
 client = SyncCacheClient(
-    cache_options=CacheOptions(
-        shared=False,                              # Use as private cache (browser-like)
-        supported_methods=["GET", "HEAD", "POST"], # Cache GET, HEAD, and POST
-        allow_stale=True                           # Allow serving stale responses
+    policy=SpecificationPolicy(
+        cache_options=CacheOptions(
+            shared=False,                              # Use as private cache (browser-like)
+            supported_methods=["GET", "HEAD", "POST"], # Cache GET, HEAD, and POST
+            allow_stale=True                           # Allow serving stale responses
+        )
     )
 )
 ```
+
+**FilterPolicy** - Custom filtering logic for fine-grained control:
+
+```python
+from hishel import FilterPolicy, BaseFilter, Request
+from hishel.httpx import AsyncCacheClient
+
+class CacheOnlyAPIRequests(BaseFilter[Request]):
+    def needs_body(self) -> bool:
+        return False
+    
+    def apply(self, item: Request, body: bytes | None) -> bool:
+        return "/api/" in str(item.url)
+
+client = AsyncCacheClient(
+    policy=FilterPolicy(
+        request_filters=[CacheOnlyAPIRequests()]
+    )
+)
+```
+
+[Learn more about policies →](https://hishel.com/policies/)
 
 ### Custom Storage Backend
 
@@ -222,9 +252,12 @@ Cache GraphQL queries and other POST requests by including the request body in t
 **Using per-request header:**
 
 ```python
+from hishel import FilterPolicy
 from hishel.httpx import SyncCacheClient
 
-client = SyncCacheClient()
+client = SyncCacheClient(
+    policy=FilterPolicy()
+)
 
 # Cache GraphQL queries - different queries get different cache entries
 graphql_query = """
@@ -256,7 +289,11 @@ response = client.post(
 from hishel.httpx import SyncCacheClient
 
 # Enable body-based caching for all requests
-client = SyncCacheClient(use_body_key=True)
+client = SyncCacheClient(
+    policy=FilterPolicy(
+        use_body_key=True
+    )
+)
 
 # All POST requests automatically include body in cache key
 response = client.post(

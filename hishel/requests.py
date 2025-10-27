@@ -6,9 +6,9 @@ from typing import Any, Iterator, Mapping, Optional, overload
 from typing_extensions import assert_never
 
 from hishel import Headers, Request, Response as Response
-from hishel._core._spec import CacheOptions
 from hishel._core._storages._sync_base import SyncBaseStorage
 from hishel._core.models import extract_metadata_from_headers
+from hishel._policies import CachePolicy
 from hishel._sync_cache import SyncCacheProxy
 from hishel._utils import snake_to_header
 
@@ -163,17 +163,13 @@ class CacheAdapter(HTTPAdapter):
         max_retries: int = 0,
         pool_block: bool = False,
         storage: SyncBaseStorage | None = None,
-        cache_options: CacheOptions | None = None,
-        ignore_specification: bool = False,
-        use_body_key: bool = False,
+        policy: CachePolicy | None = None,
     ):
         super().__init__(pool_connections, pool_maxsize, max_retries, pool_block)
         self._cache_proxy = SyncCacheProxy(
             request_sender=self._send_request,
             storage=storage,
-            cache_options=cache_options,
-            ignore_specification=ignore_specification,
-            use_body_key=use_body_key,
+            policy=policy,
         )
         self.storage = self._cache_proxy.storage
 

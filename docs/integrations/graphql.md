@@ -235,6 +235,7 @@ This approach gives you fine-grained control over the transport layer:
     from gql.transport.httpx import HTTPXAsyncTransport
     from httpx import AsyncHTTPTransport
     from hishel.httpx import AsyncCacheTransport
+    from hishel import FilterPolicy
 
     async def main():
         # Create a caching transport
@@ -242,8 +243,7 @@ This approach gives you fine-grained control over the transport layer:
             url="https://countries.trevorblades.com/graphql",
             transport=AsyncCacheTransport(
                 next_transport=AsyncHTTPTransport(),
-                use_body_key=True,  # Enable body-based caching for GraphQL
-                ignore_specification=True  # Cache all responses regardless of headers
+                policy=FilterPolicy(),  # Customize caching policy as needed
             ),
         )
 
@@ -280,6 +280,7 @@ This approach gives you fine-grained control over the transport layer:
     from gql.transport.httpx import HTTPXTransport
     from httpx import HTTPTransport
     from hishel.httpx import SyncCacheTransport
+    from hishel import FilterPolicy
 
     # Create a caching transport
     transport = HTTPXTransport(
@@ -287,7 +288,7 @@ This approach gives you fine-grained control over the transport layer:
         transport=SyncCacheTransport(
             next_transport=HTTPTransport(),
             use_body_key=True,  # Enable body-based caching for GraphQL
-            ignore_specification=True  # Cache all responses regardless of headers
+            policy=FilterPolicy()  # Customize caching policy as needed
         ),
     )
 
@@ -441,4 +442,4 @@ Here's a complete example querying the GitHub GraphQL API with caching:
 - [Request/Response Metadata](../metadata.md)
 - [Storage Backends](../storages.md)
 - [HTTPX Integration](httpx.md)
-- [ASGI Integration](../asgi.md)
+- [ASGI Integration](asgi.md)

@@ -132,48 +132,6 @@ async def get_secrets():
 
 ---
 
-## Parameter Reference
-
-All Cache-Control directives from [RFC 9111](https://www.rfc-editor.org/rfc/rfc9111.html) are supported:
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `max_age` | `int | None` | Maximum cache lifetime in seconds |
-| `s_maxage` | `int | None` | Maximum lifetime for shared caches (CDN, proxy) |
-| `public` | `bool` | Allow any cache to store the response |
-| `private` | `bool | list[str]` | Only private caches (browsers) can store. Optional field names for granular control |
-| `no_cache` | `bool | list[str]` | Must revalidate before using. Optional field names for specific headers |
-| `no_store` | `bool` | Must not cache at all (most restrictive) |
-| `no_transform` | `bool` | Prevent modifications by proxies |
-| `must_revalidate` | `bool` | Must revalidate when stale |
-| `must_understand` | `bool` | Only cache if status code is understood |
-| `proxy_revalidate` | `bool` | Shared caches must revalidate when stale |
-| `immutable` | `bool` | Response never changes (use with versioned URLs) |
-| `stale_while_revalidate` | `int | None` | Serve stale while updating in background |
-| `stale_if_error` | `int | None` | Serve stale if origin is unavailable |
-
-**Examples:**
-
-```python
-# Basic caching
-cache(max_age=3600, public=True)
-# Cache-Control: public, max-age=3600
-
-# CDN optimization
-cache(max_age=300, s_maxage=3600, public=True)
-# Cache-Control: public, max-age=300, s-maxage=3600
-
-# Private with field names
-cache(max_age=600, private=["Set-Cookie", "Authorization"])
-# Cache-Control: max-age=600, private="Set-Cookie, Authorization"
-
-# No caching
-cache(no_store=True)
-# Cache-Control: no-store
-```
-
----
-
 ## Notes
 
 !!! tip "Combine directives wisely"
@@ -190,8 +148,8 @@ cache(no_store=True)
 ## See Also
 
 - [ASGI Integration](asgi.md) - Full ASGI middleware for caching
-- [Request/Response Metadata](metadata.md) - Control caching behavior
-- [Storage Backends](storages.md) - Configure cache storage
+- [Request/Response Metadata](../metadata.md) - Control caching behavior
+- [Storage Backends](../storages.md) - Configure cache storage
 - [RFC 9111: HTTP Caching](https://www.rfc-editor.org/rfc/rfc9111.html)
 - [RFC 8246: Immutable Responses](https://www.rfc-editor.org/rfc/rfc8246.html)
 - [RFC 5861: Cache-Control Extensions](https://www.rfc-editor.org/rfc/rfc5861.html)

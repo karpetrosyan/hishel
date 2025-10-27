@@ -10,6 +10,7 @@ from inline_snapshot import snapshot
 from time_machine import travel
 
 from hishel import AsyncSqliteStorage
+from hishel._policies import FilterPolicy
 from hishel.httpx import AsyncCacheClient, AsyncCacheTransport
 
 
@@ -38,7 +39,6 @@ async def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
         {
             "hishel_from_cache": True,
             "hishel_created_at": 1704067200.0,
-            "hishel_spec_ignored": False,
             "hishel_revalidated": False,
             "hishel_stored": False,
         }
@@ -50,6 +50,7 @@ async def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
 async def test_simple_caching_ignoring_spec(caplog: pytest.LogCaptureFixture) -> None:
     client = AsyncCacheClient(
         storage=AsyncSqliteStorage(connection=await anysqlite.connect(":memory:")),
+        policy=FilterPolicy(),
     )
 
     with caplog.at_level("DEBUG", logger="hishel"):
@@ -68,7 +69,6 @@ async def test_simple_caching_ignoring_spec(caplog: pytest.LogCaptureFixture) ->
     )
     assert response.extensions == snapshot(
         {
-            "hishel_spec_ignored": True,
             "hishel_from_cache": True,
             "hishel_created_at": 1704067200.0,
             "hishel_revalidated": False,
@@ -101,8 +101,9 @@ async def test_encoded_content_caching() -> None:
     storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
 
     client = AsyncCacheClient(
-        transport=AsyncCacheTransport(next_transport=MockTransport(handler=handler), storage=storage),
-        storage=storage,
+        transport=AsyncCacheTransport(
+            next_transport=MockTransport(handler=handler), storage=storage, policy=FilterPolicy()
+        ),
     )
 
     # First request - should fetch from the mocked transport and store in cache

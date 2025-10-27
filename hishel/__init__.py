@@ -15,7 +15,6 @@ from hishel._core._spec import (
     NeedToBeUpdated as NeedToBeUpdated,
     State as State,
     StoreAndUse as StoreAndUse,
-    create_idle_state as create_idle_state,
 )
 from hishel._core.models import (
     Entry as Entry,
@@ -25,6 +24,8 @@ from hishel._core.models import (
 )
 from hishel._async_cache import AsyncCacheProxy as AsyncCacheProxy
 from hishel._sync_cache import SyncCacheProxy as SyncCacheProxy
+
+from hishel._policies import SpecificationPolicy, FilterPolicy, CachePolicy
 
 __all__ = (
     # New API
@@ -41,7 +42,6 @@ __all__ = (
     "StoreAndUse",
     "CouldNotBeStored",
     "InvalidateEntries",
-    "create_idle_state",
     ## Models
     "Request",
     "Response",
@@ -57,4 +57,8 @@ __all__ = (
     # Proxy
     "AsyncCacheProxy",
     "SyncCacheProxy",
+    # Policies
+    "CachePolicy",
+    "SpecificationPolicy",
+    "FilterPolicy",
 )

@@ -11,7 +11,7 @@ Hishel provides storage backends for persisting HTTP request-response pairs. The
 Storage backends handle:
 
 - ✅ **Entry Management**: Store complete request-response pairs (entries)
-- ✅ **Stream Handling**: Efficiently store and retrieve large request/response bodies
+- ✅ **Stream Handling**: Efficiently store and retrieve large response bodies
 - ✅ **TTL Management**: Automatic expiration and cleanup of old entries
 - ✅ **Soft Deletion**: Mark entries as deleted without immediate removal
 - ✅ **Cache Keys**: Group multiple entries under a single cache key
@@ -663,6 +663,7 @@ Stores request-response entry metadata.
 | `deleted_at` | REAL | Timestamp when soft deleted (NULL if not deleted) |
 
 **Indexes:**
+
 - `idx_entries_cache_key` - Fast lookups by cache key
 - `idx_entries_deleted_at` - Efficient cleanup queries
 
@@ -679,118 +680,9 @@ Stores request and response body chunks.
 **Primary Key:** `(entry_id, kind, chunk_number)`
 
 **Special Values:**
+
 - `chunk_number = -1` - Completion marker (empty data, signals end of stream)
 - `kind = 0` - Request stream
 - `kind = 1` - Response stream
 
 ---
-
-## Integration with State Machine
-
-Storage is designed to work seamlessly with Hishel's RFC 9111 state machine. Here's how they integrate:
-
-=== "Async"
-
-    ```python
-    from hishel import (
-        create_idle_state,
-        CacheMiss,
-        FromCache,
-        StoreAndUse,
-        AsyncSqliteStorage,
-        Request,
-    )
-    
-    storage = AsyncSqliteStorage()
-    
-    # Get cache key for request
-    cache_key = "GET:https://api.example.com/users"
-    
-    # Retrieve cached entries
-    cached_entries = await storage.get_entries(cache_key)
-    
-    # Start state machine
-    state = create_idle_state("client")
-    request = Request(method="GET", url="https://api.example.com/users")
-    
-    # Transition based on cached entries
-    next_state = state.next(request, cached_entries)
-    
-    if isinstance(next_state, FromCache):
-        # Use cached response
-        response = next_state.entry.response
-    
-    elif isinstance(next_state, CacheMiss):
-        # Fetch from origin and store
-        origin_response = ...  # fetch from server
-        
-        # Evaluate if we should store it
-        storage_state = next_state.next(origin_response)
-        
-        if isinstance(storage_state, StoreAndUse):
-            # Add entry to storage
-            entry = await storage.create_entry(
-                request=request,
-                response=origin_response,
-                key=cache_key,
-            )
-            async for _ in entry.request.aiter_stream():
-                pass
-            async for _ in entry.response.aiter_stream():
-                pass
-        
-        response = origin_response
-    ```
-
-=== "Sync"
-
-    ```python
-    from hishel import (
-        create_idle_state,
-        CacheMiss,
-        FromCache,
-        StoreAndUse,
-        SyncSqliteStorage,
-        Request,
-    )
-    
-    storage = SyncSqliteStorage()
-    
-    # Get cache key for request
-    cache_key = "GET:https://api.example.com/users"
-    
-    # Retrieve cached entries
-    cached_entries = storage.get_entries(cache_key)
-    
-    # Start state machine
-    state = create_idle_state("client")
-    request = Request(method="GET", url="https://api.example.com/users")
-    
-    # Transition based on cached entries
-    next_state = state.next(request, cached_entries)
-    
-    if isinstance(next_state, FromCache):
-        # Use cached response
-        response = next_state.entry.response
-    
-    elif isinstance(next_state, CacheMiss):
-        # Fetch from origin and store
-        origin_response = ...  # fetch from server
-        
-        # Evaluate if we should store it
-        storage_state = next_state.next(origin_response)
-        
-        if isinstance(storage_state, StoreAndUse):
-            # Add entry to storage
-            entry = storage.create_entry(
-                request=request,
-                response=origin_response,
-                key=cache_key,
-            )
-            for _ in entry.request.iter_stream():
-                pass
-            for _ in entry.response.iter_stream():
-                pass
-        
-        response = origin_response
-    ```

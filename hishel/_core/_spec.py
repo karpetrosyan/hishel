@@ -9,7 +9,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
-    Literal,
     Optional,
     TypeVar,
     Union,
@@ -1128,12 +1127,6 @@ AnyState = Union[
 SAFE_METHODS = frozenset(["GET", "HEAD", "OPTIONS", "TRACE"])
 
 
-def create_idle_state(role: Literal["client", "server"], options: Optional[CacheOptions] = None) -> IdleClient:
-    if role == "server":
-        raise NotImplementedError("Server role is not implemented yet.")
-    return IdleClient(options=options or CacheOptions())
-
-
 @dataclass
 class IdleClient(State):
     """
@@ -1419,7 +1412,7 @@ class IdleClient(State):
             # Calculate current age and update the Age header
             current_age = get_age(selected_pair.response)
             return FromCache(
-                pair=replace(
+                entry=replace(
                     selected_pair,
                     response=replace(
                         selected_pair.response,
@@ -2062,7 +2055,7 @@ class NeedRevalidation(State):
         elif revalidation_response.status_code // 100 == 3:
             # 3xx Redirects should have been followed by the HTTP client
             return FromCache(
-                pair=replace(
+                entry=replace(
                     self.revalidating_entries[-1],
                     response=revalidation_response,
                 ),
@@ -2330,7 +2323,6 @@ class StoreAndUse(State):
         response_meta = ResponseMetadata(
             hishel_created_at=time.time(),
             hishel_from_cache=False,
-            hishel_spec_ignored=False,
             hishel_revalidated=after_revalidation,
             hishel_stored=True,
         )
@@ -2379,7 +2371,6 @@ class CouldNotBeStored(State):
         response_meta = ResponseMetadata(
             hishel_created_at=time.time(),
             hishel_from_cache=False,
-            hishel_spec_ignored=False,
             hishel_revalidated=after_revalidation,
             hishel_stored=False,
         )
@@ -2406,21 +2397,20 @@ class InvalidateEntries(State):
 class FromCache(State):
     def __init__(
         self,
-        pair: Entry,
+        entry: Entry,
         options: CacheOptions,
         after_revalidation: bool = False,
     ) -> None:
         super().__init__(options)
-        self.pair = pair
+        self.entry = entry
         self.after_revalidation = after_revalidation
         response_meta = ResponseMetadata(
-            hishel_created_at=pair.meta.created_at,
+            hishel_created_at=entry.meta.created_at,
             hishel_from_cache=True,
-            hishel_spec_ignored=False,
             hishel_revalidated=after_revalidation,
             hishel_stored=False,
         )
-        self.pair.response.metadata.update(response_meta)  # type: ignore
+        self.entry.response.metadata.update(response_meta)  # type: ignore
 
     def next(self) -> None:
         return None
@@ -2432,4 +2422,4 @@ class NeedToBeUpdated(State):
     original_request: Request
 
     def next(self) -> FromCache:
-        return FromCache(pair=self.updating_entries[-1], options=self.options)  # pragma: nocover
+        return FromCache(entry=self.updating_entries[-1], options=self.options)  # pragma: nocover

@@ -33,7 +33,7 @@ async def test_add_entry(use_temp_dir: Any) -> None:
     )
 
     # Consume the stream to save it
-    async for _ in entry.response.aiter_stream():
+    async for _ in entry.response._aiter_stream():
         ...
 
     conn = await storage._ensure_connection()
@@ -91,7 +91,7 @@ async def test_add_entry_with_stream(use_temp_dir: Any) -> None:
     )
 
     # Consume the stream
-    async for _ in entry.response.aiter_stream():
+    async for _ in entry.response._aiter_stream():
         ...
 
     # Verify the entry was created with cache_key set
@@ -280,7 +280,7 @@ async def test_stream_persistence(use_temp_dir: Any) -> None:
         id_=uuid.UUID(int=8),
     )
 
-    async for _ in entry.response.aiter_stream():
+    async for _ in entry.response._aiter_stream():
         ...
 
     # Retrieve and verify streams
@@ -288,7 +288,7 @@ async def test_stream_persistence(use_temp_dir: Any) -> None:
     assert len(entries) == 1
 
     retrieved_response_chunks = []
-    async for chunk in entries[0].response.aiter_stream():
+    async for chunk in entries[0].response._aiter_stream():
         retrieved_response_chunks.append(chunk)
 
     assert retrieved_response_chunks == response_chunks

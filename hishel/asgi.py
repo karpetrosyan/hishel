@@ -5,8 +5,9 @@ import typing as t
 from email.utils import formatdate
 from typing import AsyncIterator
 
-from hishel import AsyncBaseStorage, CacheOptions, Headers, Request, Response
+from hishel import AsyncBaseStorage, Headers, Request, Response
 from hishel._async_cache import AsyncCacheProxy
+from hishel._policies import CachePolicy
 
 # Configure logger for this module
 logger = logging.getLogger(__name__)
@@ -54,20 +55,20 @@ class ASGICacheMiddleware:
     Args:
         app: The ASGI application to wrap.
         storage: The storage backend to use for caching. Defaults to AsyncSqliteStorage.
-        cache_options: Configuration options for caching behavior.
-        ignore_specification: If True, bypasses HTTP caching rules and caches all responses.
-        use_body_key: If True, includes request body in cache key generation for all requests.
+        policy: Caching policy to use. Can be SpecificationPolicy (respects RFC 9111) or
+            FilterPolicy (user-defined filtering). Defaults to SpecificationPolicy().
 
     Example:
         ```python
         from hishel.asgi import ASGICacheMiddleware
-        from hishel import AsyncSqliteStorage, CacheOptions
+        from hishel import AsyncSqliteStorage
+        from hishel._policies import SpecificationPolicy, CacheOptions
 
         # Wrap your ASGI app
         app = ASGICacheMiddleware(
             app=my_asgi_app,
             storage=AsyncSqliteStorage(),
-            cache_options=CacheOptions(),
+            policy=SpecificationPolicy(cache_options=CacheOptions()),
         )
         ```
     """
@@ -76,21 +77,16 @@ class ASGICacheMiddleware:
         self,
         app: _ASGIApp,
         storage: AsyncBaseStorage | None = None,
-        cache_options: CacheOptions | None = None,
-        ignore_specification: bool = False,
-        use_body_key: bool = False,
+        policy: CachePolicy | None = None,
     ) -> None:
         self.app = app
         self.storage = storage
-        self._cache_options = cache_options
-        self._ignore_specification = ignore_specification
-        self._use_body_key = use_body_key
+        self._policy = policy
 
         logger.info(
-            "Initialized ASGICacheMiddleware with storage=%s, ignore_specification=%s, use_body_key=%s",
+            "Initialized ASGICacheMiddleware with storage=%s, policy=%s",
             type(storage).__name__ if storage else "None",
-            ignore_specification,
-            use_body_key,
+            type(policy).__name__ if policy else "None",
         )
 
     async def __call__(self, scope: _Scope, receive: _Receive, send: _Send) -> None:
@@ -126,7 +122,7 @@ class ASGICacheMiddleware:
                 logger.debug("Sending request to wrapped application: url=%s", request.url)
 
                 # Create a buffered receive callable that replays the request body from the stream
-                body_iterator = request.aiter_stream()
+                body_iterator = request._aiter_stream()
                 body_exhausted = False
                 bytes_received = 0
 
@@ -223,9 +219,7 @@ class ASGICacheMiddleware:
             cache_proxy = AsyncCacheProxy(
                 request_sender=send_request_to_app,
                 storage=self.storage,
-                cache_options=self._cache_options,
-                ignore_specification=self._ignore_specification,
-                use_body_key=self._use_body_key,
+                policy=self._policy,
             )
 
             # Convert ASGI request to internal Request (using async iterator, not reading into memory)
@@ -357,7 +351,7 @@ class ASGICacheMiddleware:
             # Send response body in chunks
             bytes_sent = 0
             chunk_count = 0
-            async for chunk in response.aiter_stream():
+            async for chunk in response._aiter_stream():
                 await send(
                     {
                         "type": "http.response.body",

@@ -34,7 +34,6 @@ def test_simple_caching(use_temp_dir: Any, caplog: pytest.LogCaptureFixture) -> 
     ) == snapshot(
         {
             "X-Hishel-From-Cache": "True",
-            "X-Hishel-Spec-Ignored": "False",
             "X-Hishel-Revalidated": "False",
             "X-Hishel-Stored": "False",
         }
@@ -54,19 +53,18 @@ def test_simple_caching_ignoring_spec(use_temp_dir: Any, caplog: pytest.LogCaptu
 
     assert caplog.messages == snapshot(
         [
-            "Trying to get cached response ignoring specification",
-            "Found 0 cached entries for the request",
-            "Storing response in cache ignoring specification",
-            "Trying to get cached response ignoring specification",
-            "Found 1 cached entries for the request",
-            "Found matching cached response for the request",
+            "Handling state: IdleClient",
+            "Handling state: CacheMiss",
+            "Storing response in cache",
+            "Handling state: StoreAndUse",
+            "Handling state: IdleClient",
+            "Handling state: FromCache",
         ]
     )
     assert filter_mapping(
         {k: v for k, v in response.headers.items() if k.lower().startswith("x-hishel")}, ["x-hishel-created-at"]
     ) == snapshot(
         {
-            "X-Hishel-Spec-Ignored": "True",
             "X-Hishel-From-Cache": "True",
             "X-Hishel-Revalidated": "False",
             "X-Hishel-Stored": "False",

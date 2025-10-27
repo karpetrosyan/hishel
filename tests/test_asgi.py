@@ -11,6 +11,7 @@ from inline_snapshot import snapshot
 from time_machine import travel
 
 from hishel import AsyncSqliteStorage, CacheOptions
+from hishel._policies import FilterPolicy, SpecificationPolicy
 from hishel.asgi import ASGICacheMiddleware, _ASGIScope
 
 
@@ -291,13 +292,8 @@ async def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
 @pytest.mark.anyio
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")), tick=False)
 async def test_simple_caching_ignoring_spec(caplog: pytest.LogCaptureFixture) -> None:
-    """Test caching with ignore_specification flag."""
     storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
-    middleware = ASGICacheMiddleware(
-        app=no_cache_asgi_app,
-        storage=storage,
-        ignore_specification=True,
-    )
+    middleware = ASGICacheMiddleware(app=no_cache_asgi_app, storage=storage, policy=FilterPolicy())
 
     # First request
     scope = create_asgi_scope()
@@ -365,7 +361,7 @@ async def test_encoded_content_caching() -> None:
     middleware = ASGICacheMiddleware(
         app=gzipped_asgi_app,
         storage=storage,
-        ignore_specification=True,
+        policy=FilterPolicy(),
     )
 
     # First request - cache miss
@@ -400,7 +396,7 @@ async def test_streaming_response_caching() -> None:
     middleware = ASGICacheMiddleware(
         app=streaming_asgi_app,
         storage=storage,
-        ignore_specification=True,
+        policy=FilterPolicy(),
     )
 
     # First request - cache miss
@@ -431,7 +427,7 @@ async def test_different_methods() -> None:
     middleware = ASGICacheMiddleware(
         app=echo_method_asgi_app,
         storage=storage,
-        ignore_specification=True,
+        policy=FilterPolicy(),
     )
 
     # GET request
@@ -467,7 +463,7 @@ async def test_different_paths() -> None:
     middleware = ASGICacheMiddleware(
         app=simple_asgi_app,
         storage=storage,
-        ignore_specification=True,
+        policy=FilterPolicy(),
     )
 
     # Request to /path1
@@ -500,7 +496,7 @@ async def test_query_strings() -> None:
     middleware = ASGICacheMiddleware(
         app=simple_asgi_app,
         storage=storage,
-        ignore_specification=True,
+        policy=FilterPolicy(),
     )
 
     # Request with query string 1
@@ -563,7 +559,9 @@ async def test_custom_cache_options() -> None:
     middleware = ASGICacheMiddleware(
         app=simple_asgi_app,
         storage=storage,
-        cache_options=cache_options,
+        policy=SpecificationPolicy(
+            cache_options=cache_options,
+        ),
     )
 
     scope = create_asgi_scope()
@@ -654,7 +652,7 @@ async def test_headers_are_preserved() -> None:
     middleware = ASGICacheMiddleware(
         app=simple_asgi_app,
         storage=storage,
-        ignore_specification=True,
+        policy=FilterPolicy(),
     )
 
     # First request

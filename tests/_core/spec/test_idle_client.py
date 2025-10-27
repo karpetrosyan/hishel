@@ -419,15 +419,15 @@ class TestTransitionToFromCache:
 
         # Assert
         assert isinstance(next_state, FromCache)
-        assert next_state.pair.request == request
+        assert next_state.entry.request == request
 
         # Verify Age header is present and updated
-        assert "age" in next_state.pair.response.headers
-        age_value = int(next_state.pair.response.headers["age"])
+        assert "age" in next_state.entry.response.headers
+        age_value = int(next_state.entry.response.headers["age"])
         assert age_value >= 1800  # Should be at least the initial age
 
         # Verify metadata flag
-        assert next_state.pair.response.metadata.get("hishel_from_cache") is True
+        assert next_state.entry.response.metadata.get("hishel_from_cache") is True
 
     def test_stale_but_allowed_response_served_from_cache(self, idle_client_allow_stale: IdleClient) -> None:
         """
@@ -451,10 +451,10 @@ class TestTransitionToFromCache:
 
         # Assert
         assert isinstance(next_state, FromCache)
-        assert next_state.pair.request == request
+        assert next_state.entry.request == request
 
         # Verify Age header reflects staleness
-        age_value = int(next_state.pair.response.headers["age"])
+        age_value = int(next_state.entry.response.headers["age"])
         assert age_value >= 7200
 
     def test_most_recent_response_selected_when_multiple_available(self, idle_client: IdleClient) -> None:
@@ -497,7 +497,7 @@ class TestTransitionToFromCache:
         assert isinstance(next_state, FromCache)
 
         # Verify the newest response was selected
-        selected_age = int(next_state.pair.response.headers["age"])
+        selected_age = int(next_state.entry.response.headers["age"])
         # The newest response has age ~1000s, others have 2000s and 3000s
         assert selected_age >= 1000
         assert selected_age < 2000  # Should be closer to 1000 than 2000
@@ -530,7 +530,7 @@ class TestTransitionToFromCache:
         assert isinstance(next_state, FromCache)
 
         # Age should be at least the initial age
-        age_value = int(next_state.pair.response.headers["age"])
+        age_value = int(next_state.entry.response.headers["age"])
         assert age_value >= initial_age
         assert age_value < initial_age + 5  # Shouldn't increase by more than a few seconds
 
@@ -597,7 +597,7 @@ class TestTransitionToFromCache:
 
         # Assert
         assert isinstance(next_state, FromCache)
-        assert next_state.pair.response.metadata.get("hishel_from_cache") is True
+        assert next_state.entry.response.metadata.get("hishel_from_cache") is True
 
 
 # =============================================================================
@@ -849,7 +849,7 @@ class TestEdgeCasesAndCompliance:
 
         # Assert
         assert isinstance(next_state, FromCache)
-        assert next_state.pair.response.metadata.get("hishel_from_cache") is True
+        assert next_state.entry.response.metadata.get("hishel_from_cache") is True
 
     def test_empty_vary_header_treated_as_no_vary(self, idle_client: IdleClient) -> None:
         """
@@ -891,7 +891,7 @@ class TestEdgeCasesAndCompliance:
 
         # Assert
         assert isinstance(next_state, FromCache)
-        age_value = int(next_state.pair.response.headers["age"])
+        age_value = int(next_state.entry.response.headers["age"])
         assert age_value < 10  # Should be very close to 0
 
     def test_sorting_handles_responses_without_date_header(self, idle_client: IdleClient) -> None:

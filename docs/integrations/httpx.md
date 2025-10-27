@@ -99,11 +99,13 @@ By default, Hishel follows RFC 9111 caching rules. To force caching regardless o
 
 === "Sync"
     ```python
-    from hishel import CacheOptions
+    from hishel import CacheOptions, SpecificationPolicy
     from hishel.httpx import SyncCacheClient
 
     client = SyncCacheClient(
-        cache_options=CacheOptions(always_cache=True)
+        policy=SpecificationPolicy(
+            cache_options=CacheOptions(always_cache=True)
+        )
     )
     
     # This will be cached even without proper cache headers
@@ -112,11 +114,13 @@ By default, Hishel follows RFC 9111 caching rules. To force caching regardless o
 
 === "Async"
     ```python
-    from hishel import CacheOptions
+    from hishel import CacheOptions, SpecificationPolicy
     from hishel.httpx import AsyncCacheClient
 
     async with AsyncCacheClient(
-        cache_options=CacheOptions(always_cache=True)
+        policy=SpecificationPolicy(
+            cache_options=CacheOptions(always_cache=True)
+        )
     ) as client:
         response = await client.get("https://api.example.com/data")
     ```
@@ -127,12 +131,14 @@ Specify how long responses should be cached:
 
 === "Sync"
     ```python
-    from hishel import CacheOptions
+    from hishel import CacheOptions, SpecificationPolicy
     from hishel.httpx import SyncCacheClient
 
     # Cache for 1 hour (3600 seconds)
     client = SyncCacheClient(
-        cache_options=CacheOptions(ttl=3600)
+        policy=SpecificationPolicy(
+            cache_options=CacheOptions(ttl=3600)
+        )
     )
     
     response = client.get("https://api.example.com/data")
@@ -140,12 +146,14 @@ Specify how long responses should be cached:
 
 === "Async"
     ```python
-    from hishel import CacheOptions
+    from hishel import CacheOptions, SpecificationPolicy
     from hishel.httpx import AsyncCacheClient
 
     # Cache for 1 hour (3600 seconds)
     async with AsyncCacheClient(
-        cache_options=CacheOptions(ttl=3600)
+        policy=SpecificationPolicy(
+            cache_options=CacheOptions(ttl=3600)
+        )
     ) as client:
         response = await client.get("https://api.example.com/data")
     ```
@@ -156,11 +164,13 @@ Update cache metadata on every cache hit to extend freshness:
 
 === "Sync"
     ```python
-    from hishel import CacheOptions
+    from hishel import CacheOptions, SpecificationPolicy
     from hishel.httpx import SyncCacheClient
 
     client = SyncCacheClient(
-        cache_options=CacheOptions(refresh_on_hit=True)
+        policy=SpecificationPolicy(
+            cache_options=CacheOptions(refresh_on_hit=True)
+        )
     )
     
     response = client.get("https://api.example.com/data")
@@ -168,11 +178,13 @@ Update cache metadata on every cache hit to extend freshness:
 
 === "Async"
     ```python
-    from hishel import CacheOptions
+    from hishel import CacheOptions, SpecificationPolicy
     from hishel.httpx import AsyncCacheClient
 
     async with AsyncCacheClient(
-        cache_options=CacheOptions(refresh_on_hit=True)
+        policy=SpecificationPolicy(
+            cache_options=CacheOptions(refresh_on_hit=True)
+        )
     ) as client:
         response = await client.get("https://api.example.com/data")
     ```
@@ -186,14 +198,13 @@ For more control or to integrate with existing HTTPX clients, use cache transpor
 === "Sync"
     ```python
     import httpx
-    from hishel import SyncSqliteStorage, CacheOptions
+    from hishel import SyncSqliteStorage
     from hishel.httpx import SyncCacheTransport
 
     # Create transport with caching
     transport = SyncCacheTransport(
         next_transport=httpx.HTTPTransport(),
         storage=SyncSqliteStorage(),
-        cache_options=CacheOptions()
     )
 
     # Use with standard HTTPX client
@@ -205,14 +216,13 @@ For more control or to integrate with existing HTTPX clients, use cache transpor
 === "Async"
     ```python
     import httpx
-    from hishel import AsyncSqliteStorage, CacheOptions
+    from hishel import AsyncSqliteStorage
     from hishel.httpx import AsyncCacheTransport
 
     # Create transport with caching
     transport = AsyncCacheTransport(
         next_transport=httpx.AsyncHTTPTransport(),
         storage=AsyncSqliteStorage(),
-        cache_options=CacheOptions()
     )
 
     # Use with standard HTTPX client
@@ -292,163 +302,6 @@ Use transports when you need to:
 
 ---
 
-## Controlling Cache Behavior
-
-### Using Extensions (Recommended)
-
-Set caching metadata using HTTPX's `extensions` parameter:
-
-=== "Sync"
-    ```python
-    from hishel.httpx import SyncCacheClient
-
-    client = SyncCacheClient()
-
-    # Custom TTL for specific request
-    response = client.get(
-        "https://api.example.com/data",
-        extensions={"hishel_ttl": 300}  # Cache for 5 minutes
-    )
-
-    # Ignore caching rules
-    response = client.get(
-        "https://api.example.com/private",
-        extensions={"hishel_spec_ignore": True}
-    )
-
-    # Multiple options
-    response = client.get(
-        "https://api.example.com/search",
-        extensions={
-            "hishel_ttl": 600,
-            "hishel_refresh_ttl_on_access": True,
-            "hishel_body_key": True  # Include body in cache key
-        }
-    )
-    ```
-
-=== "Async"
-    ```python
-    from hishel.httpx import AsyncCacheClient
-
-    async with AsyncCacheClient() as client:
-        # Custom TTL for specific request
-        response = await client.get(
-            "https://api.example.com/data",
-            extensions={"hishel_ttl": 300}  # Cache for 5 minutes
-        )
-
-        # Ignore caching rules
-        response = await client.get(
-            "https://api.example.com/private",
-            extensions={"hishel_spec_ignore": True}
-        )
-
-        # Multiple options
-        response = await client.get(
-            "https://api.example.com/search",
-            extensions={
-                "hishel_ttl": 600,
-                "hishel_refresh_ttl_on_access": True,
-                "hishel_body_key": True  # Include body in cache key
-            }
-        )
-    ```
-
-### Using Headers (Alternative)
-
-You can also use HTTP headers:
-
-=== "Sync"
-    ```python
-    from hishel.httpx import SyncCacheClient
-
-    client = SyncCacheClient()
-
-    response = client.get(
-        "https://api.example.com/data",
-        headers={"X-Hishel-Ttl": "300"}
-    )
-    ```
-
-=== "Async"
-    ```python
-    from hishel.httpx import AsyncCacheClient
-
-    async with AsyncCacheClient() as client:
-        response = await client.get(
-            "https://api.example.com/data",
-            headers={"X-Hishel-Ttl": "300"}
-        )
-    ```
-
-!!! tip "Extensions vs Headers"
-    Use `extensions` for better type safety and to avoid sending cache control headers to the server.
-
-### Available Metadata
-
-See [Metadata Documentation](../metadata.md) for complete reference:
-
-- `hishel_ttl` - Custom TTL in seconds
-- `hishel_refresh_ttl_on_access` - Enable sliding expiration
-- `hishel_spec_ignore` - Ignore RFC 9111 rules
-- `hishel_body_key` - Include body in cache key (for POST/GraphQL)
-
----
-
-## Inspecting Cache Status
-
-Check if responses came from cache using metadata:
-
-=== "Sync"
-    ```python
-    from hishel.httpx import SyncCacheClient
-
-    client = SyncCacheClient()
-
-    response = client.get("https://api.example.com/data")
-
-    # Check cache status
-    from_cache = response.extensions.get("hishel_from_cache", False)
-    revalidated = response.extensions.get("hishel_revalidated", False)
-    stored = response.extensions.get("hishel_stored", False)
-
-    if from_cache and not revalidated:
-        print("✓ Fresh cache hit")
-    elif from_cache and revalidated:
-        print("↻ Revalidated (304)")
-    else:
-        print("✗ Cache miss")
-
-    if stored:
-        print("Response was cached for future requests")
-    ```
-
-=== "Async"
-    ```python
-    from hishel.httpx import AsyncCacheClient
-
-    async with AsyncCacheClient() as client:
-        response = await client.get("https://api.example.com/data")
-
-        # Check cache status
-        from_cache = response.extensions.get("hishel_from_cache", False)
-        revalidated = response.extensions.get("hishel_revalidated", False)
-        stored = response.extensions.get("hishel_stored", False)
-
-        if from_cache and not revalidated:
-            print("✓ Fresh cache hit")
-        elif from_cache and revalidated:
-            print("↻ Revalidated (304)")
-        else:
-            print("✗ Cache miss")
-
-        if stored:
-            print("Response was cached for future requests")
-    ```
-
----
-
 ## Migration from Standard HTTPX
 
 Migrating existing HTTPX code to use Hishel is straightforward:
@@ -468,18 +321,6 @@ from hishel.httpx import SyncCacheClient
 client = SyncCacheClient()  # Drop-in replacement
 response = client.get("https://api.example.com/data")
 ```
-
-All HTTPX features continue to work:
-
-- ✓ Request parameters (`params`, `headers`, `json`, `data`)
-- ✓ Authentication (`auth`)
-- ✓ Timeouts (`timeout`)
-- ✓ HTTP/2 support (`http2=True`)
-- ✓ Proxies (`proxies`)
-- ✓ Custom transports
-- ✓ Event hooks
-- ✓ Connection pooling
-
 ---
 
 ## See Also

@@ -14,11 +14,9 @@ from typing import (
 from httpx import RequestNotRead
 
 from hishel import AsyncCacheProxy, Headers, Request, Response
-from hishel._core._spec import (
-    CacheOptions,
-)
 from hishel._core._storages._async_base import AsyncBaseStorage
 from hishel._core.models import RequestMetadata, extract_metadata_from_headers
+from hishel._policies import CachePolicy
 from hishel._utils import (
     filter_mapping,
     make_async_iterator,
@@ -62,14 +60,14 @@ def _internal_to_httpx(
             method=value.method,
             url=value.url,
             headers=value.headers,
-            stream=_IteratorStream(value.aiter_stream()),
+            stream=_IteratorStream(value._aiter_stream()),
             extensions=value.metadata,
         )
     elif isinstance(value, Response):
         return httpx.Response(
             status_code=value.status_code,
             headers=value.headers,
-            stream=_IteratorStream(value.aiter_stream()),
+            stream=_IteratorStream(value._aiter_stream()),
             extensions=value.metadata,
         )
 
@@ -149,17 +147,13 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         self,
         next_transport: httpx.AsyncBaseTransport,
         storage: AsyncBaseStorage | None = None,
-        cache_options: CacheOptions | None = None,
-        ignore_specification: bool = False,
-        use_body_key: bool = False,
+        policy: CachePolicy | None = None,
     ) -> None:
         self.next_transport = next_transport
         self._cache_proxy: AsyncCacheProxy = AsyncCacheProxy(
             request_sender=self.request_sender,
             storage=storage,
-            cache_options=cache_options,
-            ignore_specification=ignore_specification,
-            use_body_key=use_body_key,
+            policy=policy,
         )
         self.storage = self._cache_proxy.storage
 
@@ -186,9 +180,7 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
 class AsyncCacheClient(httpx.AsyncClient):
     def __init__(self, *args: t.Any, **kwargs: t.Any) -> None:
         self.storage: AsyncBaseStorage | None = kwargs.pop("storage", None)
-        self.cache_options: CacheOptions | None = kwargs.pop("cache_options", None)
-        self.ignore_specification: bool = kwargs.pop("ignore_specification", False)
-        self.use_body_key: bool = kwargs.pop("use_body_key", False)
+        self.policy: CachePolicy | None = kwargs.pop("policy", None)
         super().__init__(*args, **kwargs)
 
     def _init_transport(
@@ -215,9 +207,7 @@ class AsyncCacheClient(httpx.AsyncClient):
                 limits=limits,
             ),
             storage=self.storage,
-            cache_options=self.cache_options,
-            ignore_specification=False,
-            use_body_key=self.use_body_key,
+            policy=self.policy,
         )
 
     def _init_proxy_transport(
@@ -242,7 +232,5 @@ class AsyncCacheClient(httpx.AsyncClient):
                 proxy=proxy,
             ),
             storage=self.storage,
-            cache_options=self.cache_options,
-            ignore_specification=self.ignore_specification,
-            use_body_key=self.use_body_key,
+            policy=self.policy,
         )

@@ -5,14 +5,18 @@ import uuid
 from dataclasses import dataclass, field
 from typing import (
     Any,
+    AsyncIterable,
     AsyncIterator,
+    Iterable,
     Iterator,
     Mapping,
     Optional,
     TypedDict,
+    cast,
 )
 
 from hishel._core._headers import Headers
+from hishel._utils import make_async_iterator, make_sync_iterator
 
 
 class AnyIterable:
@@ -96,17 +100,55 @@ class Request:
     stream: Iterator[bytes] | AsyncIterator[bytes] = field(default_factory=lambda: iter(AnyIterable()))
     metadata: RequestMetadata | Mapping[str, Any] = field(default_factory=dict)
 
-    def iter_stream(self) -> Iterator[bytes]:
-        if isinstance(self.stream, Iterator):
-            return self.stream
+    def _iter_stream(self) -> Iterator[bytes]:
+        if hasattr(self, "collected_body"):
+            yield getattr(self, "collected_body")
+            return
+        if isinstance(self.stream, (Iterator, Iterable)):
+            yield from self.stream
+            return
         raise TypeError("Request stream is not an Iterator")
 
-    async def aiter_stream(self) -> AsyncIterator[bytes]:
-        if isinstance(self.stream, AsyncIterator):
+    async def _aiter_stream(self) -> AsyncIterator[bytes]:
+        if hasattr(self, "collected_body"):
+            yield getattr(self, "collected_body")
+            return
+        if isinstance(self.stream, (AsyncIterator, AsyncIterable)):
             async for chunk in self.stream:
                 yield chunk
+            return
         else:
             raise TypeError("Request stream is not an AsyncIterator")
+
+    def read(self) -> bytes:
+        """
+        Synchronously reads the entire request body without consuming the stream.
+        """
+        if not isinstance(self.stream, Iterator):
+            raise TypeError("Request stream is not an Iterator")
+
+        if hasattr(self, "collected_body"):
+            return cast(bytes, getattr(self, "collected_body"))
+
+        collected = b"".join([chunk for chunk in self.stream])
+        setattr(self, "collected_body", collected)
+        self.stream = make_sync_iterator([collected])
+        return collected
+
+    async def aread(self) -> bytes:
+        """
+        Asynchronously reads the entire request body without consuming the stream.
+        """
+        if not isinstance(self.stream, AsyncIterator):
+            raise TypeError("Request stream is not an AsyncIterator")
+
+        if hasattr(self, "collected_body"):
+            return cast(bytes, getattr(self, "collected_body"))
+
+        collected = b"".join([chunk async for chunk in self.stream])
+        setattr(self, "collected_body", collected)
+        self.stream = make_async_iterator([collected])
+        return collected
 
 
 class ResponseMetadata(TypedDict, total=False):
@@ -116,9 +158,6 @@ class ResponseMetadata(TypedDict, total=False):
 
     hishel_revalidated: bool
     """Indicates whether the response was revalidated with the origin server."""
-
-    hishel_spec_ignored: bool
-    """Indicates whether the caching specification was ignored for this response."""
 
     hishel_stored: bool
     """Indicates whether the response was stored in cache."""
@@ -134,17 +173,54 @@ class Response:
     stream: Iterator[bytes] | AsyncIterator[bytes] = field(default_factory=lambda: iter(AnyIterable()))
     metadata: ResponseMetadata | Mapping[str, Any] = field(default_factory=dict)
 
-    def iter_stream(self) -> Iterator[bytes]:
+    def _iter_stream(self) -> Iterator[bytes]:
+        if hasattr(self, "collected_body"):
+            yield getattr(self, "collected_body")
+            return
         if isinstance(self.stream, Iterator):
-            return self.stream
+            yield from self.stream
+            return
         raise TypeError("Response stream is not an Iterator")
 
-    async def aiter_stream(self) -> AsyncIterator[bytes]:
+    async def _aiter_stream(self) -> AsyncIterator[bytes]:
+        if hasattr(self, "collected_body"):
+            yield getattr(self, "collected_body")
+            return
         if isinstance(self.stream, AsyncIterator):
             async for chunk in self.stream:
                 yield chunk
         else:
             raise TypeError("Response stream is not an AsyncIterator")
+
+    def read(self) -> bytes:
+        """
+        Synchronously reads the entire request body without consuming the stream.
+        """
+        if not isinstance(self.stream, Iterator):
+            raise TypeError("Request stream is not an Iterator")
+
+        if hasattr(self, "collected_body"):
+            return cast(bytes, getattr(self, "collected_body"))
+
+        collected = b"".join([chunk for chunk in self.stream])
+        setattr(self, "collected_body", collected)
+        self.stream = make_sync_iterator([collected])
+        return collected
+
+    async def aread(self) -> bytes:
+        """
+        Asynchronously reads the entire request body without consuming the stream.
+        """
+        if not isinstance(self.stream, AsyncIterator):
+            raise TypeError("Request stream is not an AsyncIterator")
+
+        if hasattr(self, "collected_body"):
+            return cast(bytes, getattr(self, "collected_body"))
+
+        collected = b"".join([chunk async for chunk in self.stream])
+        setattr(self, "collected_body", collected)
+        self.stream = make_async_iterator([collected])
+        return collected
 
 
 @dataclass

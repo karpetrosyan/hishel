@@ -126,56 +126,6 @@ Request metadata controls how Hishel caches the request and its response. You ca
 
 ---
 
-### hishel_spec_ignore
-
-**Type:** `bool | None`
-
-**Description:** When `True`, Hishel ignores RFC 9111 caching rules and caches the response regardless of `Cache-Control`, `Expires`, or other standard headers. The response will be stored even if it would normally be uncacheable.
-
-**Use Cases:**
-
-- Force caching of responses with `no-store` or `no-cache`
-- Cache responses without proper cache headers
-- Override server caching directives for testing
-
-**Default:** `False` (follow RFC 9111 specification)
-
-!!! warning
-    Use with caution. Ignoring the specification may cache sensitive data or stale content.
-
-**Example:**
-
-=== "httpx"
-    ```python
-    from hishel.httpx import SyncCacheClient
-
-    client = SyncCacheClient()
-
-    # Force caching even if server says not to
-    response = client.get(
-        "https://api.example.com/dynamic-content",
-        extensions={"hishel_spec_ignore": True}
-    )
-    ```
-
-=== "requests"
-    ```python
-    import requests
-    from hishel.requests import CacheAdapter
-
-    session = requests.Session()
-    session.mount("http://", CacheAdapter())
-    session.mount("https://", CacheAdapter())
-
-    # Force caching even if server says not to
-    response = session.get(
-        "https://api.example.com/dynamic-content",
-        headers={"X-Hishel-Spec-Ignore": "true"}
-    )
-    ```
-
----
-
 ### hishel_body_key
 
 **Type:** `bool | None`
@@ -323,59 +273,6 @@ Response metadata provides information about cache operations that occurred. The
     # Check if cached response was revalidated
     if response.headers.get("X-Hishel-Revalidated") == "true":
         print("Response was revalidated (304 Not Modified)")
-    ```
-
----
-
-### hishel_spec_ignored
-
-**Type:** `bool | None`
-
-**Description:** Indicates whether RFC 9111 caching specification was ignored for this response. When `True`, the response was cached despite having directives that would normally prevent caching (like `Cache-Control: no-store`).
-
-**Use Cases:**
-
-- Verify `hishel_spec_ignore` worked as expected
-- Audit which responses bypass standard caching rules
-- Debug forced caching behavior
-
-**Example:**
-
-=== "httpx"
-    ```python
-    from hishel.httpx import SyncCacheClient
-
-    client = SyncCacheClient()
-
-    # Force cache a response
-    response = client.get(
-        "https://api.example.com/no-cache-endpoint",
-        extensions={"hishel_spec_ignore": True}
-    )
-
-    # Verify spec was ignored
-    if response.extensions.get("hishel_spec_ignored"):
-        print("✓ Caching rules were bypassed as requested")
-    ```
-
-=== "requests"
-    ```python
-    import requests
-    from hishel.requests import CacheAdapter
-
-    session = requests.Session()
-    session.mount("http://", CacheAdapter())
-    session.mount("https://", CacheAdapter())
-
-    # Force cache a response
-    response = session.get(
-        "https://api.example.com/no-cache-endpoint",
-        headers={"X-Hishel-Spec-Ignore": "true"}
-    )
-
-    # Verify spec was ignored
-    if response.headers.get("X-Hishel-Spec-Ignored") == "true":
-        print("✓ Caching rules were bypassed as requested")
     ```
 
 ---

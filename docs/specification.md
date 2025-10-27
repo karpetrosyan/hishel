@@ -24,13 +24,10 @@ from hishel import (
     
     # Configuration
     CacheOptions,
-    
-    # Helper
-    create_idle_state
 )
 
 # Create an idle state (starting point)
-state = create_idle_state("client")  # "client" or "server" (server in development)
+state = IdleClient(options=CacheOptions())  # Starting point for client caching
 
 # The state machine guides you through the caching logic
 next_state = state.next(request, associated_entries=[])
@@ -139,9 +136,9 @@ Request → IdleClient → NeedRevalidation → InvalidateEntries → CacheMiss 
 
 
 ```python
-from hishel import create_idle_state
+from hishel import IdleClient, CacheOptions
 
-state = create_idle_state("client")  # client or server (server still in development)
+state = IdleClient(options=CacheOptions())  # Starting point for client caching
 
 # signature will look like:
 #   (method) def next(
