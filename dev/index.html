@@ -1343,9 +1343,10 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
 </code></pre></div>
 <p><strong>Using global configuration:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterPolicy</span>
 
 <span class="c1"># Enable body-based caching for all requests</span>
-<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">(</span><span class="n">use_body_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">(</span><span class="n">policy</span><span class="o">=</span><span class="n">FilterPolicy</span><span class="p">(</span><span class="n">use_body_key</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
 
 <span class="c1"># All POST requests automatically include body in cache key</span>
 <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
