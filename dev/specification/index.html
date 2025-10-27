@@ -270,6 +270,30 @@
   
   
     <li class="md-nav__item">
+      <a href="../policies/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4Zm8.25 3.5h-8.5a.25.25 0 0 0-.25.25v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25M10.5 6V4a2.5 2.5 0 1 0-5 0v2Z"/></svg>
+  
+  <span class="md-ellipsis">
+    Policies
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../metadata/" class="md-nav__link">
         
   
@@ -555,10 +579,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -571,8 +595,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             Integrations
           </label>
@@ -1029,13 +1053,10 @@
 
     <span class="c1"># Configuration</span>
     <span class="n">CacheOptions</span><span class="p">,</span>
-
-    <span class="c1"># Helper</span>
-    <span class="n">create_idle_state</span>
 <span class="p">)</span>
 
 <span class="c1"># Create an idle state (starting point)</span>
-<span class="n">state</span> <span class="o">=</span> <span class="n">create_idle_state</span><span class="p">(</span><span class="s2">&quot;client&quot;</span><span class="p">)</span>  <span class="c1"># &quot;client&quot; or &quot;server&quot; (server in development)</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">IdleClient</span><span class="p">(</span><span class="n">options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">())</span>  <span class="c1"># Starting point for client caching</span>
 
 <span class="c1"># The state machine guides you through the caching logic</span>
 <span class="n">next_state</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">next</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">associated_entries</span><span class="o">=</span><span class="p">[])</span>
@@ -1119,9 +1140,9 @@
 <strong>Scenario:</strong> Cached <code>/api/status</code> is stale, origin returns new content<br />
 <strong>Actions:</strong> Send conditional request, receive 200 with new content, delete old cache, store new response</p>
 <hr />
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_idle_state</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">IdleClient</span><span class="p">,</span> <span class="n">CacheOptions</span>
 
-<span class="n">state</span> <span class="o">=</span> <span class="n">create_idle_state</span><span class="p">(</span><span class="s2">&quot;client&quot;</span><span class="p">)</span>  <span class="c1"># client or server (server still in development)</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">IdleClient</span><span class="p">(</span><span class="n">options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">())</span>  <span class="c1"># Starting point for client caching</span>
 
 <span class="c1"># signature will look like:</span>
 <span class="c1">#   (method) def next(</span>

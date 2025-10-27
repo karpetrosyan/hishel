@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://hishel.com/dev/metadata/">
       
       
-        <link rel="prev" href="../storages/">
+        <link rel="prev" href="../policies/">
       
       
         <link rel="next" href="../specification/">
@@ -267,6 +267,30 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../policies/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4Zm8.25 3.5h-8.5a.25.25 0 0 0-.25.25v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25M10.5 6V4a2.5 2.5 0 1 0-5 0v2Z"/></svg>
+  
+  <span class="md-ellipsis">
+    Policies
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -352,15 +376,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#hishel_spec_ignore" class="md-nav__link">
-    <span class="md-ellipsis">
-      hishel_spec_ignore
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#hishel_body_key" class="md-nav__link">
     <span class="md-ellipsis">
       hishel_body_key
@@ -397,15 +412,6 @@
   <a href="#hishel_revalidated" class="md-nav__link">
     <span class="md-ellipsis">
       hishel_revalidated
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#hishel_spec_ignored" class="md-nav__link">
-    <span class="md-ellipsis">
-      hishel_spec_ignored
     </span>
   </a>
   
@@ -483,10 +489,10 @@
         
           
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -499,8 +505,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             Integrations
           </label>
@@ -767,15 +773,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#hishel_spec_ignore" class="md-nav__link">
-    <span class="md-ellipsis">
-      hishel_spec_ignore
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#hishel_body_key" class="md-nav__link">
     <span class="md-ellipsis">
       hishel_body_key
@@ -812,15 +809,6 @@
   <a href="#hishel_revalidated" class="md-nav__link">
     <span class="md-ellipsis">
       hishel_revalidated
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#hishel_spec_ignored" class="md-nav__link">
-    <span class="md-ellipsis">
-      hishel_spec_ignored
     </span>
   </a>
   
@@ -979,53 +967,6 @@
 </div>
 </div>
 <hr />
-<h3 id="hishel_spec_ignore">hishel_spec_ignore</h3>
-<p><strong>Type:</strong> <code>bool | None</code></p>
-<p><strong>Description:</strong> When <code>True</code>, Hishel ignores RFC 9111 caching rules and caches the response regardless of <code>Cache-Control</code>, <code>Expires</code>, or other standard headers. The response will be stored even if it would normally be uncacheable.</p>
-<p><strong>Use Cases:</strong></p>
-<ul>
-<li>Force caching of responses with <code>no-store</code> or <code>no-cache</code></li>
-<li>Cache responses without proper cache headers</li>
-<li>Override server caching directives for testing</li>
-</ul>
-<p><strong>Default:</strong> <code>False</code> (follow RFC 9111 specification)</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Use with caution. Ignoring the specification may cache sensitive data or stale content.</p>
-</div>
-<p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">httpx</label><label for="__tabbed_3_2">requests</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
-
-<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
-
-<span class="c1"># Force caching even if server says not to</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/dynamic-content&quot;</span><span class="p">,</span>
-    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;hishel_spec_ignore&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
-<span class="p">)</span>
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheAdapter</span>
-
-<span class="n">session</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;http://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;https://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-
-<span class="c1"># Force caching even if server says not to</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/dynamic-content&quot;</span><span class="p">,</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Hishel-Spec-Ignore&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">}</span>
-<span class="p">)</span>
-</code></pre></div>
-</div>
-</div>
-</div>
-<hr />
 <h3 id="hishel_body_key">hishel_body_key</h3>
 <p><strong>Type:</strong> <code>bool | None</code></p>
 <p><strong>Description:</strong> When <code>True</code>, includes the request body in cache key generation. This allows caching different responses for the same URL but with different request bodies, which is essential for POST requests and GraphQL queries.</p>
@@ -1037,7 +978,7 @@
 </ul>
 <p><strong>Default:</strong> <code>False</code> (body not included in cache key)</p>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">httpx</label><label for="__tabbed_4_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">httpx</label><label for="__tabbed_3_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1084,7 +1025,7 @@
 <li>Conditional logic based on cache status</li>
 </ul>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">httpx</label><label for="__tabbed_5_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">httpx</label><label for="__tabbed_4_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1131,7 +1072,7 @@
 <li>Optimize cache TTL settings</li>
 </ul>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">httpx</label><label for="__tabbed_6_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">httpx</label><label for="__tabbed_5_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1163,56 +1104,6 @@
 </div>
 </div>
 <hr />
-<h3 id="hishel_spec_ignored">hishel_spec_ignored</h3>
-<p><strong>Type:</strong> <code>bool | None</code></p>
-<p><strong>Description:</strong> Indicates whether RFC 9111 caching specification was ignored for this response. When <code>True</code>, the response was cached despite having directives that would normally prevent caching (like <code>Cache-Control: no-store</code>).</p>
-<p><strong>Use Cases:</strong></p>
-<ul>
-<li>Verify <code>hishel_spec_ignore</code> worked as expected</li>
-<li>Audit which responses bypass standard caching rules</li>
-<li>Debug forced caching behavior</li>
-</ul>
-<p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">httpx</label><label for="__tabbed_7_2">requests</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
-
-<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
-
-<span class="c1"># Force cache a response</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/no-cache-endpoint&quot;</span><span class="p">,</span>
-    <span class="n">extensions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;hishel_spec_ignore&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
-<span class="p">)</span>
-
-<span class="c1"># Verify spec was ignored</span>
-<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_spec_ignored&quot;</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Caching rules were bypassed as requested&quot;</span><span class="p">)</span>
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheAdapter</span>
-
-<span class="n">session</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">()</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;http://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-<span class="n">session</span><span class="o">.</span><span class="n">mount</span><span class="p">(</span><span class="s2">&quot;https://&quot;</span><span class="p">,</span> <span class="n">CacheAdapter</span><span class="p">())</span>
-
-<span class="c1"># Force cache a response</span>
-<span class="n">response</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;https://api.example.com/no-cache-endpoint&quot;</span><span class="p">,</span>
-    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Hishel-Spec-Ignore&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">}</span>
-<span class="p">)</span>
-
-<span class="c1"># Verify spec was ignored</span>
-<span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X-Hishel-Spec-Ignored&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Caching rules were bypassed as requested&quot;</span><span class="p">)</span>
-</code></pre></div>
-</div>
-</div>
-</div>
-<hr />
 <h3 id="hishel_stored">hishel_stored</h3>
 <p><strong>Type:</strong> <code>bool | None</code></p>
 <p><strong>Description:</strong> Indicates whether the response was successfully stored in cache. When <code>True</code>, the response met all caching requirements and was saved. When <code>False</code>, the response was not cacheable (e.g., due to <code>Cache-Control: no-store</code>).</p>
@@ -1224,7 +1115,7 @@
 <li>Validate caching configuration</li>
 </ul>
 <p><strong>Example:</strong></p>
-<div class="tabbed-set tabbed-alternate" data-tabs="8:2"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">httpx</label><label for="__tabbed_8_2">requests</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">httpx</label><label for="__tabbed_6_2">requests</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>

@@ -270,6 +270,30 @@
   
   
     <li class="md-nav__item">
+      <a href="../../policies/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4Zm8.25 3.5h-8.5a.25.25 0 0 0-.25.25v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25M10.5 6V4a2.5 2.5 0 1 0-5 0v2Z"/></svg>
+  
+  <span class="md-ellipsis">
+    Policies
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../metadata/" class="md-nav__link">
         
   
@@ -328,10 +352,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -344,8 +368,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             Integrations
           </label>
@@ -1106,6 +1130,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">gql.transport.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPXAsyncTransport</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncHTTPTransport</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheTransport</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterPolicy</span>
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
     <span class="c1"># Create a caching transport</span>
@@ -1113,8 +1138,7 @@
         <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://countries.trevorblades.com/graphql&quot;</span><span class="p">,</span>
         <span class="n">transport</span><span class="o">=</span><span class="n">AsyncCacheTransport</span><span class="p">(</span>
             <span class="n">next_transport</span><span class="o">=</span><span class="n">AsyncHTTPTransport</span><span class="p">(),</span>
-            <span class="n">use_body_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># Enable body-based caching for GraphQL</span>
-            <span class="n">ignore_specification</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># Cache all responses regardless of headers</span>
+            <span class="n">policy</span><span class="o">=</span><span class="n">FilterPolicy</span><span class="p">(),</span>  <span class="c1"># Customize caching policy as needed</span>
         <span class="p">),</span>
     <span class="p">)</span>
 
@@ -1149,6 +1173,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">gql.transport.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPXTransport</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPTransport</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheTransport</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterPolicy</span>
 
 <span class="c1"># Create a caching transport</span>
 <span class="n">transport</span> <span class="o">=</span> <span class="n">HTTPXTransport</span><span class="p">(</span>
@@ -1156,7 +1181,7 @@
     <span class="n">transport</span><span class="o">=</span><span class="n">SyncCacheTransport</span><span class="p">(</span>
         <span class="n">next_transport</span><span class="o">=</span><span class="n">HTTPTransport</span><span class="p">(),</span>
         <span class="n">use_body_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># Enable body-based caching for GraphQL</span>
-        <span class="n">ignore_specification</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># Cache all responses regardless of headers</span>
+        <span class="n">policy</span><span class="o">=</span><span class="n">FilterPolicy</span><span class="p">()</span>  <span class="c1"># Customize caching policy as needed</span>
     <span class="p">),</span>
 <span class="p">)</span>
 
@@ -1310,7 +1335,7 @@
 <li><a href="../../metadata/">Request/Response Metadata</a></li>
 <li><a href="../../storages/">Storage Backends</a></li>
 <li><a href="../httpx/">HTTPX Integration</a></li>
-<li><a href="../asgi.md">ASGI Integration</a></li>
+<li><a href="../asgi/">ASGI Integration</a></li>
 </ul>
 
 

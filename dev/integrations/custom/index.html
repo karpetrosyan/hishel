@@ -270,6 +270,30 @@
   
   
     <li class="md-nav__item">
+      <a href="../../policies/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4Zm8.25 3.5h-8.5a.25.25 0 0 0-.25.25v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25M10.5 6V4a2.5 2.5 0 1 0-5 0v2Z"/></svg>
+  
+  <span class="md-ellipsis">
+    Policies
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../metadata/" class="md-nav__link">
         
   
@@ -328,10 +352,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -344,8 +368,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             Integrations
           </label>
@@ -1025,7 +1049,7 @@
 <li>TTL management</li>
 </ul>
 <p><strong>Basic Usage:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheProxy</span><span class="p">,</span> <span class="n">AsyncSqliteStorage</span><span class="p">,</span> <span class="n">CacheOptions</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheProxy</span><span class="p">,</span> <span class="n">AsyncSqliteStorage</span><span class="p">,</span> <span class="n">CacheOptions</span><span class="p">,</span> <span class="n">SpecificationPolicy</span>
 
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_request</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
     <span class="c1"># Your code to send the HTTP request</span>
@@ -1037,8 +1061,7 @@
 <span class="n">cache_proxy</span> <span class="o">=</span> <span class="n">AsyncCacheProxy</span><span class="p">(</span>
     <span class="n">request_sender</span><span class="o">=</span><span class="n">send_request</span><span class="p">,</span>
     <span class="n">storage</span><span class="o">=</span><span class="n">AsyncSqliteStorage</span><span class="p">(),</span>  <span class="c1"># Optional, defaults to AsyncSqliteStorage</span>
-    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(),</span>   <span class="c1"># Optional, defaults to CacheOptions()</span>
-    <span class="n">ignore_specification</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>     <span class="c1"># Optional, set True to bypass RFC 9111</span>
+    <span class="n">policy</span><span class="o">=</span><span class="n">SpecificationPolicy</span><span class="p">(),</span>   <span class="c1"># Optional, defaults to SpecificationPolicy()</span>
 <span class="p">)</span>
 
 <span class="c1"># Handle a request with caching</span>
@@ -1054,7 +1077,7 @@
 </ul>
 <h3 id="synccacheproxy">SyncCacheProxy</h3>
 <p>The synchronous version works identically but for blocking I/O:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheProxy</span><span class="p">,</span> <span class="n">SyncSqliteStorage</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheProxy</span><span class="p">,</span> <span class="n">SyncSqliteStorage</span><span class="p">,</span> <span class="n">SpecificationPolicy</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">send_request</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
     <span class="c1"># Your synchronous request sending code</span>
@@ -1063,8 +1086,7 @@
 <span class="n">cache_proxy</span> <span class="o">=</span> <span class="n">SyncCacheProxy</span><span class="p">(</span>
     <span class="n">request_sender</span><span class="o">=</span><span class="n">send_request</span><span class="p">,</span>
     <span class="n">storage</span><span class="o">=</span><span class="n">SyncSqliteStorage</span><span class="p">(),</span>
-    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(),</span>
-    <span class="n">ignore_specification</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">policy</span><span class="o">=</span><span class="n">SpecificationPolicy</span><span class="p">(),</span>
 <span class="p">)</span>
 
 <span class="n">response</span> <span class="o">=</span> <span class="n">cache_proxy</span><span class="o">.</span><span class="n">handle_request</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
@@ -1144,16 +1166,10 @@
 <td>Where to store cached responses</td>
 </tr>
 <tr>
-<td><code>cache_options</code></td>
-<td><code>CacheOptions</code></td>
-<td><code>CacheOptions()</code></td>
-<td>RFC 9111 behavior configuration</td>
-</tr>
-<tr>
-<td><code>ignore_specification</code></td>
-<td><code>bool</code></td>
-<td><code>False</code></td>
-<td>Set <code>True</code> to bypass RFC 9111 and cache everything</td>
+<td><code>policy</code></td>
+<td><code>CachePolicy</code></td>
+<td><code>SpecificationPolicy()</code></td>
+<td>Caching policy to use</td>
 </tr>
 </tbody>
 </table>
@@ -1188,7 +1204,6 @@
         <span class="n">extension_metadata</span> <span class="o">=</span> <span class="n">RequestMetadata</span><span class="p">(</span>
             <span class="n">hishel_refresh_ttl_on_access</span><span class="o">=</span><span class="n">value</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_refresh_ttl_on_access&quot;</span><span class="p">),</span>
             <span class="n">hishel_ttl</span><span class="o">=</span><span class="n">value</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_ttl&quot;</span><span class="p">),</span>
-            <span class="n">hishel_spec_ignore</span><span class="o">=</span><span class="n">value</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_spec_ignore&quot;</span><span class="p">),</span>
             <span class="n">hishel_body_key</span><span class="o">=</span><span class="n">value</span><span class="o">.</span><span class="n">extensions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hishel_body_key&quot;</span><span class="p">),</span>
         <span class="p">)</span>
         <span class="n">headers_metadata</span> <span class="o">=</span> <span class="n">extract_metadata_from_headers</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">headers</span><span class="p">)</span>
@@ -1353,9 +1368,9 @@
 </ol>
 <h2 id="related-documentation">Related Documentation</h2>
 <ul>
-<li><a href="../storage/">Storage Backends</a> - Understanding where responses are cached</li>
-<li><a href="../policies/">Cache Policies</a> - How Hishel decides what to cache  </li>
-<li><a href="../api/">API Reference</a> - Detailed model specifications</li>
+<li><a href="../asgi/">ASGI Integration</a> - Full ASGI middleware for caching</li>
+<li><a href="../httpx/">HTTPX Integration</a> - Async HTTP client with caching</li>
+<li><a href="../requests/">Requests Integration</a> - Synchronous HTTP client with caching</li>
 </ul>
 
 
