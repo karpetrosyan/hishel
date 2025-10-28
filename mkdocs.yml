@@ -16,7 +16,7 @@ theme:
         icon: material/lightbulb-outline
         name: Switch to light mode
   features:
-    - navigation.expand
+    - navigation.sections
 plugins:
   - mike: {}
 extra:
@@ -36,10 +36,11 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
 nav:
   - Introduction: index.md
-  - Storages: storages.md
   - Policies: policies.md
-  - Metadata: metadata.md
-  - Sans-I/O Caching: specification.md
+  - Advanced:
+    - Storages: storages.md
+    - Metadata: metadata.md
+    - Sans-I/O Caching: specification.md
   - Integrations:
       - httpx: integrations/httpx.md
       - requests: integrations/requests.md

@@ -432,6 +432,88 @@ Here's a complete example querying the GitHub GraphQL API with caching:
     fetch_github_repos("karpetrosyan", "your_token_here")
     ```
 
+## Advanced: Custom GraphQL Filters
+
+For fine-grained control over GraphQL caching, you can create custom filters that inspect query bodies and response content. This is useful when you want to:
+
+- Cache only queries (not mutations)
+- Skip caching queries with errors
+
+### Example: Cache Only Successful Queries
+
+```python
+import json
+from hishel import FilterPolicy, BaseFilter, Request, Response
+from hishel.httpx import AsyncCacheClient
+
+class GraphQLQueryFilter(BaseFilter[Request]):
+    """Only cache GraphQL queries (not mutations)."""
+    
+    def needs_body(self) -> bool:
+        return True
+    
+    def apply(self, item: Request, body: bytes | None) -> bool:
+        if body is None:
+            return False
+        
+        try:
+            data = json.loads(body)
+            query = data.get("query", "")
+            # Cache only if it's a query, not a mutation
+            return "mutation" not in query.lower()
+        except json.JSONDecodeError:
+            return False
+
+
+class GraphQLSuccessFilter(BaseFilter[Response]):
+    """Only cache successful GraphQL responses (no errors)."""
+    
+    def needs_body(self) -> bool:
+        return True
+    
+    def apply(self, item: Response, body: bytes | None) -> bool:
+        if item.status_code != 200 or body is None:
+            return False
+        
+        try:
+            data = json.loads(body)
+            # Cache only if there are no GraphQL errors
+            return "errors" not in data
+        except json.JSONDecodeError:
+            return False
+
+
+# Create the policy with custom filters
+policy = FilterPolicy(
+    request_filters=[GraphQLQueryFilter()],
+    response_filters=[GraphQLSuccessFilter()],
+    use_body_key=True,  # Enable body-based cache keys
+)
+
+# Use with HTTPX
+async with AsyncCacheClient(policy=policy) as client:
+    # This query will be cached (successful query)
+    response = await client.post(
+        "https://api.example.com/graphql",
+        json={
+            "query": "{ user(id: 1) { name email } }"
+        }
+    )
+    
+    # This mutation will NOT be cached (contains 'mutation')
+    response = await client.post(
+        "https://api.example.com/graphql",
+        json={
+            "query": "mutation { updateUser(id: 1, name: \"John\") { id } }"
+        }
+    )
+```
+
+This approach gives you complete control over what gets cached based on both request and response content.
+
+!!! tip "Learn More About Filters"
+    For more examples of custom filters and detailed documentation, see the [Policies Guide](../policies.md).
+
 ## Best Practices
 
 1. **Use `FilterPolicy(use_body_key=True)`** for GraphQL clients to enable body-based caching

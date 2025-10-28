@@ -228,7 +228,7 @@ client = AsyncCacheClient(
 )
 ```
 
-[Learn more about policies →](https://hishel.com/policies/)
+[Learn more about policies →](https://hishel.com/dev/policies/)
 
 ### Custom Storage Backend
 
