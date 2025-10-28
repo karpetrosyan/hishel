@@ -12,7 +12,7 @@
       
       
       
-        <link rel="next" href="storages/">
+        <link rel="next" href="policies/">
       
       
       <link rel="icon" href="assets/images/favicon.png">
@@ -373,11 +373,35 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#custom-cache-options" class="md-nav__link">
+  <a href="#caching-policies" class="md-nav__link">
     <span class="md-ellipsis">
-      Custom Cache Options
+      Caching Policies
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Caching Policies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#specificationpolicy-rfc-9111-compliant" class="md-nav__link">
+    <span class="md-ellipsis">
+      SpecificationPolicy (RFC 9111 Compliant)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filterpolicy-custom-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      FilterPolicy (Custom Filtering)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -385,6 +409,15 @@
   <a href="#custom-storage-backend" class="md-nav__link">
     <span class="md-ellipsis">
       Custom Storage Backend
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphql-and-body-sensitive-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      GraphQL and Body-Sensitive Caching
     </span>
   </a>
   
@@ -473,6 +506,73 @@
   
   
     <li class="md-nav__item">
+      <a href="policies/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 4a4 4 0 0 1 8 0v2h.25c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 12.25 15h-8.5A1.75 1.75 0 0 1 2 13.25v-5.5C2 6.784 2.784 6 3.75 6H4Zm8.25 3.5h-8.5a.25.25 0 0 0-.25.25v5.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25M10.5 6V4a2.5 2.5 0 1 0-5 0v2Z"/></svg>
+  
+  <span class="md-ellipsis">
+    Policies
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Advanced
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Advanced
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="storages/" class="md-nav__link">
         
   
@@ -489,9 +589,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -513,9 +614,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -537,6 +639,14 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
@@ -548,17 +658,20 @@
     
     
     
-    
-    <li class="md-nav__item md-nav__item--nested">
       
         
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
             
   
   
@@ -571,8 +684,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             Integrations
           </label>
@@ -693,6 +806,31 @@
   
   <span class="md-ellipsis">
     Blacksheep
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="integrations/graphql/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12 5.37-.44-.06L6 14.9c.24.21.4.48.47.78h11.06c.07-.3.23-.57.47-.78l-5.56-9.59zM6.6 16.53l4.28 2.53c.29-.27.69-.43 1.12-.43s.83.16 1.12.43l4.28-2.53zM12 22a1.68 1.68 0 0 1-1.68-1.68l.09-.56-4.3-2.55c-.31.36-.76.58-1.27.58a1.68 1.68 0 0 1-1.68-1.68c0-.79.53-1.45 1.26-1.64V9.36c-.83-.11-1.47-.82-1.47-1.68A1.68 1.68 0 0 1 4.63 6c.55 0 1.03.26 1.34.66l4.41-2.53-.06-.45c0-.93.75-1.68 1.68-1.68s1.68.75 1.68 1.68l-.06.45 4.41 2.53c.31-.4.79-.66 1.34-.66a1.68 1.68 0 0 1 1.68 1.68c0 .86-.64 1.57-1.47 1.68v5.11c.73.19 1.26.85 1.26 1.64a1.68 1.68 0 0 1-1.68 1.68c-.51 0-.96-.22-1.27-.58l-4.3 2.55.09.56A1.68 1.68 0 0 1 12 22M10.8 4.86 6.3 7.44l.02.24c0 .71-.44 1.32-1.06 1.57l.03 5.25zm2.4 0 5.51 9.64.03-5.25c-.62-.25-1.06-.86-1.06-1.57l.02-.24z"/></svg>
+  
+  <span class="md-ellipsis">
+    GraphQL
     
   </span>
   
@@ -887,11 +1025,35 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#custom-cache-options" class="md-nav__link">
+  <a href="#caching-policies" class="md-nav__link">
     <span class="md-ellipsis">
-      Custom Cache Options
+      Caching Policies
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Caching Policies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#specificationpolicy-rfc-9111-compliant" class="md-nav__link">
+    <span class="md-ellipsis">
+      SpecificationPolicy (RFC 9111 Compliant)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filterpolicy-custom-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      FilterPolicy (Custom Filtering)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -899,6 +1061,15 @@
   <a href="#custom-storage-backend" class="md-nav__link">
     <span class="md-ellipsis">
       Custom Storage Backend
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graphql-and-body-sensitive-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      GraphQL and Body-Sensitive Caching
     </span>
   </a>
   
@@ -1031,9 +1202,10 @@
 <li>🔄 <strong>Async &amp; Sync</strong> - Full support for both synchronous and asynchronous workflows</li>
 <li>🎨 <strong>Type Safe</strong> - Fully typed with comprehensive type hints</li>
 <li>🧪 <strong>Well Tested</strong> - Extensive test coverage and battle-tested</li>
-<li>🎛️ <strong>Configurable</strong> - Fine-grained control over caching behavior</li>
-<li>� <strong>Memory Efficient</strong> - Streaming support prevents loading large payloads into memory</li>
+<li>🎛️ <strong>Configurable</strong> - Fine-grained control over caching behavior with flexible policies</li>
+<li>💨 <strong>Memory Efficient</strong> - Streaming support prevents loading large payloads into memory</li>
 <li>🌐 <strong>Universal</strong> - Works with any ASGI application (Starlette, Litestar, BlackSheep, etc.)</li>
+<li>🎯 <strong>GraphQL Support</strong> - Cache GraphQL queries with body-sensitive content caching</li>
 </ul>
 <h2 id="installation">📦 Installation</h2>
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>hishel
@@ -1101,12 +1273,14 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
 <span class="n">app</span> <span class="o">=</span> <span class="n">ASGICacheMiddleware</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 
 <span class="c1"># Or configure with options</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSqliteStorage</span><span class="p">,</span> <span class="n">CacheOptions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncSqliteStorage</span><span class="p">,</span> <span class="n">CacheOptions</span><span class="p">,</span> <span class="n">SpecificationPolicy</span>
 
 <span class="n">app</span> <span class="o">=</span> <span class="n">ASGICacheMiddleware</span><span class="p">(</span>
     <span class="n">app</span><span class="p">,</span>
     <span class="n">storage</span><span class="o">=</span><span class="n">AsyncSqliteStorage</span><span class="p">(),</span>
-    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(</span><span class="n">shared</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">policy</span><span class="o">=</span><span class="n">SpecificationPolicy</span><span class="p">(</span>
+      <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(</span><span class="n">shared</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="p">)</span>
 <span class="p">)</span>
 </code></pre></div>
 <h3 id="with-fastapi">With FastAPI</h3>
@@ -1141,18 +1315,46 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
     <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;cached for 5 minutes&quot;</span><span class="p">}</span>
 </code></pre></div>
 <h2 id="advanced-configuration">🎛️ Advanced Configuration</h2>
-<h3 id="custom-cache-options">Custom Cache Options</h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheOptions</span>
+<h3 id="caching-policies">Caching Policies</h3>
+<p>Hishel supports two types of caching policies for flexible caching strategies:</p>
+<h4 id="specificationpolicy-rfc-9111-compliant">SpecificationPolicy (RFC 9111 Compliant)</h4>
+<p>The default policy that follows HTTP caching standards:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">CacheOptions</span><span class="p">,</span> <span class="n">SpecificationPolicy</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
 
 <span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">(</span>
-    <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(</span>
-        <span class="n">shared</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>                              <span class="c1"># Use as private cache (browser-like)</span>
-        <span class="n">supported_methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;HEAD&quot;</span><span class="p">,</span> <span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="c1"># Cache GET, HEAD, and POST</span>
-        <span class="n">allow_stale</span><span class="o">=</span><span class="kc">True</span>                           <span class="c1"># Allow serving stale responses</span>
+    <span class="n">policy</span><span class="o">=</span><span class="n">SpecificationPolicy</span><span class="p">(</span>
+      <span class="n">cache_options</span><span class="o">=</span><span class="n">CacheOptions</span><span class="p">(</span>
+          <span class="n">shared</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>                              <span class="c1"># Use as private cache (browser-like)</span>
+          <span class="n">supported_methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;HEAD&quot;</span><span class="p">,</span> <span class="s2">&quot;POST&quot;</span><span class="p">],</span> <span class="c1"># Cache GET, HEAD, and POST</span>
+          <span class="n">allow_stale</span><span class="o">=</span><span class="kc">True</span>                           <span class="c1"># Allow serving stale responses</span>
+      <span class="p">)</span>
     <span class="p">)</span>
 <span class="p">)</span>
 </code></pre></div>
+<h4 id="filterpolicy-custom-filtering">FilterPolicy (Custom Filtering)</h4>
+<p>Apply custom logic to determine what gets cached:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterPolicy</span><span class="p">,</span> <span class="n">BaseFilter</span><span class="p">,</span> <span class="n">Request</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncCacheClient</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CacheOnlyAPIRequests</span><span class="p">(</span><span class="n">BaseFilter</span><span class="p">[</span><span class="n">Request</span><span class="p">]):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">needs_body</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">body</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="c1"># Only cache requests to /api/ endpoints</span>
+        <span class="k">return</span> <span class="s2">&quot;/api/&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">url</span><span class="p">)</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">AsyncCacheClient</span><span class="p">(</span>
+    <span class="n">policy</span><span class="o">=</span><span class="n">FilterPolicy</span><span class="p">(</span>
+        <span class="n">request_filters</span><span class="o">=</span><span class="p">[</span><span class="n">CacheOnlyAPIRequests</span><span class="p">()]</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Learn More</p>
+<p>See the <a href="policies/">Policies Guide</a> for detailed examples including GraphQL caching, body inspection, and combining multiple filters.</p>
+</div>
 <h3 id="custom-storage-backend">Custom Storage Backend</h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncSqliteStorage</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
@@ -1165,6 +1367,49 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
 
 <span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">(</span><span class="n">storage</span><span class="o">=</span><span class="n">storage</span><span class="p">)</span>
 </code></pre></div>
+<h3 id="graphql-and-body-sensitive-caching">GraphQL and Body-Sensitive Caching</h3>
+<p>Cache GraphQL queries and other POST requests by including the request body in the cache key.</p>
+<p><strong>Using per-request header:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">()</span>
+
+<span class="c1"># Cache GraphQL queries - different queries get different cache entries</span>
+<span class="n">graphql_query</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    query GetUser($id: ID!) {</span>
+<span class="s2">        user(id: $id) {</span>
+<span class="s2">            name</span>
+<span class="s2">            email</span>
+<span class="s2">        }</span>
+<span class="s2">    }</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="s2">&quot;https://api.example.com/graphql&quot;</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="n">graphql_query</span><span class="p">,</span> <span class="s2">&quot;variables&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;123&quot;</span><span class="p">}},</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Hishel-Body-Key&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">}</span>  <span class="c1"># Enable body-based caching</span>
+<span class="p">)</span>
+
+<span class="c1"># Different query will be cached separately</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="s2">&quot;https://api.example.com/graphql&quot;</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="n">graphql_query</span><span class="p">,</span> <span class="s2">&quot;variables&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;456&quot;</span><span class="p">}},</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Hishel-Body-Key&quot;</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">}</span>
+<span class="p">)</span>
+</code></pre></div>
+<p><strong>Using global configuration:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">hishel.httpx</span><span class="w"> </span><span class="kn">import</span> <span class="n">SyncCacheClient</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">hishel</span><span class="w"> </span><span class="kn">import</span> <span class="n">FilterPolicy</span>
+
+<span class="c1"># Enable body-based caching for all requests</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">SyncCacheClient</span><span class="p">(</span><span class="n">policy</span><span class="o">=</span><span class="n">FilterPolicy</span><span class="p">(</span><span class="n">use_body_key</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+<span class="c1"># All POST requests automatically include body in cache key</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="s2">&quot;https://api.example.com/graphql&quot;</span><span class="p">,</span>
+    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;query&quot;</span><span class="p">:</span> <span class="n">graphql_query</span><span class="p">,</span> <span class="s2">&quot;variables&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="s2">&quot;123&quot;</span><span class="p">}}</span>
+<span class="p">)</span>
+</code></pre></div>
 <h2 id="architecture">🏗️ Architecture</h2>
 <p>Hishel uses a <strong>sans-I/O state machine</strong> architecture that separates HTTP caching logic from I/O operations:</p>
 <ul>
@@ -1174,13 +1419,11 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
 <li>✅ <strong>Type Safe</strong> - Clear state transitions with full type hints</li>
 </ul>
 <h2 id="roadmap">🔮 Roadmap</h2>
-<p>While Hishel currently supports HTTPX and Requests, we're actively working on:</p>
+<p>We're actively working on:</p>
 <ul>
-<li>🎯 Additional HTTP client integrations</li>
-<li>🎯 Server-side caching support</li>
-<li>🎯 More storage backends</li>
-<li>🎯 Advanced caching strategies</li>
 <li>🎯 Performance optimizations</li>
+<li>🎯 More integrations</li>
+<li>🎯 Partial responses support</li>
 </ul>
 <h2 id="documentation">📚 Documentation</h2>
 <p>Comprehensive documentation is available at <a href="https://hishel.com/dev">https://hishel.com/dev</a></p>
@@ -1191,6 +1434,7 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
 <li><a href="https://hishel.com/dev/asgi">ASGI Integration</a></li>
 <li><a href="https://hishel.com/dev/fastapi">FastAPI Integration</a></li>
 <li><a href="https://hishel.com/dev/integrations/blacksheep">BlackSheep Integration</a></li>
+<li><a href="https://hishel.com/dev/integrations/graphql">GraphQL Integration</a></li>
 <li><a href="https://hishel.com/dev/storages">Storage Backends</a></li>
 <li><a href="https://hishel.com/dev/metadata">Request/Response Metadata</a></li>
 <li><a href="https://hishel.com/dev/specification">RFC 9111 Specification</a></li>
@@ -1199,7 +1443,7 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
 <p>Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.</p>
 <p>See our <a href="https://hishel.com/dev/contributing">Contributing Guide</a> for more details.</p>
 <h2 id="license">📄 License</h2>
-<p>This project is licensed under the BSD-3-Clause License - see the <a href="LICENSE">LICENSE</a> file for details.</p>
+<p>This project is licensed under the BSD-3-Clause License - see the <a href="https://raw.githubusercontent.com/karpetrosyan/hishel/master/LICENSE">LICENSE</a> file for details.</p>
 <h2 id="support">💖 Support</h2>
 <p>If you find Hishel useful, please consider:</p>
 <ul>
@@ -1271,7 +1515,7 @@ pip<span class="w"> </span>install<span class="w"> </span>hishel<span class="o">
     
     
       
-      <script id="__config" type="application/json">{"base": ".", "features": ["navigation.expand"], "search": "assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": ".", "features": ["navigation.sections"], "search": "assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
       <script src="assets/javascripts/bundle.50899def.min.js"></script>

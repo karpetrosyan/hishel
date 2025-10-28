@@ -2,46 +2,54 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://hishel.com/1.0/</loc>
-         <lastmod>2025-10-26</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.0/contributing/</loc>
-         <lastmod>2025-10-26</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.0/metadata/</loc>
-         <lastmod>2025-10-26</lastmod>
+         <lastmod>2025-10-28</lastmod>
+    </url>
+    <url>
+         <loc>https://hishel.com/1.0/policies/</loc>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.0/specification/</loc>
-         <lastmod>2025-10-26</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.0/storages/</loc>
-         <lastmod>2025-10-26</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.0/integrations/asgi/</loc>
-         <lastmod>2025-10-26</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.0/integrations/blacksheep/</loc>
-         <lastmod>2025-10-26</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.0/integrations/custom/</loc>
-         <lastmod>2025-10-26</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.0/integrations/fastapi/</loc>
-         <lastmod>2025-10-26</lastmod>
+         <lastmod>2025-10-28</lastmod>
+    </url>
+    <url>
+         <loc>https://hishel.com/1.0/integrations/graphql/</loc>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.0/integrations/httpx/</loc>
-         <lastmod>2025-10-26</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.0/integrations/requests/</loc>
-         <lastmod>2025-10-26</lastmod>
+         <lastmod>2025-10-28</lastmod>
     </url>
 </urlset>
