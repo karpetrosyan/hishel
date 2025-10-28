@@ -20,7 +20,9 @@ from hishel._core.models import (
     Entry as Entry,
     EntryMeta as EntryMeta,
     Request as Request,
-    Response,
+    Response as Response,
+    ResponseMetadata as ResponseMetadata,
+    RequestMetadata as RequestMetadata,
 )
 from hishel._async_cache import AsyncCacheProxy as AsyncCacheProxy
 from hishel._sync_cache import SyncCacheProxy as SyncCacheProxy
@@ -47,6 +49,8 @@ __all__ = (
     "Response",
     "Entry",
     "EntryMeta",
+    "RequestMetadata",
+    "ResponseMetadata",
     ## Headers
     "Headers",
     ## Storages

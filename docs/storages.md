@@ -682,7 +682,6 @@ Stores request and response body chunks.
 **Special Values:**
 
 - `chunk_number = -1` - Completion marker (empty data, signals end of stream)
-- `kind = 0` - Request stream
 - `kind = 1` - Response stream
 
 ---

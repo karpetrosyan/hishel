@@ -61,39 +61,54 @@ The `scripts/` directory contains utility scripts to simplify development and ma
 
 **⚠️ IMPORTANT: Do not manually edit auto-generated synchronous files!**
 
-Hishel uses an **unasync** strategy similar to [HTTP Core](https://github.com/encode/httpcore) to maintain both async and sync APIs without code duplication.
+Hishel maintains both async and sync APIs without code duplication using an **unasync** strategy similar to [httpcore](https://github.com/encode/httpcore).
 
 ### How It Works
 
-1. **Write async code only** (when there's a sync equivalent): Primary development for dual async/sync code happens in async files located in:
-   - `hishel/_core/_async/`
-   - `tests/_core/_async/`
+**Write async code once** - All shared async/sync functionality is written in async files:
 
-2. **Automatic generation**: The `scripts/unasync` script automatically transforms async code into sync equivalents:
-   - `hishel/_core/_async/` → `hishel/_core/_sync/`
-   - `tests/_core/_async/` → `tests/_core/_sync/`
+- `hishel/_core/_storages/_async_*.py` → auto-generates → `hishel/_core/_storages/_sync_*.py`
+- `tests/_core/_async/*.py` → auto-generates → `tests/_core/_sync/*.py`
 
-3. **Pattern substitution**: The script performs intelligent substitutions:
-   - `async def` → `def`
-   - `async with` → `with`
-   - `await` → (removed)
-   - `AsyncIterator` → `Iterator`
-   - And many more patterns (see `scripts/unasync` for the full list)
+**Automatic transformation** - The `scripts/unasync` script converts async code to sync:
 
-### The `scripts/unasync` Script
+```python
+# Async code (you write this)
+async def store(self, key: str) -> None:
+    async with self.connection as conn:
+        await conn.execute(...)
 
-This Python script is the core of the async-to-sync transformation:
+# Sync code (automatically generated)
+def store(self, key: str) -> None:
+    with self.connection as conn:
+        conn.execute(...)
+```
 
-- **Manual execution**: `./scripts/unasync` - Generates sync files from async files
-- **Check mode**: `./scripts/unasync --check` - Verifies async/sync files are in sync (used in CI)
-- **Automatic invocation**: Automatically called by `scripts/fix` and checked by `scripts/lint`
+### Using the Script
 
-**Key Features:**
+```bash
+# Generate sync files from async files
+./scripts/unasync
 
-- Transforms async patterns to their sync equivalents using regex substitution
-- Processes entire directories or individual files
-- Validates that all defined substitution patterns are actually used
-- Can operate in check-only mode to verify consistency without modifying files
+# Check if sync files are up-to-date (CI)
+./scripts/unasync --check
+
+# Or use helper scripts
+./scripts/fix     # Auto-generates sync files + formatting
+./scripts/lint    # Checks sync files are up-to-date
+```
+
+### Development Rules
+
+✅ **DO**:
+- Write and edit async files only (`_async_*.py`)
+- Run `./scripts/fix` before committing
+- Let the script generate all sync files
+
+❌ **DON'T**:
+- Manually edit sync files (`_sync_*.py`)
+- Commit async changes without running unasync
+- Modify the sync test files directly
 
 ## Development Workflow
 

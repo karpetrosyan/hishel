@@ -17,14 +17,28 @@ theme:
         name: Switch to light mode
   features:
     - navigation.sections
+    - navigation.footer
 plugins:
   - mike: {}
+  - git-committers:
+      repository: karpetrosyan/hishel
+      branch: master
+      enabled: true
+  - git-revision-date-localized:
+      enable_creation_date: true
+  - search:
+      separator: '[\s\u200b\-_,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
 extra:
   version:
     provider: mike
-
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/karpetrosyan/hishel
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/hishel/
 # mkdocs.yml
 markdown_extensions:
+
   - pymdownx.tabbed:
       alternate_style: true  # Required for === syntax
   - pymdownx.superfences    # For code blocks inside tabs
