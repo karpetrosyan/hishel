@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.0.0b1 - 2025-10-28
+### ♻️ Refactoring
+- Add policies
+
+### ⚙️ Miscellaneous Tasks
+- Improve sans-io diagram colors
+- Add graphql docs
+
+### 🐛 Bug Fixes
+- Body-sensitive responses caching
+- Filter out `Transfer-Encoding` header for asgi responses
+
+### 🚀 Features
+- Add global `use_body_key` setting
+
 ## 1.0.0.dev3 - 2025-10-26
 ### ♻️ Refactoring
 - Replace pairs with entries, simplify storage API
