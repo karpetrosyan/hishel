@@ -9,14 +9,11 @@
 # hishel = { path = "../", editable = true }
 # ///
 
-import asyncio
-from typing import cast
 
 import sqlite3
 
-from hishel._core._storages._sync_sqlite import SyncSqliteStorage
+from hishel import SyncSqliteStorage
 from hishel.httpx import SyncCacheClient
-
 
 cl = SyncCacheClient(storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:")))
 
