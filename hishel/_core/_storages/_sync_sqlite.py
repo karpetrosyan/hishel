@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import replace
+from pathlib import Path
 from typing import (
     Any,
     Iterable,
@@ -46,10 +47,12 @@ try:
             default_ttl: Optional[float] = None,
             refresh_ttl_on_access: bool = True,
         ) -> None:
-            base_path = ensure_cache_dict()
+            db_path = Path(database_path)
 
             self.connection = connection
-            self.database_path = base_path / database_path
+            self.database_path = (
+                ensure_cache_dict(db_path.parent if db_path.parent != Path(".") else None) / db_path.name
+            )
             self.default_ttl = default_ttl
             self.refresh_ttl_on_access = refresh_ttl_on_access
             self.last_cleanup = time.time() - BATCH_CLEANUP_INTERVAL + BATCH_CLEANUP_START_DELAY

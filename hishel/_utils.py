@@ -107,8 +107,8 @@ def snake_to_header(text: str) -> str:
     return "X-" + "-".join(word.capitalize() for word in text.split("_"))
 
 
-def ensure_cache_dict(base_path: str | None = None) -> Path:
-    _base_path = Path(base_path) if base_path is not None else Path(".cache/hishel")
+def ensure_cache_dict(base_path: Path | None = None) -> Path:
+    _base_path = base_path if base_path is not None else Path(".cache/hishel")
     _gitignore_file = _base_path / ".gitignore"
 
     _base_path.mkdir(parents=True, exist_ok=True)
