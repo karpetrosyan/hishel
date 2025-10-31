@@ -660,32 +660,6 @@ class TestEdgeCases:
 
         assert isinstance(next_state, FromCache)
 
-    @pytest.mark.parametrize("status_code", [100, 101, 400, 401, 403, 404])
-    def test_other_unexpected_status_codes_raise_error(self, default_options: CacheOptions, status_code: int) -> None:
-        """
-        Test: Various unexpected status codes raise RuntimeError.
-
-        1xx informational, 3xx redirects, and 4xx client errors
-        should not occur during normal revalidation.
-        """
-        # Arrange
-        original_request = create_request()
-        conditional_request = create_request()
-        cached_pair = create_pair()
-
-        need_revalidation = NeedRevalidation(
-            request=conditional_request,
-            original_request=original_request,
-            revalidating_entries=[cached_pair],
-            options=default_options,
-        )
-
-        unexpected_response = create_response(status_code=status_code)
-
-        # Act & Assert
-        with pytest.raises(RuntimeError):
-            need_revalidation.next(unexpected_response)
-
     def test_options_propagated_to_next_states(self, default_options: CacheOptions) -> None:
         """
         Test: Cache options are propagated to all next states.

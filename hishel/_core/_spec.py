@@ -2052,7 +2052,7 @@ class NeedRevalidation(State):
                     revalidation_response,
                 ),
             )
-        elif revalidation_response.status_code // 100 == 3:
+        else:
             # 3xx Redirects should have been followed by the HTTP client
             return FromCache(
                 entry=replace(
@@ -2061,21 +2061,6 @@ class NeedRevalidation(State):
                 ),
                 options=self.options,
             )
-
-        # ============================================================================
-        # STEP 4: Handle Unexpected Status Codes
-        # ============================================================================
-        # This should not happen in normal operation. Valid revalidation responses are:
-        # - 304 Not Modified
-        # - 2xx Success (typically 200 OK)
-        # - 5xx Server Error
-        #
-        # Other status codes (1xx, 3xx, 4xx) are unexpected during revalidation.
-        # 3xx redirects should have been followed by the HTTP client.
-        # 4xx errors (except 404) are unusual during revalidation.
-        raise RuntimeError(
-            f"Unexpected response status code during revalidation: {revalidation_response.status_code}"
-        )  # pragma: nocover
 
     def freshening_stored_responses(
         self, revalidation_response: Response
