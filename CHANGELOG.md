@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.1.0 - 2025-10-31
+### ⚙️ Miscellaneous Tasks
+- Add in memory example
+
+### 🐛 Bug Fixes
+- Pass any response with non-expected status code on revalidation to client
+
+### 🚀 Features
+- Allow setting storage base with via `database_path` for sqlite storage
+
 ## 1.0.0 - 2025-10-28
 ### ⚙️ Miscellaneous Tasks
 - Add examples, improve docs
