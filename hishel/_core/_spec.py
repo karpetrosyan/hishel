@@ -1893,7 +1893,7 @@ class NeedRevalidation(State):
 
     def next(
         self, revalidation_response: Response
-    ) -> Union["NeedToBeUpdated", "InvalidateEntries", "CacheMiss", "FromCache"]:
+    ) -> Union["NeedToBeUpdated", "InvalidateEntries", "CacheMiss", "FromCache", "StoreAndUse", "CouldNotBeStored"]:
         """
         Handles the response to a conditional request and determines the next state.
 
@@ -2053,14 +2053,16 @@ class NeedRevalidation(State):
                 ),
             )
         else:
-            # 3xx Redirects should have been followed by the HTTP client
-            return FromCache(
-                entry=replace(
-                    self.revalidating_entries[-1],
-                    response=revalidation_response,
-                ),
+            # ============================================================================
+            # STEP 4: Handle Unexpected Status Codes
+            # ============================================================================
+            # RFC 9111 does not define behavior for other status codes in this context.
+            # In practice, we need to forward any unexpected responses to the client.
+            return CacheMiss(
+                request=self.revalidating_entries[-1].request,
                 options=self.options,
-            )
+                after_revalidation=True,
+            ).next(revalidation_response)
 
     def freshening_stored_responses(
         self, revalidation_response: Response

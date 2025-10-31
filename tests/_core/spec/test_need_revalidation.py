@@ -24,7 +24,6 @@ from hishel._core._spec import (
     CacheMiss,
     CacheOptions,
     CouldNotBeStored,
-    FromCache,
     InvalidateEntries,
     NeedRevalidation,
     NeedToBeUpdated,
@@ -658,7 +657,7 @@ class TestEdgeCases:
         # Act & Assert
         next_state = need_revalidation.next(redirect_response)
 
-        assert isinstance(next_state, FromCache)
+        assert isinstance(next_state, (StoreAndUse, CouldNotBeStored))
 
     def test_options_propagated_to_next_states(self, default_options: CacheOptions) -> None:
         """
