@@ -2,11 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 1.1.1 - 2025-11-01
+### ⚙️ Miscellaneous Tasks
+- Bump the python-packages group with 10 updates (#396)
+
+### 📦 Dependencies
+- Bump actions/upload-artifact from 4 to 5 (#395)
+- Bump actions/download-artifact from 4 to 6 (#394)
+- Bump astral-sh/setup-uv from 5 to 7 (#393)
+
 ## 1.1.0 - 2025-10-31
 ### ⚙️ Miscellaneous Tasks
 - Add in memory example
 
 ### 🐛 Bug Fixes
+- Pass any response with non-expected status code on revalidation to client
 - Pass any response with non-expected status code on revalidation to client
 
 ### 🚀 Features
