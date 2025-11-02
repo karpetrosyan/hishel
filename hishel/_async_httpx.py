@@ -174,6 +174,9 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
     async def request_sender(self, request: Request) -> Response:
         httpx_request = _internal_to_httpx(request)
         httpx_response = await self.next_transport.handle_async_request(httpx_request)
+        if httpx_response.status_code == 304:
+            # 304 should not have a body, but we read it to ensure we'll not let the stream unconsumed
+            await httpx_response.aread()
         return _httpx_to_internal(httpx_response)
 
 
