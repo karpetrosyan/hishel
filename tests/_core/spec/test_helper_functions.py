@@ -781,7 +781,7 @@ class TestExcludeUnstorableHeaders:
 
 
 # =============================================================================
-# Test Suite 8: refresh_response_headers
+# Test Suite 8: refresh_response_headers for shared cache
 # =============================================================================
 
 
@@ -791,6 +791,8 @@ class TestRefreshResponseHeaders:
 
     RFC 9111 Section 3.2: Updating Stored Header Fields
     """
+
+    is_cache_shared = True
 
     def test_updates_cache_control_from_304(self) -> None:
         """
@@ -810,7 +812,7 @@ class TestRefreshResponseHeaders:
         revalidation = create_response(status_code=304, headers={"cache-control": "max-age=7200"})
 
         # Act
-        refreshed = refresh_response_headers(stored, revalidation)
+        refreshed = refresh_response_headers(stored, revalidation, self.is_cache_shared)
 
         # Assert
         assert refreshed.headers["cache-control"] == "max-age=7200"
@@ -840,7 +842,7 @@ class TestRefreshResponseHeaders:
         )
 
         # Act
-        refreshed = refresh_response_headers(stored, revalidation)
+        refreshed = refresh_response_headers(stored, revalidation, self.is_cache_shared)
 
         # Assert
         assert refreshed.headers["content-type"] == "application/json"  # Preserved
@@ -866,7 +868,7 @@ class TestRefreshResponseHeaders:
         )
 
         # Act
-        refreshed = refresh_response_headers(stored, revalidation)
+        refreshed = refresh_response_headers(stored, revalidation, self.is_cache_shared)
 
         # Assert
         assert refreshed.headers["content-encoding"] == "gzip"  # Preserved
@@ -891,7 +893,7 @@ class TestRefreshResponseHeaders:
         )
 
         # Act
-        refreshed = refresh_response_headers(stored, revalidation)
+        refreshed = refresh_response_headers(stored, revalidation, self.is_cache_shared)
 
         # Assert
         assert refreshed.headers["content-range"] == "bytes 0-1023/2048"  # Preserved
@@ -917,7 +919,7 @@ class TestRefreshResponseHeaders:
         )
 
         # Act
-        refreshed = refresh_response_headers(stored, revalidation)
+        refreshed = refresh_response_headers(stored, revalidation, self.is_cache_shared)
 
         # Assert
         assert refreshed.headers["date"] == "Mon, 01 Jan 2024 12:00:00 GMT"
@@ -942,9 +944,18 @@ class TestRefreshResponseHeaders:
         )
 
         # Act
-        refreshed = refresh_response_headers(stored, revalidation)
+        refreshed = refresh_response_headers(stored, revalidation, self.is_cache_shared)
 
         # Assert
         assert "cache-control" in refreshed.headers
         assert "connection" not in refreshed.headers
         assert "keep-alive" not in refreshed.headers
+
+
+# =============================================================================
+# Test Suite 9: refresh_response_headers for private cache
+# =============================================================================
+
+
+class TestRefreshResponseHeadersPrivateCache(TestRefreshResponseHeaders):
+    is_cache_shared = False
