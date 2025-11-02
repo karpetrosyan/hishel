@@ -1337,7 +1337,7 @@ class IdleClient(State):
             "A cache MUST NOT generate a stale response unless it is disconnected or
             doing so is explicitly permitted by the client or origin server."
             """
-            freshness_lifetime = get_freshness_lifetime(pair.response, is_cache_shared=True)
+            freshness_lifetime = get_freshness_lifetime(pair.response, self.options.shared)
             age = get_age(pair.response)
 
             # Check freshness: response_is_fresh = (freshness_lifetime > current_age)
