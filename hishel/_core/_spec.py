@@ -996,6 +996,7 @@ def exclude_unstorable_headers(response: Response, is_cache_shared: bool) -> Res
 def refresh_response_headers(
     stored_response: Response,
     revalidation_response: Response,
+    is_cache_shared: bool,
 ) -> Response:
     """
     Updates a stored response's headers with fresh metadata from a 304 response.
@@ -1108,7 +1109,7 @@ def refresh_response_headers(
             stored_response,
             headers=Headers(new_headers),
         ),
-        is_cache_shared=True,  # Assume shared cache for maximum safety
+        is_cache_shared,
     )
 
 
@@ -2245,7 +2246,7 @@ class NeedRevalidation(State):
                 updating_entries=[
                     replace(
                         pair,
-                        response=refresh_response_headers(pair.response, revalidation_response),
+                        response=refresh_response_headers(pair.response, revalidation_response, self.options.shared),
                     )
                     for pair in identified_for_revalidation
                 ],
