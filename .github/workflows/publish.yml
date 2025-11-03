@@ -113,10 +113,11 @@ jobs:
       - name: Generate a changelog
         uses: orhun/git-cliff-action@v4
         with:
-          args: "0.1.3.. --latest -c github"
+          args: "0.1.3.. --latest"
+          config: github
         env:
           OUTPUT: release-notes.md
-          GITHUB_REPO: ${{ github.repository }}
+          GITHUB_REPO: ${{ githqub.repository }}
 
       - name: Create release with assets
         uses: softprops/action-gh-release@v2
