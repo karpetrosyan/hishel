@@ -117,7 +117,7 @@ jobs:
           config: github
         env:
           OUTPUT: release-notes.md
-          GITHUB_REPO: ${{ githqub.repository }}
+          GITHUB_REPO: ${{ github.repository }}
 
       - name: Create release with assets
         uses: softprops/action-gh-release@v2
