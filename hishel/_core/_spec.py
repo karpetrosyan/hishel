@@ -2410,4 +2410,4 @@ class NeedToBeUpdated(State):
     original_request: Request
 
     def next(self) -> FromCache:
-        return FromCache(entry=self.updating_entries[-1], options=self.options)
+        return FromCache(entry=self.updating_entries[-1], options=self.options, after_revalidation=True)
