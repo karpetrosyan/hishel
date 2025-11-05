@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gzip
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -9,9 +11,16 @@ from httpx import ByteStream, MockTransport
 from inline_snapshot import snapshot
 from time_machine import travel
 
-from hishel import SyncSqliteStorage
-from hishel._policies import FilterPolicy
+from hishel import SyncSqliteStorage, BaseFilter, FilterPolicy, Request
 from hishel.httpx import SyncCacheClient, SyncCacheTransport
+
+
+class RequestFilter(BaseFilter[Request]):
+    def needs_body(self) -> bool:
+        return False
+
+    def apply(self, item: Request, body: bytes | None) -> bool:
+        return True
 
 
 
@@ -50,7 +59,7 @@ def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
 def test_simple_caching_ignoring_spec(caplog: pytest.LogCaptureFixture) -> None:
     client = SyncCacheClient(
         storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:")),
-        policy=FilterPolicy(),
+        policy=FilterPolicy(request_filters=[RequestFilter()]),
     )
 
     with caplog.at_level("DEBUG", logger="hishel"):
@@ -102,7 +111,9 @@ def test_encoded_content_caching() -> None:
 
     client = SyncCacheClient(
         transport=SyncCacheTransport(
-            next_transport=MockTransport(handler=handler), storage=storage, policy=FilterPolicy()
+            next_transport=MockTransport(handler=handler),
+            storage=storage,
+            policy=FilterPolicy(request_filters=[RequestFilter()]),
         ),
     )
 
