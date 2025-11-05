@@ -27,7 +27,7 @@ from hishel._core.models import (
 from hishel._async_cache import AsyncCacheProxy as AsyncCacheProxy
 from hishel._sync_cache import SyncCacheProxy as SyncCacheProxy
 
-from hishel._policies import SpecificationPolicy, FilterPolicy, CachePolicy
+from hishel._policies import SpecificationPolicy, FilterPolicy, CachePolicy, BaseFilter
 
 __all__ = (
     # New API
@@ -62,6 +62,7 @@ __all__ = (
     "AsyncCacheProxy",
     "SyncCacheProxy",
     # Policies
+    "BaseFilter",
     "CachePolicy",
     "SpecificationPolicy",
     "FilterPolicy",
