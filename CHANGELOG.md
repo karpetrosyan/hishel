@@ -8,9 +8,9 @@
 * fix: set `after_revalidation=True` for `NeedsToBeUpdated` -> `FromCache` transition by @jlopex in [#402](https://github.com/karpetrosyan/hishel/pull/402)
 
 ### Contributors
-* @martinblech (first contribution)
-* @jlopex (first contribution)
-* @karpetrosyan (first contribution)
+* @martinblech
+* @jlopex
+* @karpetrosyan
 
 **Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.1.2...1.1.3
 
@@ -22,8 +22,8 @@
 * ensure 304 responses don't leak by @karpetrosyan
 
 ### Contributors
-* @jlopex (first contribution)
 * @karpetrosyan
+* @jlopex
 
 **Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.1.1...1.1.2
 
@@ -205,13 +205,13 @@
 * feat: add support for a sans-IO API by @karpetrosyan in [#366](https://github.com/karpetrosyan/hishel/pull/366)
 
 ### Contributors
-* @jamesbraza (first contribution)
-* @GugNersesyan (first contribution)
-* @mmdbalkhi (first contribution)
-* @AstraLuma (first contribution)
-* @deathaxe (first contribution)
 * @karpetrosyan
+* @jamesbraza
+* @GugNersesyan
 * @dependabot[bot]
+* @mmdbalkhi
+* @AstraLuma
+* @deathaxe
 
 **Full Changelog**: https://github.com/karpetrosyan/hishel/compare/0.1.3...0.1.4
 

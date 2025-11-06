@@ -55,10 +55,7 @@ body = """
   {% raw %}\n{% endraw -%}
   ### Contributors
 {%- endif %}\
-{% for contributor in github.contributors | filter(attribute="is_first_time", value=true) %}
-  * @{{ contributor.username }} (first contribution)
-{%- endfor -%}
-{% for contributor in github.contributors | filter(attribute="is_first_time", value=false) %}
+{% for contributor in github.contributors %}
   * @{{ contributor.username }}
 {%- endfor -%}
 {%- endif -%}
