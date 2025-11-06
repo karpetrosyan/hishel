@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import gzip
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -11,16 +9,9 @@ from httpx import ByteStream, MockTransport
 from inline_snapshot import snapshot
 from time_machine import travel
 
-from hishel import AsyncSqliteStorage, BaseFilter, FilterPolicy, Request
+from hishel import AsyncSqliteStorage
+from hishel._policies import FilterPolicy
 from hishel.httpx import AsyncCacheClient, AsyncCacheTransport
-
-
-class RequestFilter(BaseFilter[Request]):
-    def needs_body(self) -> bool:
-        return False
-
-    def apply(self, item: Request, body: bytes | None) -> bool:
-        return True
 
 
 @pytest.mark.anyio
@@ -59,7 +50,7 @@ async def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
 async def test_simple_caching_ignoring_spec(caplog: pytest.LogCaptureFixture) -> None:
     client = AsyncCacheClient(
         storage=AsyncSqliteStorage(connection=await anysqlite.connect(":memory:")),
-        policy=FilterPolicy(request_filters=[RequestFilter()]),
+        policy=FilterPolicy(),
     )
 
     with caplog.at_level("DEBUG", logger="hishel"):
@@ -111,9 +102,7 @@ async def test_encoded_content_caching() -> None:
 
     client = AsyncCacheClient(
         transport=AsyncCacheTransport(
-            next_transport=MockTransport(handler=handler),
-            storage=storage,
-            policy=FilterPolicy(request_filters=[RequestFilter()]),
+            next_transport=MockTransport(handler=handler), storage=storage, policy=FilterPolicy()
         ),
     )
 
