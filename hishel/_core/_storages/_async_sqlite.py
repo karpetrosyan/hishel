@@ -237,6 +237,11 @@ try:
             await self._soft_delete_pair(pair, cursor)
             await connection.commit()
 
+        async def close(self) -> None:
+            if self.connection is not None:
+                await self.connection.close()
+                self.connection = None
+
         async def _is_stream_complete(self, pair_id: uuid.UUID, cursor: anysqlite.Cursor) -> bool:
             # Check if there's a completion marker (chunk_number = -1) for response stream
             await cursor.execute(

@@ -237,6 +237,11 @@ try:
             self._soft_delete_pair(pair, cursor)
             connection.commit()
 
+        def close(self) -> None:
+            if self.connection is not None:
+                self.connection.close()
+                self.connection = None
+
         def _is_stream_complete(self, pair_id: uuid.UUID, cursor: sqlite3.Cursor) -> bool:
             # Check if there's a completion marker (chunk_number = -1) for response stream
             cursor.execute(

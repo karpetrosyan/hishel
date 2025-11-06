@@ -2,6 +2,7 @@ import uuid
 from dataclasses import replace
 from datetime import datetime
 from typing import Any
+from unittest.mock import AsyncMock
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -337,3 +338,30 @@ async def test_update_nonexistent_entry(use_temp_dir: Any) -> None:
 
     result = await storage.update_entry(uuid.UUID(int=999), lambda p: replace(p, cache_key=b"new_key"))
     assert result is None
+
+
+@pytest.mark.anyio
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
+async def test_close_connection(monkeypatch: Any) -> None:
+    """Test that close() properly closes the underlying SQLite connection."""
+
+    mock_connection = AsyncMock()
+    mock_connection.close = AsyncMock()
+
+    async def mock_connect(*args, **kwargs):
+        return mock_connection
+
+    monkeypatch.setattr("anysqlite.connect", mock_connect)
+
+    storage = AsyncSqliteStorage()
+
+    conn = await storage._ensure_connection()
+    assert conn is not None
+    assert storage.connection is not None
+    assert storage.connection is mock_connection
+
+    await storage.close()
+
+    assert storage.connection is None
+
+    mock_connection.close.assert_awaited_once()

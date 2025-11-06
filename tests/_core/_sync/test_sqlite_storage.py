@@ -1,3 +1,4 @@
+from unittest.mock import MagicMock, MagicMock
 import uuid
 from dataclasses import replace
 from datetime import datetime
@@ -337,3 +338,30 @@ def test_update_nonexistent_entry(use_temp_dir: Any) -> None:
 
     result = storage.update_entry(uuid.UUID(int=999), lambda p: replace(p, cache_key=b"new_key"))
     assert result is None
+
+
+
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
+def test_close_connection(monkeypatch: Any) -> None:
+    """Test that close() properly closes the underlying SQLite connection."""
+
+    mock_connection = MagicMock()
+    mock_connection.close = MagicMock()
+
+    def mock_connect(*args, **kwargs):
+        return mock_connection
+
+    monkeypatch.setattr("sqlite3.connect", mock_connect)
+
+    storage = SyncSqliteStorage()
+
+    conn = storage._ensure_connection()
+    assert conn is not None
+    assert storage.connection is not None
+    assert storage.connection is mock_connection
+
+    storage.close()
+
+    assert storage.connection is None
+
+    mock_connection.close.assert_called_once()

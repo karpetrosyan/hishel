@@ -18,6 +18,8 @@ SUBS = [
     ("AsyncIterator", "Iterator"),
     ("AsyncIterable", "Iterable"),
     ("__aiter__", "__iter__"),
+    ("AsyncMock", "MagicMock"),
+    ("assert_awaited_once", "assert_called_once"),
     (r"Awaitable\[([^\]]+)\]", r"\1"),
     # our public API
     ("AsyncCacheProxy", "SyncCacheProxy"),
@@ -29,7 +31,6 @@ SUBS = [
     ("aiter_raw", "iter_raw"),
     ("aprint_sqlite_state", "print_sqlite_state"),
     ("make_async_iterator", "make_sync_iterator"),
-    ("ahttpx_to_internal", "httpx_to_internal"),
     ("AsyncCacheTransport", "SyncCacheTransport"),
     (
         "hishel._core._storages._async_base",
