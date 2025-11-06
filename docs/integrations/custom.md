@@ -19,9 +19,6 @@ Follow these guidelines when converting models:
 **Response Content**
 : The response content should be the actual data, possibly compressed, but decoded if it was sent with transfer encoding (like chunked). This content must be reusable—if you store compressed data, also preserve the `Content-Encoding` header so it can be decoded later.
 
-!!! suggestion
-    Always prefer storing the original compressed content along with its encoding headers. Note that it's impossible to know and set the correct `Content-Length` header without reading the entire content into memory, so it's best to omit it when caching.
-
 **Headers**
 : Store headers as-is, except for headers that the HTTP specification doesn't allow caching. Important: If a response stream has already been consumed and decoded into memory before reaching the cache layer, you must remove the `Content-Encoding` header since the content is no longer encoded.
 

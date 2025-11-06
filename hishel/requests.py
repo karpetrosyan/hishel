@@ -10,7 +10,7 @@ from hishel._core._storages._sync_base import SyncBaseStorage
 from hishel._core.models import extract_metadata_from_headers
 from hishel._policies import CachePolicy
 from hishel._sync_cache import SyncCacheProxy
-from hishel._utils import snake_to_header
+from hishel._utils import filter_mapping, snake_to_header
 
 try:
     import requests
@@ -94,12 +94,17 @@ def _requests_to_internal(
     elif isinstance(model, requests.models.Response):
         try:
             stream = model.raw.stream(amt=CHUNK_SIZE, decode_content=None)
+            headers = Headers(filter_mapping(model.headers, "transfer-encoding"))
         except requests.exceptions.StreamConsumedError:
             stream = iter([model.content])
+            # If the stream was consumed and we don't know about the original
+            # data and its size, fix the Content-Length header and remove
+            # Content-Encoding so we can recreate it later properly.
+            headers = Headers(filter_mapping(model.headers, "content-encoding", "transfer-encoding"))
 
         return Response(
             status_code=model.status_code,
-            headers=Headers(model.headers),
+            headers=headers,
             stream=stream,
         )
     else:

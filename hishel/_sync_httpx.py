@@ -118,11 +118,23 @@ def _httpx_to_internal(
             metadata=headers_metadata,
         )
     elif isinstance(value, httpx.Response):
-        if value.is_stream_consumed and "content-encoding" in value.headers:
-            raise RuntimeError("Can't get the raw stream of a response with `Content-Encoding` header.")
         stream = (
             make_sync_iterator([value.content]) if value.is_stream_consumed else value.iter_raw(chunk_size=CHUNK_SIZE)
         )
+
+        if value.is_stream_consumed and "content-encoding" in value.headers:
+            # If the stream was consumed and we don't know about
+            # the original data and its size, fix the Content-Length
+            # header and remove Content-Encoding so we can recreate it later properly.
+            headers = Headers(
+                {
+                    **filter_mapping(
+                        headers,
+                        ["content-encoding"],
+                    ),
+                    "content-length": str(len(value.content)),
+                }
+            )
 
         return Response(
             status_code=value.status_code,
