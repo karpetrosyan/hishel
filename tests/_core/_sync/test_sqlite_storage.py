@@ -1,8 +1,8 @@
-from unittest.mock import MagicMock, MagicMock
 import uuid
 from dataclasses import replace
 from datetime import datetime
 from typing import Any
+from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
 import pytest
