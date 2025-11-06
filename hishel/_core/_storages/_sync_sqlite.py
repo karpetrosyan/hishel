@@ -50,6 +50,8 @@ try:
             db_path = Path(database_path)
 
             self.connection = connection
+            # Track if connection was provided by user (potentially not thread-safe)
+            self._user_provided_connection = connection is not None
             self.database_path = (
                 ensure_cache_dict(db_path.parent if db_path.parent != Path(".") else None) / db_path.name
             )
@@ -142,8 +144,9 @@ try:
         def get_entries(self, key: str) -> List[Entry]:
             final_pairs: List[Entry] = []
 
+            # Skip batch cleanup if connection was user-provided (might not be thread-safe)
             now = time.time()
-            if now - self.last_cleanup >= BATCH_CLEANUP_INTERVAL:
+            if not self._user_provided_connection and now - self.last_cleanup >= BATCH_CLEANUP_INTERVAL:
                 try:
                     self._batch_cleanup()
                 except Exception:

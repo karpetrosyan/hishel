@@ -365,3 +365,87 @@ def test_close_connection(monkeypatch: Any) -> None:
     assert storage.connection is None
 
     mock_connection.close.assert_called_once()
+
+
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
+def test_batch_cleanup_skipped_with_user_provided_connection(use_temp_dir: Any, monkeypatch: Any) -> None:
+    """Test that batch cleanup is skipped when connection is user-provided."""
+    import sqlite3
+    from unittest.mock import patch
+    
+    # Create a user-provided connection
+    user_connection = sqlite3.connect(":memory:")
+    
+    storage = SyncSqliteStorage(connection=user_connection)
+    
+    # Create an entry
+    entry = storage.create_entry(
+        request=Request(method="GET", url="https://example.com"),
+        response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
+        key="test_key",
+        id_=uuid.UUID(int=1),
+    )
+    
+    # Consume the stream
+    for _ in entry.response._iter_stream():
+        ...
+    
+    # Mock _batch_cleanup to track if it's called
+    original_batch_cleanup = storage._batch_cleanup
+    cleanup_called = {"called": False}
+    
+    def mock_batch_cleanup():
+        cleanup_called["called"] = True
+        return original_batch_cleanup()
+    
+    storage._batch_cleanup = mock_batch_cleanup
+    
+    # Force time to trigger cleanup interval
+    storage.last_cleanup = 0
+    
+    # Call get_entries which would normally trigger batch cleanup
+    entries = storage.get_entries("test_key")
+    
+    # Verify batch cleanup was NOT called due to user-provided connection
+    assert not cleanup_called["called"], "Batch cleanup should be skipped for user-provided connections"
+    assert len(entries) == 1
+    
+    user_connection.close()
+
+
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
+def test_batch_cleanup_runs_with_auto_connection(use_temp_dir: Any) -> None:
+    """Test that batch cleanup runs when storage creates its own connection."""
+    storage = SyncSqliteStorage()
+    
+    # Create an entry
+    entry = storage.create_entry(
+        request=Request(method="GET", url="https://example.com"),
+        response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
+        key="test_key",
+        id_=uuid.UUID(int=1),
+    )
+    
+    # Consume the stream
+    for _ in entry.response._iter_stream():
+        ...
+    
+    # Mock _batch_cleanup to track if it's called
+    original_batch_cleanup = storage._batch_cleanup
+    cleanup_called = {"called": False}
+    
+    def mock_batch_cleanup():
+        cleanup_called["called"] = True
+        return original_batch_cleanup()
+    
+    storage._batch_cleanup = mock_batch_cleanup
+    
+    # Force time to trigger cleanup interval
+    storage.last_cleanup = 0
+    
+    # Call get_entries which should trigger batch cleanup
+    entries = storage.get_entries("test_key")
+    
+    # Verify batch cleanup WAS called since storage created its own connection
+    assert cleanup_called["called"], "Batch cleanup should run when storage creates its own connection"
+    assert len(entries) == 1
