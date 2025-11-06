@@ -1,3 +1,14 @@
+## What's Changed in 1.1.4
+### 🐛 Bug Fixes
+
+* don't raise an error on consumed streams that were read into memory by @karpetrosyan
+* close sqlite connections properly by @karpetrosyan
+
+### Contributors
+* @karpetrosyan
+
+**Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.1.3...1.1.4
+
 ## What's Changed in 1.1.3
 ### ⚙️ Miscellaneous Tasks
 
@@ -8,9 +19,9 @@
 * fix: set `after_revalidation=True` for `NeedsToBeUpdated` -> `FromCache` transition by @jlopex in [#402](https://github.com/karpetrosyan/hishel/pull/402)
 
 ### Contributors
+* @karpetrosyan
 * @martinblech
 * @jlopex
-* @karpetrosyan
 
 **Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.1.2...1.1.3
 
