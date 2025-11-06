@@ -94,13 +94,13 @@ def _requests_to_internal(
     elif isinstance(model, requests.models.Response):
         try:
             stream = model.raw.stream(amt=CHUNK_SIZE, decode_content=None)
-            headers = Headers(filter_mapping(model.headers, "transfer-encoding"))
+            headers = Headers(filter_mapping(model.headers, ["transfer-encoding"]))
         except requests.exceptions.StreamConsumedError:
             stream = iter([model.content])
             # If the stream was consumed and we don't know about the original
             # data and its size, fix the Content-Length header and remove
             # Content-Encoding so we can recreate it later properly.
-            headers = Headers(filter_mapping(model.headers, "content-encoding", "transfer-encoding"))
+            headers = Headers(filter_mapping(model.headers, ["content-encoding", "transfer-encoding"]))
 
         return Response(
             status_code=model.status_code,
