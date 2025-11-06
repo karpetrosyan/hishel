@@ -371,7 +371,6 @@ def test_close_connection(monkeypatch: Any) -> None:
 def test_batch_cleanup_skipped_with_user_provided_connection(use_temp_dir: Any, monkeypatch: Any) -> None:
     """Test that batch cleanup is skipped when connection is user-provided."""
     import sqlite3
-    from unittest.mock import patch
     
     # Create a user-provided connection
     user_connection = sqlite3.connect(":memory:")
