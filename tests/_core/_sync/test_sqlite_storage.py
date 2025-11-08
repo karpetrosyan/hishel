@@ -5,6 +5,7 @@ from typing import Any
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
+import sqlite3
 import pytest
 from inline_snapshot import snapshot
 from time_machine import travel
@@ -16,9 +17,9 @@ from tests.conftest import print_sqlite_state
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
-def test_add_entry(use_temp_dir: Any) -> None:
+def test_add_entry() -> None:
     """Test adding a complete entry with request and response."""
-    storage = SyncSqliteStorage()
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
     entry = storage.create_entry(
         request=Request(
@@ -74,9 +75,9 @@ Rows: 2
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
-def test_add_entry_with_stream(use_temp_dir: Any) -> None:
+def test_add_entry_with_stream() -> None:
     """Test adding an entry with a streaming response body."""
-    storage = SyncSqliteStorage()
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
     entry = storage.create_entry(
         request=Request(
@@ -138,24 +139,26 @@ Rows: 3
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
-def test_get_entries(use_temp_dir: Any) -> None:
+def test_get_entries() -> None:
     """Test retrieving entries by cache key."""
-    storage = SyncSqliteStorage()
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
     # Create two entries with the same cache key
-    storage.create_entry(
+    e1 = storage.create_entry(
         request=Request(method="GET", url="https://example.com/1"),
         response=Response(status_code=200, stream=make_sync_iterator([b"response1"])),
         key="shared_key",
         id_=uuid.UUID(int=1),
     )
+    e1.response.read()
 
-    storage.create_entry(
+    e2 = storage.create_entry(
         request=Request(method="GET", url="https://example.com/2"),
         response=Response(status_code=200, stream=make_sync_iterator([b"response2"])),
         key="shared_key",
         id_=uuid.UUID(int=2),
     )
+    e2.response.read()
 
     # Retrieve entries
     entries = storage.get_entries("shared_key")
@@ -165,24 +168,26 @@ def test_get_entries(use_temp_dir: Any) -> None:
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
-def test_multiple_entries_same_key(use_temp_dir: Any) -> None:
+def test_multiple_entries_same_key() -> None:
     """Test creating multiple entries with the same cache key."""
-    storage = SyncSqliteStorage()
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
     # Create multiple complete entries with the same key
-    storage.create_entry(
+    e1 = storage.create_entry(
         request=Request(method="GET", url="https://example.com/1"),
         response=Response(status_code=200, stream=make_sync_iterator([b"response1"])),
         key="shared_key",
         id_=uuid.UUID(int=3),
     )
+    e1.response.read()
 
-    storage.create_entry(
+    e2 = storage.create_entry(
         request=Request(method="GET", url="https://example.com/2"),
         response=Response(status_code=200, stream=make_sync_iterator([b"response2"])),
         key="shared_key",
         id_=uuid.UUID(int=4),
     )
+    e2.response.read()
 
     # Should return both complete entries
     entries = storage.get_entries("shared_key")
@@ -192,9 +197,9 @@ def test_multiple_entries_same_key(use_temp_dir: Any) -> None:
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
-def test_update_entry(use_temp_dir: Any) -> None:
+def test_update_entry() -> None:
     """Test updating an existing entry."""
-    storage = SyncSqliteStorage()
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
     entry = storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -202,6 +207,8 @@ def test_update_entry(use_temp_dir: Any) -> None:
         key="original_key",
         id_=uuid.UUID(int=5),
     )
+
+    entry.response.read()
 
     # Update with a callable
     def updater(pair):
@@ -219,9 +226,9 @@ def test_update_entry(use_temp_dir: Any) -> None:
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
-def test_update_entry_with_new_entry(use_temp_dir: Any) -> None:
+def test_update_entry_with_new_entry() -> None:
     """Test updating an entry by providing a new entry directly."""
-    storage = SyncSqliteStorage()
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
     entry = storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -240,9 +247,9 @@ def test_update_entry_with_new_entry(use_temp_dir: Any) -> None:
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
-def test_remove_entry(use_temp_dir: Any) -> None:
+def test_remove_entry() -> None:
     """Test soft-deleting an entry."""
-    storage = SyncSqliteStorage()
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
     entry = storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -265,9 +272,9 @@ def test_remove_entry(use_temp_dir: Any) -> None:
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
-def test_stream_persistence(use_temp_dir: Any) -> None:
+def test_stream_persistence() -> None:
     """Test that streams are properly saved and retrieved."""
-    storage = SyncSqliteStorage()
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
     response_chunks = [b"resp1", b"resp2"]
 
@@ -297,13 +304,13 @@ def test_stream_persistence(use_temp_dir: Any) -> None:
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
-def test_multiple_entries_different_keys(use_temp_dir: Any) -> None:
+def test_multiple_entries_different_keys() -> None:
     """Test that entries with different keys are properly isolated."""
-    storage = SyncSqliteStorage()
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
     # Create entries with different keys
     for i in range(3):
-        storage.create_entry(
+        entry = storage.create_entry(
             request=Request(method="GET", url=f"https://example.com/{i}"),
             response=Response(
                 status_code=200,
@@ -312,6 +319,10 @@ def test_multiple_entries_different_keys(use_temp_dir: Any) -> None:
             key=f"key_{i}",
             id_=uuid.UUID(int=9 + i),
         )
+
+        # Consume the stream to save it
+        for _ in entry.response._iter_stream():
+            ...
 
     # Verify each key returns only its own entry
     for i in range(3):
@@ -322,9 +333,9 @@ def test_multiple_entries_different_keys(use_temp_dir: Any) -> None:
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
-def test_remove_nonexistent_entry(use_temp_dir: Any) -> None:
+def test_remove_nonexistent_entry() -> None:
     """Test that removing a non-existent entry doesn't raise an error."""
-    storage = SyncSqliteStorage()
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
     # Should not raise
     storage.remove_entry(uuid.UUID(int=999))
@@ -332,9 +343,9 @@ def test_remove_nonexistent_entry(use_temp_dir: Any) -> None:
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
-def test_update_nonexistent_entry(use_temp_dir: Any) -> None:
+def test_update_nonexistent_entry() -> None:
     """Test that updating a non-existent entry returns None."""
-    storage = SyncSqliteStorage()
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
     result = storage.update_entry(uuid.UUID(int=999), lambda p: replace(p, cache_key=b"new_key"))
     assert result is None
@@ -353,7 +364,7 @@ def test_close_connection(monkeypatch: Any) -> None:
 
     monkeypatch.setattr("sqlite3.connect", mock_connect)
 
-    storage = SyncSqliteStorage()
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
     conn = storage._ensure_connection()
     assert conn is not None
@@ -365,3 +376,93 @@ def test_close_connection(monkeypatch: Any) -> None:
     assert storage.connection is None
 
     mock_connection.close.assert_called_once()
+
+
+
+def test_incomplete_entries() -> None:
+    """Test incomplete entries"""
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+
+    entry = storage.create_entry(
+        request=Request(method="GET", url="https://example.com"),
+        response=Response(status_code=200, stream=make_sync_iterator([b"chunk1", b"chunk2"])),
+        key="incomplete_key",
+        id_=uuid.UUID(int=10),
+    )
+
+    # read only part of the stream
+    entry.response.stream.__next__()
+
+    # Verify the entry was created but is incomplete, so get_entries should skip it
+    entries = storage.get_entries("incomplete_key")
+
+    assert len(entries) == 0
+
+    assert print_sqlite_state(storage._ensure_connection()) == snapshot("""\
+================================================================================
+DATABASE SNAPSHOT
+================================================================================
+
+TABLE: entries
+--------------------------------------------------------------------------------
+Rows: 1
+
+  Row 1:
+    id              = (bytes) 0x0000000000000000000000000000000a (16 bytes)
+    cache_key       = (str) 'incomplete_key'
+    data            = (bytes) 0x85a26964c4100000000000000000000000000000000aa772657175657374... (186 bytes)
+    created_at      = 2025-11-08
+    deleted_at      = NULL
+
+TABLE: streams
+--------------------------------------------------------------------------------
+Rows: 1
+
+  Row 1:
+    entry_id        = (bytes) 0x0000000000000000000000000000000a (16 bytes)
+    chunk_number    = 0
+    chunk_data      = (str) 'chunk1'
+
+================================================================================\
+""")
+
+
+
+def test_expired_entries() -> None:
+    """Test expired entries"""
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"), default_ttl=0)
+
+    entry = storage.create_entry(
+        request=Request(method="GET", url="https://example.com"),
+        response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
+        key="expired_key",
+        id_=uuid.UUID(int=11),
+    )
+
+    entry.response.read()
+
+    # Verify the entry is expired, so get_entries should skip it
+    entries = storage.get_entries("expired_key")
+    assert len(entries) == 0
+
+
+
+def test_soft_deleted_entries() -> None:
+    """Test soft-deleted entries"""
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+
+    entry = storage.create_entry(
+        request=Request(method="GET", url="https://example.com"),
+        response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
+        key="soft_deleted_key",
+        id_=uuid.UUID(int=12),
+    )
+
+    entry.response.read()
+
+    # Soft delete the entry
+    storage.remove_entry(entry.id)
+
+    # Verify the entry is soft deleted, so get_entries should skip it
+    entries = storage.get_entries("soft_deleted_key")
+    assert len(entries) == 0

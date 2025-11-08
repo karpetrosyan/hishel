@@ -161,8 +161,19 @@ try:
             for row in cursor.fetchall():
                 pair_data = unpack(row[1], kind="pair")
 
+                if pair_data is None:
+                    continue
+
                 # Skip entries without a response (incomplete)
-                if not isinstance(pair_data, Entry) or pair_data.response is None:
+                if not self._is_stream_complete(pair_data.id, cursor=cursor):
+                    continue
+
+                # Skip expired entries
+                if self._is_pair_expired(pair_data, cursor=cursor):
+                    continue
+
+                # Skip soft-deleted entries
+                if self.is_soft_deleted(pair_data):
                     continue
 
                 final_pairs.append(pair_data)
@@ -330,15 +341,7 @@ try:
 
         def _is_corrupted(self, pair: Entry, cursor: sqlite3.Cursor) -> bool:
             # if entry was created more than 1 hour ago and still has no response (incomplete)
-            if pair.meta.created_at + 3600 < time.time() and pair.response is None:
-                return True
-
-            # Check if response stream is complete for Entry with response
-            if (
-                isinstance(pair, Entry)
-                and pair.response is not None
-                and not self._is_stream_complete(pair.id, cursor)
-            ):
+            if pair.meta.created_at + 3600 < time.time() and not self._is_stream_complete(pair.id, cursor):
                 return True
             return False
 

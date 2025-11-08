@@ -18,6 +18,7 @@ SUBS = [
     ("AsyncIterator", "Iterator"),
     ("AsyncIterable", "Iterable"),
     ("__aiter__", "__iter__"),
+    ("__anext__", "__next__"),
     ("AsyncMock", "MagicMock"),
     ("assert_awaited_once", "assert_called_once"),
     (r"Awaitable\[([^\]]+)\]", r"\1"),
