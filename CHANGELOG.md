@@ -1,3 +1,13 @@
+## What's Changed in 1.1.5
+### 🐛 Bug Fixes
+
+* filter out soft-deleted, expired and incomplete entries in `get_entries` by @karpetrosyan
+
+### Contributors
+* @karpetrosyan
+
+**Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.1.4...1.1.5
+
 ## What's Changed in 1.1.4
 ### 🐛 Bug Fixes
 
