@@ -1,7 +1,7 @@
 import uuid
 from dataclasses import replace
 from datetime import datetime
-from typing import Any
+from typing import Any, Iterator
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
@@ -391,6 +391,7 @@ def test_incomplete_entries() -> None:
     )
 
     # read only part of the stream
+    assert isinstance(entry.response.stream, Iterator)
     entry.response.stream.__next__()
 
     # Verify the entry was created but is incomplete, so get_entries should skip it
