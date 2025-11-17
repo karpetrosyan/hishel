@@ -413,7 +413,7 @@ Rows: 1
     id              = (bytes) 0x0000000000000000000000000000000a (16 bytes)
     cache_key       = (str) 'incomplete_key'
     data            = (bytes) 0x85a26964c4100000000000000000000000000000000aa772657175657374... (186 bytes)
-    created_at      = 2025-11-17
+    created_at      = 2024-01-01
     deleted_at      = NULL
 
 TABLE: streams
