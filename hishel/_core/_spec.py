@@ -1207,6 +1207,7 @@ class IdleClient(State):
         - Unsafe methods (POST, PUT, DELETE, etc.) are written through to origin
         - Multiple matching responses are sorted by Date header (most recent first)
         - Age header is updated when serving from cache
+        - Request no-cache directive forces revalidation of cached responses
 
         Examples:
         --------
@@ -1227,6 +1228,18 @@ class IdleClient(State):
         >>> idle = IdleClient(options=default_options)
         >>> cached_pair = CompletePair(get_request, stale_response)
         >>> next_state = idle.next(get_request, [cached_pair])
+        >>> isinstance(next_state, NeedRevalidation)
+        True
+
+        >>> # Need revalidation - request no-cache forces validation of fresh response
+        >>> idle = IdleClient(options=default_options)
+        >>> no_cache_request = Request(
+        ...     method="GET",
+        ...     url="https://example.com",
+        ...     headers=Headers({"cache-control": "no-cache"})
+        ... )
+        >>> cached_pair = CompletePair(no_cache_request, fresh_response)
+        >>> next_state = idle.next(no_cache_request, [cached_pair])
         >>> isinstance(next_state, NeedRevalidation)
         True
         """
@@ -1388,7 +1401,31 @@ class IdleClient(State):
         ready_to_use, need_revalidation = partition(filtered_pairs, fresh_or_allowed_stale)
 
         # ============================================================================
-        # STEP 7: Determine Next State Based on Available Responses
+        # STEP 7: Handle Request no-cache Directive
+        # ============================================================================
+        # RFC 9111 Section 5.2.1.4: no-cache Request Directive
+        # https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.1.4
+        #
+        # "The no-cache request directive indicates that a cache MUST NOT use a
+        # stored response to satisfy the request without successful validation on
+        # the origin server."
+        #
+        # When a client sends Cache-Control: no-cache in the request, it's explicitly
+        # requesting that the cache not use any stored response without first validating
+        # it with the origin server. This is different from the response no-cache directive,
+        # which applies to how responses should be cached.
+        request_cache_control = parse_cache_control(request.headers.get("cache-control"))
+
+        if request_cache_control.no_cache is True:
+            # Move all fresh responses to the revalidation queue
+            # This ensures that even fresh cached responses will be validated
+            # with the origin server via conditional requests (If-None-Match,
+            # If-Modified-Since) before being served to the client.
+            need_revalidation.extend(ready_to_use)
+            ready_to_use = []
+
+        # ============================================================================
+        # STEP 8: Determine Next State Based on Available Responses
         # ============================================================================
 
         if ready_to_use:
