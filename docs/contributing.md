@@ -128,6 +128,46 @@ def store(self, key: str) -> None:
    ./scripts/test
    ```
 
+## Releasing (Maintainers Only)
+
+This section is for maintainers who have permissions to publish new releases.
+
+### Release Process
+
+1. **Update the version** in `pyproject.toml`:
+   ```toml
+   [project]
+   version = "1.1.6"  # Update to new version
+   ```
+
+2. **Generate the changelog** using `git cliff`:
+   ```bash
+   git cliff --output CHANGELOG.md 0.1.3.. --tag 1.1.6
+   ```
+   - Start from `0.1.3` (versions before this didn't use conventional commits)
+   - Specify the new release tag with `--tag`
+
+3. **Commit the changes** with an unconventional commit message:
+   ```bash
+   git add pyproject.toml CHANGELOG.md
+   git commit -m "Version 1.1.6"
+   ```
+
+4. **Create a git tag** for the release:
+   ```bash
+   git tag 1.1.6
+   ```
+
+5. **Push to GitHub** (both commits and tags):
+   ```bash
+   git push
+   git push --tags
+   ```
+
+6. **Ensure CI passes** - Wait for all GitHub Actions workflows to complete successfully
+
+7. **Done!** - The release is published once CI passes
+
 ## Questions?
 
 If you have questions about contributing, feel free to:
