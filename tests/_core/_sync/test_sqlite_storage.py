@@ -379,6 +379,7 @@ def test_close_connection(monkeypatch: Any) -> None:
 
 
 
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 def test_incomplete_entries() -> None:
     """Test incomplete entries"""
     storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
@@ -412,7 +413,7 @@ Rows: 1
     id              = (bytes) 0x0000000000000000000000000000000a (16 bytes)
     cache_key       = (str) 'incomplete_key'
     data            = (bytes) 0x85a26964c4100000000000000000000000000000000aa772657175657374... (186 bytes)
-    created_at      = 2025-11-08
+    created_at      = 2024-01-01
     deleted_at      = NULL
 
 TABLE: streams

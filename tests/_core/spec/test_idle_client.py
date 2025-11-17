@@ -736,6 +736,44 @@ class TestTransitionToNeedRevalidation:
         assert isinstance(next_state, NeedRevalidation)
         assert len(next_state.revalidating_entries) == 2
 
+    def test_request_no_cache_forces_revalidation_of_fresh_response(self, idle_client: IdleClient) -> None:
+        """
+        Test: Request no-cache directive forces revalidation even for fresh responses.
+
+        RFC 9111 Section 5.2.1.4: no-cache Request Directive
+        "The no-cache request directive indicates that a cache MUST NOT use a
+        stored response to satisfy the request without successful validation on
+        the origin server."
+
+        Even if a cached response is fresh, the request no-cache directive
+        forces the cache to revalidate it with the origin server.
+        """
+        # Arrange
+        # Request with no-cache directive
+        request = create_request(headers={"cache-control": "no-cache"})
+
+        # Fresh cached response: age 1800s < max-age 3600s
+        fresh_response = create_response(
+            age_seconds=1800,
+            max_age_seconds=3600,
+            headers={"etag": '"abc123"'},
+        )
+        cached_pair = create_pair(request=request, response=fresh_response)
+
+        # Act
+        next_state = idle_client.next(request, [cached_pair])
+
+        # Assert
+        # Despite being fresh, response must be revalidated due to request no-cache
+        assert isinstance(next_state, NeedRevalidation)
+        assert next_state.original_request == request
+        assert len(next_state.revalidating_entries) == 1
+        assert next_state.revalidating_entries[0] == cached_pair
+
+        # Verify conditional request is created with validators
+        assert "if-none-match" in next_state.request.headers
+        assert next_state.request.headers["if-none-match"] == '"abc123"'
+
 
 # =============================================================================
 # Test Suite 4: Edge Cases and RFC 9111 Compliance
