@@ -1,3 +1,16 @@
+## What's Changed in 1.1.6
+### 📚 Documentation
+
+* remove some stale httpx configs by @karpetrosyan
+### 🚀 Features
+
+* Add support for request no-cache directive by @karpetrosyan in [#416](https://github.com/karpetrosyan/hishel/pull/416)
+
+### Contributors
+* @karpetrosyan
+
+**Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.1.5...1.1.6
+
 ## What's Changed in 1.1.5
 ### 🐛 Bug Fixes
 
