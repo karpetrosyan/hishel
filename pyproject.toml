@@ -115,6 +115,9 @@ select = ["E", "F", "W", "I"]
 [tool.ruff.lint.isort]
 combine-as-imports = true
 
+[tool.uv]
+resolution = "lowest-direct"
+
 [dependency-groups]
 dev = [
     "anyio==4.12.0",
