@@ -340,8 +340,8 @@ try:
             connection.commit()
 
         def _is_corrupted(self, pair: Entry, cursor: sqlite3.Cursor) -> bool:
-            # if entry was created more than 1 hour ago and still has no response (incomplete)
-            if pair.meta.created_at + 3600 < time.time() and not self._is_stream_complete(pair.id, cursor):
+            # if entry was created more than 1 hour ago and still has no full response data
+            if pair.meta.created_at + 3600 < time.time() and not (self._is_stream_complete(pair.id, cursor)):
                 return True
             return False
 
