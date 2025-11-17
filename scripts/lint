@@ -18,7 +18,7 @@ uv run --with-editable . python -c 'import hishel'
 echo "==> Making sure it imports without extras"
 uv run --script - <<'EOF'
 # /// script
-# requires-python = ">=3.9"
+# requires-python = ">=3.10"
 # dependencies = [
 #     "hishel",
 # ]
