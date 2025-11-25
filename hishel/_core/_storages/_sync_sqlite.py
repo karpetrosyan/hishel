@@ -43,11 +43,11 @@ try:
             self,
             *,
             connection: Optional[sqlite3.Connection] = None,
-            database_path: str = "hishel_cache.db",
+            database_path: str | Path = "hishel_cache.db",
             default_ttl: Optional[float] = None,
             refresh_ttl_on_access: bool = True,
         ) -> None:
-            db_path = Path(database_path)
+            db_path = database_path if isinstance(database_path, Path) else Path(database_path)
 
             self.connection = connection
             self.database_path = (
