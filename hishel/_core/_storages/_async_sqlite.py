@@ -43,7 +43,7 @@ try:
             self,
             *,
             connection: Optional[anysqlite.Connection] = None,
-            database_path: str | Path = "hishel_cache.db",
+            database_path: Union[str, Path] = "hishel_cache.db",
             default_ttl: Optional[float] = None,
             refresh_ttl_on_access: bool = True,
         ) -> None:
