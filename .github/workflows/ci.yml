@@ -41,7 +41,7 @@ jobs:
         run: scripts/lint
 
       - name: Start Redis
-        uses: supercharge/redis-github-action@1.8.0
+        uses: supercharge/redis-github-action@1.8.1
 
       - name: Run tests
         run: scripts/test
