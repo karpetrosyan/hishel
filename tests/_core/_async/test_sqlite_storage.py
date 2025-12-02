@@ -2,7 +2,7 @@ import uuid
 from dataclasses import replace
 from datetime import datetime
 from typing import Any, AsyncIterator
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from zoneinfo import ZoneInfo
 
 import anysqlite
@@ -13,6 +13,23 @@ from time_machine import travel
 from hishel import AsyncSqliteStorage, Request, Response
 from hishel._utils import make_async_iterator
 from tests.conftest import aprint_sqlite_state
+
+
+@pytest.mark.anyio
+async def test_custom_connection_does_not_create_directory() -> None:
+    """Test that providing a custom connection doesn't call ensure_cache_dict."""
+    with patch("hishel._core._storages._async_sqlite.ensure_cache_dict") as mock_ensure:
+        storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+        # Create an entry to trigger _ensure_connection
+        entry = await storage.create_entry(
+            request=Request(method="GET", url="https://example.com"),
+            response=Response(status_code=200, stream=make_async_iterator([b"data"])),
+            key="test_key",
+        )
+        # Consume the stream
+        await entry.response.aread()
+        # ensure_cache_dict should still not have been called
+        mock_ensure.assert_not_called()
 
 
 @pytest.mark.anyio
