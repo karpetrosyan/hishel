@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout (official GitHub action)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -59,7 +59,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout (official GitHub action)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
