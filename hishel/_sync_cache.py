@@ -197,12 +197,12 @@ class SyncCacheProxy:
         return state.next(revalidation_response)
 
     def _handle_update(self, state: NeedToBeUpdated) -> AnyState:
-        for entry in state.updating_entries:
+        for updating_entry in state.updating_entries:
             self.storage.update_entry(
-                entry.id,
-                lambda entry: replace(
-                    entry,
-                    response=replace(entry.response, headers=entry.response.headers),
+                updating_entry.id,
+                lambda existing_entry: replace(
+                    existing_entry,
+                    response=replace(existing_entry.response, headers=updating_entry.response.headers),
                 ),
             )
         return state.next()
