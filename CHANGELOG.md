@@ -1,3 +1,29 @@
+## What's Changed in 1.1.7
+### ♻️ Refactoring
+
+* refactor(storage): create sqlite database path only when creating connections by @jeefberkey in [#426](https://github.com/karpetrosyan/hishel/pull/426)
+### ⚙️ Miscellaneous Tasks
+
+* chore(deps-dev): bump the python-packages group with 5 updates by @dependabot[bot] in [#424](https://github.com/karpetrosyan/hishel/pull/424)
+### 🐛 Bug Fixes
+
+* fix(cache): Lambda parameter name clashes the loop variable being closed over by @dump247 in [#427](https://github.com/karpetrosyan/hishel/pull/427)
+### 📚 Documentation
+
+* add release process guidelines for maintainers by @karpetrosyan
+### 🚀 Features
+
+* Feature/accept pathlib path in SqliteStorage by @daudef in [#419](https://github.com/karpetrosyan/hishel/pull/419)
+
+### Contributors
+* @daudef
+* @dependabot[bot]
+* @jeefberkey
+* @dump247
+* @karpetrosyan
+
+**Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.1.6...1.1.7
+
 ## What's Changed in 1.1.6
 ### 📚 Documentation
 
