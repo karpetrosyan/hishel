@@ -2,7 +2,7 @@ import uuid
 from dataclasses import replace
 from datetime import datetime
 from typing import Any, Iterator
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from zoneinfo import ZoneInfo
 
 import sqlite3
@@ -13,6 +13,23 @@ from time_machine import travel
 from hishel import SyncSqliteStorage, Request, Response
 from hishel._utils import make_sync_iterator
 from tests.conftest import print_sqlite_state
+
+
+
+def test_custom_connection_does_not_create_directory() -> None:
+    """Test that providing a custom connection doesn't call ensure_cache_dict."""
+    with patch("hishel._core._storages._async_sqlite.ensure_cache_dict") as mock_ensure:
+        storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+        # Create an entry to trigger _ensure_connection
+        entry = storage.create_entry(
+            request=Request(method="GET", url="https://example.com"),
+            response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
+            key="test_key",
+        )
+        # Consume the stream
+        entry.response.read()
+        # ensure_cache_dict should still not have been called
+        mock_ensure.assert_not_called()
 
 
 
