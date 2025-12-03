@@ -47,12 +47,8 @@ try:
             default_ttl: Optional[float] = None,
             refresh_ttl_on_access: bool = True,
         ) -> None:
-            db_path = Path(database_path)
-
             self.connection = connection
-            self.database_path = (
-                ensure_cache_dict(db_path.parent if db_path.parent != Path(".") else None) / db_path.name
-            )
+            self.database_path: Path = Path(database_path)
             self.default_ttl = default_ttl
             self.refresh_ttl_on_access = refresh_ttl_on_access
             self.last_cleanup = time.time() - BATCH_CLEANUP_INTERVAL + BATCH_CLEANUP_START_DELAY
@@ -63,7 +59,10 @@ try:
         async def _ensure_connection(self) -> anysqlite.Connection:
             """Ensure connection is established and database is initialized."""
             if self.connection is None:
-                self.connection = await anysqlite.connect(str(self.database_path))
+                # Create cache directory and resolve full path on first connection
+                parent = self.database_path.parent if self.database_path.parent != Path(".") else None
+                full_path = ensure_cache_dict(parent) / self.database_path.name
+                self.connection = await anysqlite.connect(str(full_path))
             if not self._initialized:
                 await self._initialize_database()
                 self._initialized = True
@@ -421,6 +420,7 @@ try:
                     break
                 yield chunk
                 chunk_number += 1
+
 except ImportError:
 
     class AsyncSqliteStorage:  # type: ignore[no-redef]
