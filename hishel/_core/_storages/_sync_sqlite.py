@@ -43,12 +43,12 @@ try:
             self,
             *,
             connection: Optional[sqlite3.Connection] = None,
-            database_path: str = "hishel_cache.db",
+            database_path: Union[str, Path] = "hishel_cache.db",
             default_ttl: Optional[float] = None,
             refresh_ttl_on_access: bool = True,
         ) -> None:
             self.connection = connection
-            self.database_path: Path = Path(database_path)
+            self.database_path: Path = database_path if isinstance(database_path, Path) else Path(database_path)
             self.default_ttl = default_ttl
             self.refresh_ttl_on_access = refresh_ttl_on_access
             self.last_cleanup = time.time() - BATCH_CLEANUP_INTERVAL + BATCH_CLEANUP_START_DELAY
