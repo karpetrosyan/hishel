@@ -28,6 +28,8 @@ SUBS = [
     ("AsyncCacheClient", "SyncCacheClient"),
     ("AsyncSqliteStorage", "SyncSqliteStorage"),
     ("anysqlite", "sqlite3"),
+    ("@pytest.mark.anyio", ""),
+    ("from anyio import Lock", "from threading import Lock"),
     ("aiter_stream", "iter_stream"),
     ("aiter_raw", "iter_raw"),
     ("aprint_sqlite_state", "print_sqlite_state"),
@@ -39,7 +41,6 @@ SUBS = [
     ),
     # Third-party libraries
     ("AsyncClient", "Client"),
-    ("@pytest.mark.anyio", ""),
     ("aread", "read"),
     ("aclose", "close"),
     ("handle_async_request", "handle_request"),

@@ -35,6 +35,7 @@ BATCH_CLEANUP_CHUNK_SIZE = 200
 
 try:
     import anysqlite
+    from anyio import Lock
 
     class AsyncSqliteStorage(AsyncBaseStorage):
         _COMPLETE_CHUNK_NUMBER = -1
@@ -55,9 +56,15 @@ try:
             # When this storage instance was created. Used to delay the first cleanup.
             self._start_time = time.time()
             self._initialized = False
+            self._lock = Lock()
 
-        async def _ensure_connection(self) -> anysqlite.Connection:
-            """Ensure connection is established and database is initialized."""
+        async def _ensure_connection_unlocked(self) -> anysqlite.Connection:
+            """
+            Ensure connection is established and database is initialized.
+
+            Note: This method assumes the caller has already acquired the lock.
+            """
+
             if self.connection is None:
                 # Create cache directory and resolve full path on first connection
                 parent = self.database_path.parent if self.database_path.parent != Path(".") else None
@@ -106,151 +113,156 @@ try:
         ) -> Entry:
             key_bytes = key.encode("utf-8")
 
-            connection = await self._ensure_connection()
-            cursor = await connection.cursor()
+            async with self._lock:
+                connection = await self._ensure_connection_unlocked()
+                cursor = await connection.cursor()
 
-            # Create a new entry directly with both request and response
-            pair_id = id_ if id_ is not None else uuid.uuid4()
-            pair_meta = EntryMeta(
-                created_at=time.time(),
-            )
+                # Create a new entry directly with both request and response
+                pair_id = id_ if id_ is not None else uuid.uuid4()
+                pair_meta = EntryMeta(
+                    created_at=time.time(),
+                )
 
-            assert isinstance(response.stream, (AsyncIterator, AsyncIterable))
-            response_with_stream = replace(
-                response,
-                stream=self._save_stream(response.stream, pair_id.bytes),
-            )
+                assert isinstance(response.stream, (AsyncIterator, AsyncIterable))
+                response_with_stream = replace(
+                    response,
+                    stream=self._save_stream_unlocked(response.stream, pair_id.bytes),
+                )
 
-            complete_entry = Entry(
-                id=pair_id,
-                request=request,
-                response=response_with_stream,
-                meta=pair_meta,
-                cache_key=key_bytes,
-            )
+                complete_entry = Entry(
+                    id=pair_id,
+                    request=request,
+                    response=response_with_stream,
+                    meta=pair_meta,
+                    cache_key=key_bytes,
+                )
 
-            # Insert the complete entry into the database
-            await cursor.execute(
-                "INSERT INTO entries (id, cache_key, data, created_at, deleted_at) VALUES (?, ?, ?, ?, ?)",
-                (pair_id.bytes, key_bytes, pack(complete_entry, kind="pair"), pair_meta.created_at, None),
-            )
-            await connection.commit()
+                # Insert the complete entry into the database
+                await cursor.execute(
+                    "INSERT INTO entries (id, cache_key, data, created_at, deleted_at) VALUES (?, ?, ?, ?, ?)",
+                    (pair_id.bytes, key_bytes, pack(complete_entry, kind="pair"), pair_meta.created_at, None),
+                )
+                await connection.commit()
 
-            return complete_entry
+                return complete_entry
 
         async def get_entries(self, key: str) -> List[Entry]:
             final_pairs: List[Entry] = []
 
             now = time.time()
-            if now - self.last_cleanup >= BATCH_CLEANUP_INTERVAL:
-                try:
-                    await self._batch_cleanup()
-                except Exception:
-                    # don't let cleanup prevent reads; failures are non-fatal
-                    pass
+            async with self._lock:
+                if now - self.last_cleanup >= BATCH_CLEANUP_INTERVAL:
+                    try:
+                        await self._batch_cleanup()
+                    except Exception:
+                        # don't let cleanup prevent reads; failures are non-fatal
+                        pass
 
-            connection = await self._ensure_connection()
-            cursor = await connection.cursor()
-            # Query entries directly by cache_key
-            await cursor.execute(
-                "SELECT id, data FROM entries WHERE cache_key = ?",
-                (key.encode("utf-8"),),
-            )
-
-            for row in await cursor.fetchall():
-                pair_data = unpack(row[1], kind="pair")
-
-                if pair_data is None:
-                    continue
-
-                # Skip entries without a response (incomplete)
-                if not await self._is_stream_complete(pair_data.id, cursor=cursor):
-                    continue
-
-                # Skip expired entries
-                if await self._is_pair_expired(pair_data, cursor=cursor):
-                    continue
-
-                # Skip soft-deleted entries
-                if self.is_soft_deleted(pair_data):
-                    continue
-
-                final_pairs.append(pair_data)
-
-            pairs_with_streams: List[Entry] = []
-
-            # Only restore response streams from cache
-            for pair in final_pairs:
-                pairs_with_streams.append(
-                    replace(
-                        pair,
-                        response=replace(
-                            pair.response,
-                            stream=self._stream_data_from_cache(pair.id.bytes),
-                        ),
-                    )
+                connection = await self._ensure_connection_unlocked()
+                cursor = await connection.cursor()
+                # Query entries directly by cache_key
+                await cursor.execute(
+                    "SELECT id, data FROM entries WHERE cache_key = ?",
+                    (key.encode("utf-8"),),
                 )
-            return pairs_with_streams
+
+                for row in await cursor.fetchall():
+                    pair_data = unpack(row[1], kind="pair")
+
+                    if pair_data is None:
+                        continue
+
+                    # Skip entries without a response (incomplete)
+                    if not await self._is_stream_complete(pair_data.id, cursor=cursor):
+                        continue
+
+                    # Skip expired entries
+                    if await self._is_pair_expired(pair_data, cursor=cursor):
+                        continue
+
+                    # Skip soft-deleted entries
+                    if self.is_soft_deleted(pair_data):
+                        continue
+
+                    final_pairs.append(pair_data)
+
+                pairs_with_streams: List[Entry] = []
+
+                # Only restore response streams from cache
+                for pair in final_pairs:
+                    pairs_with_streams.append(
+                        replace(
+                            pair,
+                            response=replace(
+                                pair.response,
+                                stream=self._stream_data_from_cache(pair.id.bytes),
+                            ),
+                        )
+                    )
+                return pairs_with_streams
 
         async def update_entry(
             self,
             id: uuid.UUID,
             new_pair: Union[Entry, Callable[[Entry], Entry]],
         ) -> Optional[Entry]:
-            connection = await self._ensure_connection()
-            cursor = await connection.cursor()
-            await cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
-            result = await cursor.fetchone()
+            async with self._lock:
+                connection = await self._ensure_connection_unlocked()
+                cursor = await connection.cursor()
+                await cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
+                result = await cursor.fetchone()
 
-            if result is None:
-                return None
+                if result is None:
+                    return None
 
-            pair = unpack(result[0], kind="pair")
+                pair = unpack(result[0], kind="pair")
 
-            # Skip entries without a response (incomplete)
-            if not isinstance(pair, Entry) or pair.response is None:
-                return None
+                # Skip entries without a response (incomplete)
+                if not isinstance(pair, Entry) or pair.response is None:
+                    return None
 
-            if isinstance(new_pair, Entry):
-                complete_pair = new_pair
-            else:
-                complete_pair = new_pair(pair)
+                if isinstance(new_pair, Entry):
+                    complete_pair = new_pair
+                else:
+                    complete_pair = new_pair(pair)
 
-            if pair.id != complete_pair.id:
-                raise ValueError("Pair ID mismatch")
+                if pair.id != complete_pair.id:
+                    raise ValueError("Pair ID mismatch")
 
-            await cursor.execute(
-                "UPDATE entries SET data = ? WHERE id = ?",
-                (pack(complete_pair, kind="pair"), id.bytes),
-            )
-
-            if pair.cache_key != complete_pair.cache_key:
                 await cursor.execute(
-                    "UPDATE entries SET cache_key = ? WHERE id = ?",
-                    (complete_pair.cache_key, complete_pair.id.bytes),
+                    "UPDATE entries SET data = ? WHERE id = ?",
+                    (pack(complete_pair, kind="pair"), id.bytes),
                 )
 
-            await connection.commit()
+                if pair.cache_key != complete_pair.cache_key:
+                    await cursor.execute(
+                        "UPDATE entries SET cache_key = ? WHERE id = ?",
+                        (complete_pair.cache_key, complete_pair.id.bytes),
+                    )
 
-            return complete_pair
+                await connection.commit()
+
+                return complete_pair
 
         async def remove_entry(self, id: uuid.UUID) -> None:
-            connection = await self._ensure_connection()
-            cursor = await connection.cursor()
-            await cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
-            result = await cursor.fetchone()
+            async with self._lock:
+                connection = await self._ensure_connection_unlocked()
+                cursor = await connection.cursor()
+                await cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
+                result = await cursor.fetchone()
 
-            if result is None:
-                return None
+                if result is None:
+                    return None
 
-            pair = unpack(result[0], kind="pair")
-            await self._soft_delete_pair(pair, cursor)
-            await connection.commit()
+                pair = unpack(result[0], kind="pair")
+                await self._soft_delete_pair(pair, cursor)
+                await connection.commit()
 
         async def close(self) -> None:
-            if self.connection is not None:
-                await self.connection.close()
-                self.connection = None
+            async with self._lock:
+                if self.connection is not None:
+                    await self.connection.close()
+                    self.connection = None
 
         async def _is_stream_complete(self, pair_id: uuid.UUID, cursor: anysqlite.Cursor) -> bool:
             # Check if there's a completion marker (chunk_number = -1) for response stream
@@ -297,7 +309,7 @@ try:
             should_mark_as_deleted: List[Entry] = []
             should_hard_delete: List[Entry] = []
 
-            connection = await self._ensure_connection()
+            connection = await self._ensure_connection_unlocked()
             cursor = await connection.cursor()
 
             # Process entries in chunks to avoid loading the entire table into memory.
@@ -363,36 +375,40 @@ try:
             """
             await cursor.execute("DELETE FROM streams WHERE entry_id = ?", (entry_id,))
 
-        async def _save_stream(
+        async def _save_stream_unlocked(
             self,
             stream: AsyncIterator[bytes],
             entry_id: bytes,
         ) -> AsyncIterator[bytes]:
             """
             Wrapper around an async iterator that also saves the response data to the cache in chunks.
+
+            Note: This method assumes the caller has already acquired the lock.
             """
             chunk_number = 0
             content_length = 0
             async for chunk in stream:
                 content_length += len(chunk)
-                connection = await self._ensure_connection()
-                cursor = await connection.cursor()
-                await cursor.execute(
-                    "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
-                    (entry_id, chunk_number, chunk),
-                )
-                await connection.commit()
+                async with self._lock:
+                    connection = await self._ensure_connection_unlocked()
+                    cursor = await connection.cursor()
+                    await cursor.execute(
+                        "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
+                        (entry_id, chunk_number, chunk),
+                    )
+                    await connection.commit()
                 chunk_number += 1
                 yield chunk
 
-            # Mark end of stream with chunk_number = -1
-            connection = await self._ensure_connection()
-            cursor = await connection.cursor()
-            await cursor.execute(
-                "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
-                (entry_id, self._COMPLETE_CHUNK_NUMBER, b""),
-            )
-            await connection.commit()
+            async with self._lock:
+                # Mark end of stream with chunk_number = -1
+                connection = await self._ensure_connection_unlocked()
+                cursor = await connection.cursor()
+                await cursor.execute(
+                    "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
+                    (entry_id, self._COMPLETE_CHUNK_NUMBER, b""),
+                )
+                await connection.commit()
 
         async def _stream_data_from_cache(
             self,
@@ -403,23 +419,24 @@ try:
             """
             chunk_number = 0
 
-            connection = await self._ensure_connection()
             while True:
-                cursor = await connection.cursor()
-                await cursor.execute(
-                    "SELECT chunk_data FROM streams WHERE entry_id = ? AND chunk_number = ?",
-                    (entry_id, chunk_number),
-                )
-                result = await cursor.fetchone()
+                async with self._lock:
+                    connection = await self._ensure_connection_unlocked()
+                    cursor = await connection.cursor()
+                    await cursor.execute(
+                        "SELECT chunk_data FROM streams WHERE entry_id = ? AND chunk_number = ?",
+                        (entry_id, chunk_number),
+                    )
+                    result = await cursor.fetchone()
 
-                if result is None:
-                    break
-                chunk = result[0]
-                # chunk_number = -1 is the completion marker with empty data
-                if chunk == b"":
-                    break
-                yield chunk
-                chunk_number += 1
+                    if result is None:
+                        break
+                    chunk = result[0]
+                    # chunk_number = -1 is the completion marker with empty data
+                    if chunk == b"":
+                        break
+                    yield chunk
+                    chunk_number += 1
 
 except ImportError:
 
