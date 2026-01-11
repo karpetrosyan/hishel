@@ -2,54 +2,54 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://hishel.com/1.1/</loc>
-         <lastmod>2025-12-03</lastmod>
+         <lastmod>2026-01-11</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.1/contributing/</loc>
-         <lastmod>2025-12-03</lastmod>
+         <lastmod>2026-01-11</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.1/metadata/</loc>
-         <lastmod>2025-12-03</lastmod>
+         <lastmod>2026-01-11</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.1/policies/</loc>
-         <lastmod>2025-12-03</lastmod>
+         <lastmod>2026-01-11</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.1/specification/</loc>
-         <lastmod>2025-12-03</lastmod>
+         <lastmod>2026-01-11</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.1/storages/</loc>
-         <lastmod>2025-12-03</lastmod>
+         <lastmod>2026-01-11</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.1/integrations/asgi/</loc>
-         <lastmod>2025-12-03</lastmod>
+         <lastmod>2026-01-11</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.1/integrations/blacksheep/</loc>
-         <lastmod>2025-12-03</lastmod>
+         <lastmod>2026-01-11</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.1/integrations/custom/</loc>
-         <lastmod>2025-12-03</lastmod>
+         <lastmod>2026-01-11</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.1/integrations/fastapi/</loc>
-         <lastmod>2025-12-03</lastmod>
+         <lastmod>2026-01-11</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.1/integrations/graphql/</loc>
-         <lastmod>2025-12-03</lastmod>
+         <lastmod>2026-01-11</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.1/integrations/httpx/</loc>
-         <lastmod>2025-12-03</lastmod>
+         <lastmod>2026-01-11</lastmod>
     </url>
     <url>
          <loc>https://hishel.com/1.1/integrations/requests/</loc>
-         <lastmod>2025-12-03</lastmod>
+         <lastmod>2026-01-11</lastmod>
     </url>
 </urlset>
