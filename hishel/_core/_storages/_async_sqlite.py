@@ -58,7 +58,7 @@ try:
             self._initialized = False
             self._lock = Lock()
 
-        async def _ensure_connection_unlocked(self) -> anysqlite.Connection:
+        async def _ensure_connection(self) -> anysqlite.Connection:
             """
             Ensure connection is established and database is initialized.
 
@@ -114,7 +114,7 @@ try:
             key_bytes = key.encode("utf-8")
 
             async with self._lock:
-                connection = await self._ensure_connection_unlocked()
+                connection = await self._ensure_connection()
                 cursor = await connection.cursor()
 
                 # Create a new entry directly with both request and response
@@ -158,7 +158,7 @@ try:
                         # don't let cleanup prevent reads; failures are non-fatal
                         pass
 
-                connection = await self._ensure_connection_unlocked()
+                connection = await self._ensure_connection()
                 cursor = await connection.cursor()
                 # Query entries directly by cache_key
                 await cursor.execute(
@@ -207,7 +207,7 @@ try:
             new_pair: Union[Entry, Callable[[Entry], Entry]],
         ) -> Optional[Entry]:
             async with self._lock:
-                connection = await self._ensure_connection_unlocked()
+                connection = await self._ensure_connection()
                 cursor = await connection.cursor()
                 await cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
                 result = await cursor.fetchone()
@@ -246,7 +246,7 @@ try:
 
         async def remove_entry(self, id: uuid.UUID) -> None:
             async with self._lock:
-                connection = await self._ensure_connection_unlocked()
+                connection = await self._ensure_connection()
                 cursor = await connection.cursor()
                 await cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
                 result = await cursor.fetchone()
@@ -309,7 +309,7 @@ try:
             should_mark_as_deleted: List[Entry] = []
             should_hard_delete: List[Entry] = []
 
-            connection = await self._ensure_connection_unlocked()
+            connection = await self._ensure_connection()
             cursor = await connection.cursor()
 
             # Process entries in chunks to avoid loading the entire table into memory.
@@ -390,7 +390,7 @@ try:
             async for chunk in stream:
                 content_length += len(chunk)
                 async with self._lock:
-                    connection = await self._ensure_connection_unlocked()
+                    connection = await self._ensure_connection()
                     cursor = await connection.cursor()
                     await cursor.execute(
                         "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
@@ -402,7 +402,7 @@ try:
 
             async with self._lock:
                 # Mark end of stream with chunk_number = -1
-                connection = await self._ensure_connection_unlocked()
+                connection = await self._ensure_connection()
                 cursor = await connection.cursor()
                 await cursor.execute(
                     "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
@@ -421,7 +421,7 @@ try:
 
             while True:
                 async with self._lock:
-                    connection = await self._ensure_connection_unlocked()
+                    connection = await self._ensure_connection()
                     cursor = await connection.cursor()
                     await cursor.execute(
                         "SELECT chunk_data FROM streams WHERE entry_id = ? AND chunk_number = ?",

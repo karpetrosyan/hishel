@@ -58,7 +58,7 @@ try:
             self._initialized = False
             self._lock = Lock()
 
-        def _ensure_connection_unlocked(self) -> sqlite3.Connection:
+        def _ensure_connection(self) -> sqlite3.Connection:
             """
             Ensure connection is established and database is initialized.
 
@@ -114,7 +114,7 @@ try:
             key_bytes = key.encode("utf-8")
 
             with self._lock:
-                connection = self._ensure_connection_unlocked()
+                connection = self._ensure_connection()
                 cursor = connection.cursor()
 
                 # Create a new entry directly with both request and response
@@ -158,7 +158,7 @@ try:
                         # don't let cleanup prevent reads; failures are non-fatal
                         pass
 
-                connection = self._ensure_connection_unlocked()
+                connection = self._ensure_connection()
                 cursor = connection.cursor()
                 # Query entries directly by cache_key
                 cursor.execute(
@@ -207,7 +207,7 @@ try:
             new_pair: Union[Entry, Callable[[Entry], Entry]],
         ) -> Optional[Entry]:
             with self._lock:
-                connection = self._ensure_connection_unlocked()
+                connection = self._ensure_connection()
                 cursor = connection.cursor()
                 cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
                 result = cursor.fetchone()
@@ -246,7 +246,7 @@ try:
 
         def remove_entry(self, id: uuid.UUID) -> None:
             with self._lock:
-                connection = self._ensure_connection_unlocked()
+                connection = self._ensure_connection()
                 cursor = connection.cursor()
                 cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
                 result = cursor.fetchone()
@@ -309,7 +309,7 @@ try:
             should_mark_as_deleted: List[Entry] = []
             should_hard_delete: List[Entry] = []
 
-            connection = self._ensure_connection_unlocked()
+            connection = self._ensure_connection()
             cursor = connection.cursor()
 
             # Process entries in chunks to avoid loading the entire table into memory.
@@ -390,7 +390,7 @@ try:
             for chunk in stream:
                 content_length += len(chunk)
                 with self._lock:
-                    connection = self._ensure_connection_unlocked()
+                    connection = self._ensure_connection()
                     cursor = connection.cursor()
                     cursor.execute(
                         "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
@@ -402,7 +402,7 @@ try:
 
             with self._lock:
                 # Mark end of stream with chunk_number = -1
-                connection = self._ensure_connection_unlocked()
+                connection = self._ensure_connection()
                 cursor = connection.cursor()
                 cursor.execute(
                     "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
@@ -421,7 +421,7 @@ try:
 
             while True:
                 with self._lock:
-                    connection = self._ensure_connection_unlocked()
+                    connection = self._ensure_connection()
                     cursor = connection.cursor()
                     cursor.execute(
                         "SELECT chunk_data FROM streams WHERE entry_id = ? AND chunk_number = ?",

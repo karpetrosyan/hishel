@@ -55,7 +55,7 @@ async def test_add_entry() -> None:
     async for _ in entry.response._aiter_stream():
         ...
 
-    conn = await storage._ensure_connection_unlocked()
+    conn = await storage._ensure_connection()
     assert await aprint_sqlite_state(conn) == snapshot("""\
 ================================================================================
 DATABASE SNAPSHOT
@@ -114,7 +114,7 @@ async def test_add_entry_with_stream() -> None:
         ...
 
     # Verify the entry was created with cache_key set
-    conn = await storage._ensure_connection_unlocked()
+    conn = await storage._ensure_connection()
     assert await aprint_sqlite_state(conn) == snapshot("""\
 ================================================================================
 DATABASE SNAPSHOT
@@ -279,7 +279,7 @@ async def test_remove_entry() -> None:
     await storage.remove_entry(entry.id)
 
     # Verify deleted_at is set
-    conn = await storage._ensure_connection_unlocked()
+    conn = await storage._ensure_connection()
     cursor = await conn.cursor()
     await cursor.execute("SELECT deleted_at FROM entries WHERE id = ?", (entry.id.bytes,))
     result = await cursor.fetchone()
@@ -383,7 +383,7 @@ async def test_close_connection(monkeypatch: Any) -> None:
 
     storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
 
-    conn = await storage._ensure_connection_unlocked()
+    conn = await storage._ensure_connection()
     assert conn is not None
     assert storage.connection is not None
     assert storage.connection is mock_connection
@@ -417,7 +417,7 @@ async def test_incomplete_entries() -> None:
 
     assert len(entries) == 0
 
-    assert await aprint_sqlite_state(await storage._ensure_connection_unlocked()) == snapshot("""\
+    assert await aprint_sqlite_state(await storage._ensure_connection()) == snapshot("""\
 ================================================================================
 DATABASE SNAPSHOT
 ================================================================================

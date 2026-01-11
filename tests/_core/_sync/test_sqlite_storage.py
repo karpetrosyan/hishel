@@ -55,7 +55,7 @@ def test_add_entry() -> None:
     for _ in entry.response._iter_stream():
         ...
 
-    conn = storage._ensure_connection_unlocked()
+    conn = storage._ensure_connection()
     assert print_sqlite_state(conn) == snapshot("""\
 ================================================================================
 DATABASE SNAPSHOT
@@ -114,7 +114,7 @@ def test_add_entry_with_stream() -> None:
         ...
 
     # Verify the entry was created with cache_key set
-    conn = storage._ensure_connection_unlocked()
+    conn = storage._ensure_connection()
     assert print_sqlite_state(conn) == snapshot("""\
 ================================================================================
 DATABASE SNAPSHOT
@@ -279,7 +279,7 @@ def test_remove_entry() -> None:
     storage.remove_entry(entry.id)
 
     # Verify deleted_at is set
-    conn = storage._ensure_connection_unlocked()
+    conn = storage._ensure_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT deleted_at FROM entries WHERE id = ?", (entry.id.bytes,))
     result = cursor.fetchone()
@@ -383,7 +383,7 @@ def test_close_connection(monkeypatch: Any) -> None:
 
     storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
 
-    conn = storage._ensure_connection_unlocked()
+    conn = storage._ensure_connection()
     assert conn is not None
     assert storage.connection is not None
     assert storage.connection is mock_connection
@@ -417,7 +417,7 @@ def test_incomplete_entries() -> None:
 
     assert len(entries) == 0
 
-    assert print_sqlite_state(storage._ensure_connection_unlocked()) == snapshot("""\
+    assert print_sqlite_state(storage._ensure_connection()) == snapshot("""\
 ================================================================================
 DATABASE SNAPSHOT
 ================================================================================
