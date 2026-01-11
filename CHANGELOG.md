@@ -1,3 +1,16 @@
+## What's Changed in 1.1.8
+### ⚙️ Miscellaneous Tasks
+
+* chore(ci): remove redis action by @karpetrosyan in [#428](https://github.com/karpetrosyan/hishel/pull/428)
+### 🐛 Bug Fixes
+
+* fix: prevent race conditions by @karpetrosyan in [#436](https://github.com/karpetrosyan/hishel/pull/436)
+
+### Contributors
+* @karpetrosyan
+
+**Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.1.7...1.1.8
+
 ## What's Changed in 1.1.7
 ### ♻️ Refactoring
 
@@ -16,11 +29,11 @@
 * Feature/accept pathlib path in SqliteStorage by @daudef in [#419](https://github.com/karpetrosyan/hishel/pull/419)
 
 ### Contributors
+* @karpetrosyan
 * @daudef
 * @dependabot[bot]
 * @jeefberkey
 * @dump247
-* @karpetrosyan
 
 **Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.1.6...1.1.7
 
