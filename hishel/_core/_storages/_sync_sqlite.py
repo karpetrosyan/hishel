@@ -35,7 +35,7 @@ BATCH_CLEANUP_CHUNK_SIZE = 200
 
 try:
     import sqlite3
-    from threading import Lock
+    from threading import RLock
 
     class SyncSqliteStorage(SyncBaseStorage):
         _COMPLETE_CHUNK_NUMBER = -1
@@ -56,7 +56,7 @@ try:
             # When this storage instance was created. Used to delay the first cleanup.
             self._start_time = time.time()
             self._initialized = False
-            self._lock = Lock()
+            self._lock = RLock()
 
         def _ensure_connection(self) -> sqlite3.Connection:
             """
