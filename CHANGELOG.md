@@ -1,3 +1,17 @@
+## What's Changed in 1.1.9
+### ⚙️ Miscellaneous Tasks
+
+* chore: drop python 3.9 support by @CharString in [#418](https://github.com/karpetrosyan/hishel/pull/418)
+### 📦 Dependencies
+
+* chore(deps-dev): bump the python-packages group across 1 directory with 5 updates by @dependabot[bot] in [#440](https://github.com/karpetrosyan/hishel/pull/440)
+
+### Contributors
+* @CharString
+* @dependabot[bot]
+
+**Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.1.8...1.1.9
+
 ## What's Changed in 1.1.8
 ### ⚙️ Miscellaneous Tasks
 
