@@ -8,7 +8,7 @@ version = "1.1.8"
 dynamic = ["readme"]
 description = " Elegant HTTP Caching for Python"
 license = "BSD-3-Clause"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [{ name = "Kar Petrosyan", email = "kar.petrosyanpy@gmail.com" }]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -20,7 +20,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -115,6 +114,7 @@ select = ["E", "F", "W", "I"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
+
 
 [dependency-groups]
 dev = [
