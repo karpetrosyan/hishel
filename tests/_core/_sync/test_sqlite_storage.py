@@ -485,3 +485,22 @@ def test_soft_deleted_entries() -> None:
     # Verify the entry is soft deleted, so get_entries should skip it
     entries = storage.get_entries("soft_deleted_key")
     assert len(entries) == 0
+
+
+
+def test_custom_ttl() -> None:
+    """Test entries with hishel_ttl"""
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"), default_ttl=0)
+
+    entry = storage.create_entry(
+        request=Request(method="GET", url="https://example.com", metadata={"hishel_ttl": 999}),
+        response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
+        key="test_key",
+        id_=uuid.UUID(int=13),
+    )
+
+    entry.response.read()
+
+    # Verify hishel_ttl overrides default_ttl
+    entries = storage.get_entries("test_key")
+    assert len(entries) == 1

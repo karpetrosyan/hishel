@@ -11,7 +11,7 @@ from hishel._core.models import EntryMeta, Request, Response
 
 
 def filter_out_hishel_metadata(data: Mapping[str, Any]) -> dict[str, Any]:
-    return {k: v for k, v in data.items() if not k.startswith("hishel_")}
+    return {k: v for k, v in data.items() if not (k.startswith("hishel_") and k != "hishel_ttl")}
 
 
 if TYPE_CHECKING:

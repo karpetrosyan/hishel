@@ -485,3 +485,22 @@ async def test_soft_deleted_entries() -> None:
     # Verify the entry is soft deleted, so get_entries should skip it
     entries = await storage.get_entries("soft_deleted_key")
     assert len(entries) == 0
+
+
+@pytest.mark.anyio
+async def test_custom_ttl() -> None:
+    """Test entries with hishel_ttl"""
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"), default_ttl=0)
+
+    entry = await storage.create_entry(
+        request=Request(method="GET", url="https://example.com", metadata={"hishel_ttl": 999}),
+        response=Response(status_code=200, stream=make_async_iterator([b"data"])),
+        key="test_key",
+        id_=uuid.UUID(int=13),
+    )
+
+    await entry.response.aread()
+
+    # Verify hishel_ttl overrides default_ttl
+    entries = await storage.get_entries("test_key")
+    assert len(entries) == 1
