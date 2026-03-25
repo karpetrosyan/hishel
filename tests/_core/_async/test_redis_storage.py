@@ -350,3 +350,26 @@ async def test_custom_ttl() -> None:
     with travel(datetime(2024, 1, 1, 0, 0, 2, tzinfo=ZoneInfo("UTC"))):
         entries = await storage.get_entries("test_key")
         assert len(entries) == 0
+
+
+@pytest.mark.anyio
+async def test_custom_prefix() -> None:
+    """Test checking custom redis key prefix."""
+    client = fakeredis.aioredis.FakeRedis()
+    key_prefix = "a_key_prefix"
+    storage = AsyncRedisStorage(client=client, key_prefix=key_prefix)
+
+    entry = await storage.create_entry(
+        request=Request(method="GET", url="https://example.com"),
+        response=Response(status_code=200, stream=make_async_iterator([b"response data"])),
+        key="test_key",
+        id_=uuid.UUID(int=0),
+    )
+
+    async for _ in entry.response._aiter_stream():
+        ...
+
+    hex_id = entry.id.hex
+    assert await client.exists(f"{key_prefix}:entry:{hex_id}") == 1
+    assert await client.exists(f"{key_prefix}:stream:{hex_id}") == 1
+    assert await client.exists(f"{key_prefix}:stream_done:{hex_id}") == 1

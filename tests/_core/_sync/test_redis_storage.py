@@ -350,3 +350,26 @@ def test_custom_ttl() -> None:
     with travel(datetime(2024, 1, 1, 0, 0, 2, tzinfo=ZoneInfo("UTC"))):
         entries = storage.get_entries("test_key")
         assert len(entries) == 0
+
+
+
+def test_custom_prefix() -> None:
+    """Test checking custom redis key prefix."""
+    client = fakeredis.FakeRedis()
+    key_prefix = "a_key_prefix"
+    storage = RedisStorage(client=client, key_prefix=key_prefix)
+
+    entry = storage.create_entry(
+        request=Request(method="GET", url="https://example.com"),
+        response=Response(status_code=200, stream=make_sync_iterator([b"response data"])),
+        key="test_key",
+        id_=uuid.UUID(int=0),
+    )
+
+    for _ in entry.response._iter_stream():
+        ...
+
+    hex_id = entry.id.hex
+    assert client.exists(f"{key_prefix}:entry:{hex_id}") == 1
+    assert client.exists(f"{key_prefix}:stream:{hex_id}") == 1
+    assert client.exists(f"{key_prefix}:stream_done:{hex_id}") == 1
