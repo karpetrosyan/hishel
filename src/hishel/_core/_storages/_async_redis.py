@@ -16,9 +16,10 @@ from hishel._core.models import Entry, EntryMeta, Request, Response
 
 
 class AsyncRedisStorage(AsyncBaseStorage):
-    def __init__(self, client: Redis, ttl: int | float | None = None) -> None:
+    def __init__(self, client: Redis, ttl: int | float | None = None, key_prefix: str = "hishel") -> None:
         self._client = client
         self._default_ttl = ttl
+        self._key_prefix = key_prefix
 
     async def create_entry(self, request: Request, response: Response, key: str, id_: UUID | None = None) -> Entry:
         pair_id = id_ or uuid4()
@@ -38,8 +39,8 @@ class AsyncRedisStorage(AsyncBaseStorage):
         )
 
         packed = pack(entry, kind="pair")
-        entry_key = f"hishel:entry:{pair_id.hex}"
-        idx_key = f"hishel:idx:{key}"
+        entry_key = f"{self._key_prefix}:entry:{pair_id.hex}"
+        idx_key = f"{self._key_prefix}:idx:{key}"
 
         if self._default_ttl is not None:
             await self._client.set(entry_key, packed, ex=int(self._default_ttl))
@@ -53,8 +54,8 @@ class AsyncRedisStorage(AsyncBaseStorage):
         return entry
 
     async def _save_stream(self, stream: AsyncIterator[bytes], pair_id: UUID) -> AsyncIterator[bytes]:
-        stream_key = f"hishel:stream:{pair_id.hex}"
-        done_key = f"hishel:stream_done:{pair_id.hex}"
+        stream_key = f"{self._key_prefix}:stream:{pair_id.hex}"
+        done_key = f"{self._key_prefix}:stream_done:{pair_id.hex}"
 
         async for chunk in stream:
             await self._client.rpush(stream_key, chunk)  # type: ignore[misc]
@@ -68,7 +69,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
             await self._client.expire(done_key, int(self._default_ttl))
 
     async def _is_stream_complete(self, entry_id: UUID) -> bool:
-        result = await self._client.exists(f"hishel:stream_done:{entry_id.hex}")
+        result = await self._client.exists(f"{self._key_prefix}:stream_done:{entry_id.hex}")
         return bool(result)
 
     def _is_pair_expired(self, pair: Entry) -> bool:
@@ -76,7 +77,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
         return ttl is not None and pair.meta.created_at + ttl < time()
 
     async def _stream_from_cache(self, entry_id: UUID) -> AsyncIterator[bytes]:
-        stream_key = f"hishel:stream:{entry_id.hex}"
+        stream_key = f"{self._key_prefix}:stream:{entry_id.hex}"
         length = cast(int, await self._client.llen(stream_key))  # type: ignore[misc]
         for i in range(length - 1):  # -1 excludes the sentinel
             chunk = cast(bytes | None, await self._client.lindex(stream_key, i))  # type: ignore[misc]
@@ -84,13 +85,13 @@ class AsyncRedisStorage(AsyncBaseStorage):
                 yield chunk.encode() if isinstance(chunk, str) else chunk
 
     async def get_entries(self, key: str) -> list[Entry]:
-        idx_key = f"hishel:idx:{key}"
+        idx_key = f"{self._key_prefix}:idx:{key}"
         members = cast(set[bytes], await self._client.smembers(idx_key))  # type: ignore[misc]
 
         result: list[Entry] = []
         for member in members:
             hex_str = member.decode() if isinstance(member, bytes) else member
-            entry_key = f"hishel:entry:{hex_str}"
+            entry_key = f"{self._key_prefix}:entry:{hex_str}"
 
             data = await self._client.get(entry_key)
             if data is None:
@@ -124,7 +125,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
         id: UUID,  # noqa: A002
         new_entry: Entry | Callable[[Entry], Entry],
     ) -> Entry | None:
-        entry_key = f"hishel:entry:{id.hex}"
+        entry_key = f"{self._key_prefix}:entry:{id.hex}"
         data = await self._client.get(entry_key)
         if data is None:
             return None
@@ -146,15 +147,15 @@ class AsyncRedisStorage(AsyncBaseStorage):
         if existing.cache_key != updated.cache_key:
             old_key = existing.cache_key.decode() if isinstance(existing.cache_key, bytes) else existing.cache_key
             new_key = updated.cache_key.decode() if isinstance(updated.cache_key, bytes) else updated.cache_key
-            await self._client.srem(f"hishel:idx:{old_key}", id.hex)  # type: ignore[misc]
-            await self._client.sadd(f"hishel:idx:{new_key}", id.hex)  # type: ignore[misc]
+            await self._client.srem(f"{self._key_prefix}:idx:{old_key}", id.hex)  # type: ignore[misc]
+            await self._client.sadd(f"{self._key_prefix}:idx:{new_key}", id.hex)  # type: ignore[misc]
 
         return updated
 
     async def remove_entry(self, id: UUID) -> None:  # noqa: A002
-        entry_key = f"hishel:entry:{id.hex}"
-        stream_key = f"hishel:stream:{id.hex}"
-        done_key = f"hishel:stream_done:{id.hex}"
+        entry_key = f"{self._key_prefix}:entry:{id.hex}"
+        stream_key = f"{self._key_prefix}:stream:{id.hex}"
+        done_key = f"{self._key_prefix}:stream_done:{id.hex}"
         with contextlib.suppress(RedisError):
             # don't let deletes prevent reads; failures are non-fatal
             await self._client.delete(entry_key, stream_key, done_key)
