@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import contextlib
-from collections.abc import Iterator, Callable
+from collections.abc import Iterator, Awaitable, Callable
 from dataclasses import replace
 from time import time
 from typing import cast
@@ -47,7 +47,7 @@ class RedisStorage(SyncBaseStorage):
         else:
             self._client.set(entry_key, packed)
 
-        self._client.sadd(idx_key, pair_id.hex)  # type: ignore[misc]
+        cast(int, self._client.sadd(idx_key, pair_id.hex))
         if self._default_ttl is not None:
             self._client.expire(idx_key, int(self._default_ttl))
 
@@ -58,11 +58,11 @@ class RedisStorage(SyncBaseStorage):
         done_key = f"{self._key_prefix}:stream_done:{pair_id.hex}"
 
         for chunk in stream:
-            self._client.rpush(stream_key, chunk)  # type: ignore[misc]
+            cast(int, self._client.rpush(stream_key, chunk))
             yield chunk
 
         # sentinel to mark end of stream
-        self._client.rpush(stream_key, b"")  # type: ignore[misc]
+        cast(int, self._client.rpush(stream_key, b""))
         self._client.set(done_key, b"1")
         if self._default_ttl is not None:
             self._client.expire(stream_key, int(self._default_ttl))
@@ -78,15 +78,15 @@ class RedisStorage(SyncBaseStorage):
 
     def _stream_from_cache(self, entry_id: UUID) -> Iterator[bytes]:
         stream_key = f"{self._key_prefix}:stream:{entry_id.hex}"
-        length = cast(int, self._client.llen(stream_key))  # type: ignore[misc]
+        length = cast(int, self._client.llen(stream_key))
         for i in range(length - 1):  # -1 excludes the sentinel
-            chunk = cast(bytes | None, self._client.lindex(stream_key, i))  # type: ignore[misc]
+            chunk = cast(bytes | None, self._client.lindex(stream_key, i))
             if chunk is not None:
                 yield chunk.encode() if isinstance(chunk, str) else chunk
 
     def get_entries(self, key: str) -> list[Entry]:
         idx_key = f"{self._key_prefix}:idx:{key}"
-        members = cast(set[bytes], self._client.smembers(idx_key))  # type: ignore[misc]
+        members = cast(set[bytes], self._client.smembers(idx_key))
 
         result: list[Entry] = []
         for member in members:
@@ -95,7 +95,7 @@ class RedisStorage(SyncBaseStorage):
 
             data = self._client.get(entry_key)
             if data is None:
-                self._client.srem(idx_key, member)  # type: ignore[misc]
+                cast(int, self._client.srem(idx_key, member))
                 continue
 
             entry = unpack(cast(bytes, data), kind="pair")
@@ -147,8 +147,8 @@ class RedisStorage(SyncBaseStorage):
         if existing.cache_key != updated.cache_key:
             old_key = existing.cache_key.decode() if isinstance(existing.cache_key, bytes) else existing.cache_key
             new_key = updated.cache_key.decode() if isinstance(updated.cache_key, bytes) else updated.cache_key
-            self._client.srem(f"{self._key_prefix}:idx:{old_key}", id.hex)  # type: ignore[misc]
-            self._client.sadd(f"{self._key_prefix}:idx:{new_key}", id.hex)  # type: ignore[misc]
+            cast(int, self._client.srem(f"{self._key_prefix}:idx:{old_key}", id.hex))
+            cast(int, self._client.sadd(f"{self._key_prefix}:idx:{new_key}", id.hex))
 
         return updated
 
