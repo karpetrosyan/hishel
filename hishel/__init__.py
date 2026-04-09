@@ -1,5 +1,7 @@
+from hishel._core._storages._async_dict import AsyncDictStorage
 from hishel._core._storages._async_sqlite import AsyncSqliteStorage
 from hishel._core._storages._async_base import AsyncBaseStorage
+from hishel._core._storages._sync_dict import SyncDictStorage
 from hishel._core._storages._sync_sqlite import SyncSqliteStorage
 from hishel._core._storages._sync_base import SyncBaseStorage
 from hishel._core._headers import Headers as Headers
@@ -56,6 +58,8 @@ __all__ = (
     ## Storages
     "SyncBaseStorage",
     "AsyncBaseStorage",
+    "SyncDictStorage",
+    "AsyncDictStorage",
     "SyncSqliteStorage",
     "AsyncSqliteStorage",
     # Proxy
