@@ -27,7 +27,14 @@ SUBS = [
     ("AsyncBaseStorage", "SyncBaseStorage"),
     ("AsyncCacheClient", "SyncCacheClient"),
     ("AsyncSqliteStorage", "SyncSqliteStorage"),
+    ("AsyncRedisStorage", "RedisStorage"),
     ("anysqlite", "sqlite3"),
+    ("redis.asyncio", "redis"),
+    ("fakeredis.aioredis", "fakeredis"),
+    (
+        "hishel._core._storages._async_redis",
+        "hishel._core._storages._sync_redis",
+    ),
     ("@pytest.mark.anyio", ""),
     ("from anyio import Lock", "from threading import RLock"),
     ("self._lock = Lock", "self._lock = RLock"),
@@ -111,6 +118,8 @@ def main():
         ("hishel/_async_cache.py", "hishel/_sync_cache.py"),
         ("hishel/_core/_storages/_async_base.py", "hishel/_core/_storages/_sync_base.py"),
         ("hishel/_core/_storages/_async_sqlite.py", "hishel/_core/_storages/_sync_sqlite.py"),
+        ("hishel/_core/_storages/_async_redis.py", "hishel/_core/_storages/_sync_redis.py"),
+        ("tests/_core/_async/test_redis_storage.py", "tests/_core/_sync/test_redis_storage.py"),
         ("hishel/_async_httpx.py", "hishel/_sync_httpx.py"),
     ]
 

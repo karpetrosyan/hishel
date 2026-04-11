@@ -51,6 +51,9 @@ httpx = [
 fastapi = [
     "fastapi>=0.119.1",
 ]
+redis = [
+    "redis>=6.2.0",
+]
 
 [project.urls]
 Homepage = "https://hishel.com"
@@ -103,6 +106,7 @@ exclude = [
     "hishel/_sync_cache.py",
     "tests/test_sync_httpx.py",
     "hishel/_core/_storages/_sync_sqlite.py",
+    "hishel/_core/_storages/_sync_redis.py",
     "hishel/_core/_storages/_sync_base.py",
     "tests/test_sync_httpx.py",
     "hishel/_sync_httpx.py"
@@ -140,5 +144,7 @@ dev = [
     "types-boto3==1.42.39",
     "types-pyyaml==6.0.12.20250915",
     "types-requests>=2.31.0.6",
+    "fakeredis>=2.0",
+    "redis>=6.2.0",
     "zipp>=3.19.1",
 ]
