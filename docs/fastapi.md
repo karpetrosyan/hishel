@@ -1,6 +1,3 @@
----
-icon: simple/fastapi
----
 
 # FastAPI Integration
 
@@ -9,12 +6,6 @@ Hishel provides FastAPI integration in two ways:
 1. **Cache-Control Headers Only** - Use the `cache()` dependency to send proper Cache-Control headers to clients (browsers, CDNs, proxies)
 2. **Full Caching** - Combine with ASGI middleware to also cache responses locally based on the Cache-Control rules you specify
 
-!!! tip "Choose your approach"
-    - Use `cache()` dependency alone to let clients/CDNs cache responses
-    - Add ASGI middleware on top to also cache locally on your server
-    - Both approaches use the same Cache-Control headers for consistency
-
----
 
 ## Installation
 
@@ -129,27 +120,3 @@ Prevent caching of sensitive data:
 async def get_secrets():
     return {"secret": "value"}
 ```
-
----
-
-## Notes
-
-!!! tip "Combine directives wisely"
-    Some directives conflict (e.g., `public` and `private`). Choose combinations that match your caching strategy.
-
-!!! warning "no_store is strongest"
-    `no_store` prevents all caching regardless of other directives.
-
-!!! info "Field names for fine-grained control"
-    `private` and `no_cache` accept lists of header names for precise control over which parts of the response require special handling.
-
----
-
-## See Also
-
-- [ASGI Integration](asgi.md) - Full ASGI middleware for caching
-- [Request/Response Metadata](../metadata.md) - Control caching behavior
-- [Storage Backends](../storages.md) - Configure cache storage
-- [RFC 9111: HTTP Caching](https://www.rfc-editor.org/rfc/rfc9111.html)
-- [RFC 8246: Immutable Responses](https://www.rfc-editor.org/rfc/rfc8246.html)
-- [RFC 5861: Cache-Control Extensions](https://www.rfc-editor.org/rfc/rfc5861.html)

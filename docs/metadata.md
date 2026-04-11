@@ -1,14 +1,10 @@
----
-icon: material/apps
----
-
-# Request and Response Metadata
+# Metadata
 
 Metadata allows you to control caching behavior and inspect cache operations. Hishel supports metadata on both requests (to control caching) and responses (to inspect what happened).
 
 All metadata fields are prefixed with `hishel_` to avoid collisions with user data.
 
----
+
 
 ## Request Metadata
 
@@ -16,9 +12,6 @@ Request metadata controls how Hishel caches the request and its response. You ca
 
 - **httpx**: `extensions` parameter (recommended) or `X-Hishel-*` headers
 - **requests**: `X-Hishel-*` headers
-
-!!! tip "httpx supports both methods"
-    While httpx supports both `extensions` and headers, using `extensions` is recommended as it provides better type safety and doesn't pollute HTTP headers sent to the server.
 
 ### hishel_ttl
 
@@ -36,49 +29,47 @@ Request metadata controls how Hishel caches the request and its response. You ca
 
 **Example:**
 
-=== "httpx (extensions)"
-    ```python
-    from hishel.httpx import SyncCacheClient
+::: code-group
 
-    client = SyncCacheClient()
+```python [httpx (extensions)]
+from hishel.httpx import SyncCacheClient
 
-    # Cache this response for 1 hour using extensions (recommended)
-    response = client.get(
-        "https://api.example.com/data",
-        extensions={"hishel_ttl": 3600}
-    )
-    ```
+client = SyncCacheClient()
 
-=== "httpx (headers)"
-    ```python
-    from hishel.httpx import SyncCacheClient
+response = client.get(
+    "https://api.example.com/data",
+    extensions={"hishel_ttl": 3600}
+)
+```
 
-    client = SyncCacheClient()
+```python [httpx (headers)]
+from hishel.httpx import SyncCacheClient
 
-    # Cache this response for 1 hour using headers
-    response = client.get(
-        "https://api.example.com/data",
-        headers={"X-Hishel-Ttl": "3600"}
-    )
-    ```
+client = SyncCacheClient()
 
-=== "requests"
-    ```python
-    import requests
-    from hishel.requests import CacheAdapter
+response = client.get(
+    "https://api.example.com/data",
+    headers={"X-Hishel-Ttl": "3600"}
+)
+```
 
-    session = requests.Session()
-    session.mount("http://", CacheAdapter())
-    session.mount("https://", CacheAdapter())
+```python [requests]
+import requests
+from hishel.requests import CacheAdapter
 
-    # Cache this response for 1 hour
-    response = session.get(
-        "https://api.example.com/data",
-        headers={"X-Hishel-Ttl": "3600"}
-    )
-    ```
+session = requests.Session()
+session.mount("http://", CacheAdapter())
+session.mount("https://", CacheAdapter())
 
----
+response = session.get(
+    "https://api.example.com/data",
+    headers={"X-Hishel-Ttl": "3600"}
+)
+```
+
+:::
+
+
 
 ### hishel_refresh_ttl_on_access
 
@@ -95,36 +86,36 @@ Request metadata controls how Hishel caches the request and its response. You ca
 
 **Example:**
 
-=== "httpx"
-    ```python
-    from hishel.httpx import SyncCacheClient
+::: code-group
 
-    client = SyncCacheClient()
+```python [httpx]
+from hishel.httpx import SyncCacheClient
 
-    # Enable sliding expiration - each access resets the timer
-    response = client.get(
-        "https://api.example.com/user/profile",
-        extensions={"hishel_refresh_ttl_on_access": True}
-    )
-    ```
+client = SyncCacheClient()
 
-=== "requests"
-    ```python
-    import requests
-    from hishel.requests import CacheAdapter
+response = client.get(
+    "https://api.example.com/user/profile",
+    extensions={"hishel_refresh_ttl_on_access": True}
+)
+```
 
-    session = requests.Session()
-    session.mount("http://", CacheAdapter())
-    session.mount("https://", CacheAdapter())
+```python [requests]
+import requests
+from hishel.requests import CacheAdapter
 
-    # Enable sliding expiration - each access resets the timer
-    response = session.get(
-        "https://api.example.com/user/profile",
-        headers={"X-Hishel-Refresh-Ttl-On-Access": "true"}
-    )
-    ```
+session = requests.Session()
+session.mount("http://", CacheAdapter())
+session.mount("https://", CacheAdapter())
 
----
+response = session.get(
+    "https://api.example.com/user/profile",
+    headers={"X-Hishel-Refresh-Ttl-On-Access": "true"}
+)
+```
+
+:::
+
+
 
 ### hishel_body_key
 
@@ -142,38 +133,38 @@ Request metadata controls how Hishel caches the request and its response. You ca
 
 **Example:**
 
-=== "httpx"
-    ```python
-    from hishel.httpx import SyncCacheClient
+::: code-group
 
-    client = SyncCacheClient()
+```python [httpx]
+from hishel.httpx import SyncCacheClient
 
-    # Cache POST request based on body content
-    response = client.post(
-        "https://api.example.com/search",
-        json={"query": "python"},
-        extensions={"hishel_body_key": True}
-    )
-    ```
+client = SyncCacheClient()
 
-=== "requests"
-    ```python
-    import requests
-    from hishel.requests import CacheAdapter
+response = client.post(
+    "https://api.example.com/search",
+    json={"query": "python"},
+    extensions={"hishel_body_key": True}
+)
+```
 
-    session = requests.Session()
-    session.mount("http://", CacheAdapter())
-    session.mount("https://", CacheAdapter())
+```python [requests]
+import requests
+from hishel.requests import CacheAdapter
 
-    # Cache POST request based on body content
-    response = session.post(
-        "https://api.example.com/search",
-        json={"query": "python"},
-        headers={"X-Hishel-Body-Key": "true"}
-    )
-    ```
+session = requests.Session()
+session.mount("http://", CacheAdapter())
+session.mount("https://", CacheAdapter())
 
----
+response = session.post(
+    "https://api.example.com/search",
+    json={"query": "python"},
+    headers={"X-Hishel-Body-Key": "true"}
+)
+```
+
+:::
+
+
 
 ## Response Metadata
 
@@ -192,43 +183,42 @@ Response metadata provides information about cache operations that occurred. The
 - Log cache performance
 - Conditional logic based on cache status
 
-
 **Example:**
 
-=== "httpx"
-    ```python
-    from hishel.httpx import SyncCacheClient
+::: code-group
 
-    client = SyncCacheClient()
+```python [httpx]
+from hishel.httpx import SyncCacheClient
 
-    response = client.get("https://api.example.com/data")
+client = SyncCacheClient()
 
-    # Check if response came from cache
-    if response.extensions.get("hishel_from_cache"):
-        print("✓ Cache hit")
-    else:
-        print("✗ Cache miss - fetched from origin")
-    ```
+response = client.get("https://api.example.com/data")
 
-=== "requests"
-    ```python
-    import requests
-    from hishel.requests import CacheAdapter
+if response.extensions.get("hishel_from_cache"):
+    print("✓ Cache hit")
+else:
+    print("✗ Cache miss - fetched from origin")
+```
 
-    session = requests.Session()
-    session.mount("http://", CacheAdapter())
-    session.mount("https://", CacheAdapter())
+```python [requests]
+import requests
+from hishel.requests import CacheAdapter
 
-    response = session.get("https://api.example.com/data")
+session = requests.Session()
+session.mount("http://", CacheAdapter())
+session.mount("https://", CacheAdapter())
 
-    # Check if response came from cache
-    if response.headers.get("X-Hishel-From-Cache") == "true":
-        print("✓ Cache hit")
-    else:
-        print("✗ Cache miss - fetched from origin")
-    ```
+response = session.get("https://api.example.com/data")
 
----
+if response.headers.get("X-Hishel-From-Cache") == "true":
+    print("✓ Cache hit")
+else:
+    print("✗ Cache miss - fetched from origin")
+```
+
+:::
+
+
 
 ### hishel_revalidated
 
@@ -243,39 +233,38 @@ Response metadata provides information about cache operations that occurred. The
 - Track conditional request behavior
 - Optimize cache TTL settings
 
-
 **Example:**
 
-=== "httpx"
-    ```python
-    from hishel.httpx import SyncCacheClient
+::: code-group
 
-    client = SyncCacheClient()
+```python [httpx]
+from hishel.httpx import SyncCacheClient
 
-    response = client.get("https://api.example.com/data")
+client = SyncCacheClient()
 
-    # Check if cached response was revalidated
-    if response.extensions.get("hishel_revalidated"):
-        print("Response was revalidated (304 Not Modified)")
-    ```
+response = client.get("https://api.example.com/data")
 
-=== "requests"
-    ```python
-    import requests
-    from hishel.requests import CacheAdapter
+if response.extensions.get("hishel_revalidated"):
+    print("Response was revalidated (304 Not Modified)")
+```
 
-    session = requests.Session()
-    session.mount("http://", CacheAdapter())
-    session.mount("https://", CacheAdapter())
+```python [requests]
+import requests
+from hishel.requests import CacheAdapter
 
-    response = session.get("https://api.example.com/data")
+session = requests.Session()
+session.mount("http://", CacheAdapter())
+session.mount("https://", CacheAdapter())
 
-    # Check if cached response was revalidated
-    if response.headers.get("X-Hishel-Revalidated") == "true":
-        print("Response was revalidated (304 Not Modified)")
-    ```
+response = session.get("https://api.example.com/data")
 
----
+if response.headers.get("X-Hishel-Revalidated") == "true":
+    print("Response was revalidated (304 Not Modified)")
+```
+
+:::
+
+
 
 ### hishel_stored
 
@@ -290,41 +279,40 @@ Response metadata provides information about cache operations that occurred. The
 - Monitor cache storage success rate
 - Validate caching configuration
 
-
 **Example:**
 
-=== "httpx"
-    ```python
-    from hishel.httpx import SyncCacheClient
+::: code-group
 
-    client = SyncCacheClient()
+```python [httpx]
+from hishel.httpx import SyncCacheClient
 
-    response = client.get("https://api.example.com/data")
+client = SyncCacheClient()
 
-    # Check if response was cached
-    if response.extensions.get("hishel_stored"):
-        print("✓ Response stored in cache")
-    else:
-        print("✗ Response not cached")
-    ```
+response = client.get("https://api.example.com/data")
 
-=== "requests"
-    ```python
-    import requests
-    from hishel.requests import CacheAdapter
+if response.extensions.get("hishel_stored"):
+    print("✓ Response stored in cache")
+else:
+    print("✗ Response not cached")
+```
 
-    session = requests.Session()
-    session.mount("http://", CacheAdapter())
-    session.mount("https://", CacheAdapter())
+```python [requests]
+import requests
+from hishel.requests import CacheAdapter
 
-    response = session.get("https://api.example.com/data")
+session = requests.Session()
+session.mount("http://", CacheAdapter())
+session.mount("https://", CacheAdapter())
 
-    # Check if response was cached
-    if response.headers.get("X-Hishel-Stored") == "true":
-        print("✓ Response stored in cache")
-    else:
-        print("✗ Response not cached")
-    ```
+response = session.get("https://api.example.com/data")
+
+if response.headers.get("X-Hishel-Stored") == "true":
+    print("✓ Response stored in cache")
+else:
+    print("✗ Response not cached")
+```
+
+:::
 
 ### hishel_created_at
 
@@ -337,20 +325,22 @@ Response metadata provides information about cache operations that occurred. The
 - Determine when an entry was cached for logging or debugging.
 - Compute remaining TTL: `remaining = hishel_ttl - (now - hishel_created_at)`.
 
-**Example (httpx extensions):**
+**Example:**
 
-```python
+::: code-group
+
+```python [httpx]
 created = response.extensions.get("hishel_created_at")
 if created:
     print("Cached at:", created)
 ```
 
-**Example (requests headers):**
-
-```python
+```python [requests]
 created = response.headers.get("X-Hishel-Created-At")
 if created:
     print("Cached at:", created)
 ```
 
----
+:::
+
+

@@ -74,11 +74,3 @@ with requests.Session() as session:
     response = session.get("https://api.example.com/data")
     print(response.json())
 ```
-
-## See Also
-
-- [Metadata Reference](../metadata.md) - Complete guide to caching metadata
-- [Storage Documentation](../storages.md) - Storage backend configuration
-- [Specification](../specification.md) - RFC 9111 state machine
-- [HTTPX Integration](httpx.md) - Alternative async HTTP client
-- [Requests Documentation](https://requests.readthedocs.io/) - Official Requests docs

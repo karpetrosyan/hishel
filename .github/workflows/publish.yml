@@ -58,29 +58,40 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          fetch-tags: 0
 
-      - name: Install uv (official Astral action)
-        uses: astral-sh/setup-uv@v7
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          version: "0.8.9"
-          enable-cache: true
-          python-version: ${{ env.PYTHON_VERSION }}
+          node-version: 20
+          cache: pnpm
 
-      - name: Set up Python (using uv)
-        run: uv python install
+      - name: Install dependencies
+        run: pnpm install
 
-      - name: Publish docs
-        run: |
-          git config user.name "Kar Petrosyan"
-          git config user.email "karpetrosyanpy@gmail.com"
-          uv run mike deploy --push --update-aliases $(scripts/get_doc_version.py)
+      - name: Build with VitePress
+        run: pnpm run docs:build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/.vitepress/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
   release:
     name: Create GitHub release

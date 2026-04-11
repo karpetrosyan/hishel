@@ -1,20 +1,7 @@
----
-icon: octicons/lock-16
----
-
 # Caching Policies
 
 Hishel provides a flexible policy system that allows you to control caching behavior. 
 Policies determine how requests and responses are cached, giving you fine-grained control over the caching strategy.
-
-## Overview
-
-A **policy** is an object that defines the caching strategy for your HTTP client. Hishel supports two main types of policies:
-
-1. **SpecificationPolicy** - Follows RFC 9111 HTTP caching specification
-2. **FilterPolicy** - Applies custom user-defined filtering logic
-
-All policies inherit from the `CachePolicy` base class.
 
 ## SpecificationPolicy
 
@@ -43,15 +30,6 @@ The `SpecificationPolicy` accepts a `CacheOptions` object that configures how th
 Determines whether the cache operates as a shared cache or private cache.
 
 **RFC 9111 Section 3.5**: [Authenticated Responses](https://www.rfc-editor.org/rfc/rfc9111.html#section-3.5)
-
-- **Shared cache** (`True`): Acts as a proxy, CDN, or gateway cache serving multiple users.
-  - Must respect `private` directives
-  - Must handle `Authorization` header restrictions
-  - Can use `s-maxage` directive instead of `max-age`
-
-- **Private cache** (`False`): Acts as a browser or user-agent cache for a single user.
-  - Can cache private responses
-  - Ignores `s-maxage` directives
 
 ```python
 # Shared cache (proxy/CDN)
@@ -107,77 +85,73 @@ policy = SpecificationPolicy(
 
 ### Usage Examples
 
-=== "HTTPX (Async)"
+::: code-group
 
-    ```python
-    import httpx
-    from hishel import AsyncCacheClient, SpecificationPolicy, CacheOptions
+```python [HTTPX (Async)]
+import httpx
+from hishel import AsyncCacheClient, SpecificationPolicy, CacheOptions
 
-    policy = SpecificationPolicy(
-        cache_options=CacheOptions(
-            shared=False,  # Private browser cache
-            allow_stale=False,
-        )
+policy = SpecificationPolicy(
+    cache_options=CacheOptions(
+        shared=False,  # Private browser cache
+        allow_stale=False,
     )
+)
 
-    async with AsyncCacheClient(policy=policy) as client:
-        response = await client.get("https://api.example.com/data")
-    ```
+async with AsyncCacheClient(policy=policy) as client:
+    response = await client.get("https://api.example.com/data")
+```
 
-=== "HTTPX (Sync)"
+```python [HTTPX (Sync)]
+import httpx
+from hishel import SyncCacheClient, SpecificationPolicy, CacheOptions
+from hishel import CacheOptions
 
-    ```python
-    import httpx
-    from hishel import SyncCacheClient, SpecificationPolicy, CacheOptions
-    from hishel import CacheOptions
-
-    policy = SpecificationPolicy(
-        cache_options=CacheOptions(
-            shared=True,  # Shared proxy cache
-            allow_stale=True,
-        )
+policy = SpecificationPolicy(
+    cache_options=CacheOptions(
+        shared=True,  # Shared proxy cache
+        allow_stale=True,
     )
+)
 
-    with SyncCacheClient(policy=policy) as client:
-        response = client.get("https://api.example.com/data")
-    ```
+with SyncCacheClient(policy=policy) as client:
+    response = client.get("https://api.example.com/data")
+```
 
-=== "Requests"
+```python [Requests]
+import requests
+from hishel.requests import CacheAdapter
+from hishel import SpecificationPolicy, CacheOptions
 
-    ```python
-    import requests
-    from hishel.requests import CacheAdapter
-    from hishel import SpecificationPolicy, CacheOptions
+policy = SpecificationPolicy(
+    cache_options=CacheOptions(shared=False)
+)
 
-    policy = SpecificationPolicy(
-        cache_options=CacheOptions(shared=False)
+session = requests.Session()
+session.mount("https://", CacheAdapter(policy=policy))
+session.mount("http://", CacheAdapter(policy=policy))
+
+response = session.get("https://api.example.com/data")
+```
+
+```python [ASGI Middleware]
+from hishel.asgi import ASGICacheMiddleware
+from hishel import SpecificationPolicy, CacheOptions
+
+policy = SpecificationPolicy(
+    cache_options=CacheOptions(
+        shared=True,  # Server-side shared cache
+        allow_stale=False,
     )
+)
 
-    session = requests.Session()
-    session.mount("https://", CacheAdapter(policy=policy))
-    session.mount("http://", CacheAdapter(policy=policy))
+app = ASGICacheMiddleware(
+    app=your_asgi_app,
+    policy=policy,
+)
+```
 
-    response = session.get("https://api.example.com/data")
-    ```
-
-=== "ASGI Middleware"
-
-    ```python
-    from hishel.asgi import ASGICacheMiddleware
-    from hishel import SpecificationPolicy, CacheOptions
-
-    policy = SpecificationPolicy(
-        cache_options=CacheOptions(
-            shared=True,  # Server-side shared cache
-            allow_stale=False,
-        )
-    )
-
-    app = ASGICacheMiddleware(
-        app=your_asgi_app,
-        policy=policy,
-    )
-    ```
+:::
 
 ## FilterPolicy
 
@@ -356,108 +330,3 @@ policy = FilterPolicy(
     ]
 )
 ```
-
-### Complete Example: GraphQL Caching
-
-```python
-import json
-from hishel import AsyncCacheClient, FilterPolicy, BaseFilter, Request, Response
-
-class GraphQLQueryFilter(BaseFilter[Request]):
-    """Only cache GraphQL queries (not mutations)."""
-    
-    def needs_body(self) -> bool:
-        return True
-    
-    def apply(self, item: Request, body: bytes | None) -> bool:
-        if body is None:
-            return False
-        
-        try:
-            data = json.loads(body)
-            query = data.get("query", "")
-            # Cache only if it's a query, not a mutation
-            return "mutation" not in query.lower()
-        except json.JSONDecodeError:
-            return False
-
-
-class GraphQLSuccessFilter(BaseFilter[Response]):
-    """Only cache successful GraphQL responses (no errors)."""
-    
-    def needs_body(self) -> bool:
-        return True
-    
-    def apply(self, item: Response, body: bytes | None) -> bool:
-        if item.status_code != 200 or body is None:
-            return False
-        
-        try:
-            data = json.loads(body)
-            # Cache only if there are no GraphQL errors
-            return "errors" not in data
-        except json.JSONDecodeError:
-            return False
-
-# Create the policy
-policy = FilterPolicy(
-    request_filters=[GraphQLQueryFilter()],
-    response_filters=[GraphQLSuccessFilter()],
-)
-
-# Use with HTTPX
-async with AsyncCacheClient(policy=policy) as client:
-    response = await client.post(
-        "https://api.example.com/graphql",
-        json={
-            "query": "{ user(id: 1) { name email } }"
-        }
-    )
-```
-
-## Policy Comparison
-
-| Feature | SpecificationPolicy | FilterPolicy |
-|---------|-------------------|--------------|
-| RFC 9111 Compliance | ✅ Full | ❌ None |
-| Respects Cache-Control headers | ✅ Yes | ❌ No |
-| Custom filtering logic | ❌ No | ✅ Yes |
-| Body inspection | ❌ No | ✅ Yes |
-| Use Case | Standard HTTP caching | Custom caching logic |
-| Complexity | Simple | Moderate to Complex |
-
-## Best Practices
-
-### When to Use SpecificationPolicy
-
-- **Standard web applications**: When caching public HTTP APIs that follow HTTP caching standards
-- **CDN/Proxy scenarios**: When implementing shared caches that serve multiple users
-- **Browser-like caching**: When you want behavior similar to a web browser's cache
-- **REST APIs**: When working with well-designed REST APIs that use proper cache headers
-
-### When to Use FilterPolicy
-
-- **GraphQL APIs**: When you need to inspect query bodies to determine cacheability
-- **Custom business logic**: When caching decisions depend on application-specific rules
-- **Legacy APIs**: When working with APIs that don't properly implement HTTP caching headers
-- **Fine-grained control**: When you need to cache based on response content, not just headers
-- **POST request caching**: When you want to cache POST requests based on their content
-
-### Performance Considerations
-
-1. **Body Inspection**: Filters that set `needs_body() = True` will read the entire request/response body into memory. Use sparingly for large payloads.
-
-2. **Filter Order**: Place cheaper filters (header-based) before expensive ones (body-based) to short-circuit early.
-
-3. **Caching Strategy**: 
-   - Use `SpecificationPolicy` for standard HTTP caching (faster, battle-tested)
-   - Use `FilterPolicy` only when you need custom logic
-
-4. **Memory Usage**: FilterPolicy may consume more memory when inspecting bodies. Consider implementing size limits in your filters.
-
-## See Also
-
-- [RFC 9111: HTTP Caching](https://www.rfc-editor.org/rfc/rfc9111.html)
-- [Specification State Machine](specification.md)
-- [Storage Backends](storages.md)
-- [GraphQL Integration](integrations/graphql.md)
