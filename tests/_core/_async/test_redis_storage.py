@@ -353,6 +353,25 @@ async def test_custom_ttl() -> None:
 
 
 @pytest.mark.anyio
+async def test_hishel_ttl_sets_redis_key_expiry() -> None:
+    """Test that hishel_ttl in request metadata sets the Redis key TTL, not just the Python-level check."""
+    client = fakeredis.aioredis.FakeRedis()
+    storage = AsyncRedisStorage(client=client)
+
+    entry = await storage.create_entry(
+        request=Request(method="GET", url="https://example.com", metadata={"hishel_ttl": 42}),
+        response=Response(status_code=200, stream=make_async_iterator([b"data"])),
+        key="test_key",
+        id_=uuid.UUID(int=14),
+    )
+    await entry.response.aread()
+
+    hex_id = entry.id.hex
+    entry_ttl = await client.ttl(f"hishel:entry:{hex_id}")
+    assert 0 < entry_ttl <= 42
+
+
+@pytest.mark.anyio
 async def test_custom_prefix() -> None:
     """Test checking custom redis key prefix."""
     client = fakeredis.aioredis.FakeRedis()

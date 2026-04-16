@@ -21,13 +21,17 @@ class AsyncRedisStorage(AsyncBaseStorage):
         self._default_ttl = ttl
         self._key_prefix = key_prefix
 
+    def _effective_ttl(self, request: Request) -> int | float | None:
+        return request.metadata.get("hishel_ttl", self._default_ttl)
+
     async def create_entry(self, request: Request, response: Response, key: str, id_: UUID | None = None) -> Entry:
         pair_id = id_ or uuid4()
         key_bytes = key.encode()
+        ttl = self._effective_ttl(request)
 
         response_with_stream = replace(
             response,
-            stream=self._save_stream(cast(AsyncIterator[bytes], response.stream), pair_id),
+            stream=self._save_stream(cast(AsyncIterator[bytes], response.stream), pair_id, ttl),
         )
 
         entry = Entry(
@@ -42,18 +46,18 @@ class AsyncRedisStorage(AsyncBaseStorage):
         entry_key = f"{self._key_prefix}:entry:{pair_id.hex}"
         idx_key = f"{self._key_prefix}:idx:{key}"
 
-        if self._default_ttl is not None:
-            await self._client.set(entry_key, packed, ex=int(self._default_ttl))
+        if ttl is not None:
+            await self._client.set(entry_key, packed, ex=int(ttl))
         else:
             await self._client.set(entry_key, packed)
 
         await cast(Awaitable[int], self._client.sadd(idx_key, pair_id.hex))
-        if self._default_ttl is not None:
-            await self._client.expire(idx_key, int(self._default_ttl))
+        if ttl is not None:
+            await self._client.expire(idx_key, int(ttl))
 
         return entry
 
-    async def _save_stream(self, stream: AsyncIterator[bytes], pair_id: UUID) -> AsyncIterator[bytes]:
+    async def _save_stream(self, stream: AsyncIterator[bytes], pair_id: UUID, ttl: int | float | None) -> AsyncIterator[bytes]:
         stream_key = f"{self._key_prefix}:stream:{pair_id.hex}"
         done_key = f"{self._key_prefix}:stream_done:{pair_id.hex}"
 
@@ -64,16 +68,16 @@ class AsyncRedisStorage(AsyncBaseStorage):
         # sentinel to mark end of stream
         await cast(Awaitable[int], self._client.rpush(stream_key, b""))
         await self._client.set(done_key, b"1")
-        if self._default_ttl is not None:
-            await self._client.expire(stream_key, int(self._default_ttl))
-            await self._client.expire(done_key, int(self._default_ttl))
+        if ttl is not None:
+            await self._client.expire(stream_key, int(ttl))
+            await self._client.expire(done_key, int(ttl))
 
     async def _is_stream_complete(self, entry_id: UUID) -> bool:
         result = await self._client.exists(f"{self._key_prefix}:stream_done:{entry_id.hex}")
         return bool(result)
 
     def _is_pair_expired(self, pair: Entry) -> bool:
-        ttl = pair.request.metadata.get("hishel_ttl", self._default_ttl)
+        ttl = self._effective_ttl(pair.request)
         return ttl is not None and pair.meta.created_at + ttl < time()
 
     async def _stream_from_cache(self, entry_id: UUID) -> AsyncIterator[bytes]:

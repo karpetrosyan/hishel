@@ -353,6 +353,25 @@ def test_custom_ttl() -> None:
 
 
 
+def test_hishel_ttl_sets_redis_key_expiry() -> None:
+    """Test that hishel_ttl in request metadata sets the Redis key TTL, not just the Python-level check."""
+    client = fakeredis.FakeRedis()
+    storage = RedisStorage(client=client)
+
+    entry = storage.create_entry(
+        request=Request(method="GET", url="https://example.com", metadata={"hishel_ttl": 42}),
+        response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
+        key="test_key",
+        id_=uuid.UUID(int=14),
+    )
+    entry.response.read()
+
+    hex_id = entry.id.hex
+    entry_ttl = client.ttl(f"hishel:entry:{hex_id}")
+    assert 0 < entry_ttl <= 42
+
+
+
 def test_custom_prefix() -> None:
     """Test checking custom redis key prefix."""
     client = fakeredis.FakeRedis()
