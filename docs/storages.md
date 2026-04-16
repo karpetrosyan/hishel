@@ -89,3 +89,77 @@ storage = AsyncSqliteStorage(refresh_ttl_on_access=True)
 :::
 
 You can also control this on a per-request basis by setting the `hishel_refresh_ttl_on_access` request metadata to `True` or `False`, which overrides the storage default.
+
+## Redis Storage
+
+Redis storage provides fast, in-memory (or persistent) caching backed by a Redis server.
+
+::: code-group
+
+```python [Sync]
+from redis import Redis
+from hishel import RedisStorage
+
+client = Redis(host="localhost", port=6379)
+storage = RedisStorage(client=client)
+```
+
+```python [Async]
+from redis.asyncio import Redis
+from hishel import AsyncRedisStorage
+
+client = Redis(host="localhost", port=6379)
+storage = AsyncRedisStorage(client=client)
+```
+
+:::
+
+### Custom Key Prefix
+
+You can set a custom prefix for all Redis keys. This is useful when sharing a Redis instance across multiple applications:
+
+::: code-group
+
+```python [Sync]
+from redis import Redis
+from hishel import RedisStorage
+
+client = Redis(host="localhost", port=6379)
+storage = RedisStorage(client=client, key_prefix="myapp")
+```
+
+```python [Async]
+from redis.asyncio import Redis
+from hishel import AsyncRedisStorage
+
+client = Redis(host="localhost", port=6379)
+storage = AsyncRedisStorage(client=client, key_prefix="myapp")
+```
+
+:::
+
+### Default Entry TTL
+
+You can set a default TTL for all entries stored in Redis. This value is used when the request does not specify its own TTL:
+
+::: code-group
+
+```python [Sync]
+from redis import Redis
+from hishel import RedisStorage
+
+client = Redis(host="localhost", port=6379)
+storage = RedisStorage(client=client, ttl=3600)
+```
+
+```python [Async]
+from redis.asyncio import Redis
+from hishel import AsyncRedisStorage
+
+client = Redis(host="localhost", port=6379)
+storage = AsyncRedisStorage(client=client, ttl=3600)
+```
+
+:::
+
+Storage also respects the `hishel_ttl` request metadata, which can be used to set a custom TTL for a specific request, overriding the storage default.

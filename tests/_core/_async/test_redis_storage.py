@@ -368,6 +368,7 @@ async def test_hishel_ttl_sets_redis_key_expiry() -> None:
 
     hex_id = entry.id.hex
     entry_ttl = await client.ttl(f"hishel:entry:{hex_id}")
+    assert isinstance(entry_ttl, int)
     assert 0 < entry_ttl <= 42
 
 
