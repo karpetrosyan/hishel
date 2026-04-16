@@ -1,3 +1,22 @@
+## What's Changed in 1.1.10
+### ⚙️ Miscellaneous Tasks
+
+* fix non-existing rfc reference by @karpetrosyan
+### 🐛 Bug Fixes
+
+* don't discard no-cache and vary-mismatched entries by @karpetrosyan
+* fix: properly save per-request hishel_ttl setting by @LiteralGenie in [#445](https://github.com/karpetrosyan/hishel/pull/445)
+### 📚 Documentation
+
+* document storages by @karpetrosyan
+* move docs to vitepress by @karpetrosyan
+
+### Contributors
+* @karpetrosyan
+* @LiteralGenie
+
+**Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.1.9...1.1.10
+
 ## What's Changed in 1.1.9
 ### ⚙️ Miscellaneous Tasks
 
@@ -7,6 +26,7 @@
 * chore(deps-dev): bump the python-packages group across 1 directory with 5 updates by @dependabot[bot] in [#440](https://github.com/karpetrosyan/hishel/pull/440)
 
 ### Contributors
+* @karpetrosyan
 * @CharString
 * @dependabot[bot]
 
