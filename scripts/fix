@@ -3,8 +3,8 @@
 set -e
 
 echo "==> Running ruff"
-uv run ruff check --fix hishel tests
-uv run ruff format hishel tests
+uv run ruff check --fix src tests
+uv run ruff format src tests
 
 echo "==> Make sure async/sync are consistent"
 uv run scripts/unasync

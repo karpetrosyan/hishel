@@ -3,14 +3,14 @@
 set -e
 
 echo "==> Running ruff"
-uv run ruff check hishel tests
+uv run ruff check src tests
 uv run ruff format --check
 
 echo "==> Make sure async/sync are consistent"
 uv run scripts/unasync --check
 
 echo "==> Running mypy"
-uv run --all-extras mypy hishel tests
+uv run --all-extras mypy src tests
 
 echo "==> Making sure it imports"
 uv run --with-editable . python -c 'import hishel'
