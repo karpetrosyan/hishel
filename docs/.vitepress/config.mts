@@ -2,7 +2,7 @@ import { defineConfig } from "vitepress";
 import { withMermaid } from "vitepress-plugin-mermaid";
 
 export default defineConfig({
-  base: "/hishel/",
+  base: "/",
   mermaid: {},
   title: "Hishel",
   description: "An elegant HTTP caching library for Python",
