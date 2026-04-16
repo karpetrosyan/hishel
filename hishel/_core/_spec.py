@@ -1131,323 +1131,87 @@ SAFE_METHODS = frozenset(["GET", "HEAD", "OPTIONS", "TRACE"])
 @dataclass
 class IdleClient(State):
     """
-    Represents the idle state of a client initiating an HTTP request.
+    Entry state of the cache state machine. Decides whether an incoming request
+    is served from cache, needs revalidation, or goes to the origin.
 
-    This is the entry point of the cache state machine. When a client wants to send
-    a request, this state determines whether the request can be satisfied from cache,
-    needs revalidation, or must be forwarded to the origin server (cache miss).
+    Transitions: CacheMiss | FromCache | NeedRevalidation
 
-    State Transitions:
-    -----------------
-    - CacheMiss: When no suitable cached response exists or the request cannot be cached
-    - FromCache: When a fresh or stale-but-allowed cached response can be used
-    - NeedRevalidation: When a stale cached response exists and must be validated
-
-    RFC 9111 References:
-    -------------------
-    - Section 4: Constructing Responses from Caches
-      https://www.rfc-editor.org/rfc/rfc9111.html#section-4
-    - Section 4.1: Calculating Cache Keys (Vary handling)
-      https://www.rfc-editor.org/rfc/rfc9111.html#section-4.1
-    - Section 4.2: Freshness
-      https://www.rfc-editor.org/rfc/rfc9111.html#section-4.2
-    - Section 4.3: Validation
-      https://www.rfc-editor.org/rfc/rfc9111.html#section-4.3
-
-    Attributes:
-    ----------
-    options : CacheOptions
-        Configuration options for cache behavior (inherited from State)
+    See RFC 9111 §4 for the reuse rules this state enforces.
     """
 
     def next(
         self, request: Request, associated_entries: list[Entry]
     ) -> Union["CacheMiss", "FromCache", "NeedRevalidation"]:
         """
-        Determines the next state transition based on the request and available cached responses.
+        Implements the cache lookup algorithm from RFC 9111 §4.
 
-        This method implements the core cache lookup algorithm defined in RFC 9111 Section 4.
-        It evaluates whether a cached response can be reused and transitions to the appropriate
-        next state.
+        `associated_entries` is pre-filtered by cache key (typically URI) by the
+        caller; this method applies the full set of §4 reuse conditions.
 
-        Parameters:
-        ----------
-        request : Request
-            The incoming HTTP request from the client
-        associated_entries : list[Entry]
-            List of request-response entries previously stored in the cache that may match
-            this request. These entries are pre-filtered by cache key (typically URI).
-
-        Returns:
-        -------
-        Union[CacheMiss, FromCache, NeedRevalidation]
-            - CacheMiss: No suitable cached response; request must be forwarded to origin
-            - FromCache: A suitable cached response can be returned immediately
-            - NeedRevalidation: A cached response exists but requires validation before use
-
-        RFC 9111 Compliance:
-        -------------------
-        This method enforces the requirements from RFC 9111 Section 4, paragraph 1:
-        "When presented with a request, a cache MUST NOT reuse a stored response unless:
-         1. the presented target URI and that of the stored response match, and
-         2. the request method associated with the stored response allows it to be used
-            for the presented request, and
-         3. request header fields nominated by the stored response (if any) match those
-            presented (see Section 4.1), and
-         4. the stored response does not contain the no-cache directive (Section 5.2.2.4),
-            unless it is successfully validated (Section 4.3), and
-         5. the stored response is one of the following:
-            - fresh (see Section 4.2), or
-            - allowed to be served stale (see Section 4.2.4), or
-            - successfully validated (see Section 4.3)."
-
-        Implementation Notes:
-        --------------------
-        - Range requests always result in a cache miss (simplified behavior)
-        - Unsafe methods (POST, PUT, DELETE, etc.) are written through to origin
-        - Multiple matching responses are sorted by Date header (most recent first)
-        - Age header is updated when serving from cache
-        - Request no-cache directive forces revalidation of cached responses
-
-        Examples:
-        --------
-        >>> # Cache miss - no matching responses
-        >>> idle = IdleClient(options=default_options)
-        >>> next_state = idle.next(get_request, [])
-        >>> isinstance(next_state, CacheMiss)
-        True
-
-        >>> # From cache - fresh response available
-        >>> idle = IdleClient(options=default_options)
-        >>> cached_pair = CompletePair(get_request, fresh_response)
-        >>> next_state = idle.next(get_request, [cached_pair])
-        >>> isinstance(next_state, FromCache)
-        True
-
-        >>> # Need revalidation - stale response that cannot be served stale
-        >>> idle = IdleClient(options=default_options)
-        >>> cached_pair = CompletePair(get_request, stale_response)
-        >>> next_state = idle.next(get_request, [cached_pair])
-        >>> isinstance(next_state, NeedRevalidation)
-        True
-
-        >>> # Need revalidation - request no-cache forces validation of fresh response
-        >>> idle = IdleClient(options=default_options)
-        >>> no_cache_request = Request(
-        ...     method="GET",
-        ...     url="https://example.com",
-        ...     headers=Headers({"cache-control": "no-cache"})
-        ... )
-        >>> cached_pair = CompletePair(no_cache_request, fresh_response)
-        >>> next_state = idle.next(no_cache_request, [cached_pair])
-        >>> isinstance(next_state, NeedRevalidation)
-        True
+        The five RFC 9111 §4 reuse conditions are split into two groups:
+          - Hard (URI match, method match): failure discards the entry.
+          - Soft (Vary, response no-cache, freshness/allowed-stale): failure
+            demotes the entry to a revalidation candidate rather than discarding
+            it, since §4.3 explicitly permits serving it after successful
+            validation.
+        A request `Cache-Control: no-cache` is treated as a soft failure for
+        every entry (§5.2.1.4).
         """
 
-        # ============================================================================
-        # STEP 1: Handle Range Requests
-        # ============================================================================
-        # RFC 9111 Section 3.3: Storing Incomplete Responses
-        # https://www.rfc-editor.org/rfc/rfc9111.html#section-3.3
-        #
-        # Range requests are complex and require special handling. For simplicity,
-        # this implementation treats all range requests as cache misses.
-        # A full implementation could store and combine partial responses.
+        # Range requests are punted to the origin — see §3.3 for the full rules
+        # we'd otherwise need to implement.
         request_range = Range.try_from_str(request.headers["range"]) if "range" in request.headers else None
-
         if request_range is not None:
-            # Simplified behavior: always forward range requests to origin
             return CacheMiss(options=self.options, request=request)
 
-        # ============================================================================
-        # STEP 2: Handle Unsafe Methods (Write-Through)
-        # ============================================================================
-        # RFC 9111 Section 4:
-        # https://www.rfc-editor.org/rfc/rfc9111.html#section-4
-        #
-        # "A cache MUST write through requests with methods that are unsafe
-        # (Section 9.2.1 of [HTTP]) to the origin server; i.e., a cache is not
-        # allowed to generate a reply to such a request before having forwarded
-        # the request and having received a corresponding response."
-        #
-        # Unsafe methods: POST, PUT, DELETE, PATCH, etc.
-        # Safe methods: GET, HEAD, OPTIONS, TRACE
+        # §4: unsafe methods must be written through to the origin.
         if request.method.upper() not in SAFE_METHODS:
             return CacheMiss(request=request, options=self.options)  # pragma: nocover
 
-        # ============================================================================
-        # STEP 3: Define Cache Reuse Conditions (RFC 9111 Section 4)
-        # ============================================================================
-        # The following lambda functions implement the five conditions that must ALL
-        # be satisfied for a cached response to be reusable.
+        # Parsed once — applies uniformly to every candidate.
+        request_cache_control = parse_cache_control(request.headers.get("cache-control"))
+        request_forces_revalidation = request_cache_control.no_cache is True
 
-        # CONDITION 1: URI Matching
-        # RFC 9111 Section 4, paragraph 2.1:
-        # "the presented target URI (Section 7.1 of [HTTP]) and that of the stored
-        # response match"
-        #
-        # The cache key primarily consists of the request URI. Only responses with
-        # matching URIs can be considered for reuse.
-        url_matches = lambda pair: pair.request.url == request.url  # noqa: E731
+        ready_to_use: list[Entry] = []
+        need_revalidation: list[Entry] = []
 
-        # CONDITION 2: Method Matching
-        # RFC 9111 Section 4, paragraph 2.2:
-        # "the request method associated with the stored response allows it to be
-        # used for the presented request"
-        #
-        # Generally, only GET responses can satisfy GET requests, HEAD responses
-        # for HEAD requests, etc. Some methods (like HEAD) can sometimes be satisfied
-        # by GET responses, but this implementation requires exact matches.
-        method_matches = lambda pair: pair.request.method == request.method  # noqa: E731
+        for pair in associated_entries:
+            # Hard conditions — drop the entry entirely.
+            if pair.request.url != request.url:
+                continue
+            if pair.request.method != request.method:
+                continue
 
-        # CONDITION 3: Vary Header Matching
-        # RFC 9111 Section 4.1: Calculating Cache Keys
-        # https://www.rfc-editor.org/rfc/rfc9111.html#section-4.1
-        #
-        # "When a cache receives a request that can be satisfied by a stored response
-        # and that stored response contains a Vary header field, the cache MUST NOT
-        # use that stored response without revalidation unless all the presented
-        # request header fields nominated by that Vary field value match those fields
-        # in the original request."
-        #
-        # Example: If response has "Vary: Accept-Encoding", the cached response can
-        # only be used if the new request has the same Accept-Encoding header value.
-        vary_headers_same = lambda pair: vary_headers_match(request, pair)  # noqa: E731
+            # Soft conditions — any failure demotes to revalidation.
+            vary_ok = vary_headers_match(request, pair)
 
-        # CONDITION 4: No-Cache Directive Handling
-        # RFC 9111 Section 5.2.2.4: no-cache Response Directive
-        # https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.2.4
-        #
-        # "The no-cache response directive... indicates that the response MUST NOT be
-        # used to satisfy any other request without forwarding it for validation and
-        # receiving a successful response."
-        #
-        # If a cached response has Cache-Control: no-cache, it cannot be reused without
-        # validation, regardless of its freshness.
-        def no_cache_missing(pair: Entry) -> bool:
-            """Check if the cached response lacks the no-cache directive."""
-            return parse_cache_control(pair.response.headers.get("cache-control")).no_cache is False
+            response_cc = parse_cache_control(pair.response.headers.get("cache-control"))
+            has_no_cache = response_cc.no_cache is True
 
-        # CONDITION 5: Freshness or Allowed Stale
-        # RFC 9111 Section 4.2: Freshness
-        # https://www.rfc-editor.org/rfc/rfc9111.html#section-4.2
-        #
-        # A response can be reused if it is either:
-        # a) Fresh: age < freshness_lifetime
-        # b) Allowed to be served stale: Section 4.2.4
-        #    https://www.rfc-editor.org/rfc/rfc9111.html#section-4.2.4
-        #
-        # Note: Condition 5.3 (successfully validated) is handled in the
-        # NeedRevalidation state, not here.
-        def fresh_or_allowed_stale(pair: Entry) -> bool:
-            """
-            Determine if a cached response is fresh or allowed to be served stale.
-
-            RFC 9111 Section 4.2:
-            "A 'fresh' response is one whose age has not yet exceeded its freshness
-            lifetime. Conversely, a 'stale' response is one where it has."
-
-            RFC 9111 Section 4.2.4: Serving Stale Responses
-            "A cache MUST NOT generate a stale response unless it is disconnected or
-            doing so is explicitly permitted by the client or origin server."
-            """
             freshness_lifetime = get_freshness_lifetime(pair.response, self.options.shared)
             age = get_age(pair.response)
+            is_fresh = freshness_lifetime is not None and age < freshness_lifetime
+            fresh_or_stale_ok = is_fresh or allowed_stale(pair.response, allow_stale_option=self.options.allow_stale)
 
-            # Check freshness: response_is_fresh = (freshness_lifetime > current_age)
-            is_fresh = False if freshness_lifetime is None else age < freshness_lifetime
+            if not has_no_cache and vary_ok and fresh_or_stale_ok and not request_forces_revalidation:
+                ready_to_use.append(pair)
+            else:
+                need_revalidation.append(pair)
 
-            # Check if stale responses are allowed (e.g., max-stale directive)
-            return is_fresh or allowed_stale(pair.response, allow_stale_option=self.options.allow_stale)
-
-        # ============================================================================
-        # STEP 4: Filter Cached Responses by Conditions 1-4
-        # ============================================================================
-        # Apply the first four conditions to filter the list of associated pairs.
-        # Condition 5 (freshness) is applied separately to partition responses into
-        # "ready to use" and "needs revalidation" groups.
-        filtered_pairs = [
-            pair
-            for pair in associated_entries
-            if url_matches(pair) and method_matches(pair) and vary_headers_same(pair) and no_cache_missing(pair)  # type: ignore[no-untyped-call]
-        ]
-
-        # ============================================================================
-        # STEP 5: Select Most Recent Response
-        # ============================================================================
-        # RFC 9111 Section 4, paragraph 8:
-        # https://www.rfc-editor.org/rfc/rfc9111.html#section-4-8
-        #
-        # "When more than one suitable response is stored, a cache MUST use the most
-        # recent one (as determined by the Date header field). It can also forward
-        # the request with 'Cache-Control: max-age=0' or 'Cache-Control: no-cache'
-        # to disambiguate which response to use."
-        #
-        # Sort by Date header in descending order (most recent first).
-        filtered_pairs.sort(
-            key=lambda pair: parse_date(
+        # §4: "When more than one suitable response is stored, a cache MUST use
+        # the most recent one (as determined by the Date header field)."
+        def _date_key(pair: Entry) -> int:
+            return parse_date(
                 pair.response.headers.get("date", str(int(time.time()))),
-            )
-            or int(time.time()),
-            reverse=True,
-        )
+            ) or int(time.time())
 
-        # ============================================================================
-        # STEP 6: Partition by Freshness (Condition 5)
-        # ============================================================================
-        # Separate responses into two groups:
-        # - ready_to_use: Fresh or allowed-stale responses that can be served immediately
-        # - need_revalidation: Stale responses that require validation before serving
-        ready_to_use, need_revalidation = partition(filtered_pairs, fresh_or_allowed_stale)
-
-        # ============================================================================
-        # STEP 7: Handle Request no-cache Directive
-        # ============================================================================
-        # RFC 9111 Section 5.2.1.4: no-cache Request Directive
-        # https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.1.4
-        #
-        # "The no-cache request directive indicates that a cache MUST NOT use a
-        # stored response to satisfy the request without successful validation on
-        # the origin server."
-        #
-        # When a client sends Cache-Control: no-cache in the request, it's explicitly
-        # requesting that the cache not use any stored response without first validating
-        # it with the origin server. This is different from the response no-cache directive,
-        # which applies to how responses should be cached.
-        request_cache_control = parse_cache_control(request.headers.get("cache-control"))
-
-        if request_cache_control.no_cache is True:
-            # Move all fresh responses to the revalidation queue
-            # This ensures that even fresh cached responses will be validated
-            # with the origin server via conditional requests (If-None-Match,
-            # If-Modified-Since) before being served to the client.
-            need_revalidation.extend(ready_to_use)
-            ready_to_use = []
-
-        # ============================================================================
-        # STEP 8: Determine Next State Based on Available Responses
-        # ============================================================================
+        ready_to_use.sort(key=_date_key, reverse=True)
+        need_revalidation.sort(key=_date_key, reverse=True)
 
         if ready_to_use:
-            # --------------------------------------------------------------------
-            # Transition to: FromCache
-            # --------------------------------------------------------------------
-            # We have a fresh (or allowed-stale) response that can be served.
-            #
-            # RFC 9111 Section 4, paragraph 4:
-            # https://www.rfc-editor.org/rfc/rfc9111.html#section-4-4
-            #
-            # "When a stored response is used to satisfy a request without validation,
-            # a cache MUST generate an Age header field (Section 5.1), replacing any
-            # present in the response with a value equal to the stored response's
-            # current_age; see Section 4.2.3."
-            #
-            # The Age header informs the client how old the cached response is.
-
-            # Use the most recent response (first in sorted list)
+            # §4: when reusing without validation, the cache MUST emit an Age
+            # header equal to the stored response's current_age.
             selected_pair = ready_to_use[0]
-
-            # Calculate current age and update the Age header
             current_age = get_age(selected_pair.response)
             return FromCache(
                 entry=replace(
@@ -1466,42 +1230,15 @@ class IdleClient(State):
             )
 
         elif need_revalidation:
-            # --------------------------------------------------------------------
-            # Transition to: NeedRevalidation
-            # --------------------------------------------------------------------
-            # We have stale cached response(s) that cannot be served without
-            # validation (e.g., they lack must-revalidate or similar directives).
-            #
-            # RFC 9111 Section 4.3: Validation
-            # https://www.rfc-editor.org/rfc/rfc9111.html#section-4.3
-            #
-            # "When a cache has one or more stored responses for a requested URI,
-            # but cannot serve any of them (e.g., because they are not fresh, or
-            # one cannot be chosen), it can use the conditional request mechanism
-            # in the forwarded request to give the next inbound server an opportunity
-            # to choose a valid stored response to use, updating the stored metadata
-            # in the process, or to replace the stored response(s) with a new response."
-            #
-            # Convert the request into a conditional request using validators
-            # (ETag, Last-Modified) from the cached response.
+            # Build the conditional request from the most recent candidate's
+            # validators (§4.3).
             return NeedRevalidation(
-                request=make_conditional_request(request, need_revalidation[-1].response),
+                request=make_conditional_request(request, need_revalidation[0].response),
                 revalidating_entries=need_revalidation,
                 options=self.options,
                 original_request=request,
             )
         else:
-            # --------------------------------------------------------------------
-            # Transition to: CacheMiss
-            # --------------------------------------------------------------------
-            # No suitable cached responses found. The request must be forwarded
-            # to the origin server.
-            #
-            # This can happen when:
-            # - No responses are cached for this URI
-            # - Cached responses don't match the request (e.g., different Vary headers)
-            # - Cached responses have no-cache directive
-            # - Other conditions prevent cache reuse
             return CacheMiss(
                 request=request,
                 options=self.options,
@@ -2229,8 +1966,9 @@ class NeedRevalidation(State):
             # Partition cached responses: matching vs non-matching timestamps
             identified_for_revalidation, need_to_be_invalidated = partition(
                 self.revalidating_entries,
-                lambda pair: pair.response.headers.get("last-modified")
-                == revalidation_response.headers.get("last-modified"),  # type: ignore[no-untyped-call]
+                lambda pair: (
+                    pair.response.headers.get("last-modified") == revalidation_response.headers.get("last-modified")
+                ),  # type: ignore[no-untyped-call]
             )
 
         # MATCHING STRATEGY 3: Single Response Assumption

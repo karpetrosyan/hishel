@@ -270,9 +270,9 @@ class TestTransitionToCacheMiss:
         # Assert
         assert isinstance(next_state, CacheMiss)
 
-    def test_vary_header_mismatch_causes_cache_miss(self, idle_client: IdleClient) -> None:
+    def test_vary_header_mismatch_requires_revalidation(self, idle_client: IdleClient) -> None:
         """
-        Test: Mismatched Vary headers result in CacheMiss.
+        Test: Mismatched Vary headers require revalidation.
 
         RFC 9111 Section 4.1: Calculating Cache Keys
         "When a cache receives a request that can be satisfied by a stored
@@ -282,7 +282,9 @@ class TestTransitionToCacheMiss:
         match those fields in the original request."
 
         The Vary header specifies which request headers must match for the
-        cached response to be reused.
+        cached response to be reused. A mismatch requires revalidation, not a
+        cache miss, since the cached response may still be usable after
+        successful validation.
         """
         # Arrange
         # Original request had Accept-Encoding: gzip
@@ -297,32 +299,33 @@ class TestTransitionToCacheMiss:
         next_state = idle_client.next(new_request, [cached_pair])
 
         # Assert
-        assert isinstance(next_state, CacheMiss)
+        assert isinstance(next_state, NeedRevalidation)
 
-    def test_vary_star_always_causes_cache_miss(self, idle_client: IdleClient) -> None:
+    def test_vary_star_always_requires_revalidation(self, idle_client: IdleClient) -> None:
         """
-        Test: Vary: * always results in CacheMiss.
+        Test: Vary: * requires revalidation.
 
         RFC 9111 Section 4.1, paragraph 5:
         "A stored response with a Vary header field value containing a member
         '*' always fails to match."
 
         Vary: * indicates that the response varies on factors beyond the request
-        headers (e.g., user agent state), so it can never be matched.
+        headers (e.g., user agent state). The response requires revalidation
+        but may be usable after successful validation.
         """
         # Arrange
         original_request = create_request()
         response = create_response(headers={"vary": "*"})
         cached_pair = create_pair(request=original_request, response=response)
 
-        # Even identical request should not match
+        # Even identical request should require revalidation
         identical_request = create_request()
 
         # Act
         next_state = idle_client.next(identical_request, [cached_pair])
 
         # Assert
-        assert isinstance(next_state, CacheMiss)
+        assert isinstance(next_state, NeedRevalidation)
 
     def test_no_cache_directive_requires_revalidation(self, idle_client: IdleClient) -> None:
         """
@@ -348,8 +351,8 @@ class TestTransitionToCacheMiss:
         next_state = idle_client.next(request, [cached_pair])
 
         # Assert
-        # With no-cache, the response is filtered out, leading to CacheMiss
-        assert isinstance(next_state, CacheMiss)
+        # With no-cache, the response requires revalidation
+        assert isinstance(next_state, NeedRevalidation)
 
     def test_all_responses_stale_and_not_allowed_causes_revalidation(self, idle_client: IdleClient) -> None:
         """
@@ -1000,13 +1003,13 @@ class TestIntegrationScenarios:
         next_state_json = idle_client.next(json_request, [cached_json])
         assert isinstance(next_state_json, FromCache)
 
-        # Act 2: Request for XML (should miss cache)
+        # Act 2: Request for XML (requires revalidation due to Vary mismatch)
         xml_request = create_request(
             url="https://api.example.com/data",
             headers={"accept": "application/xml"},
         )
         next_state_xml = idle_client.next(xml_request, [cached_json])
-        assert isinstance(next_state_xml, CacheMiss)
+        assert isinstance(next_state_xml, NeedRevalidation)
 
     def test_compression_negotiation_with_vary_accept_encoding(self, idle_client: IdleClient) -> None:
         """
@@ -1028,10 +1031,10 @@ class TestIntegrationScenarios:
         next_state_gzip = idle_client.next(gzip_request, [cached_gzip])
         assert isinstance(next_state_gzip, FromCache)
 
-        # Act 2: Request with brotli (should miss)
+        # Act 2: Request with brotli (requires revalidation due to Vary mismatch)
         br_request = create_request(headers={"accept-encoding": "br"})
         next_state_br = idle_client.next(br_request, [cached_gzip])
-        assert isinstance(next_state_br, CacheMiss)
+        assert isinstance(next_state_br, NeedRevalidation)
 
     def test_lifecycle_fresh_to_stale_transition(self, idle_client: IdleClient) -> None:
         """
@@ -1088,7 +1091,7 @@ class TestIntegrationScenarios:
         next_state_match = idle_client.next(matching_request, [cached_pair])
         assert isinstance(next_state_match, FromCache)
 
-        # Act 2: Request with one different header (should miss)
+        # Act 2: Request with one different header (requires revalidation)
         non_matching_request = create_request(
             headers={
                 "accept": "application/json",
@@ -1097,4 +1100,4 @@ class TestIntegrationScenarios:
             }
         )
         next_state_no_match = idle_client.next(non_matching_request, [cached_pair])
-        assert isinstance(next_state_no_match, CacheMiss)
+        assert isinstance(next_state_no_match, NeedRevalidation)
