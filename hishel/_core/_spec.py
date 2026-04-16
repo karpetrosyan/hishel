@@ -1262,8 +1262,8 @@ class IdleClient(State):
         # ============================================================================
         # STEP 2: Handle Unsafe Methods (Write-Through)
         # ============================================================================
-        # RFC 9111 Section 4, paragraph 5:
-        # https://www.rfc-editor.org/rfc/rfc9111.html#section-4-5
+        # RFC 9111 Section 4:
+        # https://www.rfc-editor.org/rfc/rfc9111.html#section-4
         #
         # "A cache MUST write through requests with methods that are unsafe
         # (Section 9.2.1 of [HTTP]) to the origin server; i.e., a cache is not
