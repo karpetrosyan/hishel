@@ -75,17 +75,17 @@ exclude_also = ['__repr__', 'raise NotImplementedError()']
 
 [tool.ruff]
 exclude = [
-    "hishel/_sync",
-    "hishel/__init__.py",
+    "src/hishel/_sync",
+    "src/hishel/__init__.py",
     "tests/_sync",
-    "hishel/_core/_sync",
+    "src/hishel/_core/_sync",
     "tests/_core/_sync",
-    "hishel/_sync_cache.py",
+    "src/hishel/_sync_cache.py",
     "tests/test_sync_httpx.py",
-    "hishel/_core/_storages/_sync_sqlite.py",
-    "hishel/_core/_storages/_sync_base.py",
+    "src/hishel/_core/_storages/_sync_sqlite.py",
+    "src/hishel/_core/_storages/_sync_base.py",
     "tests/test_sync_httpx.py",
-    "hishel/_sync_httpx.py"
+    "src/hishel/_sync_httpx.py"
 ]
 line-length = 120
 
