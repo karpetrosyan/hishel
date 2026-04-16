@@ -53,8 +53,6 @@ try:
             self.default_ttl = default_ttl
             self.refresh_ttl_on_access = refresh_ttl_on_access
             self.last_cleanup = time.time() - BATCH_CLEANUP_INTERVAL + BATCH_CLEANUP_START_DELAY
-            # When this storage instance was created. Used to delay the first cleanup.
-            self._start_time = time.time()
             self._initialized = False
             self._lock = RLock()
 
@@ -157,6 +155,8 @@ try:
                     except Exception:
                         # don't let cleanup prevent reads; failures are non-fatal
                         pass
+                    finally:
+                        self.last_cleanup = time.time()
 
                 connection = self._ensure_connection()
                 cursor = connection.cursor()
