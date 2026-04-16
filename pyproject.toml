@@ -1,13 +1,7 @@
-[build-system]
-requires = ["hatchling", "hatch-fancy-pypi-readme"]
-build-backend = "hatchling.build"
-
 [project]
 name = "hishel"
 version = "1.1.10"
-dynamic = ["readme"]
 description = " Elegant HTTP Caching for Python"
-license = "BSD-3-Clause"
 requires-python = ">=3.10"
 authors = [{ name = "Kar Petrosyan", email = "kar.petrosyanpy@gmail.com" }]
 classifiers = [
@@ -56,21 +50,6 @@ fastapi = [
 Homepage = "https://hishel.com"
 Source = "https://github.com/karpetrosyan/hishel"
 
-[tool.hatch.version]
-path = "hishel/__init__.py"
-
-[tool.hatch.build.targets.sdist]
-include = ["/hishel", "/CHANGELOG.md", "/README.md"]
-
-[tool.hatch.metadata.hooks.fancy-pypi-readme]
-content-type = "text/markdown"
-
-[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
-path = "README.md"
-
-[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
-path = "CHANGELOG.md"
-
 [tool.mypy]
 strict = true
 show_error_codes = true
@@ -89,6 +68,7 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 addopts = ["-rxXs", "--strict-config", "--strict-markers"]
 filterwarnings = []
+pythonpath = ["src"]
 
 [tool.coverage.report]
 exclude_also = ['__repr__', 'raise NotImplementedError()']

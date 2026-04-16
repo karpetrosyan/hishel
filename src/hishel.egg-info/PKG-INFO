@@ -1,0 +1,38 @@
+Metadata-Version: 2.4
+Name: hishel
+Version: 1.1.10
+Summary:  Elegant HTTP Caching for Python
+Author-email: Kar Petrosyan <kar.petrosyanpy@gmail.com>
+Project-URL: Homepage, https://hishel.com
+Project-URL: Source, https://github.com/karpetrosyan/hishel
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Web Environment
+Classifier: Framework :: AsyncIO
+Classifier: Framework :: Trio
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Internet :: WWW/HTTP
+Requires-Python: >=3.10
+License-File: LICENSE
+Requires-Dist: msgpack>=1.1.2
+Requires-Dist: typing-extensions>=4.14.1
+Provides-Extra: async
+Requires-Dist: anyio>=4.9.0; extra == "async"
+Requires-Dist: anysqlite>=0.0.5; extra == "async"
+Provides-Extra: requests
+Requires-Dist: requests>=2.32.5; extra == "requests"
+Provides-Extra: httpx
+Requires-Dist: httpx>=0.28.1; extra == "httpx"
+Requires-Dist: anyio>=4.9.0; extra == "httpx"
+Requires-Dist: anysqlite>=0.0.5; extra == "httpx"
+Provides-Extra: fastapi
+Requires-Dist: fastapi>=0.119.1; extra == "fastapi"
+Dynamic: license-file
