@@ -54,13 +54,13 @@ try:
             idx_key = f"{self._key_prefix}:idx:{key}"
 
             if ttl is not None:
-                self._client.set(entry_key, packed, ex=int(ttl))
+                self._client.set(entry_key, packed, px=int(ttl * 1000))
             else:
                 self._client.set(entry_key, packed)
 
             cast(int, self._client.sadd(idx_key, pair_id.hex))
             if ttl is not None:
-                self._client.expire(idx_key, int(ttl))
+                cast(int, self._client.pexpire(idx_key, int(ttl * 1000)))
 
             return entry
 
@@ -78,8 +78,8 @@ try:
             cast(int, self._client.rpush(stream_key, b""))
             self._client.set(done_key, b"1")
             if ttl is not None:
-                self._client.expire(stream_key, int(ttl))
-                self._client.expire(done_key, int(ttl))
+                cast(int, self._client.pexpire(stream_key, int(ttl * 1000)))
+                cast(int, self._client.pexpire(done_key, int(ttl * 1000)))
 
         def _is_stream_complete(self, entry_id: UUID) -> bool:
             result = self._client.exists(f"{self._key_prefix}:stream_done:{entry_id.hex}")
