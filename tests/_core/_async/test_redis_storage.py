@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import replace
 from datetime import datetime
-from typing import AsyncIterator
+from typing import AsyncIterator, Awaitable, cast
 from unittest.mock import AsyncMock
 from zoneinfo import ZoneInfo
 
@@ -189,7 +189,7 @@ async def test_update_entry_with_new_entry() -> None:
 
 @pytest.mark.anyio
 async def test_remove_entry() -> None:
-    """Test that remove_entry hard-deletes all Redis keys for the entry."""
+    """Test that remove_entry soft-deletes the entry and hides it from get_entries."""
     client = fakeredis.aioredis.FakeRedis()
     storage = AsyncRedisStorage(client=client)
 
@@ -204,9 +204,32 @@ async def test_remove_entry() -> None:
     await storage.remove_entry(entry.id)
 
     hex_id = entry.id.hex
-    assert await client.exists(f"hishel:entry:{hex_id}") == 0
-    assert await client.exists(f"hishel:stream:{hex_id}") == 0
-    assert await client.exists(f"hishel:stream_done:{hex_id}") == 0
+    # Keys still exist (soft delete, not hard delete)
+    assert await client.exists(f"hishel:entry:{hex_id}") == 1
+    # A TTL has been set on the entry key
+    assert 0 < await cast(Awaitable[int], client.ttl(f"hishel:entry:{hex_id}")) <= 180
+    # Soft-deleted entry is invisible to get_entries
+    assert await storage.get_entries("test_key") == []
+
+
+@pytest.mark.anyio
+async def test_remove_entry_custom_soft_delete_ttl() -> None:
+    """Test that a custom soft_delete_ttl is applied to Redis keys after remove_entry."""
+    client = fakeredis.aioredis.FakeRedis()
+    storage = AsyncRedisStorage(client=client, soft_delete_ttl=60)
+
+    entry = await storage.create_entry(
+        request=Request(method="GET", url="https://example.com"),
+        response=Response(status_code=200, stream=make_async_iterator([b"data"])),
+        key="test_key",
+        id_=uuid.UUID(int=70),
+    )
+    await entry.response.aread()
+
+    await storage.remove_entry(entry.id)
+
+    hex_id = entry.id.hex
+    assert 0 < await cast(Awaitable[int], client.ttl(f"hishel:entry:{hex_id}")) <= 60
 
 
 @pytest.mark.anyio

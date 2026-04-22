@@ -163,3 +163,31 @@ storage = AsyncRedisStorage(client=client, ttl=3600)
 :::
 
 Storage also respects the `hishel_ttl` request metadata, which can be used to set a custom TTL for a specific request, overriding the storage default.
+
+### Soft-Delete Buffer TTL
+
+When an entry is removed, hishel soft-deletes it (marks `deleted_at`) and sets a short TTL on the underlying Redis keys so that any concurrent request still reading that entry's stream can finish before the data disappears. After the buffer expires, Redis cleans up the keys automatically.
+
+The default buffer is 180 seconds (3 minutes). You can tune it:
+
+::: code-group
+
+```python [Sync]
+from redis import Redis
+from hishel import RedisStorage
+
+client = Redis(host="localhost", port=6379)
+storage = RedisStorage(client=client, soft_delete_ttl=60)
+```
+
+```python [Async]
+from redis.asyncio import Redis
+from hishel import AsyncRedisStorage
+
+client = Redis(host="localhost", port=6379)
+storage = AsyncRedisStorage(client=client, soft_delete_ttl=60)
+```
+
+:::
+
+Soft-deleted entries are invisible to `get_entries`, so new requests will never receive them even while the keys are still present in Redis.

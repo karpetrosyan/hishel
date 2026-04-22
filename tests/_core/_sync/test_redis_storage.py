@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import replace
 from datetime import datetime
-from typing import Iterator
+from typing import Iterator, Awaitable, cast
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
@@ -189,7 +189,7 @@ def test_update_entry_with_new_entry() -> None:
 
 
 def test_remove_entry() -> None:
-    """Test that remove_entry hard-deletes all Redis keys for the entry."""
+    """Test that remove_entry soft-deletes the entry and hides it from get_entries."""
     client = fakeredis.FakeRedis()
     storage = RedisStorage(client=client)
 
@@ -204,9 +204,32 @@ def test_remove_entry() -> None:
     storage.remove_entry(entry.id)
 
     hex_id = entry.id.hex
-    assert client.exists(f"hishel:entry:{hex_id}") == 0
-    assert client.exists(f"hishel:stream:{hex_id}") == 0
-    assert client.exists(f"hishel:stream_done:{hex_id}") == 0
+    # Keys still exist (soft delete, not hard delete)
+    assert client.exists(f"hishel:entry:{hex_id}") == 1
+    # A TTL has been set on the entry key
+    assert 0 < cast(int, client.ttl(f"hishel:entry:{hex_id}")) <= 180
+    # Soft-deleted entry is invisible to get_entries
+    assert storage.get_entries("test_key") == []
+
+
+
+def test_remove_entry_custom_soft_delete_ttl() -> None:
+    """Test that a custom soft_delete_ttl is applied to Redis keys after remove_entry."""
+    client = fakeredis.FakeRedis()
+    storage = RedisStorage(client=client, soft_delete_ttl=60)
+
+    entry = storage.create_entry(
+        request=Request(method="GET", url="https://example.com"),
+        response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
+        key="test_key",
+        id_=uuid.UUID(int=70),
+    )
+    entry.response.read()
+
+    storage.remove_entry(entry.id)
+
+    hex_id = entry.id.hex
+    assert 0 < cast(int, client.ttl(f"hishel:entry:{hex_id}")) <= 60
 
 
 

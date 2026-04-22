@@ -16,10 +16,17 @@ try:
     from redis import Redis
 
     class RedisStorage(SyncBaseStorage):
-        def __init__(self, client: Redis, ttl: int | float | None = None, key_prefix: str = "hishel") -> None:
+        def __init__(
+            self,
+            client: Redis,
+            ttl: int | float | None = None,
+            key_prefix: str = "hishel",
+            soft_delete_ttl: int = 180,
+        ) -> None:
             self._client = client
             self._default_ttl = ttl
             self._key_prefix = key_prefix
+            self._soft_delete_ttl = soft_delete_ttl
 
         def _effective_ttl(self, request: Request) -> int | float | None:
             return request.metadata.get("hishel_ttl", self._default_ttl)
@@ -163,8 +170,17 @@ try:
             stream_key = f"{self._key_prefix}:stream:{id.hex}"
             done_key = f"{self._key_prefix}:stream_done:{id.hex}"
             with contextlib.suppress(RedisError):
-                # don't let deletes prevent reads; failures are non-fatal
-                self._client.delete(entry_key, stream_key, done_key)
+                data = self._client.get(entry_key)
+                if data is None:
+                    return
+                entry = unpack(cast(bytes, data), kind="pair")
+                if entry is None:
+                    return
+                updated = self.mark_pair_as_deleted(entry)
+                packed = pack(updated, kind="pair")
+                self._client.set(entry_key, packed, ex=self._soft_delete_ttl)
+                self._client.expire(stream_key, self._soft_delete_ttl)
+                self._client.expire(done_key, self._soft_delete_ttl)
 
         def close(self) -> None:
             self._client.close()
