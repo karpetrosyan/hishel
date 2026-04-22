@@ -150,12 +150,27 @@ try:
             if existing.id != updated.id:
                 raise ValueError("Entry ID mismatch")
 
-            pttl = cast(int, self._client.pttl(entry_key))
             packed = pack(updated, kind="pair")
-            if pttl > 0:
-                self._client.set(entry_key, packed, px=pttl)
+
+            if updated.meta.created_at != existing.meta.created_at:
+                # TTL refresh: reset all keys to the full original TTL
+                ttl = self._effective_ttl(updated.request)
+                if ttl is not None:
+                    pttl_ms = int(ttl * 1000)
+                    stream_key = f"{self._key_prefix}:stream:{id.hex}"
+                    done_key = f"{self._key_prefix}:stream_done:{id.hex}"
+                    self._client.set(entry_key, packed, px=pttl_ms)
+                    cast(int, self._client.pexpire(stream_key, pttl_ms))
+                    cast(int, self._client.pexpire(done_key, pttl_ms))
+                else:
+                    self._client.set(entry_key, packed)
             else:
-                self._client.set(entry_key, packed)
+                # Regular update: preserve remaining TTL
+                pttl = cast(int, self._client.pttl(entry_key))
+                if pttl > 0:
+                    self._client.set(entry_key, packed, px=pttl)
+                else:
+                    self._client.set(entry_key, packed)
 
             if existing.cache_key != updated.cache_key:
                 old_key = existing.cache_key.decode() if isinstance(existing.cache_key, bytes) else existing.cache_key

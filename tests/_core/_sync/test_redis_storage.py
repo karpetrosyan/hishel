@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import uuid
 from dataclasses import replace
 from datetime import datetime
@@ -185,6 +186,31 @@ def test_update_entry_with_new_entry() -> None:
 
     assert result is not None
     assert result.cache_key == b"key2"
+
+
+
+def test_refresh_ttl_on_access() -> None:
+    """Test that update_entry resets the Redis key TTL when created_at is refreshed."""
+    client = fakeredis.FakeRedis()
+    storage = RedisStorage(client=client)
+
+    with travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC"))):
+        entry = storage.create_entry(
+            request=Request(method="GET", url="https://example.com", metadata={"hishel_ttl": 60}),
+            response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
+            key="test_key",
+            id_=uuid.UUID(int=15),
+        )
+        entry.response.read()
+
+    # Advance 30 s — half the TTL consumed, ~30 000 ms remaining
+    with travel(datetime(2024, 1, 1, 0, 0, 30, tzinfo=ZoneInfo("UTC"))):
+        storage.update_entry(
+            entry.id,
+            lambda e: replace(e, meta=replace(e.meta, created_at=time.time())),
+        )
+        pttl = cast(int, client.pttl(f"hishel:entry:{entry.id.hex}"))
+        assert pttl > 30_000  # reset to the full 60 s, not just the remaining ~30 s
 
 
 
