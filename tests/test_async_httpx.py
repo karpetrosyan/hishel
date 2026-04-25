@@ -18,7 +18,7 @@ from hishel.httpx import AsyncCacheClient, AsyncCacheTransport
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")), tick=False)
 async def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
     client = AsyncCacheClient(
-        storage=AsyncSqliteStorage(connection=await anysqlite.connect(":memory:")),
+        storage=AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False)),
     )
 
     with caplog.at_level("DEBUG", logger="hishel"):
@@ -49,7 +49,7 @@ async def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")), tick=False)
 async def test_simple_caching_ignoring_spec(caplog: pytest.LogCaptureFixture) -> None:
     client = AsyncCacheClient(
-        storage=AsyncSqliteStorage(connection=await anysqlite.connect(":memory:")),
+        storage=AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False)),
         policy=FilterPolicy(),
     )
 
@@ -98,7 +98,7 @@ async def test_encoded_content_caching() -> None:
             raise RuntimeError("No more mocked responses available")
         return mocked_responses.pop(0)
 
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     client = AsyncCacheClient(
         transport=AsyncCacheTransport(

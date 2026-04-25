@@ -27,10 +27,31 @@ class SyncBaseStorage(abc.ABC):
 
     @abc.abstractmethod
     def remove_entry(self, id: uuid.UUID) -> None:
+        """
+        Soft delete an entry by its ID.
+
+        Implementations should look up the entry, mark it as deleted by setting
+        its ``deleted_at`` timestamp, and persist the update to storage.
+
+        Args:
+            id: The ID of the entry to soft delete.
+        """
         raise NotImplementedError()
 
     def close(self) -> None:
         pass
+
+    def refresh_entry_ttl(self, id: uuid.UUID) -> None:
+        """
+        Reset the TTL of an entry to the storage's default TTL.
+
+        Concrete storage implementations own their TTL logic and should
+        override this method to reset the given entry's expiration accordingly.
+
+        Args:
+            id: The ID of the entry whose TTL should be refreshed.
+        """
+        raise NotImplementedError()
 
     def is_soft_deleted(self, pair: Entry) -> bool:
         """

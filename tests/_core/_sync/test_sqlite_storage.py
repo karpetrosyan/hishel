@@ -19,7 +19,7 @@ from tests.conftest import print_sqlite_state
 def test_custom_connection_does_not_create_directory() -> None:
     """Test that providing a custom connection doesn't call ensure_cache_dict."""
     with patch("hishel._core._storages._async_sqlite.ensure_cache_dict") as mock_ensure:
-        storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+        storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
         # Create an entry to trigger _ensure_connection
         entry = storage.create_entry(
             request=Request(method="GET", url="https://example.com"),
@@ -36,7 +36,7 @@ def test_custom_connection_does_not_create_directory() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 def test_add_entry() -> None:
     """Test adding a complete entry with request and response."""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
     entry = storage.create_entry(
         request=Request(
@@ -94,7 +94,7 @@ Rows: 2
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 def test_add_entry_with_stream() -> None:
     """Test adding an entry with a streaming response body."""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
     entry = storage.create_entry(
         request=Request(
@@ -158,7 +158,7 @@ Rows: 3
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 def test_get_entries() -> None:
     """Test retrieving entries by cache key."""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
     # Create two entries with the same cache key
     e1 = storage.create_entry(
@@ -187,7 +187,7 @@ def test_get_entries() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 def test_multiple_entries_same_key() -> None:
     """Test creating multiple entries with the same cache key."""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
     # Create multiple complete entries with the same key
     e1 = storage.create_entry(
@@ -216,7 +216,7 @@ def test_multiple_entries_same_key() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 def test_update_entry() -> None:
     """Test updating an existing entry."""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
     entry = storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -245,7 +245,7 @@ def test_update_entry() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 def test_update_entry_with_new_entry() -> None:
     """Test updating an entry by providing a new entry directly."""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
     entry = storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -266,7 +266,7 @@ def test_update_entry_with_new_entry() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 def test_remove_entry() -> None:
     """Test soft-deleting an entry."""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
     entry = storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -291,7 +291,7 @@ def test_remove_entry() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 def test_stream_persistence() -> None:
     """Test that streams are properly saved and retrieved."""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
     response_chunks = [b"resp1", b"resp2"]
 
@@ -323,7 +323,7 @@ def test_stream_persistence() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 def test_multiple_entries_different_keys() -> None:
     """Test that entries with different keys are properly isolated."""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
     # Create entries with different keys
     for i in range(3):
@@ -352,7 +352,7 @@ def test_multiple_entries_different_keys() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 def test_remove_nonexistent_entry() -> None:
     """Test that removing a non-existent entry doesn't raise an error."""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
     # Should not raise
     storage.remove_entry(uuid.UUID(int=999))
@@ -362,7 +362,7 @@ def test_remove_nonexistent_entry() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 def test_update_nonexistent_entry() -> None:
     """Test that updating a non-existent entry returns None."""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
     result = storage.update_entry(uuid.UUID(int=999), lambda p: replace(p, cache_key=b"new_key"))
     assert result is None
@@ -381,7 +381,7 @@ def test_close_connection(monkeypatch: Any) -> None:
 
     monkeypatch.setattr("sqlite3.connect", mock_connect)
 
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
     conn = storage._ensure_connection()
     assert conn is not None
@@ -399,7 +399,7 @@ def test_close_connection(monkeypatch: Any) -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 def test_incomplete_entries() -> None:
     """Test incomplete entries"""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
     entry = storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -449,7 +449,7 @@ Rows: 1
 
 def test_expired_entries() -> None:
     """Test expired entries"""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"), default_ttl=0)
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False), default_ttl=0)
 
     entry = storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -468,7 +468,7 @@ def test_expired_entries() -> None:
 
 def test_soft_deleted_entries() -> None:
     """Test soft-deleted entries"""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
     entry = storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -490,7 +490,7 @@ def test_soft_deleted_entries() -> None:
 
 def test_custom_ttl() -> None:
     """Test entries with hishel_ttl"""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:"), default_ttl=0)
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False), default_ttl=0)
 
     entry = storage.create_entry(
         request=Request(method="GET", url="https://example.com", metadata={"hishel_ttl": 999}),

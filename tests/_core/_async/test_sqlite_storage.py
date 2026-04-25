@@ -19,7 +19,7 @@ from tests.conftest import aprint_sqlite_state
 async def test_custom_connection_does_not_create_directory() -> None:
     """Test that providing a custom connection doesn't call ensure_cache_dict."""
     with patch("hishel._core._storages._async_sqlite.ensure_cache_dict") as mock_ensure:
-        storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+        storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
         # Create an entry to trigger _ensure_connection
         entry = await storage.create_entry(
             request=Request(method="GET", url="https://example.com"),
@@ -36,7 +36,7 @@ async def test_custom_connection_does_not_create_directory() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_add_entry() -> None:
     """Test adding a complete entry with request and response."""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     entry = await storage.create_entry(
         request=Request(
@@ -94,7 +94,7 @@ Rows: 2
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_add_entry_with_stream() -> None:
     """Test adding an entry with a streaming response body."""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     entry = await storage.create_entry(
         request=Request(
@@ -158,7 +158,7 @@ Rows: 3
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_get_entries() -> None:
     """Test retrieving entries by cache key."""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     # Create two entries with the same cache key
     e1 = await storage.create_entry(
@@ -187,7 +187,7 @@ async def test_get_entries() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_multiple_entries_same_key() -> None:
     """Test creating multiple entries with the same cache key."""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     # Create multiple complete entries with the same key
     e1 = await storage.create_entry(
@@ -216,7 +216,7 @@ async def test_multiple_entries_same_key() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_update_entry() -> None:
     """Test updating an existing entry."""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     entry = await storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -245,7 +245,7 @@ async def test_update_entry() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_update_entry_with_new_entry() -> None:
     """Test updating an entry by providing a new entry directly."""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     entry = await storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -266,7 +266,7 @@ async def test_update_entry_with_new_entry() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_remove_entry() -> None:
     """Test soft-deleting an entry."""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     entry = await storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -291,7 +291,7 @@ async def test_remove_entry() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_stream_persistence() -> None:
     """Test that streams are properly saved and retrieved."""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     response_chunks = [b"resp1", b"resp2"]
 
@@ -323,7 +323,7 @@ async def test_stream_persistence() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_multiple_entries_different_keys() -> None:
     """Test that entries with different keys are properly isolated."""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     # Create entries with different keys
     for i in range(3):
@@ -352,7 +352,7 @@ async def test_multiple_entries_different_keys() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_remove_nonexistent_entry() -> None:
     """Test that removing a non-existent entry doesn't raise an error."""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     # Should not raise
     await storage.remove_entry(uuid.UUID(int=999))
@@ -362,7 +362,7 @@ async def test_remove_nonexistent_entry() -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_update_nonexistent_entry() -> None:
     """Test that updating a non-existent entry returns None."""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     result = await storage.update_entry(uuid.UUID(int=999), lambda p: replace(p, cache_key=b"new_key"))
     assert result is None
@@ -381,7 +381,7 @@ async def test_close_connection(monkeypatch: Any) -> None:
 
     monkeypatch.setattr("anysqlite.connect", mock_connect)
 
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     conn = await storage._ensure_connection()
     assert conn is not None
@@ -399,7 +399,7 @@ async def test_close_connection(monkeypatch: Any) -> None:
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_incomplete_entries() -> None:
     """Test incomplete entries"""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     entry = await storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -449,7 +449,7 @@ Rows: 1
 @pytest.mark.anyio
 async def test_expired_entries() -> None:
     """Test expired entries"""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"), default_ttl=0)
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False), default_ttl=0)
 
     entry = await storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -468,7 +468,7 @@ async def test_expired_entries() -> None:
 @pytest.mark.anyio
 async def test_soft_deleted_entries() -> None:
     """Test soft-deleted entries"""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
 
     entry = await storage.create_entry(
         request=Request(method="GET", url="https://example.com"),
@@ -490,7 +490,7 @@ async def test_soft_deleted_entries() -> None:
 @pytest.mark.anyio
 async def test_custom_ttl() -> None:
     """Test entries with hishel_ttl"""
-    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"), default_ttl=0)
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False), default_ttl=0)
 
     entry = await storage.create_entry(
         request=Request(method="GET", url="https://example.com", metadata={"hishel_ttl": 999}),
