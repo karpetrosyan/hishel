@@ -1,3 +1,22 @@
+## What's Changed in 1.2.0
+### ♻️ Refactoring
+
+* improve sqlite concurrency by @karpetrosyan
+### ⚙️ Miscellaneous Tasks
+
+* simplify pyproject.toml, use src layout by @karpetrosyan
+### 📚 Documentation
+
+* mention support for Zapros HTTP Client by @karpetrosyan
+### 🚀 Features
+
+* feat: add support for redis by @karpetrosyan in [#455](https://github.com/karpetrosyan/hishel/pull/455)
+
+### Contributors
+* @karpetrosyan
+
+**Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.1.10...1.2.0
+
 ## What's Changed in 1.1.10
 ### ⚙️ Miscellaneous Tasks
 
