@@ -43,6 +43,7 @@ export default defineConfig({
       {
         text: "Integrations",
         items: [
+          { text: "Zapros", link: "/zapros" },
           { text: "HTTPX", link: "/httpx" },
           { text: "Requests", link: "/requests" },
           { text: "FastAPI", link: "/fastapi" },
