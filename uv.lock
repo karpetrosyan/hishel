@@ -853,7 +853,7 @@ wheels = [
 
 [[package]]
 name = "hishel"
-version = "1.1.10"
+version = "1.2.0"
 source = { virtual = "." }
 dependencies = [
     { name = "msgpack" },
