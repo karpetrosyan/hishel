@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hishel"
-version = "1.2.0"
+version = "1.2.1"
 description = " Elegant HTTP Caching for Python"
 requires-python = ">=3.10"
 authors = [{ name = "Kar Petrosyan", email = "kar.petrosyanpy@gmail.com" }]

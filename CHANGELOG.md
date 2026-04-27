@@ -1,3 +1,13 @@
+## What's Changed in 1.2.1
+### ⚙️ Miscellaneous Tasks
+
+* explicitly set build backend by @karpetrosyan
+
+### Contributors
+* @karpetrosyan
+
+**Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.2.0...1.2.1
+
 ## What's Changed in 1.2.0
 ### ♻️ Refactoring
 
