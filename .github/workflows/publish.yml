@@ -135,7 +135,7 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
 
       - name: Create release with assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ./dist/*
           body_path: release-notes.md
