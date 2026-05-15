@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: "Hishel"
-  text: HTTP caching for Python — RFC-compliant, transport-agnostic, streaming-friendly.
-  tagline: 
+  text: An elegant HTTP caching library for Python
+  tagline: Clean HTTP semantics, bring your own transport
   actions:
     - theme: brand
       text: Get Started
