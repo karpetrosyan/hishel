@@ -350,7 +350,11 @@ def get_freshness_lifetime(response: Response, is_cache_shared: bool) -> Optiona
         expires_timestamp = parse_date(response.headers["expires"])
 
         if expires_timestamp is None:
-            raise RuntimeError("Cannot parse Expires header")  # pragma: nocover
+            # From the RFC
+            # A cache recipient MUST interpret invalid date formats, especially
+            # the value "0", as representing a time in the past (i.e.,
+            # "already expired").
+            return -1
 
         # Get the Date header or use current time as fallback
         date_timestamp = parse_date(response.headers["date"]) if "date" in response.headers else time.time()
