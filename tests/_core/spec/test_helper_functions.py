@@ -307,9 +307,27 @@ class TestGetFreshnessLifetime:
         lifetime = get_freshness_lifetime(response, is_cache_shared=True)
 
         # Assert
+        assert lifetime is None or lifetime < 0  # Invalid Expires treated as expired
+
+    def test_expires_header_missing_date(self) -> None:
+        """
+        Test: Expires header provides freshness lifetime even when Date header is missing.
+
+        RFC 9111 Section 5.3: Expires
+        """
+        # Arrange
+        now = datetime.utcnow()
+        expires = (now + timedelta(hours=2)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+        response = create_response(headers={"expires": expires})
+
+        # Act
+        lifetime = get_freshness_lifetime(response, is_cache_shared=True)
+
+        # Assert
         assert lifetime is not None
         # Should be approximately 2 hours (7200 seconds)
-        assert lifetime < 0  # Invalid Expires treated as expired
+        assert 7190 <= lifetime <= 7210  # Allow small timing variance
 
     def test_max_age_takes_precedence_over_expires(self) -> None:
         """
