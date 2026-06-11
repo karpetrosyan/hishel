@@ -313,6 +313,53 @@ class TestNotModifiedResponses:
         assert len(next_state.entry_ids) == 2
         assert isinstance(next_state.next_state, CacheMiss)
 
+    def test_304_with_strong_etag_matches_stored_weak_etag(self, default_options: CacheOptions) -> None:
+        """
+        Test: 304 response with strong ETag matches cached response with weak ETag
+        sharing the same opaque-tag, and identifies it for revalidation.
+
+        RFC 9110 Section 8.8.3.2 (weak comparison):
+        Two entity-tags are equivalent if their opaque-tags match regardless of
+        the W/ prefix on either side. The implementation uses weak comparison
+        so W/"abc123" (stored) must match "abc123" (304 response).
+        """
+        original_request = create_request()
+        conditional_request = create_request(headers={"if-none-match": 'W/"abc123"'})
+
+        # Cached response has a WEAK ETag
+        cached_response = create_response(
+            headers={
+                "etag": 'W/"abc123"',
+                "cache-control": "max-age=3600",
+                "date": "Mon, 01 Jan 2024 00:00:00 GMT",
+            }
+        )
+        cached_pair = create_pair(request=original_request, response=cached_response)
+
+        need_revalidation = NeedRevalidation(
+            request=conditional_request,
+            original_request=original_request,
+            revalidating_entries=[cached_pair],
+            options=default_options,
+        )
+
+        # 304 response has the SAME tag but STRONG (no W/ prefix)
+        revalidation_response = create_response(
+            status_code=304,
+            headers={
+                "etag": '"abc123"',
+                "cache-control": "max-age=7200",
+                "date": "Mon, 01 Jan 2024 12:00:00 GMT",
+            },
+        )
+
+        next_state = need_revalidation.next(revalidation_response)
+
+        assert isinstance(next_state, NeedToBeUpdated)
+        assert len(next_state.updating_entries) == 1
+        updated_response = next_state.updating_entries[0].response
+        assert updated_response.headers["cache-control"] == "max-age=7200"
+
     def test_304_with_non_matching_etag_invalidates_response(self, default_options: CacheOptions) -> None:
         """
         Test: 304 with non-matching ETag invalidates cached response.

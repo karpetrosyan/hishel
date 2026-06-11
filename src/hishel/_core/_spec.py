@@ -1839,9 +1839,26 @@ class NeedRevalidation(State):
                 after_revalidation=True,
             ).next(revalidation_response)
 
+    def _opaque_tag(self, etag: str) -> str:
+        """
+        Return the opaque-tag portion of an entity-tag, dropping the weakness flag.
+
+        RFC 9110 Section 8.8.3:
+            entity-tag = [ weak ] opaque-tag
+            weak       = %s"W/"
+
+        Weak comparison (RFC 9110 Section 8.8.3.2): two entity-tags are equivalent
+        if their opaque-tags match character-by-character, regardless of either or
+        both being tagged as "weak". This is the comparison If-None-Match uses.
+        """
+        etag = etag.strip()
+        if etag.startswith(("W/", "w/")):
+            return etag[2:]
+        return etag
+
     def freshening_stored_responses(
         self, revalidation_response: Response
-    ) -> "NeedToBeUpdated" | "InvalidateEntries" | "CacheMiss":
+    ) -> "NeedToBeUpdated | InvalidateEntries | CacheMiss":
         """
         Freshens cached responses after receiving a 304 Not Modified response.
 
@@ -1852,118 +1869,48 @@ class NeedRevalidation(State):
         3. Invalidates any cached responses that don't match
 
         Matching is done using validators in this priority order:
-        1. Strong ETag (if present and not weak)
+        1. ETag (weak comparison, see note below)
         2. Last-Modified (if present)
         3. Single response assumption (if only one cached response exists)
 
-        Parameters:
-        ----------
-        revalidation_response : Response
-            The 304 Not Modified response from the server, containing updated
-            metadata (Date, Cache-Control, ETag, etc.)
-
-        Returns:
-        -------
-        Union[NeedToBeUpdated, InvalidateEntries, CacheMiss]
-            - NeedToBeUpdated: When matching responses are found and updated
-            - InvalidateEntries: Wraps NeedToBeUpdated if non-matching responses exist
-            - CacheMiss: When no matching responses are found
-
         RFC 9111 Compliance:
         -------------------
-        From RFC 9111 Section 4.3.4:
-        "When a cache receives a 304 (Not Modified) response, it needs to identify
-        stored responses that are suitable for updating with the new information
-        provided, and then do so.
-
-        The initial set of stored responses to update are those that could have
-        been chosen for that request...
-
-        Then, that initial set of stored responses is further filtered by the
-        first match of:
-         - If the 304 response contains a strong entity tag: the stored responses
-           with the same strong entity tag.
-         - If the 304 response contains a Last-Modified value: the stored responses
-           with the same Last-Modified value.
-         - If there is only a single stored response: that response."
-
-        Implementation Notes:
-        --------------------
-        - Weak ETags (starting with "W/") are not used for matching
-        - Only strong ETags provide reliable validation
-        - If no validators match, all responses are invalidated
-        - Multiple responses can be freshened if they share the same validator
-
-        Examples:
-        --------
-        >>> # Matching by strong ETag
-        >>> cached_response = Response(headers=Headers({"etag": '"abc123"'}))
-        >>> revalidation_response = Response(
-        ...     status_code=304,
-        ...     headers=Headers({"etag": '"abc123"', "cache-control": "max-age=3600"})
-        ... )
-        >>> # Cached response will be freshened with new Cache-Control
-
-        >>> # Non-matching ETag
-        >>> cached_response = Response(headers=Headers({"etag": '"old123"'}))
-        >>> revalidation_response = Response(
-        ...     status_code=304,
-        ...     headers=Headers({"etag": '"new456"'})
-        ... )
-        >>> # Cached response will be invalidated (doesn't match)
+        RFC 9111 Section 4.3.4 filters the stored responses by the first match of:
+        - 304 contains a strong entity tag -> stored responses with the same
+            strong entity tag
+        - 304 contains a Last-Modified value -> stored responses with the same
+            Last-Modified value
+        - only a single stored response -> that response
         """
 
         # ============================================================================
         # STEP 1: Identify Matching Responses Using Validators
         # ============================================================================
-        # RFC 9111 Section 4.3.4: Freshening Stored Responses
-        # https://www.rfc-editor.org/rfc/rfc9111.html#section-4.3.4
-        #
-        # The 304 response tells us "the resource is unchanged", but we need to
-        # figure out WHICH of our cached responses match this confirmation.
-        #
-        # We use validators in priority order:
-        # Priority 1: Strong ETag (most reliable)
-        # Priority 2: Last-Modified timestamp
-        # Priority 3: Single response assumption
-
         identified_for_revalidation: list[Entry]
+        need_to_be_invalidated: list[Entry]
 
-        # MATCHING STRATEGY 1: Strong ETag
-        # RFC 9110 Section 8.8.3: ETag
-        # https://www.rfc-editor.org/rfc/rfc9110#section-8.8.3
+        revalidation_etag = revalidation_response.headers.get("etag")
+
+        # MATCHING STRATEGY 1: ETag (weak comparison)
         #
-        # "If the 304 response contains a strong entity tag: the stored responses
-        # with the same strong entity tag."
-        #
-        # ETags come in two flavors:
-        # - Strong: "abc123" (exact byte-for-byte match)
-        # - Weak: W/"abc123" (semantically equivalent, but not byte-identical)
-        #
-        # Only strong ETags are reliable for caching decisions. Weak ETags
-        # indicate semantic equivalence but the content might differ slightly
-        # (e.g., gzip compression, whitespace changes).
-        if "etag" in revalidation_response.headers and (not revalidation_response.headers["etag"].startswith("W/")):
-            # Found a strong ETag in the 304 response
-            # Partition cached responses: matching vs non-matching ETags
+        # Compare opaque-tags, ignoring the W/ prefix on either side. This makes
+        # W/"abc" (stored) match "abc" (304) and vice versa -- consistent with
+        # the If-None-Match semantics that produced the 304 in the first place.
+        if revalidation_etag is not None:
+            revalidation_tag = self._opaque_tag(revalidation_etag)
             identified_for_revalidation, need_to_be_invalidated = partition(
                 self.revalidating_entries,
-                lambda pair: pair.response.headers.get("etag") == revalidation_response.headers.get("etag"),  # type: ignore[no-untyped-call]
+                lambda pair: (
+                    (stored_etag := pair.response.headers.get("etag")) is not None
+                    and self._opaque_tag(stored_etag) == revalidation_tag
+                ),  # type: ignore[no-untyped-call]
             )
 
         # MATCHING STRATEGY 2: Last-Modified
-        # RFC 9110 Section 8.8.2: Last-Modified
-        # https://www.rfc-editor.org/rfc/rfc9110#section-8.8.2
         #
-        # "If the 304 response contains a Last-Modified value: the stored responses
-        # with the same Last-Modified value."
-        #
-        # Last-Modified is a timestamp indicating when the resource was last changed.
-        # It's less precise than ETags (1-second granularity) but widely supported.
-        # If the 304 has a Last-Modified, we can match it against cached responses.
+        # RFC 9111 Section 4.3.4: "If the 304 response contains a Last-Modified
+        # value: the stored responses with the same Last-Modified value."
         elif revalidation_response.headers.get("last-modified"):
-            # Found Last-Modified in the 304 response
-            # Partition cached responses: matching vs non-matching timestamps
             identified_for_revalidation, need_to_be_invalidated = partition(
                 self.revalidating_entries,
                 lambda pair: (
@@ -1972,24 +1919,18 @@ class NeedRevalidation(State):
             )
 
         # MATCHING STRATEGY 3: Single Response Assumption
-        # RFC 9111 Section 4.3.4:
         #
-        # "If there is only a single stored response: that response."
-        #
-        # If we only have one cached response and the server says "not modified",
-        # we can safely assume that single response is the one being confirmed.
-        # This handles cases where the server doesn't return validators in the 304.
+        # RFC 9111 Section 4.3.4: "If there is only a single stored response:
+        # that response."
         else:
             if len(self.revalidating_entries) == 1:
-                # Only one cached response - it must be the matching one
                 identified_for_revalidation, need_to_be_invalidated = (
                     [self.revalidating_entries[0]],
                     [],
                 )
             else:
-                # Multiple cached responses but no validators to match them
-                # We cannot determine which (if any) are valid
-                # Conservative approach: invalidate all of them
+                # Multiple cached responses but no validators to match them.
+                # Conservative approach: invalidate all of them.
                 identified_for_revalidation, need_to_be_invalidated = (
                     [],
                     self.revalidating_entries,
@@ -1998,25 +1939,13 @@ class NeedRevalidation(State):
         # ============================================================================
         # STEP 2: Update Matching Responses or Create Cache Miss
         # ============================================================================
-        # If we found matching responses, freshen them with new metadata.
-        # If we found no matches, treat it as a cache miss.
-
         next_state: "NeedToBeUpdated" | "CacheMiss"
 
         if identified_for_revalidation:
-            # We found responses that match the 304 confirmation
-            # Update their headers with fresh metadata from the 304 response
-            #
-            # RFC 9111 Section 3.2: Updating Stored Header Fields
-            # https://www.rfc-editor.org/rfc/rfc9111.html#section-3.2
-            #
-            # "When doing so, the cache MUST add each header field in the provided
-            # response to the stored response, replacing field values that are
-            # already present"
-            #
-            # The refresh_response_headers function handles this header merging
-            # while excluding certain headers that shouldn't be updated
-            # (Content-Encoding, Content-Type, Content-Range).
+            # RFC 9111 Section 3.2: add each header field in the 304 to the
+            # stored response, replacing values already present (handled by
+            # refresh_response_headers, which also excludes Content-Encoding,
+            # Content-Type, Content-Range).
             next_state = NeedToBeUpdated(
                 updating_entries=[
                     replace(
@@ -2029,10 +1958,8 @@ class NeedRevalidation(State):
                 options=self.options,
             )
         else:
-            # No matching responses found
-            # This is unusual - the server said "not modified" but we can't figure
-            # out which cached response it's referring to.
-            # Treat this as a cache miss and let the normal flow handle it.
+            # The server said "not modified" but no stored response could be
+            # identified. Treat as a cache miss and let the normal flow handle it.
             next_state = CacheMiss(
                 options=self.options,
                 request=self.original_request,
@@ -2042,23 +1969,13 @@ class NeedRevalidation(State):
         # ============================================================================
         # STEP 3: Invalidate Non-Matching Responses (if any)
         # ============================================================================
-        # If we had multiple cached responses and only some matched, we need to
-        # invalidate the non-matching ones. They're outdated or incorrect.
-        #
-        # For example:
-        # - Cached: Two responses with different ETags
-        # - 304 response: Matches only one ETag
-        # - Action: Update the matching one, invalidate the other
-
         if need_to_be_invalidated:
-            # Wrap the next state in an invalidation operation
             return InvalidateEntries(
                 options=self.options,
                 entry_ids=[entry.id for entry in need_to_be_invalidated],
                 next_state=next_state,
             )
 
-        # No invalidations needed, return the next state directly
         return next_state
 
 
