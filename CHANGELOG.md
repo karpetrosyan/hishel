@@ -1,3 +1,17 @@
+## What's Changed in 1.3.0
+### ⚙️ Miscellaneous Tasks
+
+* remove egg folder from source by @karpetrosyan
+* add readme in pyproject.toml by @karpetrosyan
+### 🐛 Bug Fixes
+
+* use weak ETag comparison when freshening stored responses by @karpetrosyan
+
+### Contributors
+* @karpetrosyan
+
+**Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.2.1...1.3.0
+
 ## What's Changed in 1.2.1
 ### ⚙️ Miscellaneous Tasks
 
