@@ -1889,20 +1889,30 @@ class NeedRevalidation(State):
         identified_for_revalidation: list[Entry]
         need_to_be_invalidated: list[Entry]
 
-        revalidation_etag = revalidation_response.headers.get("etag")
-
-        # MATCHING STRATEGY 1: ETag (weak comparison)
+        # MATCHING STRATEGY 1: Strong ETag
+        # RFC 9110 Section 8.8.3: ETag
+        # https://www.rfc-editor.org/rfc/rfc9110#section-8.8.3
         #
-        # Compare opaque-tags, ignoring the W/ prefix on either side. This makes
-        # W/"abc" (stored) match "abc" (304) and vice versa -- consistent with
-        # the If-None-Match semantics that produced the 304 in the first place.
-        if revalidation_etag is not None:
-            revalidation_tag = self._opaque_tag(revalidation_etag)
+        # "If the 304 response contains a strong entity tag: the stored responses
+        # with the same strong entity tag."
+        #
+        # ETags come in two flavors:
+        # - Strong: "abc123" (exact byte-for-byte match)
+        # - Weak: W/"abc123" (semantically equivalent, but not byte-identical)
+        #
+        # Only strong ETags are reliable for caching decisions. Weak ETags
+        # indicate semantic equivalence but the content might differ slightly
+        # (e.g., gzip compression, whitespace changes).
+        if "etag" in revalidation_response.headers and (not revalidation_response.headers["etag"].startswith("W/")):
+            # Found a strong ETag in the 304 response
+            # Partition cached responses: matching vs non-matching ETags
+            # Use opaque-tag comparison so a stored weak ETag (W/"abc") matches
+            # a strong 304 ETag ("abc") with the same opaque-tag value.
             identified_for_revalidation, need_to_be_invalidated = partition(
                 self.revalidating_entries,
                 lambda pair: (
                     (stored_etag := pair.response.headers.get("etag")) is not None
-                    and self._opaque_tag(stored_etag) == revalidation_tag
+                    and self._opaque_tag(stored_etag) == revalidation_response.headers["etag"]
                 ),  # type: ignore[no-untyped-call]
             )
 
