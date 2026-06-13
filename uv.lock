@@ -853,8 +853,8 @@ wheels = [
 
 [[package]]
 name = "hishel"
-version = "1.2.0"
-source = { virtual = "." }
+version = "1.3.0"
+source = { editable = "." }
 dependencies = [
     { name = "msgpack" },
     { name = "typing-extensions" },
@@ -913,10 +913,9 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anyio", marker = "extra == 'async'", specifier = ">=4.9.0" },
-    { name = "anyio", marker = "extra == 'httpx'", specifier = ">=4.9.0" },
     { name = "anysqlite", marker = "extra == 'async'", specifier = ">=0.0.5" },
-    { name = "anysqlite", marker = "extra == 'httpx'", specifier = ">=0.0.5" },
     { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.119.1" },
+    { name = "hishel", extras = ["async"], marker = "extra == 'httpx'" },
     { name = "httpx", marker = "extra == 'httpx'", specifier = ">=0.28.1" },
     { name = "msgpack", specifier = ">=1.1.2" },
     { name = "redis", marker = "extra == 'redis'", specifier = ">=7.0.0" },
