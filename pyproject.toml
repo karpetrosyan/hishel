@@ -43,9 +43,7 @@ requests = [
 ]
 httpx = [
     "httpx>=0.28.1",
-    # install async extra
-    "anyio>=4.9.0",
-    "anysqlite>=0.0.5",
+    "hishel[async]",
 ]
 fastapi = [
     "fastapi>=0.119.1",
