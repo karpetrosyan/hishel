@@ -356,19 +356,21 @@ def get_freshness_lifetime(response: Response, is_cache_shared: bool) -> Optiona
             # "already expired").
             return -1
 
-        # Get the Date header or use current time as fallback
-        date_timestamp = parse_date(response.headers["date"]) if "date" in response.headers else time.time()
+        date_timestamp = parse_date(response.headers.get("date", ""))
 
-        if date_timestamp is None:  # pragma: nocover
-            # If the Date header is invalid, we use the current time as the date
+        if date_timestamp is None:
+            # Current time is a fallback for a missing or invalid Date header
+            # If the Date header is missing/invalid, use the current time
             # RFC 9110 Section 6.6.1: Date
             # "A recipient with a clock that receives a response with an invalid
             # Date header field value MAY replace that value with the time that
             # response was received."
-            date_timestamp = time.time()
+            # We truncate to an integer timestamp because IMF-fixdate does not
+            # support sub-second precision.
+            date_timestamp = int(time.time())
 
         # Calculate freshness lifetime as difference between Expires and Date
-        return int(expires_timestamp - (time.time() if date_timestamp is None else date_timestamp))
+        return int(expires_timestamp - date_timestamp)
 
     # PRIORITY 4: Heuristic Freshness
     # RFC 9111 Section 4.2.2: Calculating Heuristic Freshness
@@ -559,37 +561,30 @@ def get_heuristic_freshness(response: Response) -> int | None:
     None
     """
     # Get the Last-Modified header if present
-    last_modified = response.headers.get("last-modified")
+    last_modified = response.headers.get("last-modified", "")
+    last_modified_timestamp = parse_date(last_modified)
+    if last_modified_timestamp is None:
+        # No Last-Modified header, cannot calculate heuristic freshness
+        return None
 
-    if last_modified:
-        # Parse the Last-Modified timestamp
-        last_modified_timestamp = parse_date(last_modified)
+    # Calculate how long ago the resource was last modified
+    now = time.time()
+    age_since_modification = now - last_modified_timestamp
 
-        if last_modified_timestamp is None:  # pragma: nocover
-            # Cannot parse the date, cannot calculate heuristic freshness
-            return None
+    # RFC 9111 recommends 10% of the age since modification
+    # "A typical setting of this fraction might be 10%."
+    heuristic_freshness = int(age_since_modification * 0.1)
 
-        # Calculate how long ago the resource was last modified
-        now = time.time()
-        age_since_modification = now - last_modified_timestamp
+    # Cap at one week maximum
+    # RFC 9111 Section 4.2.2: "Historically, HTTP required the Expires
+    # field value to be no more than a year in the future. While longer
+    # freshness lifetimes are no longer prohibited, extremely large values
+    # have been demonstrated to cause problems."
+    #
+    # We use a conservative 1-week maximum for heuristic freshness
+    ONE_WEEK = 604_800  # 7 days * 24 hours * 60 minutes * 60 seconds
 
-        # RFC 9111 recommends 10% of the age since modification
-        # "A typical setting of this fraction might be 10%."
-        heuristic_freshness = int(age_since_modification * 0.1)
-
-        # Cap at one week maximum
-        # RFC 9111 Section 4.2.2: "Historically, HTTP required the Expires
-        # field value to be no more than a year in the future. While longer
-        # freshness lifetimes are no longer prohibited, extremely large values
-        # have been demonstrated to cause problems."
-        #
-        # We use a conservative 1-week maximum for heuristic freshness
-        ONE_WEEK = 604_800  # 7 days * 24 hours * 60 minutes * 60 seconds
-
-        return min(ONE_WEEK, heuristic_freshness)
-
-    # No Last-Modified header, cannot calculate heuristic freshness
-    return None
+    return min(ONE_WEEK, heuristic_freshness)
 
 
 def get_age(response: Response) -> int:
@@ -674,14 +669,8 @@ def get_age(response: Response) -> int:
     #
     # If no Date header exists, we treat the response as having age 0
     # This is conservative - it assumes the response is brand new
-    if "date" not in response.headers:
-        return 0
-
-    # Parse the Date header
-    date = parse_date(response.headers["date"])
-
-    if date is None:  # pragma: nocover
-        # Invalid Date header, treat as age 0
+    date = parse_date(response.headers.get("date", ""))
+    if date is None:
         return 0
 
     # Calculate apparent age: how long ago was the response generated?
@@ -1170,7 +1159,7 @@ class IdleClient(State):
 
         # §4: unsafe methods must be written through to the origin.
         if request.method.upper() not in SAFE_METHODS:
-            return CacheMiss(request=request, options=self.options)  # pragma: nocover
+            return CacheMiss(request=request, options=self.options)
 
         # Parsed once — applies uniformly to every candidate.
         request_cache_control = parse_cache_control(request.headers.get("cache-control"))
@@ -2037,7 +2026,7 @@ class StoreAndUse(State):
 #     pair_id: uuid.UUID
 
 #     def next(self) -> None:
-#         return None  # pragma: nocover
+#         return None
 
 
 class CouldNotBeStored(State):
