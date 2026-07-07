@@ -13,10 +13,11 @@ Test Categories:
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 import pytest
+from time_machine import travel
 
 from hishel import Entry, EntryMeta, Request, Response
 from hishel._core._headers import Headers
@@ -505,6 +506,7 @@ class TestTransitionToFromCache:
         assert selected_age >= 1000
         assert selected_age < 2000  # Should be closer to 1000 than 2000
 
+    @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc), tick=False)
     def test_age_header_updated_correctly(self, idle_client: IdleClient) -> None:
         """
         Test: Age header is calculated and updated correctly.
@@ -532,10 +534,9 @@ class TestTransitionToFromCache:
         # Assert
         assert isinstance(next_state, FromCache)
 
-        # Age should be at least the initial age
+        # Age should equal the initial age exactly since the clock is frozen
         age_value = int(next_state.entry.response.headers["age"])
-        assert age_value >= initial_age
-        assert age_value < initial_age + 5  # Shouldn't increase by more than a few seconds
+        assert age_value == initial_age
 
     def test_matching_vary_headers_allows_cache_hit(self, idle_client: IdleClient) -> None:
         """
@@ -790,6 +791,7 @@ class TestEdgeCasesAndCompliance:
     Tests for edge cases and specific RFC 9111 compliance scenarios.
     """
 
+    @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc), tick=False)
     def test_response_without_explicit_freshness_info(self, idle_client: IdleClient) -> None:
         """
         Test: Response without explicit freshness information.
@@ -913,6 +915,7 @@ class TestEdgeCasesAndCompliance:
         # Assert
         assert isinstance(next_state, FromCache)
 
+    @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc), tick=False)
     def test_age_close_to_zero_for_newly_generated_response(self, idle_client: IdleClient) -> None:
         """
         Test: Age should be close to zero for a freshly cached response.
@@ -933,7 +936,7 @@ class TestEdgeCasesAndCompliance:
         # Assert
         assert isinstance(next_state, FromCache)
         age_value = int(next_state.entry.response.headers["age"])
-        assert age_value < 10  # Should be very close to 0
+        assert age_value == 0  # Should be exactly 0 since the clock is frozen
 
     def test_sorting_handles_responses_without_date_header(self, idle_client: IdleClient) -> None:
         """
