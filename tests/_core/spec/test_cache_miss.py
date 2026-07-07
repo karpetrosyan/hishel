@@ -12,10 +12,11 @@ Test Categories:
 4. Edge cases and RFC 9111 compliance
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
 import pytest
+from time_machine import travel
 
 from hishel import Request, Response
 from hishel._core._headers import Headers
@@ -108,6 +109,7 @@ class TestTransitionToStoreAndUse:
         assert response.metadata.get("hishel_stored") is True
         assert response.metadata.get("hishel_from_cache") is False
 
+    @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc), tick=False)
     def test_response_with_expires_header_is_stored(self, default_options: CacheOptions) -> None:
         """
         Test: Response with Expires header is stored.
@@ -257,6 +259,7 @@ class TestTransitionToStoreAndUse:
         assert isinstance(next_state, StoreAndUse)
         assert response.metadata.get("hishel_revalidated") is True
 
+    @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc), tick=False)
     def test_response_with_multiple_caching_directives(self, default_options: CacheOptions) -> None:
         """
         Test: Response with multiple caching directives is stored.
