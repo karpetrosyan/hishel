@@ -34,7 +34,7 @@
 ## ✨ Features
 
 - 🎯 **RFC 9111 Compliant** - Fully compliant with the latest HTTP caching specification
-- 🔌 **Easy Integration** - Drop-in support for HTTPX, Requests, ASGI, FastAPI, and BlackSheep
+- 🔌 **Easy Integration** - Drop-in support for HTTPX, HTTPX2, Requests, ASGI, FastAPI, and BlackSheep
 - 💾 **Flexible Storage** - SQLite backend with more coming soon
 - ⚡ **High Performance** - Efficient caching with minimal overhead
 - 🔄 **Async & Sync** - Full support for both synchronous and asynchronous workflows

@@ -47,6 +47,12 @@ httpx = [
     "anyio>=4.9.0",
     "anysqlite>=0.0.5",
 ]
+httpx2 = [
+    "httpx2>=2.9.1",
+    # install async extra
+    "anyio>=4.9.0",
+    "anysqlite>=0.0.5",
+]
 fastapi = [
     "fastapi>=0.119.1",
 ]

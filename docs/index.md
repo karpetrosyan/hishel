@@ -22,6 +22,6 @@ features:
     details: Avoids buffering entire responses in memory, which most caches do.
   - icon: 🛠️
     title: Built-in Integrations
-    details: Ready-to-use integrations for HTTPX, Requests, FastAPI, and more.
+    details: Ready-to-use integrations for HTTPX, HTTPX2, Requests, FastAPI, and more.
 ---
 
