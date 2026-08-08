@@ -25,6 +25,7 @@ import pytest
 from hishel import Entry, EntryMeta, Request, Response
 from hishel._core._headers import Headers
 from hishel._core._spec import (
+    CacheOptions,
     allowed_stale,
     exclude_unstorable_headers,
     get_age,
@@ -402,7 +403,7 @@ class TestAllowedStale:
         response = create_response(headers={"cache-control": "max-age=3600"})
 
         # Act
-        result = allowed_stale(response, allow_stale_option=False)
+        result = allowed_stale(response, CacheOptions(allow_stale=False))
 
         # Assert
         assert result is False
@@ -417,10 +418,23 @@ class TestAllowedStale:
         response = create_response(headers={"cache-control": "max-age=3600, no-cache"})
 
         # Act
-        result = allowed_stale(response, allow_stale_option=True)
+        result = allowed_stale(response, CacheOptions(allow_stale=True))
 
         # Assert
         assert result is False
+
+    def test_no_cache_ignored_if_configured(self) -> None:
+        """
+        Test: no-cache directive is ignored if configured to be ignored.
+        """
+        # Arrange
+        response = create_response(headers={"cache-control": "max-age=3600, no-cache"})
+
+        # Act
+        result = allowed_stale(response, CacheOptions(allow_stale=True, ignore_no_cache=True))
+
+        # Assert
+        assert result is True
 
     def test_must_revalidate_prevents_serving_stale(self) -> None:
         """
@@ -435,10 +449,28 @@ class TestAllowedStale:
         response = create_response(headers={"cache-control": "max-age=3600, must-revalidate"})
 
         # Act
-        result = allowed_stale(response, allow_stale_option=True)
+        result = allowed_stale(response, CacheOptions(allow_stale=True))
 
         # Assert
         assert result is False
+
+    def test_must_revalidate_ignored_if_configured(self) -> None:
+        """
+        Test: must-revalidate directive is ignored if configured to be ignored.
+
+        RFC 9111 Section 5.2.2.2: must-revalidate Response Directive
+        "once the response has become stale, a cache MUST NOT reuse that
+        response to satisfy another request until it has been successfully
+        validated by the origin"
+        """
+        # Arrange
+        response = create_response(headers={"cache-control": "max-age=3600, must-revalidate"})
+
+        # Act
+        result = allowed_stale(response, CacheOptions(allow_stale=True, ignore_must_revalidate=True))
+
+        # Assert
+        assert result is True
 
     def test_allowed_stale_with_permissive_configuration(self) -> None:
         """
@@ -448,7 +480,7 @@ class TestAllowedStale:
         response = create_response(headers={"cache-control": "max-age=3600"})
 
         # Act
-        result = allowed_stale(response, allow_stale_option=True)
+        result = allowed_stale(response, CacheOptions(allow_stale=True))
 
         # Assert
         assert result is True

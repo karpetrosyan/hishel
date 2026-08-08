@@ -118,6 +118,18 @@ class CacheOptions:
         >>> # Stale-while-revalidate pattern (RFC 5861)
         >>> # Even with allow_stale=True, directives are respected
         >>> options = CacheOptions(allow_stale=True)
+
+    ignore_no_cache : bool
+        Controls whether the cache ignores no-cache directives from the server,
+        purposefully violating RFC 9111.
+
+    ignore_no_store : bool
+        Controls whether the cache ignores no-store directives from the server,
+        purposefully violating RFC 9111.
+
+    ignore_must_revalidate : bool
+        Controls whether the cache ignores must-revalidate directives from the server,
+        purposefully violating RFC 9111.
     """
 
     shared: bool = True
@@ -131,6 +143,15 @@ class CacheOptions:
 
     allow_stale: bool = False
     """When True, stale responses can be served without revalidation."""
+
+    ignore_no_cache: bool = False
+    """When True, ignore no-cache directives from the server, purposefully violating RFC 9111."""
+
+    ignore_no_store: bool = False
+    """When True, ignore no-store directives from the server, purposefully violating RFC 9111."""
+
+    ignore_must_revalidate: bool = False
+    """When True, ignore must-revalidate directives from the server, purposefully violating RFC 9111."""
 
 
 @dataclass
@@ -390,7 +411,7 @@ def get_freshness_lifetime(response: Response, is_cache_shared: bool) -> Optiona
     return get_heuristic_freshness(response)
 
 
-def allowed_stale(response: Response, allow_stale_option: bool) -> bool:
+def allowed_stale(response: Response, options: CacheOptions) -> bool:
     """
     Determines if a stale response is allowed to be served without revalidation.
 
@@ -404,8 +425,8 @@ def allowed_stale(response: Response, allow_stale_option: bool) -> bool:
     ----------
     response : Response
         The stale cached response being considered for use
-    allow_stale_option : bool
-        Configuration flag indicating if serving stale is allowed
+    options : CacheOptions
+        cache configuration options
 
     Returns:
     -------
@@ -438,23 +459,23 @@ def allowed_stale(response: Response, allow_stale_option: bool) -> bool:
     --------
     >>> # Stale allowed with permissive configuration
     >>> response = Response(headers=Headers({"cache-control": "max-age=3600"}))
-    >>> allowed_stale(response, allow_stale_option=True)
+    >>> allowed_stale(response, CacheOptions(allow_stale=True))
     True
 
     >>> # Stale not allowed when configuration disables it
-    >>> allowed_stale(response, allow_stale_option=False)
+    >>> allowed_stale(response, CacheOptions(allow_stale=False))
     False
 
     >>> # must-revalidate prevents serving stale
     >>> response = Response(headers=Headers({
     ...     "cache-control": "max-age=3600, must-revalidate"
     ... }))
-    >>> allowed_stale(response, allow_stale_option=True)
+    >>> allowed_stale(response, CacheOptions(allow_stale=True))
     False
     """
     # First check: Is serving stale enabled in configuration?
     # If not, we can't serve stale responses regardless of directives
-    if not allow_stale_option:
+    if not options.allow_stale:
         return False
 
     # Parse Cache-Control directives to check for prohibitions
@@ -470,7 +491,7 @@ def allowed_stale(response: Response, allow_stale_option: bool) -> bool:
     #
     # no-cache means the response must ALWAYS be revalidated before use,
     # even if it's fresh. Stale responses definitely cannot be served.
-    if response_cache_control.no_cache:
+    if response_cache_control.no_cache and not options.ignore_no_cache:
         return False
 
     # PROHIBITION 2: must-revalidate directive
@@ -484,7 +505,7 @@ def allowed_stale(response: Response, allow_stale_option: bool) -> bool:
     # must-revalidate specifically prohibits serving stale responses
     # This is used for responses where serving stale content could cause
     # incorrect operation (e.g., financial transactions)
-    if response_cache_control.must_revalidate:
+    if response_cache_control.must_revalidate and not options.ignore_must_revalidate:
         return False
 
     # All checks passed - stale response may be served
@@ -1184,7 +1205,7 @@ class IdleClient(State):
             freshness_lifetime = get_freshness_lifetime(pair.response, self.options.shared)
             age = get_age(pair.response)
             is_fresh = freshness_lifetime is not None and age < freshness_lifetime
-            fresh_or_stale_ok = is_fresh or allowed_stale(pair.response, allow_stale_option=self.options.allow_stale)
+            fresh_or_stale_ok = is_fresh or allowed_stale(pair.response, options=self.options)
 
             if not has_no_cache and vary_ok and fresh_or_stale_ok and not request_forces_revalidation:
                 ready_to_use.append(pair)
@@ -1421,7 +1442,7 @@ class CacheMiss(State):
         #
         # no-store is the strongest cache prevention directive. When present,
         # nothing should be stored, regardless of other directives.
-        no_store_is_not_present = not response_cache_control.no_store
+        no_store_is_not_present = (not response_cache_control.no_store) or self.options.ignore_no_store
 
         # CONDITION 5: Private Directive Allows Storing (Shared Cache Only)
         # RFC 9111 Section 5.2.2.7: private Response Directive
