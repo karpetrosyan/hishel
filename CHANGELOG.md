@@ -1,16 +1,27 @@
-## What's Changed in 1.3.0
+## What's Changed in 1.3.1
+### ♻️ Refactoring
+
+* Gate optional sqlite imports behind TYPE_CHECKING instead of wrapping classes in try/except. by @karpetrosyan
 ### ⚙️ Miscellaneous Tasks
 
+* Migrate RFC 9111 spec tests to a hybrid BDD style. by @karpetrosyan
+* chore(test): Fix incorrect coverage suppression in spec. by @aebrahim in [#470](https://github.com/karpetrosyan/hishel/pull/470)
+* chore(vscode): Exclude files. by @aebrahim in [#471](https://github.com/karpetrosyan/hishel/pull/471)
 * remove egg folder from source by @karpetrosyan
 * add readme in pyproject.toml by @karpetrosyan
 ### 🐛 Bug Fixes
 
+* fix(spec): handle invalid expires date as expired by @aebrahim in [#468](https://github.com/karpetrosyan/hishel/pull/468)
 * use weak ETag comparison when freshening stored responses by @karpetrosyan
+### 📚 Documentation
+
+* remove deprecated refresh_ttl_on_access from storages by @karpetrosyan
 
 ### Contributors
 * @karpetrosyan
+* @aebrahim
 
-**Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.2.1...1.3.0
+**Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.2.1...1.3.1
 
 ## What's Changed in 1.2.1
 ### ⚙️ Miscellaneous Tasks
