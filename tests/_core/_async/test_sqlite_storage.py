@@ -397,6 +397,41 @@ async def test_close_connection(monkeypatch: Any) -> None:
 
 @pytest.mark.anyio
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
+async def test_use_after_close_raises() -> None:
+    """Test that close() is permanent: late calls and in-flight cached
+    streams raise instead of silently reopening the connection."""
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
+
+    entry = await storage.create_entry(
+        request=Request(method="GET", url="https://example.com"),
+        response=Response(status_code=200, stream=make_async_iterator([b"chunk-0", b"chunk-1"])),
+        key="test_key",
+    )
+    # Consume the stream to save it
+    async for _ in entry.response._aiter_stream():
+        ...
+
+    entries = await storage.get_entries("test_key")
+    stream = entries[0].response._aiter_stream()
+    assert await stream.__anext__() == b"chunk-0"
+
+    await storage.close()
+
+    # A cached stream handed out before close() must not resurrect the
+    # connection on its next chunk.
+    with pytest.raises(RuntimeError):
+        await stream.__anext__()
+
+    # Any late storage call fails the same way.
+    with pytest.raises(RuntimeError):
+        await storage.get_entries("test_key")
+
+    # Closing twice is fine.
+    await storage.close()
+
+
+@pytest.mark.anyio
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 async def test_incomplete_entries() -> None:
     """Test incomplete entries"""
     storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))

@@ -397,6 +397,41 @@ def test_close_connection(monkeypatch: Any) -> None:
 
 
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
+def test_use_after_close_raises() -> None:
+    """Test that close() is permanent: late calls and in-flight cached
+    streams raise instead of silently reopening the connection."""
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
+
+    entry = storage.create_entry(
+        request=Request(method="GET", url="https://example.com"),
+        response=Response(status_code=200, stream=make_sync_iterator([b"chunk-0", b"chunk-1"])),
+        key="test_key",
+    )
+    # Consume the stream to save it
+    for _ in entry.response._iter_stream():
+        ...
+
+    entries = storage.get_entries("test_key")
+    stream = entries[0].response._iter_stream()
+    assert stream.__next__() == b"chunk-0"
+
+    storage.close()
+
+    # A cached stream handed out before close() must not resurrect the
+    # connection on its next chunk.
+    with pytest.raises(RuntimeError):
+        stream.__next__()
+
+    # Any late storage call fails the same way.
+    with pytest.raises(RuntimeError):
+        storage.get_entries("test_key")
+
+    # Closing twice is fine.
+    storage.close()
+
+
+
+@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")))
 def test_incomplete_entries() -> None:
     """Test incomplete entries"""
     storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))

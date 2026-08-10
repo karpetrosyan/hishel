@@ -133,6 +133,10 @@ class SyncSqliteStorage(SyncBaseStorage):
         )
         self._start_time = time.time()
         self._initialized = False
+        # Set by close() and never unset: prevents lingering stream
+        # generators (or any late caller) from silently reopening the
+        # connection after the storage has been torn down.
+        self._closed = False
         # A single RLock guards all access to the shared sqlite3
         # connection. Why a single lock and not the two-lock split used
         # in the async version:
@@ -157,7 +161,11 @@ class SyncSqliteStorage(SyncBaseStorage):
         Ensure connection is established and database is initialized.
 
         Caller must hold self._lock.
+
+        Raises RuntimeError if the storage has been closed.
         """
+        if self._closed:
+            raise RuntimeError("SyncSqliteStorage is closed and can no longer be used.")
         if self.connection is None:
             # Create cache directory and resolve full path on first connection.
             parent = (
@@ -404,11 +412,13 @@ class SyncSqliteStorage(SyncBaseStorage):
 
     def close(self) -> None:
         with self._lock:
+            # Closing is permanent: _ensure_connection raises from now
+            # on, so in-flight stream generators fail loudly on their
+            # next chunk instead of silently reopening the connection.
+            self._closed = True
             if self.connection is not None:
                 self.connection.close()
                 self.connection = None
-            # Reset initialization state so a future reconnection will
-            # re-run schema/PRAGMA setup against the new connection.
             self._initialized = False
 
     def _is_stream_complete(

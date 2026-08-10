@@ -73,9 +73,11 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         self.database_path: Path = database_path if isinstance(database_path, Path) else Path(database_path)
         self.default_ttl = default_ttl
         self.last_cleanup = time.time() - BATCH_CLEANUP_INTERVAL + BATCH_CLEANUP_START_DELAY
-        # When this storage instance was created. Used to delay the first cleanup.
-        self._start_time = time.time()
         self._initialized = False
+        # Set by close() and never unset: prevents lingering stream
+        # generators (or any late caller) from silently reopening the
+        # connection after the storage has been torn down.
+        self._closed = False
         # _init_lock serialises the lazy connection-and-schema setup in
         # _ensure_connection so concurrent first-time callers cannot both
         # open a connection or both run CREATE TABLE / PRAGMA setup.
@@ -95,7 +97,12 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         locking so the fast path (already initialised) does not take the
         lock at all, and the slow path opens the connection and runs
         schema setup exactly once.
+
+        Raises RuntimeError if the storage has been closed.
         """
+        if self._closed:
+            raise RuntimeError("AsyncSqliteStorage is closed and can no longer be used.")
+
         # Fast path: already initialised. No lock needed because both
         # fields, once set, are only mutated under _init_lock and the
         # only writer that resets them (close()) takes _init_lock too.
@@ -103,6 +110,11 @@ class AsyncSqliteStorage(AsyncBaseStorage):
             return self.connection
 
         async with self._init_lock:
+            # Re-check inside the lock: close() may have run while we
+            # were waiting for it (it holds _init_lock), and without
+            # this a late caller would silently reopen the connection.
+            if self._closed:
+                raise RuntimeError("AsyncSqliteStorage is closed and can no longer be used.")
             # Re-check inside the lock; another task may have raced us.
             if self.connection is None:
                 # Create cache directory and resolve full path on first connection
@@ -335,11 +347,13 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         # second. This is the only place that holds both, so no other
         # site can deadlock against us.
         async with self._write_lock, self._init_lock:
+            # Closing is permanent: _ensure_connection raises from now
+            # on, so in-flight stream generators fail loudly on their
+            # next chunk instead of silently reopening the connection.
+            self._closed = True
             if self.connection is not None:
                 await self.connection.close()
                 self.connection = None
-            # Reset initialization state so a future reconnection will
-            # re-run schema/PRAGMA setup against the new connection.
             self._initialized = False
 
     async def _is_stream_complete(self, pair_id: uuid.UUID, cursor: anysqlite.Cursor) -> bool:
@@ -372,7 +386,9 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         """
         Check if the pair is expired.
         """
-        ttl = pair.request.metadata.get("hishel_ttl") or self.default_ttl
+
+        metadata_ttl = pair.request.metadata.get("hishel_ttl")
+        ttl = metadata_ttl if metadata_ttl is not None else self.default_ttl
         created_at = pair.meta.created_at
         if ttl is None:
             return False
