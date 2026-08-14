@@ -144,6 +144,14 @@ STORAGE_RULES = [
         expect=NOT_STORED,
     ),
     Rule(
+        id="no-store-overridden-by-no-store-option",
+        rfc="explicitly-noncompliant",
+        quote="docs explicitly say we are not compliant with the rfc",
+        options={"ignore_no_store": True},
+        response={"cache_control": "no-store", "max_age": 3600},
+        expect=STORED,
+    ),
+    Rule(
         id="private-directive-prevents-storage-in-shared-cache",
         rfc="§5.2.2.7",
         quote="The unqualified private response directive indicates that a shared cache MUST NOT store the response.",
