@@ -119,3 +119,37 @@ async def test_encoded_content_caching() -> None:
         assert data == response_data
         assert response.headers.get("Content-Length") == str(len(data)) == str(len(response_data))
         assert response.headers.get("Content-Encoding") == "gzip"
+
+
+@pytest.mark.anyio
+async def test_small_stream_chunks_are_not_buffered() -> None:
+    class SmallChunks(httpx.SyncByteStream, httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b"data: 1\n\n"
+            yield b"data: 2\n\n"
+
+    mocked_responses = [
+        httpx.Response(
+            200,
+            stream=SmallChunks(),
+            headers={"Content-Type": "text/event-stream"},
+        )
+    ]
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if not mocked_responses:
+            raise RuntimeError("No more mocked responses available")
+        return mocked_responses.pop(0)
+
+    client = AsyncCacheClient(
+        transport=AsyncCacheTransport(
+            next_transport=MockTransport(handler=handler),
+            storage=AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False)),
+            policy=FilterPolicy(),
+        ),
+    )
+
+    async with client.stream("get", "https://localhost", extensions={"hishel_spec_ignore": True}) as response:
+        chunks = [chunk async for chunk in response.aiter_raw()]
+
+    assert chunks == [b"data: 1\n\n", b"data: 2\n\n"]

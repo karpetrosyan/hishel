@@ -119,3 +119,37 @@ def test_encoded_content_caching() -> None:
         assert data == response_data
         assert response.headers.get("Content-Length") == str(len(data)) == str(len(response_data))
         assert response.headers.get("Content-Encoding") == "gzip"
+
+
+
+def test_small_stream_chunks_are_not_buffered() -> None:
+    class SmallChunks(httpx.SyncByteStream, httpx.AsyncByteStream):
+        def __iter__(self):
+            yield b"data: 1\n\n"
+            yield b"data: 2\n\n"
+
+    mocked_responses = [
+        httpx.Response(
+            200,
+            stream=SmallChunks(),
+            headers={"Content-Type": "text/event-stream"},
+        )
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if not mocked_responses:
+            raise RuntimeError("No more mocked responses available")
+        return mocked_responses.pop(0)
+
+    client = SyncCacheClient(
+        transport=SyncCacheTransport(
+            next_transport=MockTransport(handler=handler),
+            storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False)),
+            policy=FilterPolicy(),
+        ),
+    )
+
+    with client.stream("get", "https://localhost", extensions={"hishel_spec_ignore": True}) as response:
+        chunks = [chunk for chunk in response.iter_raw()]
+
+    assert chunks == [b"data: 1\n\n", b"data: 2\n\n"]

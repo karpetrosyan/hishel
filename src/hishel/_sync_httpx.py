@@ -37,10 +37,6 @@ SOCKET_OPTION = t.Union[
     t.Tuple[int, int, None, int],
 ]
 
-# 128 KB
-CHUNK_SIZE = 131072
-
-
 @overload
 def _internal_to_httpx(
     value: Request,
@@ -119,7 +115,7 @@ def _httpx_to_internal(
         )
     elif isinstance(value, httpx.Response):
         stream = (
-            make_sync_iterator([value.content]) if value.is_stream_consumed else value.iter_raw(chunk_size=CHUNK_SIZE)
+            make_sync_iterator([value.content]) if value.is_stream_consumed else value.iter_raw()
         )
 
         if value.is_stream_consumed and "content-encoding" in value.headers:
