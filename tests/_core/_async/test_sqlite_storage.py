@@ -133,19 +133,14 @@ Rows: 1
 
 TABLE: streams
 --------------------------------------------------------------------------------
-Rows: 3
+Rows: 2
 
   Row 1:
     entry_id        = (bytes) 0x00000000000000000000000000000000 (16 bytes)
     chunk_number    = 0
-    chunk_data      = (str) 'chunk1'
+    chunk_data      = (str) 'chunk1chunk2'
 
   Row 2:
-    entry_id        = (bytes) 0x00000000000000000000000000000000 (16 bytes)
-    chunk_number    = 1
-    chunk_data      = (str) 'chunk2'
-
-  Row 3:
     entry_id        = (bytes) 0x00000000000000000000000000000000 (16 bytes)
     chunk_number    = -1
     chunk_data      = (str) ''
@@ -316,7 +311,8 @@ async def test_stream_persistence() -> None:
     async for chunk in entries[0].response._aiter_stream():
         retrieved_response_chunks.append(chunk)
 
-    assert retrieved_response_chunks == response_chunks
+    # Storage re-chunks the stream, so compare the joined data
+    assert b"".join(retrieved_response_chunks) == b"".join(response_chunks)
 
 
 @pytest.mark.anyio
@@ -413,7 +409,8 @@ async def test_use_after_close_raises() -> None:
 
     entries = await storage.get_entries("test_key")
     stream = entries[0].response._aiter_stream()
-    assert await stream.__anext__() == b"chunk-0"
+    # Storage re-chunks the stream: both small chunks land in one row
+    assert await stream.__anext__() == b"chunk-0chunk-1"
 
     await storage.close()
 
@@ -470,12 +467,9 @@ Rows: 1
 
 TABLE: streams
 --------------------------------------------------------------------------------
-Rows: 1
+Rows: 0
 
-  Row 1:
-    entry_id        = (bytes) 0x0000000000000000000000000000000a (16 bytes)
-    chunk_number    = 0
-    chunk_data      = (str) 'chunk1'
+  (empty)
 
 ================================================================================\
 """)
