@@ -35,6 +35,10 @@ BATCH_CLEANUP_INTERVAL = 3600
 BATCH_CLEANUP_START_DELAY = 5 * 60
 # Number of rows to process per chunk when cleaning
 BATCH_CLEANUP_CHUNK_SIZE = 200
+# Target size (bytes) of a stored stream chunk row. Incoming chunks are
+# re-chunked to this size before being written so row count/size stays
+# bounded regardless of how the transport chunks the response.
+STORAGE_CHUNK_SIZE = 131072
 
 
 if TYPE_CHECKING:
@@ -481,6 +485,11 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         Wrapper around an async iterator that also saves the response data
         to the cache in chunks.
 
+        Incoming chunks are yielded to the consumer unchanged, but are
+        re-chunked into STORAGE_CHUNK_SIZE rows before being written, so
+        the row layout does not depend on how the transport chunked the
+        response.
+
         No locking needed: each INSERT is a single statement and atomic at
         the SQLite level, anysqlite serialises cursor calls on the
         connection internally, and only this entry's own writer can be
@@ -488,16 +497,28 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         would be a caller bug, not a race).
         """
         chunk_number = 0
-        async for chunk in stream:
+        buffer = bytearray()
+
+        async def write_chunk(data: bytes) -> None:
+            nonlocal chunk_number
             connection = await self._ensure_connection()
             cursor = await connection.cursor()
             await cursor.execute(
                 "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
-                (entry_id, chunk_number, chunk),
+                (entry_id, chunk_number, data),
             )
             await connection.commit()
             chunk_number += 1
+
+        async for chunk in stream:
+            buffer += chunk
+            while len(buffer) >= STORAGE_CHUNK_SIZE:
+                await write_chunk(bytes(buffer[:STORAGE_CHUNK_SIZE]))
+                del buffer[:STORAGE_CHUNK_SIZE]
             yield chunk
+
+        if buffer:
+            await write_chunk(bytes(buffer))
 
         # Mark end of stream with chunk_number = -1
         connection = await self._ensure_connection()

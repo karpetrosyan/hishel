@@ -36,6 +36,10 @@ BATCH_CLEANUP_INTERVAL = 3600
 BATCH_CLEANUP_START_DELAY = 5 * 60
 # Number of rows to process per chunk when cleaning
 BATCH_CLEANUP_CHUNK_SIZE = 200
+# Target size (bytes) of a stored stream chunk row. Incoming chunks are
+# re-chunked to this size before being written so row count/size stays
+# bounded regardless of how the transport chunks the response.
+STORAGE_CHUNK_SIZE = 131072
 
 
 def _connection_is_cross_thread_safe(connection: "sqlite3.Connection") -> bool:
@@ -555,22 +559,39 @@ class SyncSqliteStorage(SyncBaseStorage):
         Wrapper around an iterator that also saves the response data
         to the cache in chunks.
 
+        Incoming chunks are yielded to the consumer unchanged, but are
+        re-chunked into STORAGE_CHUNK_SIZE rows before being written, so
+        the row layout does not depend on how the transport chunked the
+        response.
+
         Each chunk insert takes self._lock; the lock is released between
         chunks so user iteration of the stream does not block other DB
         operations.
         """
         chunk_number = 0
-        for chunk in stream:
+        buffer = bytearray()
+
+        def write_chunk(data: bytes) -> None:
+            nonlocal chunk_number
             with self._lock:
                 connection = self._ensure_connection()
                 cursor = connection.cursor()
                 cursor.execute(
                     "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
-                    (entry_id, chunk_number, chunk),
+                    (entry_id, chunk_number, data),
                 )
                 connection.commit()
             chunk_number += 1
+
+        for chunk in stream:
+            buffer += chunk
+            while len(buffer) >= STORAGE_CHUNK_SIZE:
+                write_chunk(bytes(buffer[:STORAGE_CHUNK_SIZE]))
+                del buffer[:STORAGE_CHUNK_SIZE]
             yield chunk
+
+        if buffer:
+            write_chunk(bytes(buffer))
 
         # Mark end of stream with chunk_number = -1
         with self._lock:

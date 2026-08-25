@@ -23,9 +23,6 @@ except ImportError:  # pragma: no cover
         "Install hishel with 'pip install hishel[requests]'."
     )
 
-# 128 KB
-CHUNK_SIZE = 131072
-
 
 class _IteratorStream(RawIOBase):
     def __init__(self, iterator: Iterator[bytes]):
@@ -93,7 +90,7 @@ def _requests_to_internal(
         )
     elif isinstance(model, requests.models.Response):
         try:
-            stream = model.raw.stream(amt=CHUNK_SIZE, decode_content=None)
+            stream = model.raw.stream(decode_content=None)
             headers = Headers(filter_mapping(model.headers, ["transfer-encoding"]))
         except requests.exceptions.StreamConsumedError:
             stream = iter([model.content])

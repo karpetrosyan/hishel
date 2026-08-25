@@ -22,6 +22,12 @@ else:
         RedisError = None
         Redis = None
 
+# Target size (bytes) of a stored stream chunk. Incoming chunks are
+# re-chunked to this size before being written so the number of Redis
+# round trips stays bounded regardless of how the transport chunks the
+# response.
+STORAGE_CHUNK_SIZE = 131072
+
 
 class AsyncRedisStorage(AsyncBaseStorage):
     def __init__(
@@ -96,6 +102,19 @@ class AsyncRedisStorage(AsyncBaseStorage):
         aborted = False
         ttl_set = False
         total_size = 0
+        # Incoming chunks are yielded to the consumer unchanged, but are
+        # re-chunked into STORAGE_CHUNK_SIZE pieces before being written.
+        buffer = bytearray()
+
+        async def write_chunk(data: bytes) -> None:
+            nonlocal ttl_set
+            await self._client.rpush(stream_key, data)
+            if not ttl_set:
+                # Set a TTL immediately after the first write so the key
+                # can't outlive the process if we die mid-stream (SIGKILL,
+                # OOM, host failure) before reaching the cleanup block.
+                await self._client.pexpire(stream_key, safe_ttl_ms)
+                ttl_set = True
 
         try:
             async for chunk in stream:
@@ -103,19 +122,19 @@ class AsyncRedisStorage(AsyncBaseStorage):
                     total_size += len(chunk)
                     if self._max_stream_size is not None and total_size > self._max_stream_size:
                         aborted = True
+                        buffer.clear()
                         with contextlib.suppress(RedisError):
                             await self._client.delete(stream_key, done_key)
                     else:
-                        await self._client.rpush(stream_key, chunk)
-                        if not ttl_set:
-                            # Set a TTL immediately after the first write so the key
-                            # can't outlive the process if we die mid-stream (SIGKILL,
-                            # OOM, host failure) before reaching the cleanup block.
-                            await self._client.pexpire(stream_key, safe_ttl_ms)
-                            ttl_set = True
+                        buffer += chunk
+                        while len(buffer) >= STORAGE_CHUNK_SIZE:
+                            await write_chunk(bytes(buffer[:STORAGE_CHUNK_SIZE]))
+                            del buffer[:STORAGE_CHUNK_SIZE]
                 yield chunk
 
             if not aborted:
+                if buffer:
+                    await write_chunk(bytes(buffer))
                 # sentinel to mark end of stream
                 await self._client.rpush(stream_key, b"")
                 await self._client.set(done_key, b"1")
