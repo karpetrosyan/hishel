@@ -37,6 +37,23 @@ SOCKET_OPTION = t.Union[
     t.Tuple[int, int, None, int],
 ]
 
+# httpx response extensions that are safe to cache. Skip live transport
+# objects (network_stream) and per-connection identifiers (stream_id).
+KNOWN_HTTPX_RESPONSE_EXTENSIONS = frozenset({"http_version", "reason_phrase"})
+
+
+def _httpx_extensions_metadata(extensions: t.Mapping[str, t.Any]) -> dict[str, t.Any]:
+    httpx_meta = {key: val for key, val in extensions.items() if key in KNOWN_HTTPX_RESPONSE_EXTENSIONS}
+    return {"hishel_httpx": httpx_meta} if httpx_meta else {}
+
+
+def _httpx_extensions_from_metadata(metadata: t.Mapping[str, t.Any]) -> dict[str, t.Any]:
+    extras = dict(metadata)
+    httpx_meta = extras.pop("hishel_httpx", None)
+    if isinstance(httpx_meta, dict):
+        extras.update(httpx_meta)
+    return extras
+
 
 @overload
 def _internal_to_httpx(
@@ -65,7 +82,7 @@ def _internal_to_httpx(
             status_code=value.status_code,
             headers=value.headers,
             stream=_IteratorStream(value._iter_stream()),
-            extensions=value.metadata,
+            extensions=_httpx_extensions_from_metadata(value.metadata),
         )
 
 
@@ -135,7 +152,7 @@ def _httpx_to_internal(
             status_code=value.status_code,
             headers=headers,
             stream=stream,
-            metadata={},
+            metadata=_httpx_extensions_metadata(value.extensions),
         )
 
 

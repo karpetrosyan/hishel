@@ -41,6 +41,8 @@ async def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
             "hishel_created_at": 1704067200.0,
             "hishel_revalidated": False,
             "hishel_stored": False,
+            "http_version": b"HTTP/1.1",
+            "reason_phrase": b"OK",
         }
     )
 
@@ -73,6 +75,8 @@ async def test_simple_caching_ignoring_spec(caplog: pytest.LogCaptureFixture) ->
             "hishel_created_at": 1704067200.0,
             "hishel_revalidated": False,
             "hishel_stored": False,
+            "http_version": b"HTTP/1.1",
+            "reason_phrase": b"OK",
         }
     )
 
@@ -119,3 +123,39 @@ async def test_encoded_content_caching() -> None:
         assert data == response_data
         assert response.headers.get("Content-Length") == str(len(data)) == str(len(response_data))
         assert response.headers.get("Content-Encoding") == "gzip"
+
+
+@pytest.mark.anyio
+async def test_httpx_response_extensions_are_preserved() -> None:
+    network_stream = object()
+    mocked_responses = [
+        httpx.Response(
+            200,
+            content=b"ok",
+            headers={"Cache-Control": "max-age=3600", "Content-Type": "text/plain"},
+            extensions={"http_version": b"HTTP/2", "network_stream": network_stream, "stream_id": 1},
+        )
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if not mocked_responses:
+            raise RuntimeError("No more mocked responses available")
+        return mocked_responses.pop(0)
+
+    client = AsyncCacheClient(
+        transport=AsyncCacheTransport(
+            next_transport=MockTransport(handler=handler),
+            storage=AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False)),
+        ),
+    )
+
+    first = await client.get("https://localhost")
+    assert first.extensions["http_version"] == b"HTTP/2"
+    assert "network_stream" not in first.extensions
+    assert "stream_id" not in first.extensions
+
+    second = await client.get("https://localhost")
+    assert second.extensions["hishel_from_cache"] is True
+    assert second.extensions["http_version"] == b"HTTP/2"
+    assert "network_stream" not in second.extensions
+    assert "stream_id" not in second.extensions
