@@ -55,6 +55,25 @@ def _httpx_extensions_from_metadata(metadata: t.Mapping[str, t.Any]) -> dict[str
     return extras
 
 
+# httpx request extensions that should survive the hishel round-trip on cache
+# miss but must NOT be persisted to cache (trace contains callables, timeout is
+# per-request). Using a separate key ensures filter_out_hishel_metadata drops them.
+KNOWN_HTTPX_REQUEST_EXTENSIONS = frozenset({"timeout", "sni_hostname", "trace", "target"})
+
+
+def _httpx_request_extensions_metadata(extensions: t.Mapping[str, t.Any]) -> dict[str, t.Any]:
+    httpx_meta = {key: val for key, val in extensions.items() if key in KNOWN_HTTPX_REQUEST_EXTENSIONS}
+    return {"hishel_httpx_request": httpx_meta} if httpx_meta else {}
+
+
+def _httpx_request_extensions_from_metadata(metadata: t.Mapping[str, t.Any]) -> dict[str, t.Any]:
+    extras = dict(metadata)
+    httpx_meta = extras.pop("hishel_httpx_request", None)
+    if isinstance(httpx_meta, dict):
+        extras.update(httpx_meta)
+    return extras
+
+
 @overload
 def _internal_to_httpx(
     value: Request,
@@ -75,7 +94,7 @@ def _internal_to_httpx(
             url=value.url,
             headers=value.headers,
             stream=_IteratorStream(value._iter_stream()),
-            extensions=value.metadata,
+            extensions=_httpx_request_extensions_from_metadata(value.metadata),
         )
     elif isinstance(value, Response):
         return httpx.Response(
@@ -118,6 +137,8 @@ def _httpx_to_internal(
         for key, val in extension_metadata.items():
             if key in value.extensions:
                 headers_metadata[key] = val  # type: ignore
+
+        headers_metadata.update(_httpx_request_extensions_metadata(value.extensions))  # type: ignore
 
         try:
             stream = make_sync_iterator([value.content])
