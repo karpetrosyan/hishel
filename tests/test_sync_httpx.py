@@ -1,4 +1,5 @@
 import gzip
+import hashlib
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -9,8 +10,8 @@ from httpx import ByteStream, MockTransport
 from inline_snapshot import snapshot
 from time_machine import travel
 
-from hishel import SyncSqliteStorage
-from hishel._policies import FilterPolicy
+from hishel import SyncSqliteStorage, CacheOptions
+from hishel._policies import FilterPolicy, SpecificationPolicy
 from hishel.httpx import SyncCacheClient, SyncCacheTransport
 
 
@@ -159,3 +160,24 @@ def test_httpx_response_extensions_are_preserved() -> None:
     assert second.extensions["http_version"] == b"HTTP/2"
     assert "network_stream" not in second.extensions
     assert "stream_id" not in second.extensions
+
+
+
+def test_body_key_survives_sending_request() -> None:
+    # Regression: the spec path recomputed the body-derived key after the transport
+    # had drained the request stream, so entries were stored under sha256(b"").
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, headers={"Cache-Control": "max-age=3600"}, content=b"ok")
+
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
+    policy = SpecificationPolicy(cache_options=CacheOptions(supported_methods=["GET", "HEAD", "POST"]))
+    policy.use_body_key = True
+    client = SyncCacheClient(
+        transport=SyncCacheTransport(next_transport=MockTransport(handler=handler), storage=storage, policy=policy),
+    )
+
+    response = client.post("https://localhost", content=b"hello")
+    assert response.extensions["hishel_stored"] is True
+
+    assert len(storage.get_entries(hashlib.sha256(b"hello").hexdigest())) == 1
+    assert len(storage.get_entries(hashlib.sha256(b"").hexdigest())) == 0
