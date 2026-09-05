@@ -151,15 +151,19 @@ class SyncCacheProxy:
     def _handle_request_respecting_spec(self, request: Request) -> Response:
         assert isinstance(self.policy, SpecificationPolicy)
         state: AnyState = IdleClient(options=self.policy.cache_options)
+        # Computed once: deriving a body key drains the request stream, and the
+        # transport drains it again when sending, so a second derivation would
+        # see an empty body.
+        cache_key = self._get_key_for_request(request)
 
         while state:
             logger.debug(f"Handling state: {state.__class__.__name__}")
             if isinstance(state, IdleClient):
-                state = self._handle_idle_state(state, request)
+                state = self._handle_idle_state(state, request, cache_key)
             elif isinstance(state, CacheMiss):
                 state = self._handle_cache_miss(state)
             elif isinstance(state, StoreAndUse):
-                return self._handle_store_and_use(state, request)
+                return self._handle_store_and_use(state, request, cache_key)
             elif isinstance(state, CouldNotBeStored):
                 return state.response
             elif isinstance(state, NeedRevalidation):
@@ -176,19 +180,19 @@ class SyncCacheProxy:
 
         raise RuntimeError("Unreachable")
 
-    def _handle_idle_state(self, state: IdleClient, request: Request) -> AnyState:
-        stored_entries = self.storage.get_entries(self._get_key_for_request(request))
+    def _handle_idle_state(self, state: IdleClient, request: Request, cache_key: str) -> AnyState:
+        stored_entries = self.storage.get_entries(cache_key)
         return state.next(request, stored_entries)
 
     def _handle_cache_miss(self, state: CacheMiss) -> AnyState:
         response = self.send_request(state.request)
         return state.next(response)
 
-    def _handle_store_and_use(self, state: StoreAndUse, request: Request) -> Response:
+    def _handle_store_and_use(self, state: StoreAndUse, request: Request, cache_key: str) -> Response:
         entry = self.storage.create_entry(
             request,
             state.response,
-            self._get_key_for_request(request),
+            cache_key,
         )
         return entry.response
 
