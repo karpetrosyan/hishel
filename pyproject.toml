@@ -96,10 +96,12 @@ exclude = [
     "tests/_core/_sync",
     "src/hishel/_sync_cache.py",
     "tests/test_sync_httpx.py",
+    "tests/test_sync_httpx2.py",
     "src/hishel/_core/_storages/_sync_sqlite.py",
     "src/hishel/_core/_storages/_sync_redis.py",
     "src/hishel/_core/_storages/_sync_base.py",
-    "src/hishel/_sync_httpx.py"
+    "src/hishel/_sync_httpx.py",
+    "src/hishel/_sync_httpx2.py"
 ]
 line-length = 120
 

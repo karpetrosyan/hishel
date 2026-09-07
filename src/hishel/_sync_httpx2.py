@@ -5,12 +5,13 @@ import typing as t
 from typing import (
     Iterable,
     Iterator,
+    Iterator,
     Union,
     cast,
     overload,
 )
 
-from hishel import Headers, Request, Response, SyncCacheProxy
+from hishel import SyncCacheProxy, Headers, Request, Response
 from hishel._core._storages._sync_base import SyncBaseStorage
 from hishel._core.models import RequestMetadata, extract_metadata_from_headers
 from hishel._policies import CachePolicy
@@ -35,8 +36,22 @@ SOCKET_OPTION = t.Union[
     t.Tuple[int, int, None, int],
 ]
 
-# 128 KB
-CHUNK_SIZE = 131072
+# httpx response extensions that are safe to cache. Skip live transport
+# objects (network_stream) and per-connection identifiers (stream_id).
+KNOWN_HTTPX_RESPONSE_EXTENSIONS = frozenset({"http_version", "reason_phrase"})
+
+
+def _httpx_extensions_metadata(extensions: t.Mapping[str, t.Any]) -> dict[str, t.Any]:
+    httpx_meta = {key: val for key, val in extensions.items() if key in KNOWN_HTTPX_RESPONSE_EXTENSIONS}
+    return {"hishel_httpx": httpx_meta} if httpx_meta else {}
+
+
+def _httpx_extensions_from_metadata(metadata: t.Mapping[str, t.Any]) -> dict[str, t.Any]:
+    extras = dict(metadata)
+    httpx_meta = extras.pop("hishel_httpx", None)
+    if isinstance(httpx_meta, dict):
+        extras.update(httpx_meta)
+    return extras
 
 
 @overload
@@ -66,7 +81,7 @@ def _internal_to_httpx(
             status_code=value.status_code,
             headers=value.headers,
             stream=_IteratorStream(value._iter_stream()),
-            extensions=value.metadata,
+            extensions=_httpx_extensions_from_metadata(value.metadata),
         )
 
 
@@ -116,9 +131,7 @@ def _httpx_to_internal(
             metadata=headers_metadata,
         )
     elif isinstance(value, httpx2.Response):
-        stream = (
-            make_sync_iterator([value.content]) if value.is_stream_consumed else value.iter_raw(chunk_size=CHUNK_SIZE)
-        )
+        stream = make_sync_iterator([value.content]) if value.is_stream_consumed else value.iter_raw()
 
         if value.is_stream_consumed and "content-encoding" in value.headers:
             # If the stream was consumed and we don't know about
@@ -138,12 +151,12 @@ def _httpx_to_internal(
             status_code=value.status_code,
             headers=headers,
             stream=stream,
-            metadata={},
+            metadata=_httpx_extensions_metadata(value.extensions),
         )
 
 
 class _IteratorStream(httpx2.SyncByteStream, httpx2.AsyncByteStream):
-    def __init__(self, iterator: Iterator[bytes]) -> None:
+    def __init__(self, iterator: Iterator[bytes] | Iterator[bytes]) -> None:
         self.iterator = iterator
 
     def __iter__(self) -> Iterator[bytes]:
