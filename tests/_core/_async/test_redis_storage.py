@@ -310,7 +310,8 @@ def test_stream_persistence() -> None:
     for chunk in entries[0].response._iter_stream():
         retrieved_chunks.append(chunk)
 
-    assert retrieved_chunks == response_chunks
+    # Storage re-chunks the stream, so compare the joined data
+    assert b"".join(retrieved_chunks) == b"".join(response_chunks)
 
 
 def test_remove_nonexistent_entry() -> None:

@@ -67,29 +67,6 @@ storage = AsyncSqliteStorage(default_ttl=3600)
 
 Storage also respects the `hishel_ttl` request metadata, which can be used to set a custom TTL for a specific request, overriding the storage default.
 
-### Refreshing TTL on Access
-
-In some cases you may want to refresh the TTL of a cached entry every time it is accessed, so that it stays in cache as long as it is frequently used.
-You can enable this behavior by setting `refresh_ttl_on_access` to `True`:
-
-::: code-group
-
-```python [Sync]
-from hishel import SyncSqliteStorage
-
-storage = SyncSqliteStorage(refresh_ttl_on_access=True)
-```
-
-```python [Async]
-from hishel import AsyncSqliteStorage
-
-storage = AsyncSqliteStorage(refresh_ttl_on_access=True)
-```
-
-:::
-
-You can also control this on a per-request basis by setting the `hishel_refresh_ttl_on_access` request metadata to `True` or `False`, which overrides the storage default.
-
 ## Redis Storage
 
 Redis storage provides fast, in-memory (or persistent) caching backed by a Redis server.
