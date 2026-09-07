@@ -181,3 +181,30 @@ def test_body_key_survives_sending_request() -> None:
 
     assert len(storage.get_entries(hashlib.sha256(b"hello").hexdigest())) == 1
     assert len(storage.get_entries(hashlib.sha256(b"").hexdigest())) == 0
+
+
+
+def test_httpx_request_extensions_are_preserved() -> None:
+    captured_requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_requests.append(request)
+        return httpx.Response(
+            200,
+            content=b"ok",
+            headers={"Cache-Control": "max-age=3600", "Content-Type": "text/plain"},
+        )
+
+    client = SyncCacheClient(
+        timeout=0.5,
+        transport=SyncCacheTransport(
+            next_transport=MockTransport(handler=handler),
+            storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False)),
+        ),
+    )
+
+    client.get("https://localhost", extensions={"sni_hostname": "custom.example.com"})
+
+    assert len(captured_requests) == 1
+    assert captured_requests[0].extensions["timeout"]["connect"] == 0.5
+    assert captured_requests[0].extensions["sni_hostname"] == "custom.example.com"
