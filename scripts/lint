@@ -3,7 +3,7 @@
 set -e
 
 echo "==> Running ruff"
-uv run ruff check src tests
+uv run ruff check
 uv run ruff format --check
 
 echo "==> Make sure async/sync are consistent"

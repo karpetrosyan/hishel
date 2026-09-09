@@ -46,6 +46,7 @@ from hishel.asgi import ASGICacheMiddleware
 
 app = FastAPI()
 
+
 @app.get("/api/data", dependencies=[cache(max_age=300, public=True)])
 async def get_data():
     # Cache-Control: public, max-age=300
@@ -62,6 +63,7 @@ from blacksheep import Application, get
 from blacksheep.server.headers.cache import cache_control
 
 app = Application()
+
 
 @get("/api/data")
 @cache_control(max_age=300, public=True)
