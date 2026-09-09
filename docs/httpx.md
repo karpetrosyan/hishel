@@ -1,6 +1,25 @@
-# HTTPX Integration
+# HTTPX/HTTPX2 Integration
 
-Hishel provides seamless integration with [HTTPX](https://www.python-httpx.org/), adding RFC 9111-compliant HTTP caching to your HTTPX applications with minimal code changes.
+Hishel provides seamless integration with:
+- [HTTPX](https://www.python-httpx.org/)
+- [HTTPX2](https://httpx2.pydantic.dev/)
+
+adding RFC 9111-compliant HTTP caching to your HTTPX/HTTPX2 applications with minimal code changes.
+
+## Note on httpx vs httpx2
+
+`httpx2` is a fork of `httpx`, maintained by Pydantic.
+
+**The documentation below is valid for both `httpx` and `httpx2`.**
+
+All imports
+```python
+from hishel.httpx import ...
+```
+can be replaced by 
+```python
+from hishel.httpx2 import ...
+```
 
 ## Quick Start
 

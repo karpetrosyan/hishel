@@ -47,6 +47,12 @@ httpx = [
     "anyio>=4.9.0",
     "anysqlite>=0.0.5",
 ]
+httpx2 = [
+    "httpx2>=2.9.1",
+    # install async extra
+    "anyio>=4.9.0",
+    "anysqlite>=0.0.5",
+]
 fastapi = [
     "fastapi>=0.119.1",
 ]
@@ -90,10 +96,12 @@ exclude = [
     "tests/_core/_sync",
     "src/hishel/_sync_cache.py",
     "tests/test_sync_httpx.py",
+    "tests/test_sync_httpx2.py",
     "src/hishel/_core/_storages/_sync_sqlite.py",
     "src/hishel/_core/_storages/_sync_redis.py",
     "src/hishel/_core/_storages/_sync_base.py",
-    "src/hishel/_sync_httpx.py"
+    "src/hishel/_sync_httpx.py",
+    "src/hishel/_sync_httpx2.py"
 ]
 line-length = 120
 
