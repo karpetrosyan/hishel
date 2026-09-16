@@ -1,3 +1,26 @@
+## What's Changed in 1.4.0
+### ♻️ Refactoring
+
+* move response re-chunking from integrations into storages by @karpetrosyan
+### 🐛 Bug Fixes
+
+* avoid re-calculating cache keys by @karpetrosyan
+### 📦 Dependencies
+
+* chore(deps): bump actions/setup-node from 4 to 7 by @dependabot[bot] in [#479](https://github.com/karpetrosyan/hishel/pull/479)
+### 🚀 Features
+
+* feat: add support for httpx2 by @aberlioz in [#480](https://github.com/karpetrosyan/hishel/pull/480)
+* feat: preserve serializable httpx response extensions by @adarshx01 in [#482](https://github.com/karpetrosyan/hishel/pull/482)
+
+### Contributors
+* @aberlioz
+* @karpetrosyan
+* @dependabot[bot]
+* @adarshx01
+
+**Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.3.1...1.4.0
+
 ## What's Changed in 1.3.1
 ### ♻️ Refactoring
 
