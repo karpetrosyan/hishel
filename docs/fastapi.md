@@ -33,6 +33,7 @@ from hishel.fastapi import cache
 
 app = FastAPI()
 
+
 @app.get("/api/data", dependencies=[cache(max_age=300, public=True)])
 async def get_data():
     # Cache-Control: public, max-age=300
@@ -51,10 +52,12 @@ from hishel import AsyncSqliteStorage
 
 app = FastAPI()
 
+
 @app.get("/api/data", dependencies=[cache(max_age=300, public=True)])
 async def get_data():
     # Cached locally AND by clients/CDNs
     return {"data": "Expensive operation result"}
+
 
 # Wrap with caching middleware to enable local caching
 app = ASGICacheMiddleware(
@@ -102,11 +105,16 @@ async def get_profile():
 Different cache times for browsers vs CDNs:
 
 ```python
-@app.get("/api/data", dependencies=[cache(
-    max_age=60,      # Browsers: 1 minute
-    s_maxage=3600,   # CDN: 1 hour
-    public=True
-)])
+@app.get(
+    "/api/data",
+    dependencies=[
+        cache(
+            max_age=60,  # Browsers: 1 minute
+            s_maxage=3600,  # CDN: 1 hour
+            public=True,
+        )
+    ],
+)
 async def get_data():
     return {"data": "..."}
 ```

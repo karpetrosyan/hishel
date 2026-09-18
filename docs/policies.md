@@ -14,8 +14,8 @@ from hishel import CacheOptions, SpecificationPolicy
 
 policy = SpecificationPolicy(
     cache_options=CacheOptions(
-        shared=True,           # Act as a shared cache (proxy/CDN)
-        allow_stale=False,     # Don't serve stale responses
+        shared=True,  # Act as a shared cache (proxy/CDN)
+        allow_stale=False,  # Don't serve stale responses
         supported_methods=["GET", "HEAD"],  # Cache these methods
     )
 )
@@ -33,14 +33,10 @@ Determines whether the cache operates as a shared cache or private cache.
 
 ```python
 # Shared cache (proxy/CDN)
-policy = SpecificationPolicy(
-    cache_options=CacheOptions(shared=True)
-)
+policy = SpecificationPolicy(cache_options=CacheOptions(shared=True))
 
 # Private cache (browser)
-policy = SpecificationPolicy(
-    cache_options=CacheOptions(shared=False)
-)
+policy = SpecificationPolicy(cache_options=CacheOptions(shared=False))
 ```
 
 #### supported_methods
@@ -51,18 +47,10 @@ HTTP methods that are allowed to be cached.
 
 ```python
 # Default: cache GET and HEAD only
-policy = SpecificationPolicy(
-    cache_options=CacheOptions(
-        supported_methods=["GET", "HEAD"]
-    )
-)
+policy = SpecificationPolicy(cache_options=CacheOptions(supported_methods=["GET", "HEAD"]))
 
 # Cache POST responses (advanced use case)
-policy = SpecificationPolicy(
-    cache_options=CacheOptions(
-        supported_methods=["GET", "HEAD", "POST"]
-    )
-)
+policy = SpecificationPolicy(cache_options=CacheOptions(supported_methods=["GET", "HEAD", "POST"]))
 ```
 
 #### allow_stale
@@ -73,14 +61,10 @@ Controls whether stale responses can be served without revalidation.
 
 ```python
 # Conservative: never serve stale
-policy = SpecificationPolicy(
-    cache_options=CacheOptions(allow_stale=False)
-)
+policy = SpecificationPolicy(cache_options=CacheOptions(allow_stale=False))
 
 # Permissive: serve stale when allowed by directives
-policy = SpecificationPolicy(
-    cache_options=CacheOptions(allow_stale=True)
-)
+policy = SpecificationPolicy(cache_options=CacheOptions(allow_stale=True))
 ```
 
 ### Usage Examples
@@ -123,9 +107,7 @@ import requests
 from hishel.requests import CacheAdapter
 from hishel import SpecificationPolicy, CacheOptions
 
-policy = SpecificationPolicy(
-    cache_options=CacheOptions(shared=False)
-)
+policy = SpecificationPolicy(cache_options=CacheOptions(shared=False))
 
 session = requests.Session()
 session.mount("https://", CacheAdapter(policy=policy))
@@ -163,7 +145,7 @@ The `FilterPolicy` allows you to implement custom caching logic by applying user
 from hishel import FilterPolicy, BaseFilter
 
 policy = FilterPolicy(
-    request_filters=[...],   # List of request filters
+    request_filters=[...],  # List of request filters
     response_filters=[...],  # List of response filters
 )
 ```
@@ -175,6 +157,7 @@ Filters must inherit from `BaseFilter[T]` where `T` is either `Request` or `Resp
 ```python
 from hishel import BaseFilter, Request, Response
 
+
 class MyRequestFilter(BaseFilter[Request]):
     def needs_body(self) -> bool:
         """Return True if the filter needs access to the request body."""
@@ -183,7 +166,7 @@ class MyRequestFilter(BaseFilter[Request]):
     def apply(self, item: Request, body: bytes | None) -> bool:
         """
         Return True to allow caching, False to bypass cache.
-        
+
         Args:
             item: The request to filter
             body: The request body (only if needs_body() returns True)
@@ -200,7 +183,7 @@ class MyResponseFilter(BaseFilter[Response]):
     def apply(self, item: Response, body: bytes | None) -> bool:
         """
         Return True to cache the response, False to skip caching.
-        
+
         Args:
             item: The response to filter
             body: The response body (only if needs_body() returns True)
@@ -217,23 +200,21 @@ class MyResponseFilter(BaseFilter[Response]):
 import re
 from hishel import BaseFilter, FilterPolicy, Request
 
+
 class URLPatternFilter(BaseFilter[Request]):
     def __init__(self, pattern: str):
         self.pattern = re.compile(pattern)
-    
+
     def needs_body(self) -> bool:
         return False
-    
+
     def apply(self, item: Request, body: bytes | None) -> bool:
         # Only cache requests matching the pattern
         return bool(self.pattern.search(str(item.url)))
 
+
 # Cache only API endpoints
-policy = FilterPolicy(
-    request_filters=[
-        URLPatternFilter(r'/api/.*')
-    ]
-)
+policy = FilterPolicy(request_filters=[URLPatternFilter(r"/api/.*")])
 ```
 
 #### Filter by Response Status Code
@@ -241,23 +222,21 @@ policy = FilterPolicy(
 ```python
 from hishel import BaseFilter, FilterPolicy, Response
 
+
 class StatusCodeFilter(BaseFilter[Response]):
     def __init__(self, allowed_codes: list[int]):
         self.allowed_codes = allowed_codes
-    
+
     def needs_body(self) -> bool:
         return False
-    
+
     def apply(self, item: Response, body: bytes | None) -> bool:
         # Only cache successful responses
         return item.status_code in self.allowed_codes
 
+
 # Cache only 200 and 304 responses
-policy = FilterPolicy(
-    response_filters=[
-        StatusCodeFilter([200, 304])
-    ]
-)
+policy = FilterPolicy(response_filters=[StatusCodeFilter([200, 304])])
 ```
 
 #### Filter by Content Type
@@ -265,23 +244,21 @@ policy = FilterPolicy(
 ```python
 from hishel import BaseFilter, FilterPolicy, Response
 
+
 class ContentTypeFilter(BaseFilter[Response]):
     def __init__(self, allowed_types: list[str]):
         self.allowed_types = allowed_types
-    
+
     def needs_body(self) -> bool:
         return False
-    
+
     def apply(self, item: Response, body: bytes | None) -> bool:
         content_type = item.headers.get("content-type", "")
         return any(allowed in content_type for allowed in self.allowed_types)
 
+
 # Cache only JSON and XML responses
-policy = FilterPolicy(
-    response_filters=[
-        ContentTypeFilter(["application/json", "application/xml"])
-    ]
-)
+policy = FilterPolicy(response_filters=[ContentTypeFilter(["application/json", "application/xml"])])
 ```
 
 #### Filter with Body Inspection
@@ -290,15 +267,16 @@ policy = FilterPolicy(
 import json
 from hishel import BaseFilter, FilterPolicy, Response
 
+
 class JSONResponseFilter(BaseFilter[Response]):
     def needs_body(self) -> bool:
         # We need access to the body to inspect it
         return True
-    
+
     def apply(self, item: Response, body: bytes | None) -> bool:
         if body is None:
             return False
-        
+
         try:
             data = json.loads(body)
             # Cache only if response contains 'cacheable' field set to True
@@ -306,9 +284,8 @@ class JSONResponseFilter(BaseFilter[Response]):
         except json.JSONDecodeError:
             return False
 
-policy = FilterPolicy(
-    response_filters=[JSONResponseFilter()]
-)
+
+policy = FilterPolicy(response_filters=[JSONResponseFilter()])
 ```
 
 ### Combining Multiple Filters
@@ -320,13 +297,13 @@ from hishel import FilterPolicy
 
 policy = FilterPolicy(
     request_filters=[
-        URLPatternFilter(r'/api/.*'),
+        URLPatternFilter(r"/api/.*"),
         MethodFilter(["GET", "HEAD"]),
     ],
     response_filters=[
         StatusCodeFilter([200, 203, 204, 300, 301, 304, 404, 405, 410]),
         ContentTypeFilter(["application/json"]),
         SizeFilter(max_size=1024 * 1024),  # Max 1MB
-    ]
+    ],
 )
 ```

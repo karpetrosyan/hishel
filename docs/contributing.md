@@ -78,6 +78,7 @@ async def store(self, key: str) -> None:
     async with self.connection as conn:
         await conn.execute(...)
 
+
 # Sync code (automatically generated)
 def store(self, key: str) -> None:
     with self.connection as conn:

@@ -36,10 +36,7 @@ from hishel.httpx import SyncCacheClient
 
 client = SyncCacheClient()
 
-response = client.get(
-    "https://api.example.com/data",
-    extensions={"hishel_ttl": 3600}
-)
+response = client.get("https://api.example.com/data", extensions={"hishel_ttl": 3600})
 ```
 
 ```python [httpx (headers)]
@@ -47,10 +44,7 @@ from hishel.httpx import SyncCacheClient
 
 client = SyncCacheClient()
 
-response = client.get(
-    "https://api.example.com/data",
-    headers={"X-Hishel-Ttl": "3600"}
-)
+response = client.get("https://api.example.com/data", headers={"X-Hishel-Ttl": "3600"})
 ```
 
 ```python [requests]
@@ -61,10 +55,7 @@ session = requests.Session()
 session.mount("http://", CacheAdapter())
 session.mount("https://", CacheAdapter())
 
-response = session.get(
-    "https://api.example.com/data",
-    headers={"X-Hishel-Ttl": "3600"}
-)
+response = session.get("https://api.example.com/data", headers={"X-Hishel-Ttl": "3600"})
 ```
 
 :::
@@ -93,10 +84,7 @@ from hishel.httpx import SyncCacheClient
 
 client = SyncCacheClient()
 
-response = client.get(
-    "https://api.example.com/user/profile",
-    extensions={"hishel_refresh_ttl_on_access": True}
-)
+response = client.get("https://api.example.com/user/profile", extensions={"hishel_refresh_ttl_on_access": True})
 ```
 
 ```python [requests]
@@ -107,10 +95,7 @@ session = requests.Session()
 session.mount("http://", CacheAdapter())
 session.mount("https://", CacheAdapter())
 
-response = session.get(
-    "https://api.example.com/user/profile",
-    headers={"X-Hishel-Refresh-Ttl-On-Access": "true"}
-)
+response = session.get("https://api.example.com/user/profile", headers={"X-Hishel-Refresh-Ttl-On-Access": "true"})
 ```
 
 :::
@@ -140,11 +125,7 @@ from hishel.httpx import SyncCacheClient
 
 client = SyncCacheClient()
 
-response = client.post(
-    "https://api.example.com/search",
-    json={"query": "python"},
-    extensions={"hishel_body_key": True}
-)
+response = client.post("https://api.example.com/search", json={"query": "python"}, extensions={"hishel_body_key": True})
 ```
 
 ```python [requests]
@@ -156,9 +137,7 @@ session.mount("http://", CacheAdapter())
 session.mount("https://", CacheAdapter())
 
 response = session.post(
-    "https://api.example.com/search",
-    json={"query": "python"},
-    headers={"X-Hishel-Body-Key": "true"}
+    "https://api.example.com/search", json={"query": "python"}, headers={"X-Hishel-Body-Key": "true"}
 )
 ```
 
