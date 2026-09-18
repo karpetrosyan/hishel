@@ -55,14 +55,13 @@ def _httpx_extensions_from_metadata(metadata: t.Mapping[str, t.Any]) -> dict[str
     return extras
 
 
-# httpx request extensions that should survive the hishel round-trip on cache
-# miss but must NOT be persisted to cache (trace contains callables, timeout is
-# per-request). Using a separate key ensures filter_out_hishel_metadata drops them.
-KNOWN_HTTPX_REQUEST_EXTENSIONS = frozenset({"timeout", "sni_hostname", "trace", "target"})
-
-
+# httpx request extensions (timeout, sni_hostname, trace, custom ones, ...) must
+# reach the underlying transport but must NOT be persisted to cache (trace contains
+# callables, timeout is per-request). Keeping them under a separate "hishel_"
+# prefixed key ensures filter_out_hishel_metadata drops them during packing, so
+# unlike response extensions they don't need an allowlist.
 def _httpx_request_extensions_metadata(extensions: t.Mapping[str, t.Any]) -> dict[str, t.Any]:
-    httpx_meta = {key: val for key, val in extensions.items() if key in KNOWN_HTTPX_REQUEST_EXTENSIONS}
+    httpx_meta = {key: val for key, val in extensions.items() if not key.startswith("hishel_")}
     return {"hishel_httpx_request": httpx_meta} if httpx_meta else {}
 
 

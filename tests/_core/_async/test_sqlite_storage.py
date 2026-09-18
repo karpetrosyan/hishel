@@ -559,3 +559,21 @@ async def test_failed_batch_cleanup_is_not_retried_on_every_request() -> None:
         await storage.get_entries("test_key")
 
     assert cleanup.call_count == 1
+
+
+async def test_refresh_ttl_on_access_is_persisted() -> None:
+    """Test that hishel_refresh_ttl_on_access survives storing, since it's read back from the stored entry"""
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
+
+    entry = await storage.create_entry(
+        request=Request(method="GET", url="https://example.com", metadata={"hishel_refresh_ttl_on_access": True}),
+        response=Response(status_code=200, stream=make_async_iterator([b"data"])),
+        key="test_key",
+        id_=uuid.UUID(int=14),
+    )
+
+    await entry.response.aread()
+
+    entries = await storage.get_entries("test_key")
+    assert len(entries) == 1
+    assert entries[0].request.metadata.get("hishel_refresh_ttl_on_access") is True

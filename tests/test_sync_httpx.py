@@ -203,8 +203,49 @@ def test_httpx_request_extensions_are_preserved() -> None:
         ),
     )
 
-    client.get("https://localhost", extensions={"sni_hostname": "custom.example.com"})
+    def trace(event_name: str, info: dict[str, object]) -> None:
+        pass
+
+    response = client.get(
+        "https://localhost",
+        extensions={"sni_hostname": "custom.example.com", "trace": trace, "custom": "value"},
+    )
 
     assert len(captured_requests) == 1
     assert captured_requests[0].extensions["timeout"]["connect"] == 0.5
     assert captured_requests[0].extensions["sni_hostname"] == "custom.example.com"
+    assert captured_requests[0].extensions["trace"] is trace
+    assert captured_requests[0].extensions["custom"] == "value"
+    # unserializable extensions (like the trace callable) must not break storing
+    assert response.extensions["hishel_stored"] is True
+
+
+
+def test_httpx_request_extensions_are_preserved_on_revalidation() -> None:
+    captured_requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_requests.append(request)
+        return httpx.Response(
+            304 if "If-None-Match" in request.headers else 200,
+            content=b"" if "If-None-Match" in request.headers else b"ok",
+            headers={"Cache-Control": "no-cache", "ETag": '"v1"'},
+        )
+
+    client = SyncCacheClient(
+        timeout=0.5,
+        transport=SyncCacheTransport(
+            next_transport=MockTransport(handler=handler),
+            storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False)),
+        ),
+    )
+
+    client.get("https://localhost")
+    response = client.get("https://localhost", timeout=0.25)
+
+    assert response.extensions["hishel_revalidated"] is True
+    assert len(captured_requests) == 2
+    assert captured_requests[1].headers["If-None-Match"] == '"v1"'
+    # the revalidation request must carry the extensions of the request that
+    # triggered it, not the ones of the originally stored request
+    assert captured_requests[1].extensions["timeout"]["connect"] == 0.25

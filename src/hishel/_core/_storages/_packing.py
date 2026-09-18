@@ -9,9 +9,12 @@ from typing_extensions import Literal, cast
 from hishel._core._headers import Headers
 from hishel._core.models import EntryMeta, Request, Response
 
+# hishel metadata that is read back from stored entries and therefore must be persisted
+PERSISTED_HISHEL_METADATA = frozenset({"hishel_ttl", "hishel_refresh_ttl_on_access", "hishel_httpx"})
+
 
 def filter_out_hishel_metadata(data: Mapping[str, Any]) -> dict[str, Any]:
-    return {k: v for k, v in data.items() if not (k.startswith("hishel_") and k not in {"hishel_ttl", "hishel_httpx"})}
+    return {k: v for k, v in data.items() if not (k.startswith("hishel_") and k not in PERSISTED_HISHEL_METADATA)}
 
 
 if TYPE_CHECKING:
