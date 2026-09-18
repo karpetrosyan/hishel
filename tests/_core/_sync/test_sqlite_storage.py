@@ -561,6 +561,7 @@ def test_failed_batch_cleanup_is_not_retried_on_every_request() -> None:
     assert cleanup.call_count == 1
 
 
+
 def test_refresh_ttl_on_access_is_persisted() -> None:
     """Test that hishel_refresh_ttl_on_access survives storing, since it's read back from the stored entry"""
     storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
