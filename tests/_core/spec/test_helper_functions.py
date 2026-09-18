@@ -17,10 +17,11 @@ Test Categories:
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
 import pytest
+from time_machine import travel
 
 from hishel import Entry, EntryMeta, Request, Response
 from hishel._core._headers import Headers
@@ -269,6 +270,7 @@ class TestGetFreshnessLifetime:
         assert shared_lifetime == 7200  # s-maxage for shared
         assert private_lifetime == 3600  # max-age for private
 
+    @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc), tick=False)
     def test_expires_header_provides_freshness(self) -> None:
         """
         Test: Expires header provides freshness lifetime.
@@ -286,10 +288,10 @@ class TestGetFreshnessLifetime:
         lifetime = get_freshness_lifetime(response, is_cache_shared=True)
 
         # Assert
-        assert lifetime is not None
-        # Should be approximately 2 hours (7200 seconds)
-        assert 7190 <= lifetime <= 7210  # Allow small timing variance
+        # Should be exactly 2 hours (7200 seconds) since the clock is frozen
+        assert lifetime == 7200
 
+    @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc), tick=False)
     def test_invalid_expires_header_is_expired(self) -> None:
         """
         Test: Expires header which is invalid is treated as already expired.
@@ -309,6 +311,7 @@ class TestGetFreshnessLifetime:
         # Assert
         assert lifetime is None or lifetime < 0  # Invalid Expires treated as expired
 
+    @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc), tick=False)
     def test_expires_header_missing_date(self) -> None:
         """
         Test: Expires header provides freshness lifetime even when Date header is missing.
@@ -325,9 +328,8 @@ class TestGetFreshnessLifetime:
         lifetime = get_freshness_lifetime(response, is_cache_shared=True)
 
         # Assert
-        assert lifetime is not None
-        # Should be approximately 2 hours (7200 seconds)
-        assert 7190 <= lifetime <= 7210  # Allow small timing variance
+        # Should be exactly 2 hours (7200 seconds) since the clock is frozen
+        assert lifetime == 7200
 
     def test_max_age_takes_precedence_over_expires(self) -> None:
         """
@@ -346,6 +348,7 @@ class TestGetFreshnessLifetime:
         # Assert
         assert lifetime == 3600  # max-age, not Expires
 
+    @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc), tick=False)
     def test_heuristic_freshness_when_no_explicit_expiration(self) -> None:
         """
         Test: Heuristic freshness is used when no explicit expiration exists.
@@ -360,9 +363,8 @@ class TestGetFreshnessLifetime:
         lifetime = get_freshness_lifetime(response, is_cache_shared=True)
 
         # Assert
-        assert lifetime is not None
-        # Should be ~10% of 10 days = 1 day = 86400 seconds
-        assert 80000 <= lifetime <= 90000
+        # Should be exactly 10% of 10 days = 1 day = 86400 seconds
+        assert lifetime == 86400
 
     def test_no_freshness_info_returns_none(self) -> None:
         """
@@ -466,6 +468,7 @@ class TestGetHeuristicFreshness:
     RFC 9111 Section 4.2.2: Calculating Heuristic Freshness
     """
 
+    @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc), tick=False)
     def test_heuristic_freshness_from_last_modified(self) -> None:
         """
         Test: Heuristic freshness calculated as 10% of age since Last-Modified.
@@ -485,9 +488,9 @@ class TestGetHeuristicFreshness:
 
         # Assert
         # 10% of 10 days = 1 day = 86400 seconds
-        assert freshness is not None
-        assert 80000 <= freshness <= 90000  # Allow timing variance
+        assert freshness == 86400
 
+    @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc), tick=False)
     def test_heuristic_freshness_capped_at_one_week(self) -> None:
         """
         Test: Heuristic freshness is capped at one week maximum.
@@ -533,6 +536,7 @@ class TestGetAge:
     RFC 9111 Section 4.2.3: Calculating Age
     """
 
+    @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc), tick=False)
     def test_age_calculation_from_date_header(self) -> None:
         """
         Test: Age is calculated from Date header.
@@ -550,8 +554,8 @@ class TestGetAge:
         age = get_age(response)
 
         # Assert
-        # Should be approximately 3600 seconds (1 hour)
-        assert 3590 <= age <= 3610
+        # Should be exactly 3600 seconds (1 hour) since the clock is frozen
+        assert age == 3600
 
     def test_age_is_zero_without_date_header(self) -> None:
         """
@@ -571,6 +575,7 @@ class TestGetAge:
         # Assert
         assert age == 0
 
+    @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc), tick=False)
     def test_age_is_zero_for_future_date(self) -> None:
         """
         Test: Age is 0 when Date is in the future (clock skew protection).
