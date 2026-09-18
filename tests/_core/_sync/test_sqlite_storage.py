@@ -533,3 +533,29 @@ def test_custom_ttl() -> None:
     # Verify hishel_ttl overrides default_ttl
     entries = storage.get_entries("test_key")
     assert len(entries) == 1
+
+
+
+def test_batch_cleanup_runs_once_per_interval() -> None:
+    """Cleanup must not re-run on every get_entries call"""
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
+    storage.last_cleanup = 0
+
+    with patch.object(storage, "_batch_cleanup", MagicMock(wraps=storage._batch_cleanup)) as cleanup:
+        storage.get_entries("test_key")
+        storage.get_entries("test_key")
+
+    assert cleanup.call_count == 1
+
+
+
+def test_failed_batch_cleanup_is_not_retried_on_every_request() -> None:
+    """A failing cleanup must wait for the next interval instead of re-running on every get_entries call"""
+    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
+    storage.last_cleanup = 0
+
+    with patch.object(storage, "_batch_cleanup", MagicMock(side_effect=RuntimeError("boom"))) as cleanup:
+        storage.get_entries("test_key")
+        storage.get_entries("test_key")
+
+    assert cleanup.call_count == 1

@@ -231,6 +231,10 @@ class AsyncSqliteStorage(AsyncBaseStorage):
                         # don't let cleanup prevent reads; failures are non-fatal
                         # but we log so problems are visible instead of silent
                         logger.exception("hishel: batch cleanup failed")
+                    finally:
+                        # Reset even on failure, otherwise a failing cleanup
+                        # would re-run on every get_entries call.
+                        self.last_cleanup = time.time()
 
         connection = await self._ensure_connection()
         cursor = await connection.cursor()

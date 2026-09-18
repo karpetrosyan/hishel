@@ -135,7 +135,6 @@ class SyncSqliteStorage(SyncBaseStorage):
         self.last_cleanup = (
             time.time() - BATCH_CLEANUP_INTERVAL + BATCH_CLEANUP_START_DELAY
         )
-        self._start_time = time.time()
         self._initialized = False
         # Set by close() and never unset: prevents lingering stream
         # generators (or any late caller) from silently reopening the
@@ -301,6 +300,10 @@ class SyncSqliteStorage(SyncBaseStorage):
                     # Don't let cleanup prevent reads; failures are non-fatal
                     # but we log so problems are visible instead of silent.
                     logger.exception("hishel: batch cleanup failed")
+                finally:
+                    # Reset even on failure, otherwise a failing cleanup
+                    # would re-run on every get_entries call.
+                    self.last_cleanup = time.time()
 
             connection = self._ensure_connection()
             cursor = connection.cursor()
