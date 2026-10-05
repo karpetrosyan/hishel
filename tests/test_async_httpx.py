@@ -184,6 +184,38 @@ async def test_body_key_survives_sending_request() -> None:
 
 
 @pytest.mark.anyio
+async def test_body_key_header_isolates_post_bodies_and_preserves_stream() -> None:
+    sent_bodies: list[bytes] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = request.content
+        sent_bodies.append(body)
+        return httpx.Response(
+            200,
+            headers={"Cache-Control": "max-age=3600"},
+            content=b"response:" + body,
+        )
+
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
+    policy = FilterPolicy()
+    client = AsyncCacheClient(
+        transport=AsyncCacheTransport(next_transport=MockTransport(handler=handler), storage=storage, policy=policy),
+    )
+    headers = {"x-Hishel-bOdy-kEy": "true"}
+
+    first = await client.post("https://localhost/search", content=b"first", headers=headers)
+    same_body = await client.post("https://localhost/search", content=b"first", headers=headers)
+    different_body = await client.post("https://localhost/search", content=b"second", headers=headers)
+
+    assert first.content == b"response:first"
+    assert same_body.content == b"response:first"
+    assert same_body.extensions["hishel_from_cache"] is True
+    assert different_body.content == b"response:second"
+    assert different_body.extensions["hishel_from_cache"] is False
+    assert sent_bodies == [b"first", b"second"]
+
+
+@pytest.mark.anyio
 async def test_httpx_request_extensions_are_preserved() -> None:
     captured_requests: list[httpx.Request] = []
 

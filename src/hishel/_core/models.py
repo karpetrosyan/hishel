@@ -89,6 +89,12 @@ def extract_metadata_from_headers(
             metadata["hishel_spec_ignore"] = True
         elif value in ("0", "false", "no", "off"):
             metadata["hishel_spec_ignore"] = False
+    if "X-Hishel-Body-Key" in headers:
+        value = headers["X-Hishel-Body-Key"].lower()
+        if value in ("1", "true", "yes", "on"):
+            metadata["hishel_body_key"] = True
+        elif value in ("0", "false", "no", "off"):
+            metadata["hishel_body_key"] = False
     return metadata
 
 
