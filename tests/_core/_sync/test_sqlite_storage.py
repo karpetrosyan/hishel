@@ -555,6 +555,7 @@ def test_zero_hishel_ttl_means_immediately_expired() -> None:
     assert len(entries) == 0
 
 
+
 def test_batch_cleanup_runs_once_per_interval() -> None:
     """Cleanup must not re-run on every get_entries call"""
     storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
