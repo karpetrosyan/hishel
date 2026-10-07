@@ -538,7 +538,8 @@ def test_custom_ttl() -> None:
 
 def test_zero_hishel_ttl_means_immediately_expired() -> None:
     """X-Hishel-Ttl: 0 is a legal value and must not fall back to default_ttl."""
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False), default_ttl=9999)
+    connection = sqlite3.connect(":memory:", check_same_thread=False)
+    storage = SyncSqliteStorage(connection=connection, default_ttl=9999)
 
     entry = storage.create_entry(
         request=Request(method="GET", url="https://example.com", metadata={"hishel_ttl": 0}),
