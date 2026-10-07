@@ -52,7 +52,8 @@ class RedisStorage(SyncBaseStorage):
 
     def _effective_ttl(self, request: Request) -> int | float:
         """Determine the effective TTL for a request, prioritizing request-specific metadata over the default TTL."""
-        return cast(int | float, request.metadata.get("hishel_ttl", self._default_ttl))
+        metadata_ttl = request.metadata.get("hishel_ttl")
+        return cast(int | float, metadata_ttl if metadata_ttl is not None else self._default_ttl)
 
     def _safe_ttl_ms(self, request: Request) -> int:
         """
