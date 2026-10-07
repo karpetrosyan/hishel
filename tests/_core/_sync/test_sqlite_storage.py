@@ -536,6 +536,27 @@ def test_custom_ttl() -> None:
 
 
 
+def test_zero_hishel_ttl_means_immediately_expired() -> None:
+    """X-Hishel-Ttl: 0 is a legal value and must not fall back to default_ttl."""
+    connection = sqlite3.connect(":memory:", check_same_thread=False)
+    storage = SyncSqliteStorage(connection=connection, default_ttl=9999)
+
+    entry = storage.create_entry(
+        request=Request(method="GET", url="https://example.com", metadata={"hishel_ttl": 0}),
+        response=Response(status_code=200, stream=make_sync_iterator([b"data"])),
+        key="test_key",
+        id_=uuid.UUID(int=14),
+    )
+
+    entry.response.read()
+
+    # A zero override means the entry is already expired; reading it back must not
+    # return the entry as if the default_ttl had been applied.
+    entries = storage.get_entries("test_key")
+    assert len(entries) == 0
+
+
+
 def test_batch_cleanup_runs_once_per_interval() -> None:
     """Cleanup must not re-run on every get_entries call"""
     storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
