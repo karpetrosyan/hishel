@@ -263,20 +263,34 @@ class ASGICacheMiddleware:
         Returns:
             The internal Request object.
         """
+        # Extract headers before building the URL because the Host header carries
+        # the request authority. ASGI's ``server`` value is only the address the
+        # application server is listening on, which can be shared by many virtual
+        # hosts.
+        raw_headers = scope.get("headers", [])
+        headers_dict = {key.decode("latin1"): value.decode("latin1") for key, value in raw_headers}
+        authority = next(
+            (value.decode("latin1") for key, value in raw_headers if key.lower() == b"host"),
+            None,
+        )
+
         # Build URL
         scheme = scope.get("scheme", "http")
-        server = scope.get("server")
+        if authority is not None:
+            host = authority
+        else:
+            server = scope.get("server")
 
-        if server is None:
-            server = ("localhost", 80)
-            logger.debug("No server info in scope, using default: localhost:80")
+            if server is None:
+                server = ("localhost", 80)
+                logger.debug("No server info in scope, using default: localhost:80")
 
-        host = server[0]
-        port = server[1] if server[1] is not None else (443 if scheme == "https" else 80)
+            host = server[0]
+            port = server[1] if server[1] is not None else (443 if scheme == "https" else 80)
 
-        # Add port to host if non-standard
-        if (scheme == "http" and port != 80) or (scheme == "https" and port != 443):
-            host = f"{host}:{port}"
+            # Add port to host if non-standard
+            if (scheme == "http" and port != 80) or (scheme == "https" and port != 443):
+                host = f"{host}:{port}"
 
         path = scope.get("path", "/")
         query_string = scope.get("query_string", b"")
@@ -285,9 +299,6 @@ class ASGICacheMiddleware:
 
         url = f"{scheme}://{host}{path}"
         method = scope.get("method", "GET")
-
-        # Extract headers
-        headers_dict = {key.decode("latin1"): value.decode("latin1") for key, value in scope.get("headers", [])}
 
         logger.debug(
             "Building internal request: method=%s url=%s headers_count=%d",

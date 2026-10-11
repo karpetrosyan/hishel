@@ -223,6 +223,19 @@ class ResponseCollector:
         return None
 
 
+def test_request_url_uses_host_header_as_authority() -> None:
+    middleware = ASGICacheMiddleware(app=simple_asgi_app)
+    scope = create_asgi_scope(
+        path="/dashboard",
+        query_string=b"view=summary",
+        headers=[(b"HoSt", b"tenant.example:8443")],
+    )
+
+    request = middleware._asgi_to_internal_request(scope, simple_receive)
+
+    assert request.url == "https://tenant.example:8443/dashboard?view=summary"
+
+
 @pytest.mark.anyio
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")), tick=False)
 async def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
@@ -485,6 +498,54 @@ async def test_different_paths() -> None:
     await middleware(scope1, simple_receive, collector1_cached.send)
 
     assert collector1_cached.status == 200
+
+    await middleware.aclose()
+
+
+@pytest.mark.anyio
+async def test_different_hosts_are_cached_separately() -> None:
+    """The request authority must distinguish cache entries for virtual hosts."""
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    origin_calls: list[str] = []
+
+    async def virtual_host_app(scope: _ASGIScope, receive: Any, send: Any) -> None:
+        headers = {key.lower(): value for key, value in scope.get("headers", [])}
+        host = headers[b"host"].decode("latin1")
+        origin_calls.append(host)
+        body = f"Content for {host}".encode()
+
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [(b"cache-control", b"public, max-age=3600")],
+            }
+        )
+        await send(
+            {
+                "type": "http.response.body",
+                "body": body,
+                "more_body": False,
+            }
+        )
+
+    middleware = ASGICacheMiddleware(app=virtual_host_app, storage=storage)
+    alice_scope = create_asgi_scope(path="/dashboard", headers=[(b"host", b"alice.example.com")])
+    bob_scope = create_asgi_scope(path="/dashboard", headers=[(b"host", b"bob.example.com")])
+
+    alice_response = ResponseCollector()
+    await middleware(alice_scope, simple_receive, alice_response.send)
+
+    bob_response = ResponseCollector()
+    await middleware(bob_scope, simple_receive, bob_response.send)
+
+    cached_alice_response = ResponseCollector()
+    await middleware(alice_scope, simple_receive, cached_alice_response.send)
+
+    assert alice_response.get_body() == b"Content for alice.example.com"
+    assert bob_response.get_body() == b"Content for bob.example.com"
+    assert cached_alice_response.get_body() == b"Content for alice.example.com"
+    assert origin_calls == ["alice.example.com", "bob.example.com"]
 
     await middleware.aclose()
 
