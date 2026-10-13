@@ -316,6 +316,15 @@ async def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
     await middleware.aclose()
 
 
+def test_repeated_request_headers_with_different_case_are_preserved() -> None:
+    middleware = ASGICacheMiddleware(app=set_cookie_asgi_app)
+    scope = create_asgi_scope(headers=[(b"X-Tag", b"one"), (b"x-tag", b"two")])
+
+    request = middleware._asgi_to_internal_request(scope, simple_receive)
+
+    assert request.headers.get_list("x-tag") == ["one", "two"]
+
+
 @pytest.mark.anyio
 @travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")), tick=False)
 async def test_simple_caching_ignoring_spec(caplog: pytest.LogCaptureFixture) -> None:

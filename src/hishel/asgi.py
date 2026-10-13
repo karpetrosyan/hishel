@@ -291,7 +291,7 @@ class ASGICacheMiddleware:
         # Extract headers
         headers_dict: dict[str, list[str]] = {}
         for key, value in scope.get("headers", []):
-            headers_dict.setdefault(key.decode("latin1"), []).append(value.decode("latin1"))
+            headers_dict.setdefault(key.decode("latin1").lower(), []).append(value.decode("latin1"))
 
         logger.debug(
             "Building internal request: method=%s url=%s headers_count=%d",
