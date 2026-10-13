@@ -182,3 +182,38 @@ def test_body_key_survives_sending_request() -> None:
 
     assert len(storage.get_entries(hashlib.sha256(b"hello").hexdigest())) == 1
     assert len(storage.get_entries(hashlib.sha256(b"").hexdigest())) == 0
+
+
+
+def test_multiple_set_cookie_headers_are_preserved() -> None:
+    set_cookies = [
+        "PHPSESSID=abc123; expires=Fri, 02-Oct-2026 17:23:39 GMT; Max-Age=14400; path=/; HttpOnly",
+        "TS01a379d3=xyz789; Path=/",
+    ]
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200,
+            content=b"ok",
+            headers=[
+                ("Cache-Control", "max-age=3600"),
+                ("Set-Cookie", set_cookies[0]),
+                ("Set-Cookie", set_cookies[1]),
+            ],
+        )
+
+    client = SyncCacheClient(
+        transport=SyncCacheTransport(
+            next_transport=MockTransport(handler=handler),
+            storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False)),
+        ),
+    )
+
+    first = client.get("https://localhost")
+    assert first.headers.get_list("set-cookie") == set_cookies
+    assert dict(first.cookies) == {"PHPSESSID": "abc123", "TS01a379d3": "xyz789"}
+
+    second = client.get("https://localhost")
+    assert second.extensions["hishel_from_cache"] is True
+    assert second.headers.get_list("set-cookie") == set_cookies
+    assert dict(second.cookies) == {"PHPSESSID": "abc123", "TS01a379d3": "xyz789"}

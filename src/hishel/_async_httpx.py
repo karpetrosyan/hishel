@@ -91,14 +91,14 @@ def _internal_to_httpx(
         return httpx.Request(
             method=value.method,
             url=value.url,
-            headers=value.headers,
+            headers=value.headers.multi_items(),
             stream=_IteratorStream(value._aiter_stream()),
             extensions=_httpx_request_extensions_from_metadata(value.metadata),
         )
     elif isinstance(value, Response):
         return httpx.Response(
             status_code=value.status_code,
-            headers=value.headers,
+            headers=value.headers.multi_items(),
             stream=_IteratorStream(value._aiter_stream()),
             extensions=_httpx_extensions_from_metadata(value.metadata),
         )
@@ -118,12 +118,11 @@ def _httpx_to_internal(
     """
     Convert httpx.Request/httpx.Response to internal Request/Response.
     """
-    headers = Headers(
-        filter_mapping(
-            Headers({key: value for key, value in value.headers.items()}),
-            ["Transfer-Encoding"],
-        )
-    )
+    headers_dict: dict[str, list[str]] = {}
+    for key, header_value in value.headers.multi_items():
+        headers_dict.setdefault(key, []).append(header_value)
+
+    headers = Headers(filter_mapping(headers_dict, ["Transfer-Encoding"]))
     if isinstance(value, httpx.Request):
         extension_metadata = RequestMetadata(
             hishel_refresh_ttl_on_access=value.extensions.get("hishel_refresh_ttl_on_access"),
@@ -161,7 +160,7 @@ def _httpx_to_internal(
             headers = Headers(
                 {
                     **filter_mapping(
-                        headers,
+                        headers._headers,
                         ["content-encoding"],
                     ),
                     "content-length": str(len(value.content)),

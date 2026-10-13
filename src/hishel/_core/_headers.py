@@ -9,6 +9,7 @@ from typing import (
     Mapping,
     MutableMapping,
     Optional,
+    Tuple,
     Union,
     cast,
 )
@@ -267,6 +268,9 @@ class Headers(MutableMapping[str, str]):
 
     def get_list(self, key: str) -> Optional[List[str]]:
         return self._headers.get(key.lower(), None)
+
+    def multi_items(self) -> List[Tuple[str, str]]:
+        return [(key, value) for key, values in self._headers.items() for value in values]
 
     def __getitem__(self, key: str) -> str:
         return ", ".join(self._headers[key.lower()])

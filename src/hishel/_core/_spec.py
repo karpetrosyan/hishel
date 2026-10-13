@@ -833,7 +833,7 @@ def make_conditional_request(request: Request, response: Response) -> Request:
         request,
         headers=Headers(
             {
-                **request.headers,
+                **request.headers._headers,
                 **precondition_headers,
             }
         ),
@@ -976,7 +976,7 @@ def exclude_unstorable_headers(response: Response, is_cache_shared: bool) -> Res
     # Filter out the excluded headers
     # Create new Headers dict with only the headers we want to keep
     new_headers = Headers(
-        {key: value for key, value in response.headers.items() if key.lower() not in need_to_be_excluded}
+        {key: values for key, values in response.headers._headers.items() if key.lower() not in need_to_be_excluded}
     )
 
     # Return a new response with filtered headers
@@ -1086,10 +1086,10 @@ def refresh_response_headers(
     # Headers from revalidation_response override stored_response
     # EXCEPT for excluded headers (content metadata)
     new_headers = {
-        **stored_response.headers,  # Base: original cached headers
+        **stored_response.headers._headers,  # Base: original cached headers
         **{
-            key: value
-            for key, value in revalidation_response.headers.items()
+            key: values
+            for key, values in revalidation_response.headers._headers.items()
             if key.lower() not in excluded_headers  # Skip content metadata
         },
     }
@@ -1213,7 +1213,7 @@ class IdleClient(State):
                         selected_pair.response,
                         headers=Headers(
                             {
-                                **selected_pair.response.headers,
+                                **selected_pair.response.headers._headers,
                                 "age": str(current_age),
                             }
                         ),

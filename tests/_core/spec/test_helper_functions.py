@@ -702,6 +702,26 @@ class TestMakeConditionalRequest:
         assert "if-modified-since" not in conditional.headers
         assert conditional.headers["accept"] == "application/json"
 
+    def test_preserves_multi_value_request_headers(self) -> None:
+        """
+        Test: Repeated request headers keep separate values.
+        """
+        # Arrange
+        request = Request(
+            method="GET",
+            url="https://example.com/resource",
+            headers=Headers({"x-tag": ["one", "two"]}),
+            metadata={},
+        )
+        response = create_response(headers={"etag": '"abc123"'})
+
+        # Act
+        conditional = make_conditional_request(request, response)
+
+        # Assert
+        assert conditional.headers.get_list("x-tag") == ["one", "two"]
+        assert conditional.headers["if-none-match"] == '"abc123"'
+
 
 # =============================================================================
 # Test Suite 7: exclude_unstorable_headers
@@ -822,6 +842,30 @@ class TestExcludeUnstorableHeaders:
         assert "cache-control" in filtered.headers
         assert "etag" in filtered.headers
         assert "last-modified" in filtered.headers
+
+    def test_multi_value_headers_preserved(self) -> None:
+        """
+        Test: Repeated header fields (e.g. Set-Cookie) are not merged into
+        a single comma-separated value when unstorable headers are filtered.
+        """
+        # Arrange
+        response = Response(
+            status_code=200,
+            headers=Headers(
+                {
+                    "set-cookie": ["a=1; Path=/", "b=2; Path=/"],
+                    "content-type": "application/json",
+                }
+            ),
+            metadata={},
+        )
+
+        # Act
+        filtered = exclude_unstorable_headers(response, is_cache_shared=True)
+
+        # Assert
+        assert filtered.headers.get_list("set-cookie") == ["a=1; Path=/", "b=2; Path=/"]
+        assert "content-type" in filtered.headers
 
 
 # =============================================================================
@@ -994,6 +1038,30 @@ class TestRefreshResponseHeaders:
         assert "cache-control" in refreshed.headers
         assert "connection" not in refreshed.headers
         assert "keep-alive" not in refreshed.headers
+
+    def test_multi_value_headers_preserved_on_merge(self) -> None:
+        """
+        Test: Repeated stored header fields stay separate after a 304 merge.
+        """
+        # Arrange
+        stored = Response(
+            status_code=200,
+            headers=Headers(
+                {
+                    "set-cookie": ["a=1; Path=/", "b=2; Path=/"],
+                    "content-type": "application/json",
+                }
+            ),
+            metadata={},
+        )
+        revalidation = create_response(status_code=304, headers={"cache-control": "max-age=7200"})
+
+        # Act
+        refreshed = refresh_response_headers(stored, revalidation, self.is_cache_shared)
+
+        # Assert
+        assert refreshed.headers.get_list("set-cookie") == ["a=1; Path=/", "b=2; Path=/"]
+        assert refreshed.headers["cache-control"] == "max-age=7200"
 
 
 # =============================================================================
