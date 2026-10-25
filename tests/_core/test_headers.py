@@ -647,6 +647,6 @@ class TestRange:
             "bytes=a",
         ],
     )
-    def test_invalid_range_returns_none(self, range_header: str):
+    def test_invalid_range_returns_none(self, range_header: str) -> None:
         """A recipient of an invalid ranges-specifier MUST ignore it."""
         assert Range.try_from_str(range_header) is None
