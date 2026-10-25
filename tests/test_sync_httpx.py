@@ -281,3 +281,32 @@ def test_httpx_request_extensions_are_preserved_on_revalidation() -> None:
     # the revalidation request must carry the extensions of the request that
     # triggered it, not the ones of the originally stored request
     assert captured_requests[1].extensions["timeout"]["connect"] == 0.25
+
+
+
+def test_invalid_range_header_is_ignored() -> None:
+    # RFC 9110 §14.2: a recipient of an invalid ranges-specifier MUST ignore it,
+    # so the request must reach the origin instead of crashing the client.
+    handler_calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal handler_calls
+        handler_calls += 1
+        return httpx.Response(
+            200,
+            content=b"ok",
+            headers={"Cache-Control": "max-age=3600"},
+        )
+
+    client = SyncCacheClient(
+        transport=SyncCacheTransport(
+            next_transport=MockTransport(handler=handler),
+            storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False)),
+        ),
+    )
+
+    response = client.get("https://localhost", headers={"Range": "bytes=x-y"})
+
+    assert response.status_code == 200
+    assert response.text == "ok"
+    assert handler_calls == 1

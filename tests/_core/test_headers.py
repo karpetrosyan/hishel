@@ -4,7 +4,9 @@ Comprehensive pytest tests for HTTP Cache-Control parser.
 Run with: pytest test_cache_control.py -v
 """
 
-from hishel._core._headers import CacheControl, parse_cache_control
+import pytest
+
+from hishel._core._headers import CacheControl, Range, parse_cache_control
 
 
 class TestBasicParsing:
@@ -607,3 +609,44 @@ class TestDefaultValues:
 
         # Extensions should be empty list
         assert cc.extensions == []
+
+
+class TestRange:
+    """Test Range header parsing [RFC9110, Section 14.2]."""
+
+    def test_valid_single_range(self):
+        """A valid byte range is parsed into start and end."""
+        rng = Range.try_from_str("bytes=0-99")
+
+        assert rng is not None
+        assert rng.unit == "bytes"
+        assert rng.range == (0, 99)
+
+    def test_open_ended_and_suffix_ranges(self):
+        """Open-ended and suffix ranges are accepted."""
+        open_ended = Range.try_from_str("bytes=100-")
+        suffix = Range.try_from_str("bytes=-500")
+
+        assert open_ended is not None and open_ended.range == (100, None)
+        assert suffix is not None and suffix.range == (None, 500)
+
+    def test_multiple_ranges_unsupported(self):
+        """Multiple ranges are unsupported and yield None, not an error."""
+        assert Range.try_from_str("bytes=0-99,200-299") is None
+
+    @pytest.mark.parametrize(
+        "range_header",
+        [
+            # No "=" at all.
+            "bytes",
+            # Non-numeric first-byte-pos / last-byte-pos.
+            "bytes=x-y",
+            # More than one "=" — not a valid byte-ranges-specifier.
+            "bytes=0-99=5",
+            # A byte-range-spec without the required "-".
+            "bytes=a",
+        ],
+    )
+    def test_invalid_range_returns_none(self, range_header: str):
+        """A recipient of an invalid ranges-specifier MUST ignore it."""
+        assert Range.try_from_str(range_header) is None

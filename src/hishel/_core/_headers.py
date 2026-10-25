@@ -315,18 +315,23 @@ class Range:
     @classmethod
     def try_from_str(cls, range_header: str) -> "Range" | None:
         # Example: "bytes=0-99,200-299,-500,100-"
-        unit, values = range_header.split("=")
-        unit = unit.strip()
-        parts = [p.strip() for p in values.split(",")]
+        try:
+            unit, values = range_header.split("=")
+            unit = unit.strip()
+            parts = [p.strip() for p in values.split(",")]
 
-        parsed: list[tuple[int | None, int | None]] = []
-        for part in parts:
-            if "-" not in part:
-                raise ValueError(f"Invalid range part: {part}")
-            start_str, end_str = part.split("-", 1)
-            start = int(start_str) if start_str else None
-            end = int(end_str) if end_str else None
-            parsed.append((start, end))
+            parsed: list[tuple[int | None, int | None]] = []
+            for part in parts:
+                if "-" not in part:
+                    raise ValueError(f"Invalid range part: {part}")
+                start_str, end_str = part.split("-", 1)
+                start = int(start_str) if start_str else None
+                end = int(end_str) if end_str else None
+                parsed.append((start, end))
+        except ValueError:
+            # RFC 9110, Section 14.2: "A recipient of an invalid
+            # ranges-specifier MUST ignore it."
+            return None
 
         if len(parsed) != 1:
             # we don't support multiple ranges
