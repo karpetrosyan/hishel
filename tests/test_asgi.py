@@ -672,3 +672,76 @@ async def test_headers_are_preserved() -> None:
     assert collector2.get_header(b"cache-control") is not None
 
     await middleware.aclose()
+
+
+# Mock ASGI application that returns a response with repeated headers
+async def duplicate_set_cookie_asgi_app(scope: _ASGIScope, receive: Any, send: Any) -> None:
+    """ASGI app that returns two Set-Cookie fields plus a Content-Type field."""
+    if scope["type"] != "http":
+        return
+
+    body = b"Cookie set!"
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [
+                (b"content-type", b"text/plain"),
+                (b"cache-control", b"public, max-age=3600"),
+                (b"set-cookie", b"first=1; Path=/"),
+                (b"set-cookie", b"second=2; Path=/"),
+                (b"content-length", str(len(body)).encode()),
+            ],
+        }
+    )
+    await send(
+        {
+            "type": "http.response.body",
+            "body": body,
+            "more_body": False,
+        }
+    )
+
+
+def get_header_values(collector: ResponseCollector, name: bytes) -> list[bytes]:
+    """Get all values of a response header, including repeated fields."""
+    return [value for key, value in collector.headers if key.lower() == name.lower()]
+
+
+@pytest.mark.anyio
+async def test_duplicate_response_headers_are_preserved() -> None:
+    """Repeated response headers must survive the middleware.
+
+    RFC 9111 Section 3.1 requires caches to store all header fields received
+    in a response, and RFC 9110 Section 5.6.1 forbids combining Set-Cookie
+    values into a comma-separated list, so both Set-Cookie fields must reach
+    the client as separate fields, both on a cache miss and on a cache hit.
+    """
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    middleware = ASGICacheMiddleware(
+        app=duplicate_set_cookie_asgi_app,
+        storage=storage,
+        policy=FilterPolicy(),
+    )
+
+    scope = create_asgi_scope()
+
+    # First request - cache miss, response passed through
+    collector1 = ResponseCollector()
+    await middleware(scope, simple_receive, collector1.send)
+
+    assert collector1.status == 200
+    assert collector1.get_body() == b"Cookie set!"
+    assert collector1.get_header(b"content-type") == b"text/plain"
+    assert get_header_values(collector1, b"set-cookie") == [b"first=1; Path=/", b"second=2; Path=/"]
+
+    # Second request - cache hit
+    collector2 = ResponseCollector()
+    await middleware(scope, simple_receive, collector2.send)
+
+    assert collector2.status == 200
+    assert collector2.get_body() == b"Cookie set!"
+    assert collector2.get_header(b"content-type") == b"text/plain"
+    assert get_header_values(collector2, b"set-cookie") == [b"first=1; Path=/", b"second=2; Path=/"]
+
+    await middleware.aclose()
