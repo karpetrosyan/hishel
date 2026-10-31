@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import (
     Any,
     Iterator,
     List,
-    Literal,
     Mapping,
     MutableMapping,
     Optional,
     Union,
-    cast,
 )
 
 """
@@ -305,37 +302,6 @@ class Vary:
             field_name = field_name.strip()
             values.append(field_name)
         return Vary(values)
-
-
-@dataclass
-class Range:
-    unit: Literal["bytes"]
-    range: tuple[int | None, int | None]
-
-    @classmethod
-    def try_from_str(cls, range_header: str) -> "Range" | None:
-        # Example: "bytes=0-99,200-299,-500,100-"
-        unit, values = range_header.split("=")
-        unit = unit.strip()
-        parts = [p.strip() for p in values.split(",")]
-
-        parsed: list[tuple[int | None, int | None]] = []
-        for part in parts:
-            if "-" not in part:
-                raise ValueError(f"Invalid range part: {part}")
-            start_str, end_str = part.split("-", 1)
-            start = int(start_str) if start_str else None
-            end = int(end_str) if end_str else None
-            parsed.append((start, end))
-
-        if len(parsed) != 1:
-            # we don't support multiple ranges
-            return None
-
-        return cls(
-            unit=cast(Literal["bytes"], unit),
-            range=parsed[0],
-        )
 
 
 class CacheControl:

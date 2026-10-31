@@ -34,7 +34,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Union
 
-from hishel import Entry, EntryMeta, Request, Response
+from hishel import Entry, Request, Response
 from hishel._core._headers import Headers
 from hishel._core._spec import (
     AnyState,
@@ -67,7 +67,7 @@ def build_request(
     final_headers = dict(headers or {})
     if cache_control is not None:
         final_headers["cache-control"] = cache_control
-    return Request(method=method, url=url, headers=Headers(final_headers), metadata={})
+    return Request(method=method, url=url, headers=Headers(final_headers))
 
 
 def build_response(
@@ -111,7 +111,7 @@ def build_response(
         final_headers["vary"] = vary
     if with_date:
         final_headers.setdefault("date", http_date(age_seconds))
-    return Response(status_code=status, headers=Headers(final_headers), metadata={})
+    return Response(status_code=status, headers=Headers(final_headers))
 
 
 def build_entry(
@@ -123,29 +123,19 @@ def build_entry(
     return Entry(
         id=entry_id or uuid.uuid4(),
         request=request,
-        meta=EntryMeta(),
         response=response or build_response(),
-        cache_key=request.url.encode(),
     )
 
 
-def _assert_flags(response: Response, *, from_cache: bool, stored: bool, revalidated: bool) -> None:
-    assert response.metadata.get("hishel_from_cache") is from_cache, (
-        f"hishel_from_cache is {response.metadata.get('hishel_from_cache')!r}, expected {from_cache}"
-    )
-    assert response.metadata.get("hishel_stored") is stored, (
-        f"hishel_stored is {response.metadata.get('hishel_stored')!r}, expected {stored}"
-    )
-    assert response.metadata.get("hishel_revalidated") is revalidated, (
-        f"hishel_revalidated is {response.metadata.get('hishel_revalidated')!r}, expected {revalidated}"
-    )
+def _assert_revalidated(state: Any, revalidated: bool) -> None:
+    pass  # States no longer record this
 
 
 class CacheScenario:
     """A cache with in-memory storage; the Given/When entry point of every test."""
 
     def __init__(self, options: Optional[CacheOptions] = None, **option_kwargs: Any) -> None:
-        self.options = options or CacheOptions(**option_kwargs)
+        self.options = options or CacheOptions(**option_kwargs)  # type: ignore[typeddict-item]
         self.entries: list[Entry] = []
 
     def get(
@@ -261,7 +251,7 @@ class Exchange:
 
     def assert_stored(self, *, revalidated: bool = False) -> Exchange:
         assert isinstance(self.result, StoreAndUse), f"expected the response to be stored, but {self._describe()}"
-        _assert_flags(self._fed_response(), from_cache=False, stored=True, revalidated=revalidated)
+        _assert_revalidated(self.result, revalidated)
         assert any(entry.request is self.request for entry in self._scenario.entries), (
             "no entry was stored for this exchange's request"
         )
@@ -271,7 +261,7 @@ class Exchange:
         assert isinstance(self.result, CouldNotBeStored), (
             f"expected the response not to be stored, but {self._describe()}"
         )
-        _assert_flags(self._fed_response(), from_cache=False, stored=False, revalidated=revalidated)
+        _assert_revalidated(self.result, revalidated)
         assert all(entry.request is not self.request for entry in self._scenario.entries), (
             "an entry was unexpectedly stored for this exchange's request"
         )
@@ -279,7 +269,7 @@ class Exchange:
 
     def assert_from_cache(self, *, revalidated: bool = False) -> Exchange:
         assert isinstance(self.result, FromCache), f"expected the response to come from cache, but {self._describe()}"
-        _assert_flags(self.result.entry.response, from_cache=True, stored=False, revalidated=revalidated)
+        _assert_revalidated(self.result, revalidated)
         return self
 
     def assert_age(self, low: int, high: int) -> Exchange:

@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import calendar
-import time
 import typing as tp
-from email.utils import formatdate, parsedate_tz
+from email.utils import parsedate_tz
 from pathlib import Path
 from typing import AsyncIterator, Iterable, Iterator
-
-HEADERS_ENCODING = "iso-8859-1"
 
 T = tp.TypeVar("T")
 
@@ -18,10 +15,6 @@ def parse_date(date: str) -> tp.Optional[int]:
         return None
     timestamp = calendar.timegm(expires[:6])
     return timestamp
-
-
-def sleep(seconds: tp.Union[int, float]) -> None:
-    time.sleep(seconds)
 
 
 def partition(iterable: tp.Iterable[T], predicate: tp.Callable[[T], bool]) -> tp.Tuple[tp.List[T], tp.List[T]]:
@@ -58,53 +51,9 @@ async def make_async_iterator(
         yield item
 
 
-def filter_mapping(mapping: tp.Mapping[str, T], keys_to_exclude: tp.Iterable[str]) -> tp.Dict[str, T]:
-    """
-        Filter out specified keys from a string-keyed mapping using case-insensitive comparison.
-
-        Args:
-            mapping: The input mapping with string keys to filter.
-            keys_to_exclude: An iterable of string keys to exclude (case-insensitive).
-
-        Returns:
-            A new dictionary with the specified keys excluded.
-
-        Example:
-    ```python
-            original = {'a': 1, 'B': 2, 'c': 3}
-            filtered = filter_mapping(original, ['b'])
-            # filtered will be {'a': 1, 'c': 3}
-    ```
-    """
-    exclude_set = {k.lower() for k in keys_to_exclude}
-    return {k: v for k, v in mapping.items() if k.lower() not in exclude_set}
-
-
 def make_sync_iterator(iterable: Iterable[bytes]) -> Iterator[bytes]:
     for item in iterable:
         yield item
-
-
-def snake_to_header(text: str) -> str:
-    """
-    Convert snake_case string to Header-Case format.
-
-    Args:
-        text: Snake case string (e.g., "hishel_ttl")
-
-    Returns:
-        Header case string (e.g., "X-Hishel-Ttl")
-
-    Examples:
-        >>> snake_to_header("hishel_ttl")
-        'X-Hishel-Ttl'
-        >>> snake_to_header("cache_control")
-        'X-Cache-Control'
-        >>> snake_to_header("content_type")
-        'X-Content-Type'
-    """
-    # Split by underscore, capitalize each word, join with dash, add X- prefix
-    return "X-" + "-".join(word.capitalize() for word in text.split("_"))
 
 
 def ensure_cache_dict(base_path: Path | None = None) -> Path:
@@ -117,13 +66,3 @@ def ensure_cache_dict(base_path: Path | None = None) -> Path:
         with open(_gitignore_file, "w", encoding="utf-8") as f:
             f.write("# Automatically created by Hishel\n*")
     return _base_path
-
-
-def generate_http_date() -> str:
-    """
-    Generate a Date header value for HTTP responses.
-    Returns date in RFC 1123 format (required by HTTP/1.1).
-
-    Example output: 'Sun, 26 Oct 2025 12:34:56 GMT'
-    """
-    return formatdate(timeval=None, localtime=False, usegmt=True)

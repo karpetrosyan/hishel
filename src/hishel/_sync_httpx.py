@@ -1,26 +1,14 @@
 from __future__ import annotations
 
+import hashlib
 import ssl
 import typing as t
-from typing import (
-    Iterable,
-    Iterator,
-    Iterator,
-    Union,
-    cast,
-    overload,
-)
+from typing import Iterable, Iterator, Iterator, TypedDict, cast
 
-from httpx import RequestNotRead
-
-from hishel import SyncCacheProxy, Headers, Request, Response
+from hishel import SyncSqliteStorage, CacheOptions, Headers, Request, Response
+from hishel._sync_rfc import handle_request_with_rfc
 from hishel._core._storages._sync_base import SyncBaseStorage
-from hishel._core.models import RequestMetadata, extract_metadata_from_headers
-from hishel._policies import CachePolicy
-from hishel._utils import (
-    filter_mapping,
-    make_sync_iterator,
-)
+from hishel._utils import make_sync_iterator
 
 try:
     import httpx
@@ -31,203 +19,171 @@ except ImportError as e:
         "e.g., 'pip install hishel[httpx]'."
     ) from e
 
-SOCKET_OPTION = t.Union[
-    t.Tuple[int, int, int],
-    t.Tuple[int, int, t.Union[bytes, bytearray]],
-    t.Tuple[int, int, None, int],
-]
 
-# httpx response extensions that are safe to cache. Skip live transport
-# objects (network_stream) and per-connection identifiers (stream_id).
-KNOWN_HTTPX_RESPONSE_EXTENSIONS = frozenset({"http_version", "reason_phrase"})
+CACHEABLE_METHODS = frozenset({"GET", "HEAD"})
 
 
-def _httpx_extensions_metadata(extensions: t.Mapping[str, t.Any]) -> dict[str, t.Any]:
-    httpx_meta = {key: val for key, val in extensions.items() if key in KNOWN_HTTPX_RESPONSE_EXTENSIONS}
-    return {"hishel_httpx": httpx_meta} if httpx_meta else {}
+class CacheConfig(TypedDict, total=False):
+    """Set on a transport, and overridable per request with the ``caching`` extension."""
+
+    storage: SyncBaseStorage
+    rfc: bool | CacheOptions
 
 
-def _httpx_extensions_from_metadata(metadata: t.Mapping[str, t.Any]) -> dict[str, t.Any]:
-    extras = dict(metadata)
-    httpx_meta = extras.pop("hishel_httpx", None)
-    if isinstance(httpx_meta, dict):
-        extras.update(httpx_meta)
-    return extras
+def _headers_to_internal(headers: httpx.Headers) -> Headers:
+    grouped: dict[str, list[str]] = {}
+    for key, value in headers.multi_items():
+        grouped.setdefault(key, []).append(value)
+    # The body is stored without its transfer encoding.
+    grouped.pop("transfer-encoding", None)
+    return Headers(grouped)
 
 
-# httpx request extensions (timeout, sni_hostname, trace, custom ones, ...) must
-# reach the underlying transport but must NOT be persisted to cache (trace contains
-# callables, timeout is per-request). Keeping them under a separate "hishel_"
-# prefixed key ensures filter_out_hishel_metadata drops them during packing, so
-# unlike response extensions they don't need an allowlist.
-def _httpx_request_extensions_metadata(extensions: t.Mapping[str, t.Any]) -> dict[str, t.Any]:
-    httpx_meta = {key: val for key, val in extensions.items() if not key.startswith("hishel_")}
-    return {"hishel_httpx_request": httpx_meta} if httpx_meta else {}
+def _headers_to_httpx(headers: Headers) -> list[tuple[bytes, bytes]]:
+    # As bytes, because httpx encodes str headers as ASCII and raises on anything else.
+    return [(key.encode(), value.encode()) for key in headers for value in headers.get_list(key) or []]
 
 
-def _httpx_request_extensions_from_metadata(metadata: t.Mapping[str, t.Any]) -> dict[str, t.Any]:
-    extras = dict(metadata)
-    httpx_meta = extras.pop("hishel_httpx_request", None)
-    if isinstance(httpx_meta, dict):
-        extras.update(httpx_meta)
-    return extras
-
-
-@overload
-def _internal_to_httpx(
-    value: Request,
-) -> httpx.Request: ...
-@overload
-def _internal_to_httpx(
-    value: Response,
-) -> httpx.Response: ...
-def _internal_to_httpx(
-    value: Union[Request, Response],
-) -> Union[httpx.Request, httpx.Response]:
+def _request_headers_with_changes(original: httpx.Headers, wanted: Headers) -> httpx.Headers:
     """
-    Convert internal Request/Response to httpx.Request/httpx.Response.
+    Apply what differs from ``original`` to its raw pairs, leaving every other
+    pair as it was, including duplicates, order and casing.
     """
-    if isinstance(value, Request):
-        return httpx.Request(
-            method=value.method,
-            url=value.url,
-            headers=value.headers,
-            stream=_IteratorStream(value._iter_stream()),
-            extensions=_httpx_request_extensions_from_metadata(value.metadata),
-        )
-    elif isinstance(value, Response):
-        return httpx.Response(
-            status_code=value.status_code,
-            headers=value.headers,
-            stream=_IteratorStream(value._iter_stream()),
-            extensions=_httpx_extensions_from_metadata(value.metadata),
-        )
+    changed = {key.encode(): value.encode() for key, value in wanted.items() if original.get(key) != value}
+    kept = [(key, value) for key, value in original.raw if key.lower() not in changed]
+    return httpx.Headers([*kept, *changed.items()])
 
 
-@overload
-def _httpx_to_internal(
-    value: httpx.Request,
-) -> Request: ...
-@overload
-def _httpx_to_internal(
-    value: httpx.Response,
-) -> Response: ...
-def _httpx_to_internal(
-    value: Union[httpx.Request, httpx.Response],
-) -> Union[Request, Response]:
-    """
-    Convert httpx.Request/httpx.Response to internal Request/Response.
-    """
-    headers = Headers(
-        filter_mapping(
-            Headers({key: value for key, value in value.headers.items()}),
-            ["Transfer-Encoding"],
-        )
+def _request_to_internal(request: httpx.Request) -> Request:
+    return Request(method=request.method, url=str(request.url), headers=_headers_to_internal(request.headers))
+
+
+def _response_to_internal(response: httpx.Response) -> Response:
+    headers = _headers_to_internal(response.headers)
+    if not response.is_stream_consumed:
+        return Response(status_code=response.status_code, headers=headers, stream=response.iter_raw())
+
+    if "content-encoding" in headers:
+        # Already read and decoded, so what we have no longer matches these headers.
+        del headers["content-encoding"]
+        headers.pop("content-length", None)
+        headers["content-length"] = str(len(response.content))
+    return Response(status_code=response.status_code, headers=headers, stream=make_sync_iterator([response.content]))
+
+
+def _response_to_httpx(response: Response, upstream: httpx.Response | None = None) -> httpx.Response:
+    assert isinstance(response.stream, (Iterator, Iterable))
+    return httpx.Response(
+        status_code=response.status_code,
+        headers=_headers_to_httpx(response.headers),
+        stream=_ResponseStream(response.stream, upstream),
+        extensions=upstream.extensions if upstream is not None else {},
     )
-    if isinstance(value, httpx.Request):
-        extension_metadata = RequestMetadata(
-            hishel_refresh_ttl_on_access=value.extensions.get("hishel_refresh_ttl_on_access"),
-            hishel_ttl=value.extensions.get("hishel_ttl"),
-            hishel_spec_ignore=value.extensions.get("hishel_spec_ignore"),
-            hishel_body_key=value.extensions.get("hishel_body_key"),
-        )
-        headers_metadata = extract_metadata_from_headers(value.headers)
-
-        for key, val in extension_metadata.items():
-            if key in value.extensions:
-                headers_metadata[key] = val  # type: ignore
-
-        headers_metadata.update(_httpx_request_extensions_metadata(value.extensions))  # type: ignore
-
-        try:
-            stream = make_sync_iterator([value.content])
-        except RequestNotRead:
-            stream = cast(Iterator[bytes], value.stream)
-
-        return Request(
-            method=value.method,
-            url=str(value.url),
-            headers=headers,
-            stream=stream,
-            metadata=headers_metadata,
-        )
-    elif isinstance(value, httpx.Response):
-        stream = make_sync_iterator([value.content]) if value.is_stream_consumed else value.iter_raw()
-
-        if value.is_stream_consumed and "content-encoding" in value.headers:
-            # If the stream was consumed and we don't know about
-            # the original data and its size, fix the Content-Length
-            # header and remove Content-Encoding so we can recreate it later properly.
-            headers = Headers(
-                {
-                    **filter_mapping(
-                        headers,
-                        ["content-encoding"],
-                    ),
-                    "content-length": str(len(value.content)),
-                }
-            )
-
-        return Response(
-            status_code=value.status_code,
-            headers=headers,
-            stream=stream,
-            metadata=_httpx_extensions_metadata(value.extensions),
-        )
 
 
-class _IteratorStream(httpx.SyncByteStream, httpx.AsyncByteStream):
-    def __init__(self, iterator: Iterator[bytes] | Iterator[bytes]) -> None:
+class _ResponseStream(httpx.SyncByteStream, httpx.AsyncByteStream):
+    def __init__(self, iterator: Iterator[bytes] | Iterator[bytes], upstream: httpx.Response | None) -> None:
         self.iterator = iterator
+        self.upstream = upstream
 
     def __iter__(self) -> Iterator[bytes]:
         assert isinstance(self.iterator, (Iterator, Iterable))
         for chunk in self.iterator:
             yield chunk
 
+    def close(self) -> None:
+        # Closing the iterator discards a partial save, but it doesn't reach the
+        # iterator it was reading from, so the upstream response is closed here.
+        if hasattr(self.iterator, "close"):
+            self.iterator.close()
+        if self.upstream is not None:
+            self.upstream.close()
+
 
 class SyncCacheTransport(httpx.BaseTransport):
+    """
+    By default, caches successful GET and HEAD responses by method and URL, ignoring
+    HTTP caching headers, and serves an entry until the storage's TTL or TTI expires
+    it. With ``rfc=True`` or ``CacheOptions``, follows RFC 9111 instead.
+    """
+
     def __init__(
         self,
         next_transport: httpx.BaseTransport,
         storage: SyncBaseStorage | None = None,
-        policy: CachePolicy | None = None,
+        rfc: bool | CacheOptions = False,
     ) -> None:
         self.next_transport = next_transport
-        self._cache_proxy: SyncCacheProxy = SyncCacheProxy(
-            request_sender=self.request_sender,
-            storage=storage,
-            policy=policy,
-        )
-        self.storage = self._cache_proxy.storage
+        self.config = CacheConfig(storage=storage or SyncSqliteStorage(), rfc=rfc)
 
-    def handle_request(
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        overrides = cast(CacheConfig, request.extensions.get("caching", {}))
+        effective_config: CacheConfig = {**self.config, **overrides}
+
+        storage = effective_config["storage"]
+        key = hashlib.sha256(f"{request.method} {request.url}".encode()).hexdigest()
+
+        rfc = effective_config["rfc"]
+        if rfc is False:
+            return self._handle_without_rfc(request, storage, key)
+        return self._handle_with_rfc(request, storage, key, CacheOptions() if rfc is True else rfc)
+
+    def _handle_with_rfc(
         self,
         request: httpx.Request,
+        storage: SyncBaseStorage,
+        key: str,
+        options: CacheOptions,
     ) -> httpx.Response:
-        internal_request = _httpx_to_internal(request)
-        internal_response = self._cache_proxy.handle_request(internal_request)
-        response = _internal_to_httpx(internal_response)
-        return response
+        upstream: httpx.Response | None = None
+
+        def send(internal_request: Request) -> Response:
+            nonlocal upstream
+            # The original request is what gets sent, so that nothing about it is
+            # lost. The state machine only changes it to add revalidation headers,
+            # and those are only for this send, so the caller never sees them.
+            original_headers = request.headers
+            request.headers = _request_headers_with_changes(original_headers, internal_request.headers)
+            try:
+                response = self.next_transport.handle_request(request)
+            finally:
+                request.headers = original_headers
+
+            if response.status_code == 304:
+                # The body served will be the cached one, so this connection is done.
+                response.read()
+            else:
+                upstream = response
+            return _response_to_internal(response)
+
+        response = handle_request_with_rfc(_request_to_internal(request), send, storage, key, options)
+        return _response_to_httpx(response, upstream)
+
+    def _handle_without_rfc(self, request: httpx.Request, storage: SyncBaseStorage, key: str) -> httpx.Response:
+        if request.method not in CACHEABLE_METHODS:
+            return self.next_transport.handle_request(request)
+
+        entries = storage.get_entries(key)
+        if entries:
+            return _response_to_httpx(entries[0].response)
+
+        response = self.next_transport.handle_request(request)
+        # A 206 only holds part of the body, so it can't answer later requests.
+        if not response.is_success or response.status_code == 206:
+            return response
+
+        entry = storage.create_entry(_request_to_internal(request), _response_to_internal(response), key)
+        return _response_to_httpx(entry.response, upstream=response)
 
     def close(self) -> None:
         self.next_transport.close()
-        self.storage.close()
-        super().close()
-
-    def request_sender(self, request: Request) -> Response:
-        httpx_request = _internal_to_httpx(request)
-        httpx_response = self.next_transport.handle_request(httpx_request)
-        if httpx_response.status_code == 304:
-            # 304 should not have a body, but we read it to ensure we'll not let the stream unconsumed
-            httpx_response.read()
-        return _httpx_to_internal(httpx_response)
+        self.config["storage"].close()
 
 
 class SyncCacheClient(httpx.Client):
     def __init__(self, *args: t.Any, **kwargs: t.Any) -> None:
         self.storage: SyncBaseStorage | None = kwargs.pop("storage", None)
-        self.policy: CachePolicy | None = kwargs.pop("policy", None)
+        self.rfc: bool | CacheOptions = kwargs.pop("rfc", False)
         super().__init__(*args, **kwargs)
 
     def _init_transport(
@@ -254,7 +210,7 @@ class SyncCacheClient(httpx.Client):
                 limits=limits,
             ),
             storage=self.storage,
-            policy=self.policy,
+            rfc=self.rfc,
         )
 
     def _init_proxy_transport(
@@ -279,5 +235,5 @@ class SyncCacheClient(httpx.Client):
                 proxy=proxy,
             ),
             storage=self.storage,
-            policy=self.policy,
+            rfc=self.rfc,
         )

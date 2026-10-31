@@ -20,16 +20,9 @@ from hishel._core._spec import (
 )
 from hishel._core.models import (
     Entry as Entry,
-    EntryMeta as EntryMeta,
     Request as Request,
     Response as Response,
-    ResponseMetadata as ResponseMetadata,
-    RequestMetadata as RequestMetadata,
 )
-from hishel._async_cache import AsyncCacheProxy as AsyncCacheProxy
-from hishel._sync_cache import SyncCacheProxy as SyncCacheProxy
-
-from hishel._policies import SpecificationPolicy, FilterPolicy, CachePolicy, BaseFilter
 
 __all__ = (
     # New API
@@ -39,7 +32,6 @@ __all__ = (
     "CacheMiss",
     "FromCache",
     "NeedRevalidation",
-    "AnyState",
     "CacheOptions",
     "NeedToBeUpdated",
     "State",
@@ -50,9 +42,6 @@ __all__ = (
     "Request",
     "Response",
     "Entry",
-    "EntryMeta",
-    "RequestMetadata",
-    "ResponseMetadata",
     ## Headers
     "Headers",
     ## Storages
@@ -62,12 +51,4 @@ __all__ = (
     "AsyncSqliteStorage",
     "RedisStorage",
     "AsyncRedisStorage",
-    # Proxy
-    "AsyncCacheProxy",
-    "SyncCacheProxy",
-    # Policies
-    "BaseFilter",
-    "CachePolicy",
-    "SpecificationPolicy",
-    "FilterPolicy",
 )

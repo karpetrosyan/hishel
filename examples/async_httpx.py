@@ -10,24 +10,17 @@
 # ///
 
 import asyncio
-from typing import cast
 
 import anysqlite
 
-from hishel import ResponseMetadata
-from hishel._core._storages._async_sqlite import AsyncSqliteStorage
+from hishel import AsyncSqliteStorage
 from hishel.httpx import AsyncCacheClient
 
 
 async def fetch_and_print(client, url: str):
     print(f"\n➡ Sending request to {url}...")
     response = await client.get(url)
-    meta = cast(ResponseMetadata, response.extensions)
-
-    print(f"🚀 Was Stored: {meta['hishel_stored']}")
-    print(f"⏰ Created At: {meta['hishel_created_at']}")
-    print(f"🔄 From Cache: {meta['hishel_from_cache']}")
-    print(f"📍 Revalidated: {meta['hishel_revalidated']}")
+    print(f"⬅ {response.status_code}, {len(response.content)} bytes")
 
 
 async def main():

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hishel"
-version = "1.4.0"
+version = "2.0.0a1"
 description = " Elegant HTTP Caching for Python"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -38,23 +38,11 @@ async = [
     "anysqlite>=0.0.5",
 ]
 
-requests = [
-    "requests>=2.34.2",
-]
 httpx = [
     "httpx>=0.28.1",
     # install async extra
     "anyio>=4.14.2",
     "anysqlite>=0.0.5",
-]
-httpx2 = [
-    "httpx2>=2.9.1",
-    # install async extra
-    "anyio>=4.9.0",
-    "anysqlite>=0.0.5",
-]
-fastapi = [
-    "fastapi>=0.141.1",
 ]
 redis = [
     "redis>=8.1.0",
@@ -73,6 +61,7 @@ exclude = ['venv', '.venv']
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
+disallow_untyped_calls = false
 check_untyped_defs = true
 
 [[tool.mypy.overrides]]
@@ -89,19 +78,13 @@ exclude_also = ['__repr__', 'raise NotImplementedError()']
 
 [tool.ruff]
 exclude = [
-    "src/hishel/_sync",
     "src/hishel/__init__.py",
-    "tests/_sync",
-    "src/hishel/_core/_sync",
     "tests/_core/_sync",
-    "src/hishel/_sync_cache.py",
     "tests/test_sync_httpx.py",
-    "tests/test_sync_httpx2.py",
-    "src/hishel/_core/_storages/_sync_sqlite.py",
     "src/hishel/_core/_storages/_sync_redis.py",
     "src/hishel/_core/_storages/_sync_base.py",
     "src/hishel/_sync_httpx.py",
-    "src/hishel/_sync_httpx2.py"
+    "src/hishel/_sync_rfc.py",
 ]
 line-length = 120
 
@@ -117,7 +100,6 @@ dev = [
     "anyio==4.14.2",
     "anysqlite>=0.0.5",
     "coverage==7.16.0",
-    "fastapi[standard]>=0.141.1",
     "hatch==1.18.0",
     "inline-snapshot>=0.35.4",
     "mike>=2.2.0",
@@ -135,7 +117,6 @@ dev = [
     "trio==0.34.0",
     "types-boto3==1.43.83",
     "types-pyyaml==6.0.12.20260815",
-    "types-requests>=2.33.0.20260712",
     "fakeredis>=2.37.1",
     "redis>=8.1.0",
     "zipp>=4.1.0",

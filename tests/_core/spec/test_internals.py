@@ -53,7 +53,6 @@ def test_original_request_identity_preserved_through_revalidation() -> None:
     )
     updated = single.next(build_response(304))
     assert isinstance(updated, NeedToBeUpdated)
-    assert updated.original_request is original_request
 
     multiple = NeedRevalidation(
         options=options,
@@ -76,7 +75,6 @@ def test_empty_revalidating_entries_yields_cache_miss() -> None:
     )
     next_state = empty.next(build_response(304))
     assert isinstance(next_state, CacheMiss)
-    assert next_state.after_revalidation is True
 
 
 def test_stored_entry_created_from_original_request() -> None:

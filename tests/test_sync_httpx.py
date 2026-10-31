@@ -1,283 +1,896 @@
 import gzip
 import hashlib
-from datetime import datetime
-from zoneinfo import ZoneInfo
+import threading
+from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any, Iterator
 
 import sqlite3
+import fakeredis
 import httpx
 import pytest
-from httpx import ByteStream, MockTransport
-from inline_snapshot import snapshot
 from time_machine import travel
 
-from hishel import SyncSqliteStorage, CacheOptions
-from hishel._policies import FilterPolicy, SpecificationPolicy
+from hishel import RedisStorage, SyncSqliteStorage
 from hishel.httpx import SyncCacheClient, SyncCacheTransport
 
+START = datetime(2026, 1, 1, tzinfo=timezone.utc)
+URL = "https://x/"
 
 
-@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")), tick=False)
-def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
-    client = SyncCacheClient(
-        storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False)),
-    )
-
-    with caplog.at_level("DEBUG", logger="hishel"):
-        client.get("https://hishel.com")
-        response = client.get("https://hishel.com")
-
-    assert caplog.messages == snapshot(
-        [
-            "Handling state: IdleClient",
-            "Handling state: CacheMiss",
-            "Storing response in cache",
-            "Handling state: StoreAndUse",
-            "Handling state: IdleClient",
-            "Handling state: FromCache",
-        ]
-    )
-    assert response.extensions == snapshot(
-        {
-            "hishel_from_cache": True,
-            "hishel_created_at": 1704067200.0,
-            "hishel_revalidated": False,
-            "hishel_stored": False,
-            "http_version": b"HTTP/1.1",
-            "reason_phrase": b"OK",
-        }
-    )
+@pytest.fixture
+def anyio_backend():
+    return "asyncio"
 
 
+def at(seconds):
+    return travel(START + timedelta(seconds=seconds), tick=False)
 
-@travel(datetime(2024, 1, 1, 0, 0, 0, tzinfo=ZoneInfo("UTC")), tick=False)
-def test_simple_caching_ignoring_spec(caplog: pytest.LogCaptureFixture) -> None:
-    client = SyncCacheClient(
-        storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False)),
-        policy=FilterPolicy(),
-    )
 
-    with caplog.at_level("DEBUG", logger="hishel"):
-        client.get("https://hishel.com", extensions={"hishel_spec_ignore": True})
-        response = client.get("https://hishel.com", extensions={"hishel_spec_ignore": True})
+def new_storage(kind="sqlite", **kwargs):
+    if kind == "sqlite":
+        return SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False), **kwargs)
+    kwargs.setdefault("default_ttl", None)
+    return RedisStorage(fakeredis.FakeRedis(), **kwargs)
 
-    assert caplog.messages == snapshot(
-        [
-            "Trying to get cached response ignoring specification",
-            "Found 0 cached entries for the request",
-            "Storing response in cache ignoring specification",
-            "Trying to get cached response ignoring specification",
-            "Found 1 cached entries for the request",
-            "Found matching cached response for the request",
-        ]
-    )
-    assert response.extensions == snapshot(
-        {
-            "hishel_from_cache": True,
-            "hishel_created_at": 1704067200.0,
-            "hishel_revalidated": False,
-            "hishel_stored": False,
-            "http_version": b"HTTP/1.1",
-            "reason_phrase": b"OK",
-        }
-    )
+
+class Upstream(httpx.MockTransport):
+    """Answers from a handler and records every request it receives."""
+
+    def __init__(self, handler=None):
+        self.requests: list[httpx.Request] = []
+        self.sent_headers: list[Any] = []
+
+        def recording(request):
+            self.requests.append(request)
+            self.sent_headers.append(request.headers.copy())
+            return handler(request) if handler else httpx.Response(200, content=b"body")
+
+        super().__init__(recording)
+
+
+class TrackedStream(httpx.SyncByteStream, httpx.AsyncByteStream):
+    """A real streaming body, which unlike content= isn't read up front, and which records being closed."""
+
+    def __init__(self, chunks):
+        self.chunks = chunks
+        self.closed = False
+
+    def __iter__(self) -> Iterator[bytes]:
+        for chunk in self.chunks:
+            yield chunk
+
+    def close(self):
+        self.closed = True
+
+
+def client_for(upstream, kind="sqlite", rfc=False, **kwargs):
+    storage = new_storage(kind, **kwargs)
+    return httpx.Client(transport=SyncCacheTransport(upstream, storage=storage, rfc=rfc))
 
 
 
-def test_encoded_content_caching() -> None:
-    data = gzip.compress(b"a" * 1000)
-    compressed_data = ByteStream(data)
-    mocked_responses = [
-        httpx.Response(
+@pytest.mark.parametrize("kind", ["sqlite", "redis"])
+def test_second_get_is_served_from_cache(kind):
+    upstream = Upstream(lambda r: httpx.Response(200, headers={"x-a": "1"}, content=b"body"))
+    client = client_for(upstream, kind)
+    first = client.get(URL)
+    second = client.get(URL)
+    assert first.content == second.content == b"body"
+    assert (first.status_code, second.status_code) == (200, 200)
+    assert second.headers["x-a"] == "1"
+    assert len(upstream.requests) == 1
+
+
+
+def test_different_urls_are_separate():
+    upstream = Upstream()
+    client = client_for(upstream)
+    client.get("https://x/a")
+    client.get("https://x/b")
+    client.get("https://x/a?q=1")
+    assert len(upstream.requests) == 3
+
+
+
+def test_get_and_head_are_separate_and_post_is_never_cached():
+    upstream = Upstream()
+    client = client_for(upstream)
+    client.get(URL)
+    client.head(URL)
+    client.head(URL)
+    assert len(upstream.requests) == 2
+    client.post(URL, content=b"x")
+    client.post(URL, content=b"x")
+    assert upstream.requests[-1].content == b"x"
+    assert len(upstream.requests) == 4
+    client.get(URL)
+    assert len(upstream.requests) == 4
+
+
+
+@pytest.mark.parametrize("status", [404, 500, 206, 301])
+def test_unsuccessful_and_partial_responses_are_not_cached(status):
+    upstream = Upstream(lambda r: httpx.Response(status, content=b"x"))
+    client = client_for(upstream)
+    assert (client.get(URL)).status_code == status
+    client.get(URL)
+    assert len(upstream.requests) == 2
+
+
+
+def test_uncacheable_response_is_returned_as_is():
+    response = httpx.Response(500, content=b"x")
+    transport = SyncCacheTransport(Upstream(lambda r: response), storage=new_storage(), rfc=False)
+    assert transport.handle_request(httpx.Request("GET", URL)) is response
+
+
+
+def test_http_caching_headers_are_ignored():
+    upstream = Upstream(lambda r: httpx.Response(200, headers={"cache-control": "no-store"}, content=b"body"))
+    client = client_for(upstream)
+    client.get(URL)
+    client.get(URL, headers={"cache-control": "no-cache"})
+    assert len(upstream.requests) == 1
+
+
+
+@pytest.mark.parametrize("kind", ["sqlite", "redis"])
+def test_entry_expires_with_the_storage_ttl(kind):
+    upstream = Upstream()
+    client = client_for(upstream, kind, default_ttl=100)
+    with at(0):
+        client.get(URL)
+    with at(99):
+        client.get(URL)
+        assert len(upstream.requests) == 1
+    with at(101):
+        client.get(URL)
+        assert len(upstream.requests) == 2
+
+
+
+def test_streamed_body_is_cached_and_upstream_is_closed():
+    stream = TrackedStream([b"a", b"b"])
+    upstream = Upstream(lambda r: httpx.Response(200, stream=stream))
+    client = client_for(upstream)
+    assert (client.get(URL)).content == b"ab"
+    assert stream.closed
+    assert (client.get(URL)).content == b"ab"
+    assert len(upstream.requests) == 1
+
+
+
+def test_abandoned_stream_is_not_cached_and_upstream_is_closed():
+    stream = TrackedStream([b"a", b"b", b"c"])
+    upstream = Upstream(lambda r: httpx.Response(200, stream=stream))
+    transport = SyncCacheTransport(upstream, storage=new_storage(), rfc=False)
+    client = httpx.Client(transport=transport)
+    with client.stream("GET", URL) as response:
+        for _ in response.iter_raw():
+            break
+    assert stream.closed
+
+    upstream2 = TrackedStream([b"fresh"])
+    transport.next_transport = Upstream(lambda r: httpx.Response(200, stream=upstream2))
+    assert (client.get(URL)).content == b"fresh"
+
+
+
+def test_compressed_body_is_stored_raw_and_decoded_on_every_read():
+    raw = gzip.compress(b"hello")
+    upstream = Upstream(
+        lambda r: httpx.Response(
             200,
-            stream=compressed_data,
-            headers={
-                "Content-Encoding": "gzip",
-                "Content-Type": "text/plain",
-                "Content-Length": str(len(data)),
-            },
+            headers={"content-encoding": "gzip", "content-length": str(len(raw))},
+            stream=TrackedStream([raw]),
         )
-    ]
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        if not mocked_responses:
-            raise RuntimeError("No more mocked responses available")
-        return mocked_responses.pop(0)
-
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
-
-    client = SyncCacheClient(
-        transport=SyncCacheTransport(
-            next_transport=MockTransport(handler=handler), storage=storage, policy=FilterPolicy()
-        ),
     )
-
-    # First request - should fetch from the mocked transport and store in cache
-    with client.stream("get", "https://localhost", extensions={"hishel_spec_ignore": True}) as response:
-        response_data = b"".join([chunk for chunk in response.iter_raw()])
-        assert data == response_data
-        assert response.headers.get("Content-Length") == str(len(data)) == str(len(response_data))
-        assert response.headers.get("Content-Encoding") == "gzip"
-
-    # Second request - should fetch from cache
-    with client.stream("get", "https://localhost", extensions={"hishel_spec_ignore": True}) as response:
-        response_data = b"".join([chunk for chunk in response.iter_raw()])
-        assert data == response_data
-        assert response.headers.get("Content-Length") == str(len(data)) == str(len(response_data))
-        assert response.headers.get("Content-Encoding") == "gzip"
+    transport = SyncCacheTransport(upstream, storage=new_storage(), rfc=False)
+    client = httpx.Client(transport=transport)
+    assert (client.get(URL)).content == b"hello"
+    second = client.get(URL)
+    assert second.content == b"hello"
+    assert second.headers["content-encoding"] == "gzip"
+    assert second.num_bytes_downloaded == len(raw)
 
 
 
-def test_httpx_response_extensions_are_preserved() -> None:
-    network_stream = object()
-    mocked_responses = [
-        httpx.Response(
-            200,
-            content=b"ok",
-            headers={"Cache-Control": "max-age=3600", "Content-Type": "text/plain"},
-            extensions={"http_version": b"HTTP/2", "network_stream": network_stream, "stream_id": 1},
-        )
-    ]
+def test_already_read_compressed_response_stays_consistent():
+    raw = gzip.compress(b"hello")
+    upstream = Upstream(lambda r: httpx.Response(200, headers={"content-encoding": "gzip"}, content=raw))
+    client = client_for(upstream)
+    assert (client.get(URL)).content == b"hello"
+    second = client.get(URL)
+    assert second.content == b"hello"
+    assert "content-encoding" not in second.headers
+    assert second.headers["content-length"] == "5"
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        if not mocked_responses:
-            raise RuntimeError("No more mocked responses available")
-        return mocked_responses.pop(0)
 
-    client = SyncCacheClient(
-        transport=SyncCacheTransport(
-            next_transport=MockTransport(handler=handler),
-            storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False)),
-        ),
+
+def test_repeated_headers_are_kept_separate_on_miss_and_hit():
+    upstream = Upstream(
+        lambda r: httpx.Response(200, headers=[("set-cookie", "a=1"), ("set-cookie", "b=2, c")], content=b"x")
     )
-
-    first = client.get("https://localhost")
-    assert first.extensions["http_version"] == b"HTTP/2"
-    assert "network_stream" not in first.extensions
-    assert "stream_id" not in first.extensions
-
-    second = client.get("https://localhost")
-    assert second.extensions["hishel_from_cache"] is True
-    assert second.extensions["http_version"] == b"HTTP/2"
-    assert "network_stream" not in second.extensions
-    assert "stream_id" not in second.extensions
+    client = client_for(upstream)
+    for _ in range(2):
+        response = client.get(URL)
+        assert response.headers.get_list("set-cookie") == ["a=1", "b=2, c"]
+    assert len(upstream.requests) == 1
 
 
 
-def test_body_key_survives_sending_request() -> None:
-    # Regression: the spec path recomputed the body-derived key after the transport
-    # had drained the request stream, so entries were stored under sha256(b"").
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, headers={"Cache-Control": "max-age=3600"}, content=b"ok")
-
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
-    policy = SpecificationPolicy(cache_options=CacheOptions(supported_methods=["GET", "HEAD", "POST"]))
-    policy.use_body_key = True
-    client = SyncCacheClient(
-        transport=SyncCacheTransport(next_transport=MockTransport(handler=handler), storage=storage, policy=policy),
+def test_transfer_encoding_is_not_replayed():
+    upstream = Upstream(
+        lambda r: httpx.Response(200, headers={"transfer-encoding": "chunked"}, stream=TrackedStream([b"x"]))
     )
-
-    response = client.post("https://localhost", content=b"hello")
-    assert response.extensions["hishel_stored"] is True
-
-    assert len(storage.get_entries(hashlib.sha256(b"hello").hexdigest())) == 1
-    assert len(storage.get_entries(hashlib.sha256(b"").hexdigest())) == 0
+    client = client_for(upstream)
+    client.get(URL)
+    assert "transfer-encoding" not in (client.get(URL)).headers
 
 
 
-def test_body_key_header_isolates_post_bodies_and_preserves_stream() -> None:
-    sent_bodies: list[bytes] = []
+def test_original_request_reaches_upstream_untouched():
+    upstream = Upstream()
+    client = client_for(upstream)
+    client.get(URL, timeout=7, extensions={"custom": "yes"})
+    sent = upstream.requests[0]
+    assert sent.extensions["custom"] == "yes"
+    assert sent.extensions["timeout"]["read"] == 7
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        body = request.content
-        sent_bodies.append(body)
-        return httpx.Response(
-            200,
-            headers={"Cache-Control": "max-age=3600"},
-            content=b"response:" + body,
-        )
 
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
-    policy = FilterPolicy()
-    client = SyncCacheClient(
-        transport=SyncCacheTransport(next_transport=MockTransport(handler=handler), storage=storage, policy=policy),
+
+def test_miss_keeps_upstream_extensions_and_hit_works_without_them():
+    upstream = Upstream(
+        lambda r: httpx.Response(200, extensions={"http_version": b"HTTP/2"}, stream=TrackedStream([b"x"]))
     )
-    headers = {"x-Hishel-bOdy-kEy": "true"}
-
-    first = client.post("https://localhost/search", content=b"first", headers=headers)
-    same_body = client.post("https://localhost/search", content=b"first", headers=headers)
-    different_body = client.post("https://localhost/search", content=b"second", headers=headers)
-
-    assert first.content == b"response:first"
-    assert same_body.content == b"response:first"
-    assert same_body.extensions["hishel_from_cache"] is True
-    assert different_body.content == b"response:second"
-    assert different_body.extensions["hishel_from_cache"] is False
-    assert sent_bodies == [b"first", b"second"]
+    client = client_for(upstream)
+    assert (client.get(URL)).http_version == "HTTP/2"
+    assert (client.get(URL)).http_version == "HTTP/1.1"
 
 
 
-def test_httpx_request_extensions_are_preserved() -> None:
-    captured_requests: list[httpx.Request] = []
+def test_storage_failure_still_serves_the_response(caplog):
+    upstream = Upstream(lambda r: httpx.Response(200, stream=TrackedStream([b"x" * 500])))
+    client = client_for(upstream, max_stream_size=10)
+    assert (client.get(URL)).content == b"x" * 500
+    assert (client.get(URL)).content == b"x" * 500
+    assert len(upstream.requests) == 2
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured_requests.append(request)
-        return httpx.Response(
-            200,
-            content=b"ok",
-            headers={"Cache-Control": "max-age=3600", "Content-Type": "text/plain"},
-        )
 
-    client = SyncCacheClient(
-        timeout=0.5,
-        transport=SyncCacheTransport(
-            next_transport=MockTransport(handler=handler),
-            storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False)),
-        ),
-    )
 
-    def trace(event_name: str, info: dict[str, object]) -> None:
+def test_closing_transport_closes_upstream_and_storage():
+    storage = new_storage()
+    closed = []
+
+    class Next(Upstream):
+        def close(self):
+            closed.append("upstream")
+
+    transport = SyncCacheTransport(Next(), storage=storage)
+    transport.close()
+    assert closed == ["upstream"]
+    with pytest.raises(RuntimeError, match="closed"):
+        storage.get_entries("k")
+
+
+# A real server, so real sockets, chunked encoding and gzip are involved.
+
+
+class Handler(BaseHTTPRequestHandler):
+    hits = 0
+    protocol_version = "HTTP/1.1"
+
+    def do_GET(self):
+        type(self).hits += 1
+        body = gzip.compress(b"hello " * 100000)
+        self.send_response(200)
+        self.send_header("Content-Encoding", "gzip")
+        self.send_header("Transfer-Encoding", "chunked")
+        self.send_header("Set-Cookie", "a=1")
+        self.send_header("Set-Cookie", "b=2")
+        self.end_headers()
+        for start in range(0, len(body), 100):
+            part = body[start : start + 100]
+            self.wfile.write(b"%x\r\n%s\r\n" % (len(part), part))
+        self.wfile.write(b"0\r\n\r\n")
+
+    def log_message(self, *args):
         pass
 
-    response = client.get(
-        "https://localhost",
-        extensions={"sni_hostname": "custom.example.com", "trace": trace, "custom": "value"},
+
+@pytest.fixture
+def server():
+    Handler.hits = 0
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    yield f"http://127.0.0.1:{httpd.server_port}/"
+    httpd.shutdown()
+
+
+
+@pytest.mark.parametrize("kind", ["sqlite", "redis"])
+def test_client_against_a_real_server(server, kind):
+    storage = new_storage(kind)
+    with SyncCacheClient(storage=storage, trust_env=False, rfc=False) as client:
+        assert isinstance(client._transport, SyncCacheTransport)
+        first = client.get(server)
+        second = client.get(server)
+        assert first.text == second.text == "hello " * 100000
+        assert Handler.hits == 1
+        assert second.headers.get_list("set-cookie") == ["a=1", "b=2"]
+        assert "transfer-encoding" not in second.headers
+
+
+
+def test_client_with_default_sqlite_storage_in_a_file(server, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    with SyncCacheClient(trust_env=False, rfc=False) as client:
+        assert (client.get(server)).status_code == 200
+        assert (client.get(server)).status_code == 200
+    assert Handler.hits == 1
+
+
+# RFC mode, and per-request overrides
+
+
+def date_at(seconds):
+    return format_datetime(START + timedelta(seconds=seconds), usegmt=True)
+
+
+def fresh(body=b"body", seconds=0, **headers):
+    return httpx.Response(
+        200, headers={"cache-control": "max-age=100", "date": date_at(seconds), **headers}, content=body
     )
 
-    assert len(captured_requests) == 1
-    assert captured_requests[0].extensions["timeout"]["connect"] == 0.5
-    assert captured_requests[0].extensions["sni_hostname"] == "custom.example.com"
-    assert captured_requests[0].extensions["trace"] is trace
-    assert captured_requests[0].extensions["custom"] == "value"
-    # unserializable extensions (like the trace callable) must not break storing
-    assert response.extensions["hishel_stored"] is True
+
+def stale_then(*later):
+    """A response that is stale after 10s, followed by whatever the revalidation should answer."""
+    answers = iter(
+        [
+            httpx.Response(
+                200,
+                headers={"cache-control": "max-age=10", "etag": '"v1"', "date": date_at(0)},
+                stream=TrackedStream([b"one"]),
+            ),
+            *later,
+        ]
+    )
+    return Upstream(lambda r: next(answers))
 
 
 
-def test_httpx_request_extensions_are_preserved_on_revalidation() -> None:
-    captured_requests: list[httpx.Request] = []
+@pytest.mark.parametrize("kind", ["sqlite", "redis"])
+def test_rfc_serves_fresh_responses(kind):
+    upstream = Upstream(lambda r: fresh())
+    storage = new_storage(kind)
+    client = httpx.Client(transport=SyncCacheTransport(upstream, storage=storage, rfc=True))
+    with at(0):
+        assert (client.get(URL)).content == b"body"
+    with at(50):
+        response = client.get(URL)
+    assert response.content == b"body"
+    assert int(response.headers["age"]) == 50
+    assert len(upstream.requests) == 1
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured_requests.append(request)
-        return httpx.Response(
-            304 if "If-None-Match" in request.headers else 200,
-            content=b"" if "If-None-Match" in request.headers else b"ok",
-            headers={"Cache-Control": "no-cache", "ETag": '"v1"'},
+
+
+def test_rfc_respects_no_store():
+    upstream = Upstream(lambda r: httpx.Response(200, headers={"cache-control": "no-store"}, content=b"body"))
+    client = client_for(upstream, rfc=True)
+    client.get(URL)
+    client.get(URL)
+    assert len(upstream.requests) == 2
+
+
+
+@pytest.mark.parametrize("kind", ["sqlite", "redis"])
+def test_rfc_304_serves_the_cached_body_with_new_headers(kind):
+    upstream = stale_then(
+        httpx.Response(
+            304, headers={"cache-control": "max-age=10", "etag": '"v1"', "x-fresh": "yes", "date": date_at(100)}
         )
+    )
+    client = client_for(upstream, kind, rfc=True)
+    with at(0):
+        assert (client.get(URL)).content == b"one"
+    with at(100):
+        response = client.get(URL, timeout=7)
+    assert response.content == b"one"
+    assert response.headers["x-fresh"] == "yes"
+    assert upstream.sent_headers[1]["if-none-match"] == '"v1"'
+    assert upstream.requests[1].extensions["timeout"]["read"] == 7
+    with at(105):
+        assert (client.get(URL)).content == b"one"
+    assert len(upstream.requests) == 2
 
-    client = SyncCacheClient(
-        timeout=0.5,
-        transport=SyncCacheTransport(
-            next_transport=MockTransport(handler=handler),
-            storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False)),
+
+
+@pytest.mark.parametrize("status", [200, 500])
+def test_rfc_full_response_to_revalidation_is_served(status):
+    stream = TrackedStream([b"two"])
+    upstream = stale_then(httpx.Response(status, headers={"date": date_at(100)}, stream=stream))
+    client = client_for(upstream, rfc=True)
+    with at(0):
+        client.get(URL)
+    with at(100):
+        response = client.get(URL)
+    assert (response.status_code, response.content) == (status, b"two")
+    assert stream.closed
+
+
+
+def test_rfc_304_matching_nothing_goes_back_upstream_without_conditions():
+    upstream = stale_then(
+        httpx.Response(304, headers={"etag": '"other"', "date": date_at(100)}),
+        httpx.Response(
+            200, headers={"cache-control": "max-age=10", "date": date_at(100)}, stream=TrackedStream([b"two"])
         ),
     )
+    client = client_for(upstream, rfc=True)
+    with at(0):
+        client.get(URL)
+    with at(100):
+        assert (client.get(URL)).content == b"two"
+    assert "if-none-match" not in upstream.sent_headers[2]
 
-    client.get("https://localhost")
-    response = client.get("https://localhost", timeout=0.25)
 
-    assert response.extensions["hishel_revalidated"] is True
-    assert len(captured_requests) == 2
-    assert captured_requests[1].headers["If-None-Match"] == '"v1"'
-    # the revalidation request must carry the extensions of the request that
-    # triggered it, not the ones of the originally stored request
-    assert captured_requests[1].extensions["timeout"]["connect"] == 0.25
+
+def test_rfc_abandoned_stream_is_not_cached_and_upstream_is_closed():
+    stream = TrackedStream([b"a", b"b"])
+    upstream = Upstream(
+        lambda r: httpx.Response(200, headers={"cache-control": "max-age=100", "date": date_at(0)}, stream=stream)
+    )
+    client = client_for(upstream, rfc=True)
+    with at(0):
+        with client.stream("GET", URL) as response:
+            for _ in response.iter_raw():
+                break
+        assert stream.closed
+        assert (client.get(URL)).content == b"ab"
+    assert len(upstream.requests) == 2
+
+
+
+def test_rfc_request_body_reaches_upstream():
+    upstream = Upstream()
+    client = client_for(upstream, rfc=True)
+    client.post(URL, content=b"payload")
+    assert upstream.requests[0].content == b"payload"
+
+
+
+def test_request_can_turn_rfc_off():
+    upstream = Upstream(lambda r: httpx.Response(200, headers={"cache-control": "no-store"}, content=b"body"))
+    client = client_for(upstream, rfc=True)
+    client.get(URL, extensions={"caching": {"rfc": False}})
+    client.get(URL, extensions={"caching": {"rfc": False}})
+    assert len(upstream.requests) == 1
+
+
+
+def test_request_can_turn_rfc_on():
+    upstream = Upstream(lambda r: httpx.Response(200, headers={"cache-control": "no-store"}, content=b"body"))
+    client = client_for(upstream, rfc=False)
+    client.get(URL, extensions={"caching": {"rfc": True}})
+    client.get(URL, extensions={"caching": {"rfc": True}})
+    assert len(upstream.requests) == 2
+
+
+
+def test_request_can_use_another_storage_which_the_transport_does_not_close():
+    other = new_storage()
+    upstream = Upstream()
+    transport = SyncCacheTransport(upstream, storage=new_storage(), rfc=False)
+    client = httpx.Client(transport=transport)
+    client.get(URL, extensions={"caching": {"storage": other}})
+    client.get(URL, extensions={"caching": {"storage": other}})
+    assert len(upstream.requests) == 1
+    client.get(URL)
+    assert len(upstream.requests) == 2
+    transport.close()
+    assert len(other.get_entries(hashlib.sha256(f"GET {URL}".encode()).hexdigest())) == 1
+
+
+
+def test_client_rfc_argument_reaches_the_transport(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    with SyncCacheClient(trust_env=False) as client:
+        assert client._transport.config["rfc"] is False  # type: ignore[attr-defined]
+    with SyncCacheClient(trust_env=False, rfc=True) as client:
+        assert client._transport.config["rfc"] is True  # type: ignore[attr-defined]
+
+
+# rfc as CacheOptions
+
+
+
+def test_empty_options_still_mean_rfc_on():
+    upstream = Upstream(lambda r: httpx.Response(200, headers={"cache-control": "no-store"}, content=b"body"))
+    client = client_for(upstream, rfc={})
+    client.get(URL)
+    client.get(URL)
+    assert len(upstream.requests) == 2
+
+
+
+def test_shared_option_controls_private_responses():
+    def private(r):
+        return httpx.Response(200, headers={"cache-control": "private, max-age=100", "date": date_at(0)}, content=b"x")
+
+    shared_upstream = Upstream(private)
+    client = client_for(shared_upstream, rfc=True)
+    with at(0):
+        client.get(URL)
+        client.get(URL)
+    assert len(shared_upstream.requests) == 2
+
+    private_upstream = Upstream(private)
+    client = client_for(private_upstream, rfc={"shared": False})
+    with at(0):
+        client.get(URL)
+        client.get(URL)
+    assert len(private_upstream.requests) == 1
+
+
+
+def test_allow_stale_option_serves_stale_without_asking():
+    def stale(r):
+        return httpx.Response(200, headers={"cache-control": "max-age=10", "date": date_at(0)}, content=b"x")
+
+    upstream = Upstream(stale)
+    client = client_for(upstream, rfc={"allow_stale": True})
+    with at(0):
+        client.get(URL)
+    with at(100):
+        client.get(URL)
+    assert len(upstream.requests) == 1
+
+    upstream = Upstream(stale)
+    client = client_for(upstream, rfc=True)
+    with at(0):
+        client.get(URL)
+    with at(100):
+        client.get(URL)
+    assert len(upstream.requests) == 2
+
+
+
+def test_supported_methods_option_decides_what_is_stored():
+    def ok(r):
+        return httpx.Response(200, headers={"cache-control": "max-age=100", "date": date_at(0)}, content=b"x")
+
+    upstream = Upstream(ok)
+    client = client_for(upstream, rfc=True)
+    with at(0):
+        client.post(URL, content=b"a")
+        client.post(URL, content=b"a")
+    assert len(upstream.requests) == 2
+
+    upstream = Upstream(ok)
+    storage = new_storage()
+    transport = SyncCacheTransport(upstream, storage=storage, rfc={"supported_methods": ["GET", "HEAD", "POST"]})
+    client = httpx.Client(transport=transport)
+    key = hashlib.sha256(f"POST {URL}".encode()).hexdigest()
+    with at(0):
+        client.post(URL, content=b"a")
+        assert len(storage.get_entries(key)) == 1  # stored
+        client.post(URL, content=b"a")
+    assert len(upstream.requests) == 2  # but unsafe methods always reach the server
+
+
+
+def test_request_can_pass_options():
+    def private(r):
+        return httpx.Response(200, headers={"cache-control": "private, max-age=100", "date": date_at(0)}, content=b"x")
+
+    upstream = Upstream(private)
+    client = client_for(upstream, rfc=True)
+    extensions = {"caching": {"rfc": {"shared": False}}}
+    with at(0):
+        client.get(URL, extensions=extensions)
+        client.get(URL, extensions=extensions)
+    assert len(upstream.requests) == 1
+
+
+
+def test_client_accepts_options(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    with SyncCacheClient(trust_env=False, rfc={"shared": False}) as client:
+        assert client._transport.config["rfc"] == {"shared": False}  # type: ignore[attr-defined]
+
+
+# The original request is what gets sent
+
+
+
+def test_rfc_sends_the_original_request_object():
+    upstream = Upstream()
+    client = client_for(upstream, rfc=True)
+    request = client.build_request("GET", URL)
+    client.send(request)
+    assert upstream.requests[0] is request
+
+
+
+def test_rfc_keeps_transfer_encoding_of_a_streamed_upload():
+    def body() -> Iterator[bytes]:
+        yield b"a"
+        yield b"b"
+
+    upstream = Upstream()
+    client = client_for(upstream, rfc=True)
+    client.post(URL, content=body())
+    assert upstream.requests[0].headers["transfer-encoding"] == "chunked"
+    assert upstream.requests[0].content == b"ab"
+
+
+
+def test_rfc_keeps_header_name_casing_and_order():
+    upstream = Upstream()
+    client = client_for(upstream, rfc=True)
+    client.get(URL, headers=[("X-Custom-Name", "1"), ("X-Custom-Name", "2")])
+    raw = upstream.requests[0].headers.raw
+    assert raw.count((b"X-Custom-Name", b"1")) == 1
+    assert raw.count((b"X-Custom-Name", b"2")) == 1
+
+
+
+def test_rfc_revalidation_adds_conditions_only_while_sending():
+    seen: dict[str, Any] = {}
+
+    def handler(request):
+        if not seen:
+            seen["first"] = True
+            return httpx.Response(
+                200,
+                headers={"cache-control": "max-age=10", "etag": '"v1"', "date": date_at(0)},
+                stream=TrackedStream([b"x"]),
+            )
+        seen["if_none_match"] = request.headers.get("if-none-match")
+        seen["raw"] = request.headers.raw
+        seen["request"] = request
+        return httpx.Response(304, headers={"etag": '"v1"', "cache-control": "max-age=10", "date": date_at(100)})
+
+    client = client_for(Upstream(handler), rfc=True)
+    with at(0):
+        client.get(URL)
+    request = client.build_request("GET", URL, headers={"X-Custom-Name": "1"})
+    with at(100):
+        response = client.send(request)
+    assert seen["if_none_match"] == '"v1"'
+    assert seen["request"] is request
+    assert (b"X-Custom-Name", b"1") in seen["raw"]
+    assert "if-none-match" not in request.headers
+    assert "if-none-match" not in response.request.headers
+
+
+
+def test_rfc_request_headers_are_restored_when_sending_fails():
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        if len(calls) == 1:
+            return httpx.Response(
+                200,
+                headers={"cache-control": "max-age=10", "etag": '"v1"', "date": date_at(0)},
+                stream=TrackedStream([b"x"]),
+            )
+        raise httpx.ConnectError("down")
+
+    client = client_for(Upstream(handler), rfc=True)
+    with at(0):
+        client.get(URL)
+    request = client.build_request("GET", URL)
+    with at(100), pytest.raises(httpx.ConnectError):
+        client.send(request)
+    assert "if-none-match" not in request.headers
+
+
+
+def test_rfc_same_request_object_can_be_sent_again_after_revalidation():
+    answers = iter(
+        [
+            httpx.Response(
+                200,
+                headers={"cache-control": "max-age=10", "etag": '"v1"', "date": date_at(0)},
+                stream=TrackedStream([b"x"]),
+            ),
+            httpx.Response(304, headers={"etag": '"v1"', "cache-control": "max-age=10", "date": date_at(100)}),
+            httpx.Response(304, headers={"etag": '"v1"', "cache-control": "max-age=10", "date": date_at(200)}),
+        ]
+    )
+    upstream = Upstream(lambda r: next(answers))
+    client = client_for(upstream, rfc=True)
+    request = client.build_request("GET", URL)
+    with at(0):
+        client.send(request)
+    with at(100):
+        assert (client.send(request)).content == b"x"
+    with at(200):
+        assert (client.send(request)).content == b"x"
+    assert len(upstream.requests) == 3
+
+
+
+def test_rfc_revalidation_overrides_conditions_the_caller_set_only_while_sending():
+    answers = iter(
+        [
+            httpx.Response(
+                200,
+                headers={"cache-control": "max-age=10", "etag": '"v1"', "date": date_at(0)},
+                stream=TrackedStream([b"x"]),
+            ),
+            httpx.Response(304, headers={"etag": '"v1"', "cache-control": "max-age=10", "date": date_at(100)}),
+        ]
+    )
+    upstream = Upstream(lambda r: next(answers))
+    client = client_for(upstream, rfc=True)
+    with at(0):
+        client.get(URL)
+    request = client.build_request("GET", URL, headers={"If-None-Match": '"mine"'})
+    with at(100):
+        client.send(request)
+    assert upstream.sent_headers[1]["if-none-match"] == '"v1"'
+    assert request.headers["if-none-match"] == '"mine"'
+
+
+DUPLICATES = [
+    ("X-Dup", "1"),
+    ("X-Other", "a"),
+    ("x-dup", "2, with comma"),
+    ("Cookie", "a=1"),
+    ("Cookie", "b=2"),
+]
+
+
+def stale_with_etag(etag='"v1"'):
+    answers = iter(
+        [
+            httpx.Response(
+                200,
+                headers={"cache-control": "max-age=10", "etag": etag, "date": date_at(0)},
+                stream=TrackedStream([b"x"]),
+            ),
+            httpx.Response(304, headers={"etag": etag, "cache-control": "max-age=10", "date": date_at(100)}),
+        ]
+    )
+    return Upstream(lambda r: next(answers))
+
+
+
+def test_rfc_miss_sends_raw_headers_exactly_as_built():
+    upstream = Upstream()
+    client = client_for(upstream, rfc=True)
+    request = client.build_request("GET", URL, headers=DUPLICATES)
+    raw = list(request.headers.raw)
+    client.send(request)
+    assert upstream.sent_headers[0].raw == raw
+    assert request.headers.raw == raw
+
+
+
+def test_rfc_revalidation_only_appends_to_raw_headers():
+    upstream = stale_with_etag()
+    client = client_for(upstream, rfc=True)
+    with at(0):
+        client.get(URL)
+    request = client.build_request("GET", URL, headers=DUPLICATES)
+    raw = list(request.headers.raw)
+    with at(100):
+        client.send(request)
+    assert upstream.sent_headers[1].raw == [*raw, (b"if-none-match", b'"v1"')]
+    assert request.headers.raw == raw
+
+
+
+def test_rfc_revalidation_replaces_every_copy_of_a_caller_condition():
+    upstream = stale_with_etag()
+    client = client_for(upstream, rfc=True)
+    with at(0):
+        client.get(URL)
+    request = client.build_request(
+        "GET", URL, headers=[("If-None-Match", '"a"'), ("X-Keep", "1"), ("if-none-match", '"b"')]
+    )
+    raw = list(request.headers.raw)
+    with at(100):
+        client.send(request)
+    sent = upstream.sent_headers[1]
+    assert sent.get_list("if-none-match") == ['"v1"']
+    assert sent.get_list("x-keep") == ["1"]
+    assert request.headers.raw == raw
+
+
+
+def test_rfc_revalidation_with_a_non_ascii_etag_does_not_fail_the_request():
+    etag = '"é"'
+    upstream = Upstream()
+    answers = iter(
+        [
+            httpx.Response(
+                200,
+                headers=[(b"cache-control", b"max-age=10"), (b"etag", etag.encode()), (b"date", date_at(0).encode())],
+                stream=TrackedStream([b"x"]),
+            ),
+            httpx.Response(304, headers=[(b"etag", etag.encode()), (b"date", date_at(100).encode())]),
+        ]
+    )
+    upstream = Upstream(lambda r: next(answers))
+    client = client_for(upstream, rfc=True)
+    with at(0):
+        client.get(URL)
+    with at(100):
+        assert (client.get(URL)).content == b"x"
+    assert (b"if-none-match", etag.encode()) in upstream.sent_headers[1].raw
+
+
+
+@pytest.mark.parametrize("rfc", [True, False])
+@pytest.mark.parametrize("raw_value, text", [("é".encode(), "é"), ("é".encode("latin-1"), "é")], ids=["utf8", "latin1"])
+def test_non_ascii_response_headers_survive_miss_and_hit(rfc, raw_value, text):
+    upstream = Upstream(
+        lambda r: httpx.Response(
+            200,
+            headers=[(b"x-name", raw_value), (b"cache-control", b"max-age=100"), (b"date", date_at(0).encode())],
+            stream=TrackedStream([b"x"]),
+        )
+    )
+    client = client_for(upstream, rfc=rfc)
+    with at(0):
+        first = client.get(URL)
+        second = client.get(URL)
+    assert first.headers["x-name"] == second.headers["x-name"] == text
+    assert first.content == second.content == b"x"
+    assert len(upstream.requests) == 1
+
+
+
+def test_rfc_is_off_by_default():
+    upstream = Upstream(lambda r: httpx.Response(200, headers={"cache-control": "no-store"}, content=b"body"))
+    client = httpx.Client(transport=SyncCacheTransport(upstream, storage=new_storage()))
+    client.get(URL)
+    client.get(URL)
+    assert len(upstream.requests) == 1
+
+
+
+def test_304_does_not_change_the_stored_content_length():
+    answers = iter(
+        [
+            httpx.Response(
+                200,
+                headers={"cache-control": "max-age=10", "etag": '"v1"', "content-length": "5", "date": date_at(0)},
+                stream=TrackedStream([b"hello"]),
+            ),
+            httpx.Response(
+                304,
+                headers={"cache-control": "max-age=10", "etag": '"v1"', "content-length": "0", "date": date_at(100)},
+            ),
+        ]
+    )
+    client = client_for(Upstream(lambda r: next(answers)), rfc=True)
+    with at(0):
+        client.get(URL)
+    with at(100):
+        response = client.get(URL)
+    assert response.content == b"hello"
+    assert response.headers["content-length"] == "5"
+    with at(105):
+        again = client.get(URL)
+    assert again.content == b"hello"
+    assert again.headers["content-length"] == "5"
+
+
+
+@pytest.mark.parametrize("value", ["garbage", "bytes=0-10", "bytes=0-1,5-6", "bytes=a-b"])
+def test_rfc_range_requests_go_to_the_server_whatever_their_form(value):
+    upstream = Upstream(lambda r: fresh())
+    client = client_for(upstream, rfc=True)
+    with at(0):
+        client.get(URL)
+        response = client.get(URL, headers={"range": value})
+    assert response.status_code == 200
+    assert len(upstream.requests) == 2

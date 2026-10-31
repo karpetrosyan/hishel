@@ -5,41 +5,38 @@ import threading
 import time
 import uuid
 import warnings
+from collections.abc import Iterable, Iterator
 from dataclasses import replace
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Iterable,
-    Iterator,
-    Callable,
-    List,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, List, Optional, Union
 
-from hishel._core._storages._sync_base import SyncBaseStorage
+from hishel._core._headers import Headers
 from hishel._core._storages._packing import pack, unpack
-from hishel._core.models import (
-    Entry,
-    EntryMeta,
-    Request,
-    Response,
-)
-from hishel._utils import ensure_cache_dict
+from hishel._core._storages._sync_base import SyncBaseStorage
+from hishel._core.models import Entry, Request, Response
+from hishel._utils import ensure_cache_dict, make_sync_iterator
 
 logger = logging.getLogger(__name__)
 
-# Batch cleanup configuration
-# How often to run cleanup (seconds). Default: 1 hour.
-BATCH_CLEANUP_INTERVAL = 3600
-# How long to wait after storage creation before allowing the first cleanup (seconds)
-BATCH_CLEANUP_START_DELAY = 5 * 60
-# Number of rows to process per chunk when cleaning
-BATCH_CLEANUP_CHUNK_SIZE = 200
+# Stored in `PRAGMA user_version`. A database with any other version is reset,
+# since cached data is disposable.
+SCHEMA_VERSION = 1
+# Rows deleted per create_entry when removing expired entries.
+CLEANUP_BATCH_SIZE = 200
+# Eviction stops as soon as the database fits, so it deletes a few rows at a
+# time: one extra entry must not cost 200 others.
+EVICTION_BATCH_SIZE = 10
+EVICTION_MAX_BATCHES = 20
+# last_accessed_at is written at most this often per entry (seconds).
+MAX_TOUCH_INTERVAL = 60
 # Target size (bytes) of a stored stream chunk row. Incoming chunks are
-# re-chunked to this size before being written so row count/size stays
-# bounded regardless of how the transport chunks the response.
+# re-chunked to this size before being written.
 STORAGE_CHUNK_SIZE = 131072
+# The WAL file is truncated back to this size (bytes) after a checkpoint.
+MAX_WAL_SIZE = 64 * 1024 * 1024
+# expires_at of entries that lookups must not return: removed entries and
+# entries still being written. Always in the past, whatever the clock says.
+HIDDEN = 0.0
 
 
 def _connection_is_cross_thread_safe(connection: "sqlite3.Connection") -> bool:
@@ -53,14 +50,13 @@ def _connection_is_cross_thread_safe(connection: "sqlite3.Connection") -> bool:
     sqlite3.ProgrammingError. Costs ~1ms; only called once at storage
     construction when a user supplied their own connection.
     """
-    import sqlite3 as _sqlite3
     result: list[bool] = [False]
 
     def probe() -> None:
         try:
             connection.execute("SELECT 1").fetchone()
             result[0] = True
-        except _sqlite3.ProgrammingError:
+        except sqlite3.ProgrammingError:
             result[0] = False
 
     t = threading.Thread(target=probe)
@@ -82,25 +78,32 @@ else:
 
 
 class SyncSqliteStorage(SyncBaseStorage):
-    _COMPLETE_CHUNK_NUMBER = -1
+    """
+    An entry is removed in two steps. Lookups stop returning it as soon as
+    expires_at passes, and its row is deleted once it has also gone unused for
+    soft_delete_ttl seconds, so that readers already streaming it can finish.
+    Active readers and writers keep that window open by updating last_accessed_at.
+
+    The connection is shared between threads, so every use of it holds _lock.
+    Unlike the async storage, this file is written by hand rather than generated,
+    because anysqlite provides that serialisation for the async one.
+    """
 
     def __init__(
         self,
         *,
         connection: Optional[sqlite3.Connection] = None,
         database_path: Union[str, Path] = "hishel_cache.db",
-        default_ttl: Optional[float] = None,
-        refresh_ttl_on_access: bool | None = None,
+        default_ttl: float | None = None,
+        default_tti: float | None = None,
+        max_stream_size: int | None = None,
+        max_size: int | None = 1024**3,
+        soft_delete_ttl: float = 180,
     ) -> None:
         if sqlite3 is None:
             raise ImportError(
                 "The 'sqlite3' module is required to use the `SyncSqliteStorage` integration, "
                 "but it is not available in this Python installation."
-            )
-
-        if isinstance(refresh_ttl_on_access, bool):
-            warnings.warn(
-                "The 'refresh_ttl_on_access' parameter is deprecated and has no effect. "
             )
 
         # If the user supplied their own connection, check up front
@@ -127,102 +130,68 @@ class SyncSqliteStorage(SyncBaseStorage):
                 stacklevel=2,
             )
 
+        super().__init__(default_ttl=default_ttl, default_tti=default_tti, max_stream_size=max_stream_size)
         self.connection = connection
-        self.database_path: Path = (
-            database_path if isinstance(database_path, Path) else Path(database_path)
-        )
-        self.default_ttl = default_ttl
-        self.last_cleanup = (
-            time.time() - BATCH_CLEANUP_INTERVAL + BATCH_CLEANUP_START_DELAY
-        )
+        self.database_path: Path = database_path if isinstance(database_path, Path) else Path(database_path)
+        self.max_size = max_size
+        self.soft_delete_ttl = soft_delete_ttl
+        # An entry's last_accessed_at can lag by this much, so it has to stay
+        # well below soft_delete_ttl for the grace period to mean anything.
+        self._touch_interval = min(MAX_TOUCH_INTERVAL, soft_delete_ttl / 2)
         self._initialized = False
-        # Set by close() and never unset: prevents lingering stream
-        # generators (or any late caller) from silently reopening the
-        # connection after the storage has been torn down.
+        # Set by close() and never unset: prevents lingering stream generators
+        # from silently reopening the connection.
         self._closed = False
-        # A single RLock guards all access to the shared sqlite3
-        # connection. Why a single lock and not the two-lock split used
-        # in the async version:
-        #
-        # The async (anysqlite) storage can let pure reads and
-        # single-statement writes run lock-free because anysqlite
-        # enforces per-Connection serialisation via a CapacityLimiter(1)
-        # at the Python level. Python's standard sqlite3 module does
-        # NOT do that. The docs say "write operations may need to be
-        # serialized by the user to avoid data corruption", and in
-        # practice even concurrent reads on the same connection from
-        # different threads can raise sqlite3.InterfaceError under
-        # load. So every DB operation goes through this lock.
-        #
-        # RLock so accidental re-entry on the same thread doesn't
-        # deadlock; the common single-thread case costs the same as a
-        # plain Lock.
         self._lock = RLock()
 
     def _ensure_connection(self) -> sqlite3.Connection:
-        """
-        Ensure connection is established and database is initialized.
-
-        Caller must hold self._lock.
-
-        Raises RuntimeError if the storage has been closed.
-        """
-        if self._closed:
-            raise RuntimeError("SyncSqliteStorage is closed and can no longer be used.")
-        if self.connection is None:
-            # Create cache directory and resolve full path on first connection.
-            parent = (
-                self.database_path.parent
-                if self.database_path.parent != Path(".")
-                else None
-            )
-            full_path = ensure_cache_dict(parent) / self.database_path.name
-            # check_same_thread=False is required because the cache is
-            # used from any thread; our self._lock serialises access so
-            # the no-thread-check mode is safe.
-            self.connection = sqlite3.connect(
-                str(full_path), check_same_thread=False
-            )
-        if not self._initialized:
-            self._initialize_database()
-            self._initialized = True
-        return self.connection
+        with self._lock:
+            if self._closed:
+                raise RuntimeError("SyncSqliteStorage is closed and can no longer be used.")
+            if self.connection is None:
+                parent = self.database_path.parent if self.database_path.parent != Path(".") else None
+                full_path = ensure_cache_dict(parent) / self.database_path.name
+                self.connection = sqlite3.connect(str(full_path), check_same_thread=False)
+            if not self._initialized:
+                self._initialize_database()
+                self._initialized = True
+            return self.connection
 
     def _initialize_database(self) -> None:
-        """
-        Initialize the database schema and configure the connection.
-
-        Caller must hold self._lock.
-        """
         assert self.connection is not None
         cursor = self.connection.cursor()
 
-        # Configure connection for cache workload:
-        # - WAL allows concurrent readers during writes (between processes)
-        # - busy_timeout avoids SQLITE_BUSY errors under file-level contention
-        # - synchronous=NORMAL is the right durability/perf tradeoff for a cache
-        # - foreign_keys enables ON DELETE CASCADE enforcement
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA busy_timeout=5000")
         cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute(f"PRAGMA journal_size_limit={MAX_WAL_SIZE}")
 
-        # Table for storing request/response pairs
-        cursor.execute(
-            """
+        cursor.execute("PRAGMA user_version")
+        row = cursor.fetchone()
+        if row[0] == SCHEMA_VERSION:
+            return
+
+        cursor.execute("DROP TABLE IF EXISTS streams")
+        cursor.execute("DROP TABLE IF EXISTS entries")
+        self.connection.commit()
+        # Nothing is left to copy, so this is cheap, and it returns the old
+        # file's space to the OS.
+        cursor.execute("VACUUM")
+
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS entries (
                 id BLOB PRIMARY KEY,
-                cache_key BLOB,
+                cache_key BLOB NOT NULL,
                 data BLOB NOT NULL,
-                created_at REAL NOT NULL,
-                deleted_at REAL
+                expires_at REAL,
+                last_accessed_at REAL NOT NULL,
+                chunk_count INTEGER,
+                ttl_deadline REAL,
+                tti REAL
             )
-            """
-        )
-
-        # Table for storing response stream chunks only
-        cursor.execute(
-            """
+        """)
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS streams (
                 entry_id BLOB NOT NULL,
                 chunk_number INTEGER NOT NULL,
@@ -230,17 +199,11 @@ class SyncSqliteStorage(SyncBaseStorage):
                 PRIMARY KEY (entry_id, chunk_number),
                 FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
             )
-            """
-        )
-
-        # Indexes for performance
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_entries_deleted_at ON entries(deleted_at)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_entries_cache_key ON entries(cache_key)"
-        )
-
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_cache_key ON entries(cache_key)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_expires_at ON entries(expires_at)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_last_accessed_at ON entries(last_accessed_at)")
+        cursor.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
         self.connection.commit()
 
     def create_entry(
@@ -248,391 +211,281 @@ class SyncSqliteStorage(SyncBaseStorage):
         request: Request,
         response: Response,
         key: str,
-        id_: uuid.UUID | None = None,
+        *,
+        ttl: float | None = None,
+        tti: float | None = None,
     ) -> Entry:
-        key_bytes = key.encode("utf-8")
+        body = response.stream if response.stream is not None else make_sync_iterator([])
+        assert isinstance(body, (Iterator, Iterable))
 
-        # Build the entry outside the lock; only the actual DB write
-        # needs to be serialised against other DB users.
-        pair_id = id_ if id_ is not None else uuid.uuid4()
-        pair_meta = EntryMeta(created_at=time.time())
-
-        assert isinstance(response.stream, (Iterator, Iterable))
-        response_with_stream = replace(
-            response,
-            stream=self._save_stream(response.stream, pair_id.bytes),
-        )
-
-        complete_entry = Entry(
-            id=pair_id,
+        now = time.time()
+        ttl_deadline, tti = self._limits(ttl, tti, now)
+        entry = Entry(
+            id=uuid.uuid4(),
             request=request,
-            response=response_with_stream,
-            meta=pair_meta,
-            cache_key=key_bytes,
+            response=response,
         )
 
         with self._lock:
             connection = self._ensure_connection()
-            cursor = connection.cursor()
-            cursor.execute(
-                "INSERT INTO entries (id, cache_key, data, created_at, deleted_at)"
-                " VALUES (?, ?, ?, ?, ?)",
-                (
-                    pair_id.bytes,
-                    key_bytes,
-                    pack(complete_entry, kind="pair"),
-                    pair_meta.created_at,
-                    None,
-                ),
-            )
-            connection.commit()
+            try:
+                if not self._reclaim_space(connection, now):
+                    return entry
+                cursor = connection.cursor()
+                cursor.execute(
+                    "INSERT INTO entries (id, cache_key, data, expires_at, last_accessed_at, ttl_deadline, tti)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (entry.id.bytes, key.encode("utf-8"), pack(request, response), HIDDEN, now, ttl_deadline, tti),
+                )
+                connection.commit()
+            except Exception:
+                logger.exception("hishel: could not store entry, serving the response uncached")
+                return entry
 
-        return complete_entry
+        stream = self._save_stream(body, entry.id.bytes, ttl_deadline, tti, now)
+        return replace(entry, response=replace(response, stream=stream))
 
     def get_entries(self, key: str) -> List[Entry]:
-        final_pairs: List[Entry] = []
-
+        now = time.time()
         with self._lock:
-            if time.time() - self.last_cleanup >= BATCH_CLEANUP_INTERVAL:
-                try:
-                    self._batch_cleanup()
-                except Exception:
-                    # Don't let cleanup prevent reads; failures are non-fatal
-                    # but we log so problems are visible instead of silent.
-                    logger.exception("hishel: batch cleanup failed")
-                finally:
-                    # Reset even on failure, otherwise a failing cleanup
-                    # would re-run on every get_entries call.
-                    self.last_cleanup = time.time()
-
-            connection = self._ensure_connection()
-            cursor = connection.cursor()
+            cursor = self._ensure_connection().cursor()
             cursor.execute(
-                "SELECT id, data FROM entries WHERE cache_key = ?",
-                (key.encode("utf-8"),),
+                "SELECT id, data, chunk_count, expires_at, last_accessed_at, ttl_deadline, tti FROM entries"
+                " WHERE cache_key = ? AND (expires_at IS NULL OR expires_at > ?)",
+                (key.encode("utf-8"), now),
             )
+            rows = cursor.fetchall()
 
-            for row in cursor.fetchall():
-                pair_data = unpack(row[1], kind="pair")
+        entries: List[Entry] = []
+        for id_, data, chunk_count, expires_at, last_accessed_at, ttl_deadline, tti in rows:
+            try:
+                request, response = unpack(bytes(data))
+            except Exception:
+                logger.exception("hishel: dropping an entry that could not be decoded")
+                self._try_write("UPDATE entries SET expires_at = ? WHERE id = ?", (HIDDEN, id_))
+                continue
 
-                if pair_data is None:
+            # Most hits write nothing. Otherwise every read would be a write.
+            new_expires_at = self._expires_at(ttl_deadline, tti, now)
+            tti_lags = (
+                tti is not None
+                and expires_at is not None
+                and new_expires_at is not None
+                and new_expires_at - expires_at >= tti / 2
+            )
+            if now - last_accessed_at >= self._touch_interval or tti_lags:
+                # The expiry check stops this from bringing back an entry that
+                # remove_entry hid after the SELECT above.
+                touched = self._try_write(
+                    "UPDATE entries SET last_accessed_at = ?, expires_at = ?"
+                    " WHERE id = ? AND (expires_at IS NULL OR expires_at > ?)",
+                    (now, new_expires_at, id_, now),
+                )
+                # No row matched, so it was evicted or removed after the SELECT.
+                if touched == 0:
                     continue
+                if touched is not None:
+                    last_accessed_at = now
 
-                # Skip entries without a complete response stream
-                if not self._is_stream_complete(pair_data.id, cursor=cursor):
-                    continue
-
-                # Skip expired entries
-                if self._is_pair_expired(pair_data, cursor=cursor):
-                    continue
-
-                # Skip soft-deleted entries
-                if self.is_soft_deleted(pair_data):
-                    continue
-
-                final_pairs.append(pair_data)
-
-        pairs_with_streams: List[Entry] = []
-
-        # Wrap response streams as lazy generators that take the lock
-        # per chunk inside _stream_data_from_cache. We deliberately do
-        # NOT hold the lock across user iteration of the stream.
-        for pair in final_pairs:
-            pairs_with_streams.append(
-                replace(
-                    pair,
+            entries.append(
+                Entry(
+                    id=uuid.UUID(bytes=id_),
+                    request=request,
                     response=replace(
-                        pair.response,
-                        stream=self._stream_data_from_cache(pair.id.bytes),
+                        response,
+                        stream=self._stream_from_cache(id_, chunk_count, last_accessed_at),
                     ),
                 )
             )
 
-        return pairs_with_streams
+        return entries
 
-    def update_entry(
-        self,
-        id: uuid.UUID,
-        new_pair: Union[Entry, Callable[[Entry], Entry]],
-    ) -> Optional[Entry]:
-        # MUST hold the lock: this is a SELECT-modify-UPDATE sequence
-        # and concurrent updaters would otherwise lose each other's
-        # writes. Removing this lock would silently corrupt entries.
+    def update_headers(self, id: uuid.UUID, headers: Headers) -> None:
+        # The blob is only ever rewritten here, so the last writer winning is
+        # the correct result if two revalidations race.
         with self._lock:
             connection = self._ensure_connection()
             cursor = connection.cursor()
             cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
-            result = cursor.fetchone()
+            row = cursor.fetchone()
+            if row is None:
+                return
 
-            if result is None:
-                return None
-
-            pair = unpack(result[0], kind="pair")
-
-            # Skip entries without a response (incomplete)
-            if not isinstance(pair, Entry) or pair.response is None:
-                return None
-
-            if isinstance(new_pair, Entry):
-                complete_pair = new_pair
-            else:
-                complete_pair = new_pair(pair)
-
-            if pair.id != complete_pair.id:
-                raise ValueError("Pair ID mismatch")
-
-            # Single UPDATE setting both columns avoids an extra round trip.
-            cursor.execute(
-                "UPDATE entries SET data = ?, cache_key = ? WHERE id = ?",
-                (
-                    pack(complete_pair, kind="pair"),
-                    complete_pair.cache_key,
-                    id.bytes,
-                ),
-            )
-
+            request, response = unpack(bytes(row[0]))
+            updated = pack(request, replace(response, headers=headers))
+            cursor.execute("UPDATE entries SET data = ? WHERE id = ?", (updated, id.bytes))
             connection.commit()
-
-            return complete_pair
-
-    def refresh_entry_ttl(self, id: uuid.UUID) -> None:
-        self.update_entry(
-            id,
-            lambda pair: replace(
-                pair, meta=replace(pair.meta, created_at=time.time())
-            ),
-        )
 
     def remove_entry(self, id: uuid.UUID) -> None:
         with self._lock:
             connection = self._ensure_connection()
             cursor = connection.cursor()
-            cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
-            result = cursor.fetchone()
-
-            if result is None:
-                return
-
-            pair = unpack(result[0], kind="pair")
-            self._soft_delete_pair(pair, cursor)
+            # An entry still being written has no readers to protect, and hiding it
+            # would not last: completing the stream sets expires_at.
+            cursor.execute("DELETE FROM entries WHERE id = ? AND chunk_count IS NULL", (id.bytes,))
+            cursor.execute("UPDATE entries SET expires_at = ? WHERE id = ?", (HIDDEN, id.bytes))
             connection.commit()
 
     def close(self) -> None:
         with self._lock:
-            # Closing is permanent: _ensure_connection raises from now
-            # on, so in-flight stream generators fail loudly on their
-            # next chunk instead of silently reopening the connection.
             self._closed = True
             if self.connection is not None:
                 self.connection.close()
                 self.connection = None
             self._initialized = False
 
-    def _is_stream_complete(
-        self, pair_id: uuid.UUID, cursor: sqlite3.Cursor
-    ) -> bool:
-        """Caller must hold self._lock."""
-        cursor.execute(
-            "SELECT 1 FROM streams WHERE entry_id = ? AND chunk_number = ? LIMIT 1",
-            (pair_id.bytes, self._COMPLETE_CHUNK_NUMBER),
-        )
-        return cursor.fetchone() is not None
-
-    def _soft_delete_pair(
-        self,
-        pair: Entry,
-        cursor: sqlite3.Cursor,
-    ) -> None:
+    def _try_write(self, sql: str, parameters: tuple[Any, ...]) -> int | None:
         """
-        Mark the pair as deleted by setting the deleted_at timestamp.
+        Run a write that must not fail the request being served.
 
-        Caller must hold self._lock.
+        Returns how many rows it changed, or None if it failed.
         """
-        marked_pair = self.mark_pair_as_deleted(pair)
-        cursor.execute(
-            "UPDATE entries SET data = ?, deleted_at = ? WHERE id = ?",
-            (
-                pack(marked_pair, kind="pair"),
-                marked_pair.meta.deleted_at,
-                pair.id.bytes,
-            ),
-        )
+        try:
+            with self._lock:
+                connection = self._ensure_connection()
+                cursor = connection.cursor()
+                cursor.execute(sql, parameters)
+                changed = cursor.rowcount
+                connection.commit()
+            return changed
+        except Exception:
+            logger.exception("hishel: cache write failed")
+            return None
 
-    def _is_pair_expired(self, pair: Entry, cursor: sqlite3.Cursor) -> bool:
+    def _reclaim_space(self, connection: sqlite3.Connection, now: float) -> bool:
         """
-        Check if the pair is expired.
+        Delete a bounded number of rows and return whether there is room for a new entry.
+
+        Abandoned writes are covered too: they stay HIDDEN and stop updating
+        last_accessed_at once their writer is gone.
         """
-        ttl = pair.request.metadata.get("hishel_ttl") or self.default_ttl
-        created_at = pair.meta.created_at
-        if ttl is None:
-            return False
-        return created_at + ttl < time.time()
-
-    def _batch_cleanup(self) -> None:
-        """
-        Cleanup expired entries in the database.
-
-        Uses keyset pagination on `id` rather than LIMIT/OFFSET so that
-        scans are stable even if rows are mutated between chunks, and so
-        that performance does not degrade on large tables.
-
-        Caller must hold self._lock.
-        """
-        should_mark_as_deleted: List[Entry] = []
-        should_hard_delete: List[Entry] = []
-
-        connection = self._ensure_connection()
         cursor = connection.cursor()
+        unused_since = now - self.soft_delete_ttl
 
-        chunk_size = BATCH_CLEANUP_CHUNK_SIZE
-        last_id: Optional[bytes] = None
-        while True:
-            if last_id is None:
-                cursor.execute(
-                    "SELECT id, data FROM entries ORDER BY id LIMIT ?",
-                    (chunk_size,),
-                )
-            else:
-                cursor.execute(
-                    "SELECT id, data FROM entries WHERE id > ? ORDER BY id LIMIT ?",
-                    (last_id, chunk_size),
-                )
-            rows = cursor.fetchall()
-            if not rows:
-                break
-
-            for row in rows:
-                pair = unpack(row[1], kind="pair")
-                if pair is None:
-                    continue
-
-                # expired but not yet soft-deleted
-                if self._is_pair_expired(pair, cursor) and not self.is_soft_deleted(
-                    pair
-                ):
-                    should_mark_as_deleted.append(pair)
-
-                # soft-deleted and safe to hard delete, or corrupted pair
-                if (
-                    self.is_soft_deleted(pair) and self.is_safe_to_hard_delete(pair)
-                ) or self._is_corrupted(pair, cursor):
-                    should_hard_delete.append(pair)
-
-            # advance keyset cursor to the last id we saw
-            last_id = rows[-1][0]
-
-        for pair in should_mark_as_deleted:
-            self._soft_delete_pair(pair, cursor)
-
-        for pair in should_hard_delete:
-            self._hard_delete_pair(pair, cursor)
-
+        cursor.execute(
+            "DELETE FROM entries WHERE id IN ("
+            " SELECT id FROM entries WHERE expires_at < ? AND last_accessed_at < ? LIMIT ?)",
+            (now, unused_since, CLEANUP_BATCH_SIZE),
+        )
         connection.commit()
 
-        # Record completion time so we don't immediately re-run on the
-        # next get_entries call.
-        self.last_cleanup = time.time()
-
-    def _is_corrupted(self, pair: Entry, cursor: sqlite3.Cursor) -> bool:
-        # If entry was created more than 1 hour ago and still has no
-        # complete response stream, treat it as corrupt.
-        if pair.meta.created_at + 3600 < time.time() and not (
-            self._is_stream_complete(pair.id, cursor)
-        ):
+        if self.max_size is None:
             return True
-        return False
 
-    def _hard_delete_pair(self, pair: Entry, cursor: sqlite3.Cursor) -> None:
-        """
-        Permanently delete the pair from the database.
+        for _ in range(EVICTION_MAX_BATCHES):
+            if self._database_size(cursor) <= self.max_size:
+                return True
+            cursor.execute(
+                "DELETE FROM entries WHERE id IN ("
+                " SELECT id FROM entries WHERE last_accessed_at < ? ORDER BY last_accessed_at LIMIT ?)",
+                (unused_since, EVICTION_BATCH_SIZE),
+            )
+            deleted = cursor.rowcount
+            connection.commit()
+            if deleted == 0:
+                break
 
-        Stream chunks are removed automatically via ON DELETE CASCADE
-        (foreign_keys pragma is enabled in _initialize_database).
+        return self._database_size(cursor) <= self.max_size
 
-        Caller must hold self._lock.
-        """
-        cursor.execute("DELETE FROM entries WHERE id = ?", (pair.id.bytes,))
+    def _database_size(self, cursor: sqlite3.Cursor) -> int:
+        cursor.execute(
+            "SELECT (page_count - freelist_count) * page_size"
+            " FROM pragma_page_count(), pragma_freelist_count(), pragma_page_size()"
+        )
+        row = cursor.fetchone()
+        return int(row[0])
 
     def _save_stream(
         self,
         stream: Iterator[bytes],
-        entry_id: bytes,
+        id_: bytes,
+        ttl_deadline: float | None,
+        tti: float | None,
+        last_touch: float,
     ) -> Iterator[bytes]:
         """
-        Wrapper around an iterator that also saves the response data
-        to the cache in chunks.
+        Yield the stream unchanged while saving it, re-chunked to STORAGE_CHUNK_SIZE.
 
-        Incoming chunks are yielded to the consumer unchanged, but are
-        re-chunked into STORAGE_CHUNK_SIZE rows before being written, so
-        the row layout does not depend on how the transport chunked the
-        response.
-
-        Each chunk insert takes self._lock; the lock is released between
-        chunks so user iteration of the stream does not block other DB
-        operations.
+        Saving stops on the first failure, or when the response gets too big to
+        cache, but the consumer keeps receiving the stream either way.
         """
+        limits = [limit for limit in (self.max_stream_size, self.max_size) if limit is not None]
+        limit = min(limits, default=None)
         chunk_number = 0
+        total_size = 0
         buffer = bytearray()
+        saving = True
+        completed = False
 
-        def write_chunk(data: bytes) -> None:
-            nonlocal chunk_number
-            with self._lock:
-                connection = self._ensure_connection()
-                cursor = connection.cursor()
-                cursor.execute(
-                    "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
-                    (entry_id, chunk_number, data),
-                )
-                connection.commit()
-            chunk_number += 1
-
-        for chunk in stream:
-            buffer += chunk
-            while len(buffer) >= STORAGE_CHUNK_SIZE:
-                write_chunk(bytes(buffer[:STORAGE_CHUNK_SIZE]))
-                del buffer[:STORAGE_CHUNK_SIZE]
-            yield chunk
-
-        if buffer:
-            write_chunk(bytes(buffer))
-
-        # Mark end of stream with chunk_number = -1
-        with self._lock:
-            connection = self._ensure_connection()
-            cursor = connection.cursor()
-            cursor.execute(
+        def write_chunk(data: bytes) -> bool:
+            nonlocal chunk_number, last_touch
+            inserted = self._try_write(
                 "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
-                (entry_id, self._COMPLETE_CHUNK_NUMBER, b""),
+                (id_, chunk_number, data),
             )
-            connection.commit()
+            if inserted is None:
+                return False
+            chunk_number += 1
+            now = time.time()
+            if now - last_touch >= self._touch_interval:
+                last_touch = now
+                self._try_write("UPDATE entries SET last_accessed_at = ? WHERE id = ?", (now, id_))
+            return True
 
-    def _stream_data_from_cache(
+        try:
+            for chunk in stream:
+                if saving:
+                    total_size += len(chunk)
+                    if limit is not None and total_size > limit:
+                        saving = False
+                    else:
+                        buffer += chunk
+                        while saving and len(buffer) >= STORAGE_CHUNK_SIZE:
+                            saving = write_chunk(bytes(buffer[:STORAGE_CHUNK_SIZE]))
+                            del buffer[:STORAGE_CHUNK_SIZE]
+                    if not saving:
+                        buffer.clear()
+                        self._try_write("DELETE FROM entries WHERE id = ?", (id_,))
+                yield chunk
+
+            if saving and buffer:
+                saving = write_chunk(bytes(buffer))
+            if saving:
+                now = time.time()
+                updated = self._try_write(
+                    "UPDATE entries SET chunk_count = ?, expires_at = ?, last_accessed_at = ? WHERE id = ?",
+                    (chunk_number, self._expires_at(ttl_deadline, tti, now), now, id_),
+                )
+                completed = bool(updated)
+        finally:
+            # Upstream failed or the consumer stopped reading. If this gets
+            # cancelled too, _reclaim_space removes the row later.
+            if not completed:
+                self._try_write("DELETE FROM entries WHERE id = ?", (id_,))
+
+    def _stream_from_cache(
         self,
-        entry_id: bytes,
+        id_: bytes,
+        chunk_count: int,
+        last_touch: float,
     ) -> Iterator[bytes]:
-        """
-        Get an iterator that yields the response stream data from the cache.
-
-        Iteration terminates when no row exists for the next sequential
-        chunk_number (the completion marker lives at chunk_number = -1
-        and is queried separately by _is_stream_complete, not here).
-
-        Each chunk read takes self._lock; the lock is released between
-        chunks so user iteration does not block other DB operations.
-        """
-        chunk_number = 0
-
-        while True:
+        for chunk_number in range(chunk_count):
             with self._lock:
-                connection = self._ensure_connection()
-                cursor = connection.cursor()
+                cursor = self._ensure_connection().cursor()
                 cursor.execute(
                     "SELECT chunk_data FROM streams WHERE entry_id = ? AND chunk_number = ?",
-                    (entry_id, chunk_number),
+                    (id_, chunk_number),
                 )
-                result = cursor.fetchone()
+                row = cursor.fetchone()
+            if row is None:
+                raise RuntimeError(
+                    "Cached response was deleted while it was being read. "
+                    "Increase soft_delete_ttl if consumers stall for longer than that."
+                )
 
-            if result is None:
-                break
-            yield result[0]
-            chunk_number += 1
+            now = time.time()
+            if now - last_touch >= self._touch_interval:
+                last_touch = now
+                self._try_write("UPDATE entries SET last_accessed_at = ? WHERE id = ?", (now, id_))
+
+            yield row[0]

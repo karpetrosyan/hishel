@@ -3,42 +3,38 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-import warnings
+from collections.abc import AsyncIterable, AsyncIterator
 from dataclasses import replace
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    AsyncIterable,
-    AsyncIterator,
-    Callable,
-    List,
-    Optional,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, List, Optional, Union
 
+from hishel._core._headers import Headers
 from hishel._core._storages._async_base import AsyncBaseStorage
 from hishel._core._storages._packing import pack, unpack
-from hishel._core.models import (
-    Entry,
-    EntryMeta,
-    Request,
-    Response,
-)
-from hishel._utils import ensure_cache_dict
+from hishel._core.models import Entry, Request, Response
+from hishel._utils import ensure_cache_dict, make_async_iterator
 
 logger = logging.getLogger(__name__)
 
-# Batch cleanup configuration
-# How often to run cleanup (seconds). Default: 1 hour.
-BATCH_CLEANUP_INTERVAL = 3600
-# How long to wait after storage creation before allowing the first cleanup (seconds)
-BATCH_CLEANUP_START_DELAY = 5 * 60
-# Number of rows to process per chunk when cleaning
-BATCH_CLEANUP_CHUNK_SIZE = 200
+# Stored in `PRAGMA user_version`. A database with any other version is reset,
+# since cached data is disposable.
+SCHEMA_VERSION = 1
+# Rows deleted per create_entry when removing expired entries.
+CLEANUP_BATCH_SIZE = 200
+# Eviction stops as soon as the database fits, so it deletes a few rows at a
+# time: one extra entry must not cost 200 others.
+EVICTION_BATCH_SIZE = 10
+EVICTION_MAX_BATCHES = 20
+# last_accessed_at is written at most this often per entry (seconds).
+MAX_TOUCH_INTERVAL = 60
 # Target size (bytes) of a stored stream chunk row. Incoming chunks are
-# re-chunked to this size before being written so row count/size stays
-# bounded regardless of how the transport chunks the response.
+# re-chunked to this size before being written.
 STORAGE_CHUNK_SIZE = 131072
+# The WAL file is truncated back to this size (bytes) after a checkpoint.
+MAX_WAL_SIZE = 64 * 1024 * 1024
+# expires_at of entries that lookups must not return: removed entries and
+# entries still being written. Always in the past, whatever the clock says.
+HIDDEN = 0.0
 
 
 if TYPE_CHECKING:
@@ -54,15 +50,26 @@ else:
 
 
 class AsyncSqliteStorage(AsyncBaseStorage):
-    _COMPLETE_CHUNK_NUMBER = -1
+    """
+    An entry is removed in two steps. Lookups stop returning it as soon as
+    expires_at passes, and its row is deleted once it has also gone unused for
+    soft_delete_ttl seconds, so that readers already streaming it can finish.
+    Active readers and writers keep that window open by updating last_accessed_at.
+
+    Writes are single atomic statements, and anysqlite serialises calls on the
+    connection, so no write lock is needed.
+    """
 
     def __init__(
         self,
         *,
         connection: Optional[anysqlite.Connection] = None,
         database_path: Union[str, Path] = "hishel_cache.db",
-        default_ttl: Optional[float] = None,
-        refresh_ttl_on_access: bool | None = None,
+        default_ttl: float | None = None,
+        default_tti: float | None = None,
+        max_stream_size: int | None = None,
+        max_size: int | None = 1024**3,
+        soft_delete_ttl: float = 180,
     ) -> None:
         if anysqlite is None:
             raise ImportError(
@@ -70,58 +77,31 @@ class AsyncSqliteStorage(AsyncBaseStorage):
                 "Install hishel with 'pip install hishel[async]'."
             )
 
-        if isinstance(refresh_ttl_on_access, bool):
-            warnings.warn("The 'refresh_ttl_on_access' parameter is deprecated and has no effect. ")
-
+        super().__init__(default_ttl=default_ttl, default_tti=default_tti, max_stream_size=max_stream_size)
         self.connection = connection
         self.database_path: Path = database_path if isinstance(database_path, Path) else Path(database_path)
-        self.default_ttl = default_ttl
-        self.last_cleanup = time.time() - BATCH_CLEANUP_INTERVAL + BATCH_CLEANUP_START_DELAY
+        self.max_size = max_size
+        self.soft_delete_ttl = soft_delete_ttl
+        # An entry's last_accessed_at can lag by this much, so it has to stay
+        # well below soft_delete_ttl for the grace period to mean anything.
+        self._touch_interval = min(MAX_TOUCH_INTERVAL, soft_delete_ttl / 2)
         self._initialized = False
-        # Set by close() and never unset: prevents lingering stream
-        # generators (or any late caller) from silently reopening the
-        # connection after the storage has been torn down.
+        # Set by close() and never unset: prevents lingering stream generators
+        # from silently reopening the connection.
         self._closed = False
-        # _init_lock serialises the lazy connection-and-schema setup in
-        # _ensure_connection so concurrent first-time callers cannot both
-        # open a connection or both run CREATE TABLE / PRAGMA setup.
-        #
-        # _write_lock serialises read-modify-write sequences (update_entry,
-        # remove_entry, _batch_cleanup). Pure single-statement reads and
-        # writes do NOT need this lock: anysqlite already serialises
-        # cursor calls on a single Connection via its internal
         self._init_lock = Lock()
-        self._write_lock = Lock()
 
     async def _ensure_connection(self) -> anysqlite.Connection:
-        """
-        Ensure connection is established and database is initialized.
-
-        Safe to call concurrently: uses _init_lock with double-checked
-        locking so the fast path (already initialised) does not take the
-        lock at all, and the slow path opens the connection and runs
-        schema setup exactly once.
-
-        Raises RuntimeError if the storage has been closed.
-        """
         if self._closed:
             raise RuntimeError("AsyncSqliteStorage is closed and can no longer be used.")
 
-        # Fast path: already initialised. No lock needed because both
-        # fields, once set, are only mutated under _init_lock and the
-        # only writer that resets them (close()) takes _init_lock too.
         if self.connection is not None and self._initialized:
             return self.connection
 
         async with self._init_lock:
-            # Re-check inside the lock: close() may have run while we
-            # were waiting for it (it holds _init_lock), and without
-            # this a late caller would silently reopen the connection.
             if self._closed:
                 raise RuntimeError("AsyncSqliteStorage is closed and can no longer be used.")
-            # Re-check inside the lock; another task may have raced us.
             if self.connection is None:
-                # Create cache directory and resolve full path on first connection
                 parent = self.database_path.parent if self.database_path.parent != Path(".") else None
                 full_path = ensure_cache_dict(parent) / self.database_path.name
                 self.connection = await anysqlite.connect(str(full_path))
@@ -131,32 +111,39 @@ class AsyncSqliteStorage(AsyncBaseStorage):
             return self.connection
 
     async def _initialize_database(self) -> None:
-        """Initialize the database schema and configure the connection."""
         assert self.connection is not None
         cursor = await self.connection.cursor()
 
-        # Configure connection for cache workload:
-        # - WAL allows concurrent readers during writes
-        # - busy_timeout avoids SQLITE_BUSY errors under contention
-        # - synchronous=NORMAL is the right durability/perf tradeoff for a cache
-        # - foreign_keys enables ON DELETE CASCADE enforcement
         await cursor.execute("PRAGMA journal_mode=WAL")
         await cursor.execute("PRAGMA busy_timeout=5000")
         await cursor.execute("PRAGMA synchronous=NORMAL")
         await cursor.execute("PRAGMA foreign_keys=ON")
+        await cursor.execute(f"PRAGMA journal_size_limit={MAX_WAL_SIZE}")
 
-        # Table for storing request/response pairs
+        await cursor.execute("PRAGMA user_version")
+        row = await cursor.fetchone()
+        if row[0] == SCHEMA_VERSION:
+            return
+
+        await cursor.execute("DROP TABLE IF EXISTS streams")
+        await cursor.execute("DROP TABLE IF EXISTS entries")
+        await self.connection.commit()
+        # Nothing is left to copy, so this is cheap, and it returns the old
+        # file's space to the OS.
+        await cursor.execute("VACUUM")
+
         await cursor.execute("""
             CREATE TABLE IF NOT EXISTS entries (
                 id BLOB PRIMARY KEY,
-                cache_key BLOB,
+                cache_key BLOB NOT NULL,
                 data BLOB NOT NULL,
-                created_at REAL NOT NULL,
-                deleted_at REAL
+                expires_at REAL,
+                last_accessed_at REAL NOT NULL,
+                chunk_count INTEGER,
+                ttl_deadline REAL,
+                tti REAL
             )
         """)
-
-        # Table for storing response stream chunks only
         await cursor.execute("""
             CREATE TABLE IF NOT EXISTS streams (
                 entry_id BLOB NOT NULL,
@@ -166,399 +153,287 @@ class AsyncSqliteStorage(AsyncBaseStorage):
                 FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
             )
         """)
-
-        # Indexes for performance
-        await cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_deleted_at ON entries(deleted_at)")
         await cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_cache_key ON entries(cache_key)")
-
+        await cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_expires_at ON entries(expires_at)")
+        await cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_last_accessed_at ON entries(last_accessed_at)")
+        await cursor.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
         await self.connection.commit()
 
-    async def create_entry(self, request: Request, response: Response, key: str, id_: uuid.UUID | None = None) -> Entry:
-        key_bytes = key.encode("utf-8")
-
-        # No write_lock needed: this is a single INSERT (atomic at the
-        # SQLite level) and anysqlite serialises cursor access on the
-        # connection internally. The streaming response is consumed by
-        # the caller after this returns; _save_stream handles its own
-        # writes per chunk.
+    async def create_entry(
+        self,
+        request: Request,
+        response: Response,
+        key: str,
+        *,
+        ttl: float | None = None,
+        tti: float | None = None,
+    ) -> Entry:
+        body = response.stream if response.stream is not None else make_async_iterator([])
+        assert isinstance(body, (AsyncIterator, AsyncIterable))
         connection = await self._ensure_connection()
-        cursor = await connection.cursor()
-
-        # Create a new entry directly with both request and response
-        pair_id = id_ if id_ is not None else uuid.uuid4()
-        pair_meta = EntryMeta(
-            created_at=time.time(),
-        )
-
-        assert isinstance(response.stream, (AsyncIterator, AsyncIterable))
-        response_with_stream = replace(
-            response,
-            stream=self._save_stream(response.stream, pair_id.bytes),
-        )
-
-        complete_entry = Entry(
-            id=pair_id,
-            request=request,
-            response=response_with_stream,
-            meta=pair_meta,
-            cache_key=key_bytes,
-        )
-
-        # Insert the complete entry into the database
-        await cursor.execute(
-            "INSERT INTO entries (id, cache_key, data, created_at, deleted_at) VALUES (?, ?, ?, ?, ?)",
-            (pair_id.bytes, key_bytes, pack(complete_entry, kind="pair"), pair_meta.created_at, None),
-        )
-        await connection.commit()
-
-        return complete_entry
-
-    async def get_entries(self, key: str) -> List[Entry]:
-        final_pairs: List[Entry] = []
 
         now = time.time()
-        if now - self.last_cleanup >= BATCH_CLEANUP_INTERVAL:
-            # _batch_cleanup performs writes (soft/hard deletes) that can
-            # race with update_entry / remove_entry, so it must run under
-            # the write lock. Pure reads below do not need it.
-            async with self._write_lock:
-                # Re-check inside the lock so we don't run cleanup twice
-                # if multiple readers raced past the outer check.
-                if now - self.last_cleanup >= BATCH_CLEANUP_INTERVAL:
-                    try:
-                        await self._batch_cleanup()
-                    except Exception:
-                        # don't let cleanup prevent reads; failures are non-fatal
-                        # but we log so problems are visible instead of silent
-                        logger.exception("hishel: batch cleanup failed")
-                    finally:
-                        # Reset even on failure, otherwise a failing cleanup
-                        # would re-run on every get_entries call.
-                        self.last_cleanup = time.time()
-
-        connection = await self._ensure_connection()
-        cursor = await connection.cursor()
-        # Query entries directly by cache_key. anysqlite serialises this
-        # cursor's calls against any other concurrent operation on the
-        # connection, so we don't need an application-level lock.
-        await cursor.execute(
-            "SELECT id, data FROM entries WHERE cache_key = ?",
-            (key.encode("utf-8"),),
+        ttl_deadline, tti = self._limits(ttl, tti, now)
+        entry = Entry(
+            id=uuid.uuid4(),
+            request=request,
+            response=response,
         )
 
-        for row in await cursor.fetchall():
-            pair_data = unpack(row[1], kind="pair")
+        try:
+            if not await self._reclaim_space(connection, now):
+                return entry
+            cursor = await connection.cursor()
+            await cursor.execute(
+                "INSERT INTO entries (id, cache_key, data, expires_at, last_accessed_at, ttl_deadline, tti)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (entry.id.bytes, key.encode("utf-8"), pack(request, response), HIDDEN, now, ttl_deadline, tti),
+            )
+            await connection.commit()
+        except Exception:
+            logger.exception("hishel: could not store entry, serving the response uncached")
+            return entry
 
-            if pair_data is None:
+        stream = self._save_stream(body, entry.id.bytes, ttl_deadline, tti, now)
+        return replace(entry, response=replace(response, stream=stream))
+
+    async def get_entries(self, key: str) -> List[Entry]:
+        connection = await self._ensure_connection()
+        cursor = await connection.cursor()
+        now = time.time()
+        await cursor.execute(
+            "SELECT id, data, chunk_count, expires_at, last_accessed_at, ttl_deadline, tti FROM entries"
+            " WHERE cache_key = ? AND (expires_at IS NULL OR expires_at > ?)",
+            (key.encode("utf-8"), now),
+        )
+
+        entries: List[Entry] = []
+        for id_, data, chunk_count, expires_at, last_accessed_at, ttl_deadline, tti in await cursor.fetchall():
+            try:
+                request, response = unpack(bytes(data))
+            except Exception:
+                logger.exception("hishel: dropping an entry that could not be decoded")
+                await self._try_write("UPDATE entries SET expires_at = ? WHERE id = ?", (HIDDEN, id_))
                 continue
 
-            # Skip entries without a response (incomplete)
-            if not await self._is_stream_complete(pair_data.id, cursor=cursor):
-                continue
+            # Most hits write nothing. Otherwise every read would be a write.
+            new_expires_at = self._expires_at(ttl_deadline, tti, now)
+            tti_lags = (
+                tti is not None
+                and expires_at is not None
+                and new_expires_at is not None
+                and new_expires_at - expires_at >= tti / 2
+            )
+            if now - last_accessed_at >= self._touch_interval or tti_lags:
+                # The expiry check stops this from bringing back an entry that
+                # remove_entry hid after the SELECT above.
+                touched = await self._try_write(
+                    "UPDATE entries SET last_accessed_at = ?, expires_at = ?"
+                    " WHERE id = ? AND (expires_at IS NULL OR expires_at > ?)",
+                    (now, new_expires_at, id_, now),
+                )
+                # No row matched, so it was evicted or removed after the SELECT.
+                if touched == 0:
+                    continue
+                if touched is not None:
+                    last_accessed_at = now
 
-            # Skip expired entries
-            if await self._is_pair_expired(pair_data, cursor=cursor):
-                continue
-
-            # Skip soft-deleted entries
-            if self.is_soft_deleted(pair_data):
-                continue
-
-            final_pairs.append(pair_data)
-
-        pairs_with_streams: List[Entry] = []
-
-        # Only restore response streams from cache
-        for pair in final_pairs:
-            pairs_with_streams.append(
-                replace(
-                    pair,
+            entries.append(
+                Entry(
+                    id=uuid.UUID(bytes=id_),
+                    request=request,
                     response=replace(
-                        pair.response,
-                        stream=self._stream_data_from_cache(pair.id.bytes),
+                        response,
+                        stream=self._stream_from_cache(id_, chunk_count, last_accessed_at),
                     ),
                 )
             )
 
-        return pairs_with_streams
+        return entries
 
-    async def update_entry(
-        self,
-        id: uuid.UUID,
-        new_pair: Union[Entry, Callable[[Entry], Entry]],
-    ) -> Optional[Entry]:
-        # MUST hold _write_lock: this is a SELECT-modify-UPDATE sequence
-        # and concurrent updaters would otherwise lose each other's
-        # writes. Removing this lock would silently corrupt entries.
-        async with self._write_lock:
-            connection = await self._ensure_connection()
-            cursor = await connection.cursor()
-            await cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
-            result = await cursor.fetchone()
+    async def update_headers(self, id: uuid.UUID, headers: Headers) -> None:
+        # The blob is only ever rewritten here, so the last writer winning is
+        # the correct result if two revalidations race.
+        connection = await self._ensure_connection()
+        cursor = await connection.cursor()
+        await cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
+        row = await cursor.fetchone()
+        if row is None:
+            return
 
-            if result is None:
-                return None
-
-            pair = unpack(result[0], kind="pair")
-
-            # Skip entries without a response (incomplete)
-            if not isinstance(pair, Entry) or pair.response is None:
-                return None
-
-            if isinstance(new_pair, Entry):
-                complete_pair = new_pair
-            else:
-                complete_pair = new_pair(pair)
-
-            if pair.id != complete_pair.id:
-                raise ValueError("Pair ID mismatch")
-
-            # Single UPDATE setting both columns avoids an extra round trip.
-            await cursor.execute(
-                "UPDATE entries SET data = ?, cache_key = ? WHERE id = ?",
-                (pack(complete_pair, kind="pair"), complete_pair.cache_key, id.bytes),
-            )
-
-            await connection.commit()
-
-            return complete_pair
-
-    async def refresh_entry_ttl(self, id: uuid.UUID) -> None:
-        await self.update_entry(
-            id,
-            lambda pair: replace(
-                pair,
-                meta=replace(pair.meta, created_at=time.time()),
-            ),
-        )
+        request, response = unpack(bytes(row[0]))
+        updated = pack(request, replace(response, headers=headers))
+        await cursor.execute("UPDATE entries SET data = ? WHERE id = ?", (updated, id.bytes))
+        await connection.commit()
 
     async def remove_entry(self, id: uuid.UUID) -> None:
-        # MUST hold _write_lock: SELECT then soft-delete UPDATE. Without
-        # the lock, a concurrent update_entry could clobber the soft
-        # delete or vice versa.
-        async with self._write_lock:
-            connection = await self._ensure_connection()
-            cursor = await connection.cursor()
-            await cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
-            result = await cursor.fetchone()
-
-            if result is None:
-                return
-
-            pair = unpack(result[0], kind="pair")
-            await self._soft_delete_pair(pair, cursor)
-            await connection.commit()
+        connection = await self._ensure_connection()
+        cursor = await connection.cursor()
+        # An entry still being written has no readers to protect, and hiding it
+        # would not last: completing the stream sets expires_at.
+        await cursor.execute("DELETE FROM entries WHERE id = ? AND chunk_count IS NULL", (id.bytes,))
+        await cursor.execute("UPDATE entries SET expires_at = ? WHERE id = ?", (HIDDEN, id.bytes))
+        await connection.commit()
 
     async def close(self) -> None:
-        # Drain both write and init paths before tearing down the
-        # connection. Acquisition order: _write_lock first, _init_lock
-        # second. This is the only place that holds both, so no other
-        # site can deadlock against us.
-        async with self._write_lock, self._init_lock:
-            # Closing is permanent: _ensure_connection raises from now
-            # on, so in-flight stream generators fail loudly on their
-            # next chunk instead of silently reopening the connection.
+        async with self._init_lock:
             self._closed = True
             if self.connection is not None:
                 await self.connection.close()
                 self.connection = None
             self._initialized = False
 
-    async def _is_stream_complete(self, pair_id: uuid.UUID, cursor: anysqlite.Cursor) -> bool:
-        # Check if there's a completion marker (chunk_number = -1) for response stream
-        await cursor.execute(
-            "SELECT 1 FROM streams WHERE entry_id = ? AND chunk_number = ? LIMIT 1",
-            (pair_id.bytes, self._COMPLETE_CHUNK_NUMBER),
-        )
-        return await cursor.fetchone() is not None
-
-    async def _soft_delete_pair(
-        self,
-        pair: Entry,
-        cursor: anysqlite.Cursor,
-    ) -> None:
+    async def _try_write(self, sql: str, parameters: tuple[Any, ...]) -> int | None:
         """
-        Mark the pair as deleted by setting the deleted_at timestamp.
-        """
-        marked_pair = self.mark_pair_as_deleted(pair)
-        await cursor.execute(
-            "UPDATE entries SET data = ?, deleted_at = ? WHERE id = ?",
-            (
-                pack(marked_pair, kind="pair"),
-                marked_pair.meta.deleted_at,
-                pair.id.bytes,
-            ),
-        )
+        Run a write that must not fail the request being served.
 
-    async def _is_pair_expired(self, pair: Entry, cursor: anysqlite.Cursor) -> bool:
+        Returns how many rows it changed, or None if it failed.
         """
-        Check if the pair is expired.
+        try:
+            connection = await self._ensure_connection()
+            cursor = await connection.cursor()
+            await cursor.execute(sql, parameters)
+            changed = cursor.rowcount
+            await connection.commit()
+            return changed
+        except Exception:
+            logger.exception("hishel: cache write failed")
+            return None
+
+    async def _reclaim_space(self, connection: anysqlite.Connection, now: float) -> bool:
         """
+        Delete a bounded number of rows and return whether there is room for a new entry.
 
-        metadata_ttl = pair.request.metadata.get("hishel_ttl")
-        ttl = metadata_ttl if metadata_ttl is not None else self.default_ttl
-        created_at = pair.meta.created_at
-        if ttl is None:
-            return False
-        return created_at + ttl < time.time()
-
-    async def _batch_cleanup(
-        self,
-    ) -> None:
+        Abandoned writes are covered too: they stay HIDDEN and stop updating
+        last_accessed_at once their writer is gone.
         """
-        Cleanup expired entries in the database.
-
-        Uses keyset pagination on `id` rather than LIMIT/OFFSET so that
-        scans are stable even if rows are mutated between chunks, and so
-        that performance does not degrade on large tables.
-        """
-        should_mark_as_deleted: List[Entry] = []
-        should_hard_delete: List[Entry] = []
-
-        connection = await self._ensure_connection()
         cursor = await connection.cursor()
+        unused_since = now - self.soft_delete_ttl
 
-        chunk_size = BATCH_CLEANUP_CHUNK_SIZE
-        last_id: Optional[bytes] = None
-        while True:
-            if last_id is None:
-                await cursor.execute(
-                    "SELECT id, data FROM entries ORDER BY id LIMIT ?",
-                    (chunk_size,),
-                )
-            else:
-                await cursor.execute(
-                    "SELECT id, data FROM entries WHERE id > ? ORDER BY id LIMIT ?",
-                    (last_id, chunk_size),
-                )
-            rows = await cursor.fetchall()
-            if not rows:
-                break
-
-            for row in rows:
-                pair = unpack(row[1], kind="pair")
-                if pair is None:
-                    continue
-
-                # expired but not yet soft-deleted
-                if await self._is_pair_expired(pair, cursor) and not self.is_soft_deleted(pair):
-                    should_mark_as_deleted.append(pair)
-
-                # soft-deleted and safe to hard delete, or corrupted pair
-                if (self.is_soft_deleted(pair) and self.is_safe_to_hard_delete(pair)) or await self._is_corrupted(
-                    pair, cursor
-                ):
-                    should_hard_delete.append(pair)
-
-            # advance keyset cursor to the last id we saw
-            last_id = rows[-1][0]
-
-        for pair in should_mark_as_deleted:
-            await self._soft_delete_pair(pair, cursor)
-
-        for pair in should_hard_delete:
-            await self._hard_delete_pair(pair, cursor)
-
+        await cursor.execute(
+            "DELETE FROM entries WHERE id IN ("
+            " SELECT id FROM entries WHERE expires_at < ? AND last_accessed_at < ? LIMIT ?)",
+            (now, unused_since, CLEANUP_BATCH_SIZE),
+        )
         await connection.commit()
 
-        # Record completion time so we don't immediately re-run on the
-        # next get_entries call.
-        self.last_cleanup = time.time()
-
-    async def _is_corrupted(self, pair: Entry, cursor: anysqlite.Cursor) -> bool:
-        # if entry was created more than 1 hour ago and still has no full response data
-        if pair.meta.created_at + 3600 < time.time() and not (await self._is_stream_complete(pair.id, cursor)):
+        if self.max_size is None:
             return True
-        return False
 
-    async def _hard_delete_pair(self, pair: Entry, cursor: anysqlite.Cursor) -> None:
-        """
-        Permanently delete the pair from the database.
+        for _ in range(EVICTION_MAX_BATCHES):
+            if await self._database_size(cursor) <= self.max_size:
+                return True
+            await cursor.execute(
+                "DELETE FROM entries WHERE id IN ("
+                " SELECT id FROM entries WHERE last_accessed_at < ? ORDER BY last_accessed_at LIMIT ?)",
+                (unused_since, EVICTION_BATCH_SIZE),
+            )
+            deleted = cursor.rowcount
+            await connection.commit()
+            if deleted == 0:
+                break
 
-        Stream chunks are removed automatically via ON DELETE CASCADE
-        (foreign_keys pragma is enabled in _initialize_database).
-        """
-        await cursor.execute("DELETE FROM entries WHERE id = ?", (pair.id.bytes,))
+        return await self._database_size(cursor) <= self.max_size
+
+    async def _database_size(self, cursor: anysqlite.Cursor) -> int:
+        await cursor.execute(
+            "SELECT (page_count - freelist_count) * page_size"
+            " FROM pragma_page_count(), pragma_freelist_count(), pragma_page_size()"
+        )
+        row = await cursor.fetchone()
+        return int(row[0])
 
     async def _save_stream(
         self,
         stream: AsyncIterator[bytes],
-        entry_id: bytes,
+        id_: bytes,
+        ttl_deadline: float | None,
+        tti: float | None,
+        last_touch: float,
     ) -> AsyncIterator[bytes]:
         """
-        Wrapper around an async iterator that also saves the response data
-        to the cache in chunks.
+        Yield the stream unchanged while saving it, re-chunked to STORAGE_CHUNK_SIZE.
 
-        Incoming chunks are yielded to the consumer unchanged, but are
-        re-chunked into STORAGE_CHUNK_SIZE rows before being written, so
-        the row layout does not depend on how the transport chunked the
-        response.
-
-        No locking needed: each INSERT is a single statement and atomic at
-        the SQLite level, anysqlite serialises cursor calls on the
-        connection internally, and only this entry's own writer can be
-        inserting into its (entry_id, chunk_number) key space (a duplicate
-        would be a caller bug, not a race).
+        Saving stops on the first failure, or when the response gets too big to
+        cache, but the consumer keeps receiving the stream either way.
         """
+        limits = [limit for limit in (self.max_stream_size, self.max_size) if limit is not None]
+        limit = min(limits, default=None)
         chunk_number = 0
+        total_size = 0
         buffer = bytearray()
+        saving = True
+        completed = False
 
-        async def write_chunk(data: bytes) -> None:
-            nonlocal chunk_number
-            connection = await self._ensure_connection()
-            cursor = await connection.cursor()
-            await cursor.execute(
+        async def write_chunk(data: bytes) -> bool:
+            nonlocal chunk_number, last_touch
+            inserted = await self._try_write(
                 "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
-                (entry_id, chunk_number, data),
+                (id_, chunk_number, data),
             )
-            await connection.commit()
+            if inserted is None:
+                return False
             chunk_number += 1
+            now = time.time()
+            if now - last_touch >= self._touch_interval:
+                last_touch = now
+                await self._try_write("UPDATE entries SET last_accessed_at = ? WHERE id = ?", (now, id_))
+            return True
 
-        async for chunk in stream:
-            buffer += chunk
-            while len(buffer) >= STORAGE_CHUNK_SIZE:
-                await write_chunk(bytes(buffer[:STORAGE_CHUNK_SIZE]))
-                del buffer[:STORAGE_CHUNK_SIZE]
-            yield chunk
+        try:
+            async for chunk in stream:
+                if saving:
+                    total_size += len(chunk)
+                    if limit is not None and total_size > limit:
+                        saving = False
+                    else:
+                        buffer += chunk
+                        while saving and len(buffer) >= STORAGE_CHUNK_SIZE:
+                            saving = await write_chunk(bytes(buffer[:STORAGE_CHUNK_SIZE]))
+                            del buffer[:STORAGE_CHUNK_SIZE]
+                    if not saving:
+                        buffer.clear()
+                        await self._try_write("DELETE FROM entries WHERE id = ?", (id_,))
+                yield chunk
 
-        if buffer:
-            await write_chunk(bytes(buffer))
+            if saving and buffer:
+                saving = await write_chunk(bytes(buffer))
+            if saving:
+                now = time.time()
+                updated = await self._try_write(
+                    "UPDATE entries SET chunk_count = ?, expires_at = ?, last_accessed_at = ? WHERE id = ?",
+                    (chunk_number, self._expires_at(ttl_deadline, tti, now), now, id_),
+                )
+                completed = bool(updated)
+        finally:
+            # Upstream failed or the consumer stopped reading. If this gets
+            # cancelled too, _reclaim_space removes the row later.
+            if not completed:
+                await self._try_write("DELETE FROM entries WHERE id = ?", (id_,))
 
-        # Mark end of stream with chunk_number = -1
-        connection = await self._ensure_connection()
-        cursor = await connection.cursor()
-        await cursor.execute(
-            "INSERT INTO streams (entry_id, chunk_number, chunk_data) VALUES (?, ?, ?)",
-            (entry_id, self._COMPLETE_CHUNK_NUMBER, b""),
-        )
-        await connection.commit()
-
-    async def _stream_data_from_cache(
+    async def _stream_from_cache(
         self,
-        entry_id: bytes,
+        id_: bytes,
+        chunk_count: int,
+        last_touch: float,
     ) -> AsyncIterator[bytes]:
-        """
-        Get an async iterator that yields the response stream data from the cache.
-
-        Iteration terminates when no row exists for the next sequential
-        chunk_number (the completion marker lives at chunk_number = -1 and
-        is queried separately by _is_stream_complete, not here).
-
-        No locking needed: each iteration is a single SELECT, and
-        anysqlite serialises cursor calls on the connection internally.
-        """
-        chunk_number = 0
-
-        while True:
+        for chunk_number in range(chunk_count):
             connection = await self._ensure_connection()
             cursor = await connection.cursor()
             await cursor.execute(
                 "SELECT chunk_data FROM streams WHERE entry_id = ? AND chunk_number = ?",
-                (entry_id, chunk_number),
+                (id_, chunk_number),
             )
-            result = await cursor.fetchone()
+            row = await cursor.fetchone()
+            if row is None:
+                raise RuntimeError(
+                    "Cached response was deleted while it was being read. "
+                    "Increase soft_delete_ttl if consumers stall for longer than that."
+                )
 
-            if result is None:
-                break
-            yield result[0]
-            chunk_number += 1
+            now = time.time()
+            if now - last_touch >= self._touch_interval:
+                last_touch = now
+                await self._try_write("UPDATE entries SET last_accessed_at = ? WHERE id = ?", (now, id_))
+
+            yield row[0]
