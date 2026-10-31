@@ -49,6 +49,35 @@ def test_full_response_during_revalidation_replaces_entry(cache: CacheScenario) 
     exchange.assert_stored(revalidated=True)
 
 
+@pytest.mark.parametrize("method", ["POST", "PUT", "DELETE", "PATCH"])
+def test_unsafe_method_invalidates_stored_response(cache: CacheScenario, method: str) -> None:
+    """
+    RFC 9111 §4.4: "A cache MUST invalidate the target URI when it receives a
+    non-error status code in response to an unsafe request method".
+    """
+    stored = cache.seed(response={"max_age": 3600})
+
+    exchange = cache.get(method=method)
+    exchange.assert_cache_miss()
+    exchange.responds(200)
+    exchange.assert_not_stored()
+    exchange.assert_invalidated(stored)
+
+    cache.get().assert_cache_miss()
+
+
+def test_unsafe_method_error_keeps_stored_response(cache: CacheScenario) -> None:
+    """
+    RFC 9111 §4.4: only a non-error status code invalidates the target URI.
+    """
+    stored = cache.seed(response={"max_age": 3600})
+
+    cache.get(method="POST").responds(500).assert_not_stored()
+
+    assert cache.entry_for().id == stored.id
+    cache.get().assert_from_cache()
+
+
 def test_conditional_request_carries_validators(cache: CacheScenario) -> None:
     """
     RFC 9111 §4.3.1: a cache "MUST send the relevant entity tags (using
