@@ -462,7 +462,8 @@ class SyncSqliteStorage(SyncBaseStorage):
         """
         Check if the pair is expired.
         """
-        ttl = pair.request.metadata.get("hishel_ttl") or self.default_ttl
+        metadata_ttl = pair.request.metadata.get("hishel_ttl")
+        ttl = metadata_ttl if metadata_ttl is not None else self.default_ttl
         created_at = pair.meta.created_at
         if ttl is None:
             return False

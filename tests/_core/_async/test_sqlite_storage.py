@@ -536,6 +536,27 @@ async def test_custom_ttl() -> None:
 
 
 @pytest.mark.anyio
+async def test_zero_hishel_ttl_means_immediately_expired() -> None:
+    """X-Hishel-Ttl: 0 is a legal value and must not fall back to default_ttl."""
+    connection = await anysqlite.connect(":memory:", check_same_thread=False)
+    storage = AsyncSqliteStorage(connection=connection, default_ttl=9999)
+
+    entry = await storage.create_entry(
+        request=Request(method="GET", url="https://example.com", metadata={"hishel_ttl": 0}),
+        response=Response(status_code=200, stream=make_async_iterator([b"data"])),
+        key="test_key",
+        id_=uuid.UUID(int=14),
+    )
+
+    await entry.response.aread()
+
+    # A zero override means the entry is already expired; reading it back must not
+    # return the entry as if the default_ttl had been applied.
+    entries = await storage.get_entries("test_key")
+    assert len(entries) == 0
+
+
+@pytest.mark.anyio
 async def test_batch_cleanup_runs_once_per_interval() -> None:
     """Cleanup must not re-run on every get_entries call"""
     storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False))
