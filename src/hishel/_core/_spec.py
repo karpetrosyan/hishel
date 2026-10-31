@@ -1421,7 +1421,14 @@ class CacheMiss(State):
         #
         # no-store is the strongest cache prevention directive. When present,
         # nothing should be stored, regardless of other directives.
-        no_store_is_not_present = not response_cache_control.no_store
+        #
+        # RFC 9111 Section 5.2.1.5: no-store Request Directive
+        # https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.1.5
+        #
+        # "The no-store request directive indicates that a cache MUST NOT store
+        # any part of either this request or any response to it."
+        request_cache_control = parse_cache_control(request.headers.get("cache-control"))
+        no_store_is_not_present = not response_cache_control.no_store and not request_cache_control.no_store
 
         # CONDITION 5: Private Directive Allows Storing (Shared Cache Only)
         # RFC 9111 Section 5.2.2.7: private Response Directive
@@ -1556,8 +1563,8 @@ class CacheMiss(State):
                     )
                 elif not no_store_is_not_present:
                     logger.debug(
-                        "Cannot store the response because the no-store cache directive is present in the response. "
-                        "See: https://www.rfc-editor.org/rfc/rfc9111.html#section-3-2.4.1"
+                        "Cannot store the response because the no-store cache directive is present in the request "
+                        "or the response. See: https://www.rfc-editor.org/rfc/rfc9111.html#section-3-2.4.1"
                     )
                 elif not private_directive_allows_storing:
                     logger.debug(
