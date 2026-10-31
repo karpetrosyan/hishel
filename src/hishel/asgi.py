@@ -196,12 +196,16 @@ class ASGICacheMiddleware:
                     raise
 
                 # Convert to internal Response
-                headers_dict = {key.decode("latin1"): value.decode("latin1") for key, value in response_headers}
+                # RFC 9111 Section 3.1: caches must store all received header fields,
+                # so repeated fields (e.g. multiple Set-Cookie) are aggregated, not overwritten.
+                headers_dict: dict[str, list[str]] = {}
+                for key, value in response_headers:
+                    headers_dict.setdefault(key.decode("latin1"), []).append(value.decode("latin1"))
 
                 # Add Date header if not present
                 if not any(key.lower() == "date" for key in headers_dict.keys()):
                     date_header = formatdate(timeval=None, localtime=False, usegmt=True)
-                    headers_dict["Date"] = date_header
+                    headers_dict["Date"] = [date_header]
                     logger.debug("Added Date header to response: %s", date_header)
 
                 async def response_stream() -> AsyncIterator[bytes]:
@@ -286,8 +290,10 @@ class ASGICacheMiddleware:
         url = f"{scheme}://{host}{path}"
         method = scope.get("method", "GET")
 
-        # Extract headers
-        headers_dict = {key.decode("latin1"): value.decode("latin1") for key, value in scope.get("headers", [])}
+        # Extract headers, aggregating repeated fields instead of overwriting them
+        headers_dict: dict[str, list[str]] = {}
+        for key, value in scope.get("headers", []):
+            headers_dict.setdefault(key.decode("latin1"), []).append(value.decode("latin1"))
 
         logger.debug(
             "Building internal request: method=%s url=%s headers_count=%d",
@@ -334,8 +340,12 @@ class ASGICacheMiddleware:
         )
 
         # Convert headers to ASGI format
+        # RFC 9110 Section 5.6.1: only fields with comma-list syntax may be combined,
+        # and Set-Cookie explicitly must not be, so each stored value is sent as its own field.
         headers: list[tuple[bytes, bytes]] = [
-            (key.encode("latin1"), value.encode("latin1")) for key, value in response.headers.items()
+            (key.encode("latin1"), value.encode("latin1"))
+            for key in response.headers
+            for value in (response.headers.get_list(key) or [])
         ]
 
         try:
