@@ -253,6 +253,41 @@ async def test_httpx_request_extensions_are_preserved() -> None:
 
 
 @pytest.mark.anyio
+async def test_multiple_set_cookie_headers_are_preserved() -> None:
+    set_cookies = [
+        "PHPSESSID=abc123; expires=Fri, 02-Oct-2026 17:23:39 GMT; Max-Age=14400; path=/; HttpOnly",
+        "TS01a379d3=xyz789; Path=/",
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=b"ok",
+            headers=[
+                ("Cache-Control", "max-age=3600"),
+                ("Set-Cookie", set_cookies[0]),
+                ("Set-Cookie", set_cookies[1]),
+            ],
+        )
+
+    client = AsyncCacheClient(
+        transport=AsyncCacheTransport(
+            next_transport=MockTransport(handler=handler),
+            storage=AsyncSqliteStorage(connection=await anysqlite.connect(":memory:", check_same_thread=False)),
+        ),
+    )
+
+    first = await client.get("https://localhost")
+    assert first.headers.get_list("set-cookie") == set_cookies
+    assert dict(first.cookies) == {"PHPSESSID": "abc123", "TS01a379d3": "xyz789"}
+
+    second = await client.get("https://localhost")
+    assert second.extensions["hishel_from_cache"] is True
+    assert second.headers.get_list("set-cookie") == set_cookies
+    assert dict(second.cookies) == {"PHPSESSID": "abc123", "TS01a379d3": "xyz789"}
+
+
+@pytest.mark.anyio
 async def test_httpx_request_extensions_are_preserved_on_revalidation() -> None:
     captured_requests: list[httpx.Request] = []
 

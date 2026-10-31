@@ -161,6 +161,33 @@ async def echo_method_asgi_app(scope: _ASGIScope, receive: Any, send: Any) -> No
     )
 
 
+# Mock ASGI application that returns multiple Set-Cookie headers
+async def set_cookie_asgi_app(scope: _ASGIScope, receive: Any, send: Any) -> None:
+    """ASGI app that returns a response with two Set-Cookie headers."""
+    if scope["type"] != "http":
+        return
+
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [
+                (b"content-type", b"text/plain"),
+                (b"cache-control", b"public, max-age=3600"),
+                (b"set-cookie", b"PHPSESSID=abc123; Path=/; HttpOnly"),
+                (b"set-cookie", b"TS01a379d3=xyz789; Path=/"),
+            ],
+        }
+    )
+    await send(
+        {
+            "type": "http.response.body",
+            "body": b"ok",
+            "more_body": False,
+        }
+    )
+
+
 # Helper function to create ASGI scope
 def create_asgi_scope(
     method: str = "GET",
@@ -287,6 +314,15 @@ async def test_simple_caching(caplog: pytest.LogCaptureFixture) -> None:
     assert collector2.get_body() == b"Hello, World!"
 
     await middleware.aclose()
+
+
+def test_repeated_request_headers_with_different_case_are_preserved() -> None:
+    middleware = ASGICacheMiddleware(app=set_cookie_asgi_app)
+    scope = create_asgi_scope(headers=[(b"X-Tag", b"one"), (b"x-tag", b"two")])
+
+    request = middleware._asgi_to_internal_request(scope, simple_receive)
+
+    assert request.headers.get_list("x-tag") == ["one", "two"]
 
 
 @pytest.mark.anyio
@@ -670,5 +706,40 @@ async def test_headers_are_preserved() -> None:
     # Headers should be preserved
     assert collector2.get_header(b"content-type") == b"text/plain"
     assert collector2.get_header(b"cache-control") is not None
+
+    await middleware.aclose()
+
+
+@pytest.mark.anyio
+async def test_multiple_set_cookie_headers_are_preserved() -> None:
+    """Test that repeated response headers are not merged into one value."""
+    storage = AsyncSqliteStorage(connection=await anysqlite.connect(":memory:"))
+    middleware = ASGICacheMiddleware(
+        app=set_cookie_asgi_app,
+        storage=storage,
+        policy=FilterPolicy(),
+    )
+
+    expected_cookies = [
+        (b"set-cookie", b"PHPSESSID=abc123; Path=/; HttpOnly"),
+        (b"set-cookie", b"TS01a379d3=xyz789; Path=/"),
+    ]
+
+    # First request - cache miss
+    scope = create_asgi_scope()
+    collector1 = ResponseCollector()
+    await middleware(scope, simple_receive, collector1.send)
+
+    assert collector1.status == 200
+    for cookie in expected_cookies:
+        assert cookie in collector1.headers
+
+    # Second request - cache hit
+    collector2 = ResponseCollector()
+    await middleware(scope, simple_receive, collector2.send)
+
+    assert collector2.status == 200
+    for cookie in expected_cookies:
+        assert cookie in collector2.headers
 
     await middleware.aclose()
