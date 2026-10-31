@@ -1820,7 +1820,7 @@ class NeedRevalidation(State):
             # RFC 9111 does not define behavior for other status codes in this context.
             # In practice, we need to forward any unexpected responses to the client.
             return CacheMiss(
-                request=self.revalidating_entries[-1].request,
+                request=self.original_request,
                 options=self.options,
             ).next(revalidation_response)
 
