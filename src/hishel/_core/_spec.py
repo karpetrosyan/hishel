@@ -390,7 +390,7 @@ def get_freshness_lifetime(response: Response, is_cache_shared: bool) -> Optiona
     return get_heuristic_freshness(response)
 
 
-def allowed_stale(response: Response, allow_stale_option: bool) -> bool:
+def allowed_stale(response: Response, allow_stale_option: bool, is_cache_shared: bool) -> bool:
     """
     Determines if a stale response is allowed to be served without revalidation.
 
@@ -406,6 +406,10 @@ def allowed_stale(response: Response, allow_stale_option: bool) -> bool:
         The stale cached response being considered for use
     allow_stale_option : bool
         Configuration flag indicating if serving stale is allowed
+    is_cache_shared : bool
+        True if this is a shared cache (proxy, CDN), False for private cache (browser).
+        The s-maxage and proxy-revalidate directives only prohibit stale responses
+        for a shared cache.
 
     Returns:
     -------
@@ -438,18 +442,25 @@ def allowed_stale(response: Response, allow_stale_option: bool) -> bool:
     --------
     >>> # Stale allowed with permissive configuration
     >>> response = Response(headers=Headers({"cache-control": "max-age=3600"}))
-    >>> allowed_stale(response, allow_stale_option=True)
+    >>> allowed_stale(response, allow_stale_option=True, is_cache_shared=False)
     True
 
     >>> # Stale not allowed when configuration disables it
-    >>> allowed_stale(response, allow_stale_option=False)
+    >>> allowed_stale(response, allow_stale_option=False, is_cache_shared=False)
     False
 
     >>> # must-revalidate prevents serving stale
     >>> response = Response(headers=Headers({
     ...     "cache-control": "max-age=3600, must-revalidate"
     ... }))
-    >>> allowed_stale(response, allow_stale_option=True)
+    >>> allowed_stale(response, allow_stale_option=True, is_cache_shared=False)
+    False
+
+    >>> # s-maxage prevents serving stale for a shared cache only
+    >>> response = Response(headers=Headers({
+    ...     "cache-control": "max-age=3600, s-maxage=7200"
+    ... }))
+    >>> allowed_stale(response, allow_stale_option=True, is_cache_shared=True)
     False
     """
     # First check: Is serving stale enabled in configuration?
@@ -485,6 +496,19 @@ def allowed_stale(response: Response, allow_stale_option: bool) -> bool:
     # This is used for responses where serving stale content could cause
     # incorrect operation (e.g., financial transactions)
     if response_cache_control.must_revalidate:
+        return False
+
+    # PROHIBITION 3 and 4: proxy-revalidate and s-maxage (shared caches only)
+    # RFC 9111 Section 4.2.4 prohibits generating a stale response when an
+    # "applicable s-maxage or proxy-revalidate response directive" is present.
+    # https://www.rfc-editor.org/rfc/rfc9111.html#section-4.2.4
+    #
+    # Both directives are only "applicable" to a shared cache: proxy-revalidate
+    # binds a shared cache (Section 5.2.2.8) and s-maxage carries the
+    # proxy-revalidate semantics for a shared cache (Section 5.2.2.10). A
+    # private cache ignores them, exactly like it ignores s-maxage when
+    # calculating the freshness lifetime.
+    if is_cache_shared and (response_cache_control.proxy_revalidate or response_cache_control.s_maxage is not None):
         return False
 
     # All checks passed - stale response may be served
@@ -1184,7 +1208,11 @@ class IdleClient(State):
             freshness_lifetime = get_freshness_lifetime(pair.response, self.options.shared)
             age = get_age(pair.response)
             is_fresh = freshness_lifetime is not None and age < freshness_lifetime
-            fresh_or_stale_ok = is_fresh or allowed_stale(pair.response, allow_stale_option=self.options.allow_stale)
+            fresh_or_stale_ok = is_fresh or allowed_stale(
+                pair.response,
+                allow_stale_option=self.options.allow_stale,
+                is_cache_shared=self.options.shared,
+            )
 
             if not has_no_cache and vary_ok and fresh_or_stale_ok and not request_forces_revalidation:
                 ready_to_use.append(pair)

@@ -328,6 +328,39 @@ REUSE_RULES = [
         expect=REVALIDATE,
     ),
     Rule(
+        id="s-maxage-overrides-allow-stale-in-shared-cache",
+        rfc="§4.2.4",
+        quote="A cache MUST NOT generate a stale response if it is prohibited by an explicit "
+        "in-protocol directive (e.g., by a no-cache response directive, a must-revalidate "
+        "response directive, or an applicable s-maxage or proxy-revalidate response directive; "
+        "see Section 5.2.2).",
+        options={"allow_stale": True},
+        stored=[stale(cache_control="s-maxage=100")],
+        expect=REVALIDATE,
+    ),
+    Rule(
+        id="proxy-revalidate-overrides-allow-stale-in-shared-cache",
+        rfc="§4.2.4",
+        quote="A cache MUST NOT generate a stale response if it is prohibited by an explicit "
+        "in-protocol directive (e.g., by a no-cache response directive, a must-revalidate "
+        "response directive, or an applicable s-maxage or proxy-revalidate response directive; "
+        "see Section 5.2.2).",
+        options={"allow_stale": True},
+        stored=[stale(cache_control="proxy-revalidate")],
+        expect=REVALIDATE,
+    ),
+    Rule(
+        id="s-maxage-does-not-prohibit-stale-in-private-cache",
+        rfc="§5.2.2.10",
+        quote="The s-maxage response directive indicates that, for a shared cache, the maximum age "
+        "specified by this directive overrides the maximum age specified by either the max-age "
+        "directive or the Expires header field.",
+        options={"allow_stale": True, "shared": False},
+        stored=[stale(cache_control="s-maxage=100")],
+        expect=SERVED_STALE,
+        min_age=7200,
+    ),
+    Rule(
         id="response-no-cache-demoted-to-revalidation",
         rfc="§5.2.2.4",
         quote="The no-cache response directive... indicates that the response MUST NOT be used to "
