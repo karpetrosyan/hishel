@@ -162,7 +162,9 @@ class SyncSqliteStorage(SyncBaseStorage):
             if self.connection is None:
                 parent = self.database_path.parent if self.database_path.parent != Path(".") else None
                 full_path = ensure_cache_dict(parent) / self.database_path.name
-                self.connection = sqlite3.connect(str(full_path), check_same_thread=False)
+                # Autocommit, so a failed write can't leave a transaction open.
+                # The commits are still needed for a caller's connection.
+                self.connection = sqlite3.connect(str(full_path), check_same_thread=False, isolation_level=None)
             if not self._initialized:
                 self._initialize_database()
                 self._initialized = True

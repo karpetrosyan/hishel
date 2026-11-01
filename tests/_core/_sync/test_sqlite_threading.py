@@ -111,3 +111,26 @@ def test_close_stops_lingering_stream(tmp_path):
     with pytest.raises(RuntimeError, match="closed"):
         read(entry)
 
+
+def test_failed_write_leaves_no_open_transaction(tmp_path):
+    path = tmp_path / "shared.db"
+    storage = SyncSqliteStorage(database_path=path)
+    other_process = SyncSqliteStorage(database_path=path)
+    store(storage, "first", b"data")
+    [entry] = storage.get_entries("first")
+    storage._ensure_connection().execute("PRAGMA busy_timeout=50")
+
+    blocker = sqlite3.connect(path, isolation_level=None)
+    blocker.execute("BEGIN IMMEDIATE")
+    storage.remove_entry(entry.id)
+    blocker.execute("COMMIT")
+    blocker.close()
+
+    # The removal failed, and this lookup must not pin what it sees.
+    assert len(storage.get_entries("first")) == 1
+    store(other_process, "other", b"data")
+
+    assert len(storage.get_entries("other")) == 1
+    store(storage, "second", b"data")
+    assert len(storage.get_entries("second")) == 1
+

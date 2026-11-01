@@ -117,7 +117,9 @@ class AsyncSqliteStorage(AsyncBaseStorage):
             if self.connection is None:
                 parent = self.database_path.parent if self.database_path.parent != Path(".") else None
                 full_path = ensure_cache_dict(parent) / self.database_path.name
-                self.connection = await anysqlite.connect(str(full_path))
+                # Autocommit, so a failed or cancelled write can't leave a transaction
+                # open. The commits are still needed for a caller's connection.
+                self.connection = await anysqlite.connect(str(full_path), isolation_level=None)
             if not self._initialized:
                 await self._initialize_database()
                 self._initialized = True
