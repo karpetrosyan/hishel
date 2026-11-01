@@ -56,8 +56,8 @@ class SyncBaseStorage(abc.ABC):
         Create an entry and return it with a stream that saves the body as it is read.
 
         - The entry is not returned by ``get_entries`` until that stream is fully read.
-        - A storage failure while saving stops caching but does not fail the
-          consumer reading that stream.
+        - A storage failure, here or while saving, stops caching but does not fail
+          the consumer reading that stream.
         - A response larger than ``max_stream_size`` is not cached, but its consumer
           still receives the whole body.
         - The entry expires at the earliest of its TTL, counted from this call, and
@@ -77,6 +77,8 @@ class SyncBaseStorage(abc.ABC):
           it can expire up to half its TTI sooner than that.
         - A returned response stream delivers the whole body or raises. It never
           ends early without an error.
+        - A storage failure returns no entries instead of raising, so that the
+          request goes to the server.
         """
         raise NotImplementedError()
 
@@ -86,7 +88,7 @@ class SyncBaseStorage(abc.ABC):
         Replace the stored response headers of an entry.
 
         Entries can disappear at any time, so this does nothing if the entry no
-        longer exists.
+        longer exists. A storage failure doesn't raise either.
         """
         raise NotImplementedError()
 
@@ -98,6 +100,8 @@ class SyncBaseStorage(abc.ABC):
         - When its space is reclaimed is up to the backend.
         - Entries can disappear at any time, so this does nothing if the entry no
           longer exists.
+        - A storage failure doesn't raise, because the request it follows has
+          already succeeded.
         """
         raise NotImplementedError()
 

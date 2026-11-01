@@ -4,7 +4,7 @@ import logging
 import time
 import uuid
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -847,6 +847,14 @@ def make_conditional_request(request: Request, response: Response) -> Request:
     )
 
 
+def _header_lists(headers: Headers) -> dict[str, list[str]]:
+    """
+    The headers with repeated values kept apart. Iterating ``Headers`` as a
+    mapping joins them with commas, which breaks ``Set-Cookie``.
+    """
+    return {key: headers.get_list(key) or [] for key in headers}
+
+
 def exclude_unstorable_headers(response: Response, is_cache_shared: bool) -> Response:
     """
     Removes headers that must not be stored in the cache.
@@ -983,7 +991,7 @@ def exclude_unstorable_headers(response: Response, is_cache_shared: bool) -> Res
     # Filter out the excluded headers
     # Create new Headers dict with only the headers we want to keep
     new_headers = Headers(
-        {key: value for key, value in response.headers.items() if key.lower() not in need_to_be_excluded}
+        {key: value for key, value in _header_lists(response.headers).items() if key.lower() not in need_to_be_excluded}
     )
 
     # Return a new response with filtered headers
@@ -1094,10 +1102,10 @@ def refresh_response_headers(
     # Headers from revalidation_response override stored_response
     # EXCEPT for excluded headers (content metadata)
     new_headers = {
-        **stored_response.headers,  # Base: original cached headers
+        **_header_lists(stored_response.headers),  # Base: original cached headers
         **{
             key: value
-            for key, value in revalidation_response.headers.items()
+            for key, value in _header_lists(revalidation_response.headers).items()
             if key.lower() not in excluded_headers  # Skip content metadata
         },
     }
@@ -1159,14 +1167,19 @@ class IdleClient(State):
         every entry (§5.2.1.4).
         """
 
+        # §4: unsafe methods must be written through to the origin, and §4.4
+        # invalidates the target URI's entries if the origin accepts them.
+        if request.method.upper() not in SAFE_METHODS:
+            return CacheMiss(
+                request=request,
+                options=self.options,
+                entries_to_invalidate=[entry for entry in associated_entries if entry.request.url == request.url],
+            )
+
         # Range requests are punted to the origin — see §3.3 for the full rules
         # we'd otherwise need to implement.
         if "range" in request.headers:
             return CacheMiss(options=self.options, request=request)
-
-        # §4: unsafe methods must be written through to the origin.
-        if request.method.upper() not in SAFE_METHODS:
-            return CacheMiss(request=request, options=self.options)
 
         # Parsed once — applies uniformly to every candidate.
         request_cache_control = parse_cache_control(request.headers.get("cache-control"))
@@ -1220,7 +1233,7 @@ class IdleClient(State):
                         selected_pair.response,
                         headers=Headers(
                             {
-                                **selected_pair.response.headers,
+                                **_header_lists(selected_pair.response.headers),
                                 "age": str(current_age),
                             }
                         ),
@@ -1259,6 +1272,8 @@ class CacheMiss(State):
     -----------------
     - StoreAndUse: Response meets all RFC 9111 storage requirements and will be cached
     - CouldNotBeStored: Response fails one or more storage requirements and cannot be cached
+    - InvalidateEntries: An unsafe request got a non-error response, so its entries are removed
+      before moving to one of the states above
 
     RFC 9111 References:
     -------------------
@@ -1266,6 +1281,8 @@ class CacheMiss(State):
       https://www.rfc-editor.org/rfc/rfc9111.html#section-3
     - Section 3.5: Authenticated Responses
       https://www.rfc-editor.org/rfc/rfc9111.html#section-3.5
+    - Section 4.4: Invalidating Stored Responses
+      https://www.rfc-editor.org/rfc/rfc9111.html#section-4.4
 
     Attributes:
     ----------
@@ -1285,7 +1302,26 @@ class CacheMiss(State):
     when moving to this state from `NeedRevalidation` we don't have incomplete pair
     """
 
-    def next(self, response: Response) -> Union["StoreAndUse", "CouldNotBeStored"]:
+    entries_to_invalidate: list[Entry] = field(default_factory=list)
+    """
+    The entries to remove if the response isn't an error (RFC 9111 §4.4).
+
+    This waits for the response, because a failed unsafe request changes nothing,
+    so its entries are still valid.
+    """
+
+    def _invalidating_entries(
+        self, response: Response, next_state: Union["StoreAndUse", "CouldNotBeStored"]
+    ) -> Union["StoreAndUse", "CouldNotBeStored", "InvalidateEntries"]:
+        if self.entries_to_invalidate and response.status_code < 400:
+            return InvalidateEntries(
+                options=self.options,
+                entry_ids=[entry.id for entry in self.entries_to_invalidate],
+                next_state=next_state,
+            )
+        return next_state
+
+    def next(self, response: Response) -> Union["StoreAndUse", "CouldNotBeStored", "InvalidateEntries"]:
         """
         Evaluates whether a response can be stored in the cache.
 
@@ -1309,9 +1345,10 @@ class CacheMiss(State):
 
         Returns:
         -------
-        Union[StoreAndUse, CouldNotBeStored]
+        Union[StoreAndUse, CouldNotBeStored, InvalidateEntries]
             - StoreAndUse: Response can and will be stored in cache
             - CouldNotBeStored: Response cannot be stored (fails one or more requirements)
+            - InvalidateEntries: Wraps one of the above when `entries_to_invalidate` must be removed
 
         RFC 9111 Compliance:
         -------------------
@@ -1573,9 +1610,12 @@ class CacheMiss(State):
                         "See: https://www.rfc-editor.org/rfc/rfc9111.html#section-3-2.7.1"
                     )
 
-            return CouldNotBeStored(
-                response=response,
-                options=self.options,
+            return self._invalidating_entries(
+                response,
+                CouldNotBeStored(
+                    response=response,
+                    options=self.options,
+                ),
             )
 
         # --------------------------------------------------------------------
@@ -1591,9 +1631,12 @@ class CacheMiss(State):
         # Certain headers (Connection, hop-by-hop headers, etc.) must be excluded
         cleaned_response = exclude_unstorable_headers(response, self.shared)
 
-        return StoreAndUse(
-            response=cleaned_response,
-            options=self.options,
+        return self._invalidating_entries(
+            response,
+            StoreAndUse(
+                response=cleaned_response,
+                options=self.options,
+            ),
         )
 
 

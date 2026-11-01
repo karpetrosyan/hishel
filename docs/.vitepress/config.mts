@@ -28,16 +28,14 @@ export default defineConfig({
         items: [
           { text: "Overview", link: "/overview" },
           { text: "Quickstart", link: "/quickstart" },
+          { text: "Migrating from 1.x", link: "/migration" },
         ],
       },
       {
         text: "User Guide",
         items: [
-          { text: "Proxies", link: "/proxies" },
-          { text: "Sans-IO", link: "/sans-io" },
-          { text: "Metadata", link: "/metadata" },
-          { text: "Policies", link: "/policies" },
           { text: "Storages", link: "/storages" },
+          { text: "Sans-IO", link: "/sans-io" },
         ],
       },
       {
@@ -46,6 +44,7 @@ export default defineConfig({
           { text: "Zapros", link: "/zapros" },
           { text: "HTTPX", link: "/httpx" },
           { text: "Requests", link: "/requests" },
+          { text: "ASGI", link: "/asgi" },
           { text: "FastAPI", link: "/fastapi" },
         ],
       },

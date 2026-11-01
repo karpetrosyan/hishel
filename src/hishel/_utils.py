@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import calendar
 import typing as tp
-from email.utils import parsedate_tz
+from email.utils import formatdate, parsedate_tz
 from pathlib import Path
 from typing import AsyncIterator, Iterable, Iterator
 
@@ -10,11 +10,24 @@ T = tp.TypeVar("T")
 
 
 def parse_date(date: str) -> tp.Optional[int]:
-    expires = parsedate_tz(date)
-    if expires is None:
+    # Servers can send anything here: a year like 99999 parses, then fails in timegm.
+    try:
+        expires = parsedate_tz(date)
+        if expires is None:
+            return None
+        return calendar.timegm(expires[:6])
+    except Exception:
         return None
-    timestamp = calendar.timegm(expires[:6])
-    return timestamp
+
+
+def generate_http_date() -> str:
+    """
+    Generate a Date header value for HTTP responses.
+    Returns date in RFC 1123 format (required by HTTP/1.1).
+
+    Example output: 'Sun, 26 Oct 2025 12:34:56 GMT'
+    """
+    return formatdate(timeval=None, localtime=False, usegmt=True)
 
 
 def partition(iterable: tp.Iterable[T], predicate: tp.Callable[[T], bool]) -> tp.Tuple[tp.List[T], tp.List[T]]:

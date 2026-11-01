@@ -108,7 +108,7 @@ class AsyncRedisStorage(AsyncBaseStorage):
         entry = Entry(
             id=uuid4(),
             request=request,
-            response=response,
+            response=replace(response, stream=body),
         )
 
         entry_key, _, _ = self._data_keys(entry.id)
@@ -255,6 +255,13 @@ class AsyncRedisStorage(AsyncBaseStorage):
             yield chunk
 
     async def get_entries(self, key: str) -> list[Entry]:
+        try:
+            return await self._get_entries(key)
+        except RedisError:
+            logger.exception("hishel: could not read entries, treating this as a cache miss")
+            return []
+
+    async def _get_entries(self, key: str) -> list[Entry]:
         idx_key = self._idx_key(key)
         now = time()
         members = await self._client.zrangebyscore(idx_key, f"({now}", "+inf", withscores=True)
@@ -315,19 +322,22 @@ class AsyncRedisStorage(AsyncBaseStorage):
 
     async def update_headers(self, id: UUID, headers: Headers) -> None:  # noqa: A002
         entry_key, _, _ = self._data_keys(id)
-        data = await self._client.get(entry_key)
-        if data is None:
-            return
+        try:
+            data = await self._client.get(entry_key)
+            if data is None:
+                return
 
-        request, response = unpack(bytes(data))
-        updated = pack(request, replace(response, headers=headers))
-        # `xx=True` ensures we don't resurrect an entry that expired between the
-        # GET above and this SET; `keepttl=True` preserves the existing expiry.
-        await self._client.set(entry_key, updated, xx=True, keepttl=True)
+            request, response = unpack(bytes(data))
+            updated = pack(request, replace(response, headers=headers))
+            # `xx=True` ensures we don't resurrect an entry that expired between the
+            # GET above and this SET; `keepttl=True` preserves the existing expiry.
+            await self._client.set(entry_key, updated, xx=True, keepttl=True)
+        except RedisError:
+            logger.exception("hishel: could not update entry")
 
     async def remove_entry(self, id: UUID) -> None:  # noqa: A002
         entry_key, stream_key, done_key = self._data_keys(id)
-        with contextlib.suppress(RedisError):
+        try:
             done = await self._client.get(done_key)
             # An entry still being written has no readers to protect.
             if done is None:
@@ -343,6 +353,8 @@ class AsyncRedisStorage(AsyncBaseStorage):
             await self._client.pexpire(entry_key, self._soft_delete_ttl_ms)
             await self._client.pexpire(stream_key, self._soft_delete_ttl_ms)
             await self._client.pexpire(done_key, self._soft_delete_ttl_ms)
+        except RedisError:
+            logger.exception("hishel: could not remove entry, so it can still be served")
 
     async def close(self) -> None:
         await self._client.aclose()  # type: ignore[attr-defined]

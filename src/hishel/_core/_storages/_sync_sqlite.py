@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import random
 import threading
 import time
 import uuid
@@ -18,9 +19,19 @@ from hishel._utils import ensure_cache_dict, make_sync_iterator
 
 logger = logging.getLogger(__name__)
 
-# Stored in `PRAGMA user_version`. A database with any other version is reset,
-# since cached data is disposable.
-SCHEMA_VERSION = 1
+# The tables this storage uses. Tables with these names and other columns, such
+# as a 1.x cache or the caller's own, are refused and never changed. So a new
+# schema needs a new default database_path.
+TABLE_COLUMNS = {
+    "entries": {"id", "cache_key", "data", "expires_at", "last_accessed_at", "chunk_count", "ttl_deadline", "tti"},
+    "streams": {"entry_id", "chunk_number", "chunk_data"},
+}
+# The `entries` columns of a Hishel 1.x cache, which gets an error of its own.
+V1_ENTRIES_COLUMNS = {"id", "cache_key", "data", "created_at", "deleted_at"}
+# How long to keep retrying the switch to WAL, which needs a lock that several
+# processes opening a new file at once fight over. SQLite fails right away there
+# instead of waiting for busy_timeout (seconds).
+WAL_RETRY_SECONDS = 5
 # Rows deleted per create_entry when removing expired entries.
 CLEANUP_BATCH_SIZE = 200
 # Eviction stops as soon as the database fits, so it deletes a few rows at a
@@ -93,7 +104,7 @@ class SyncSqliteStorage(SyncBaseStorage):
         self,
         *,
         connection: Optional[sqlite3.Connection] = None,
-        database_path: Union[str, Path] = "hishel_cache.db",
+        database_path: Union[str, Path] = "hishel_cache_v2.db",
         default_ttl: float | None = None,
         default_tti: float | None = None,
         max_stream_size: int | None = None,
@@ -161,23 +172,25 @@ class SyncSqliteStorage(SyncBaseStorage):
         assert self.connection is not None
         cursor = self.connection.cursor()
 
-        cursor.execute("PRAGMA journal_mode=WAL")
+        for table, columns in TABLE_COLUMNS.items():
+            cursor.execute(f"PRAGMA table_info({table})")
+            found = {row[1] for row in cursor.fetchall()}
+            if found and found != columns:
+                if table == "entries" and found == V1_ENTRIES_COLUMNS:
+                    raise RuntimeError(
+                        "This database is a Hishel 1.x cache, which this version can't use. It was left as it is. "
+                        "Delete it or use another `database_path`."
+                    )
+                raise RuntimeError(
+                    f"The database already has a `{table}` table that Hishel can't use. It was left as it is. "
+                    "Use another `database_path` or `connection`."
+                )
+
+        self._switch_to_wal(cursor)
         cursor.execute("PRAGMA busy_timeout=5000")
         cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.execute(f"PRAGMA journal_size_limit={MAX_WAL_SIZE}")
-
-        cursor.execute("PRAGMA user_version")
-        row = cursor.fetchone()
-        if row[0] == SCHEMA_VERSION:
-            return
-
-        cursor.execute("DROP TABLE IF EXISTS streams")
-        cursor.execute("DROP TABLE IF EXISTS entries")
-        self.connection.commit()
-        # Nothing is left to copy, so this is cheap, and it returns the old
-        # file's space to the OS.
-        cursor.execute("VACUUM")
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS entries (
@@ -203,8 +216,18 @@ class SyncSqliteStorage(SyncBaseStorage):
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_cache_key ON entries(cache_key)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_expires_at ON entries(expires_at)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_last_accessed_at ON entries(last_accessed_at)")
-        cursor.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
         self.connection.commit()
+
+    def _switch_to_wal(self, cursor: sqlite3.Cursor) -> None:
+        deadline = time.monotonic() + WAL_RETRY_SECONDS
+        while True:
+            try:
+                cursor.execute("PRAGMA journal_mode=WAL")
+                return
+            except sqlite3.OperationalError as error:
+                if "locked" not in str(error) or time.monotonic() > deadline:
+                    raise
+                time.sleep(random.uniform(0.01, 0.1))
 
     def create_entry(
         self,
@@ -223,12 +246,12 @@ class SyncSqliteStorage(SyncBaseStorage):
         entry = Entry(
             id=uuid.uuid4(),
             request=request,
-            response=response,
+            response=replace(response, stream=body),
         )
 
         with self._lock:
-            connection = self._ensure_connection()
             try:
+                connection = self._ensure_connection()
                 if not self._reclaim_space(connection, now):
                     return entry
                 cursor = connection.cursor()
@@ -238,6 +261,9 @@ class SyncSqliteStorage(SyncBaseStorage):
                     (entry.id.bytes, key.encode("utf-8"), pack(request, response), HIDDEN, now, ttl_deadline, tti),
                 )
                 connection.commit()
+            except RuntimeError:
+                # Closed, or a database it can't use, which aren't failures of the cache.
+                raise
             except Exception:
                 logger.exception("hishel: could not store entry, serving the response uncached")
                 return entry
@@ -248,13 +274,17 @@ class SyncSqliteStorage(SyncBaseStorage):
     def get_entries(self, key: str) -> List[Entry]:
         now = time.time()
         with self._lock:
-            cursor = self._ensure_connection().cursor()
-            cursor.execute(
-                "SELECT id, data, chunk_count, expires_at, last_accessed_at, ttl_deadline, tti FROM entries"
-                " WHERE cache_key = ? AND (expires_at IS NULL OR expires_at > ?)",
-                (key.encode("utf-8"), now),
-            )
-            rows = cursor.fetchall()
+            try:
+                cursor = self._ensure_connection().cursor()
+                cursor.execute(
+                    "SELECT id, data, chunk_count, expires_at, last_accessed_at, ttl_deadline, tti FROM entries"
+                    " WHERE cache_key = ? AND (expires_at IS NULL OR expires_at > ?)",
+                    (key.encode("utf-8"), now),
+                )
+                rows = cursor.fetchall()
+            except (sqlite3.Error, OSError):
+                logger.exception("hishel: could not read entries, treating this as a cache miss")
+                return []
 
         entries: List[Entry] = []
         for id_, data, chunk_count, expires_at, last_accessed_at, ttl_deadline, tti in rows:
@@ -304,27 +334,33 @@ class SyncSqliteStorage(SyncBaseStorage):
         # The blob is only ever rewritten here, so the last writer winning is
         # the correct result if two revalidations race.
         with self._lock:
-            connection = self._ensure_connection()
-            cursor = connection.cursor()
-            cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
-            row = cursor.fetchone()
-            if row is None:
-                return
+            try:
+                connection = self._ensure_connection()
+                cursor = connection.cursor()
+                cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
+                row = cursor.fetchone()
+                if row is None:
+                    return
 
-            request, response = unpack(bytes(row[0]))
-            updated = pack(request, replace(response, headers=headers))
-            cursor.execute("UPDATE entries SET data = ? WHERE id = ?", (updated, id.bytes))
-            connection.commit()
+                request, response = unpack(bytes(row[0]))
+                updated = pack(request, replace(response, headers=headers))
+                cursor.execute("UPDATE entries SET data = ? WHERE id = ?", (updated, id.bytes))
+                connection.commit()
+            except (sqlite3.Error, OSError):
+                logger.exception("hishel: could not update entry")
 
     def remove_entry(self, id: uuid.UUID) -> None:
         with self._lock:
-            connection = self._ensure_connection()
-            cursor = connection.cursor()
-            # An entry still being written has no readers to protect, and hiding it
-            # would not last: completing the stream sets expires_at.
-            cursor.execute("DELETE FROM entries WHERE id = ? AND chunk_count IS NULL", (id.bytes,))
-            cursor.execute("UPDATE entries SET expires_at = ? WHERE id = ?", (HIDDEN, id.bytes))
-            connection.commit()
+            try:
+                connection = self._ensure_connection()
+                cursor = connection.cursor()
+                # An entry still being written has no readers to protect, and hiding it
+                # would not last: completing the stream sets expires_at.
+                cursor.execute("DELETE FROM entries WHERE id = ? AND chunk_count IS NULL", (id.bytes,))
+                cursor.execute("UPDATE entries SET expires_at = ? WHERE id = ?", (HIDDEN, id.bytes))
+                connection.commit()
+            except (sqlite3.Error, OSError):
+                logger.exception("hishel: could not remove entry, so it can still be served")
 
     def close(self) -> None:
         with self._lock:

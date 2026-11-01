@@ -21,10 +21,11 @@ This guide will help you understand the development process and repository struc
 
 1. **Fork the repository**: Fork [Hishel](https://github.com/karpetrosyan/hishel/) to your GitHub account
 
-2. **Clone and create a branch**:
+2. **Clone and create a branch**, starting from `v2` for Hishel 2.x or `master` for Hishel 1.x:
 ```bash
 git clone https://github.com/username/hishel
 cd hishel
+git switch v2
 git switch -c my-feature-name
 ```
 
@@ -67,8 +68,13 @@ Hishel maintains both async and sync APIs without code duplication using an **un
 
 **Write async code once** - All shared async/sync functionality is written in async files:
 
-- `hishel/_core/_storages/_async_*.py` → auto-generates → `hishel/_core/_storages/_sync_*.py`
-- `tests/_core/_async/*.py` → auto-generates → `tests/_core/_sync/*.py`
+- `src/hishel/httpx/_async.py` and `src/hishel/httpx2/_async.py` → auto-generates → `_sync.py` next to each
+- `src/hishel/_async_rfc.py` → auto-generates → `_sync_rfc.py`
+- `src/hishel/_core/_storages/_async_base.py` and `_async_redis.py` → auto-generates → `_sync_base.py` and `_sync_redis.py`
+- `tests/_core/_async/test_sqlite_storage.py` and `test_redis_storage.py` → auto-generates → the same files in `tests/_core/_sync/`
+- `tests/test_async_httpx.py` and `test_async_httpx2.py` → auto-generates → `tests/test_sync_httpx.py` and `test_sync_httpx2.py`
+
+**The exception is SQLite** - `_async_sqlite.py` and `_sync_sqlite.py` are written by hand, because the sync storage also has to handle threads. Change both together. `tests/_core/_async/test_sqlite_concurrency.py` and `tests/_core/_sync/test_sqlite_threading.py` are also written by hand.
 
 **Automatic transformation** - The `scripts/unasync` script converts async code to sync:
 
@@ -102,12 +108,12 @@ def store(self, key: str) -> None:
 ### Development Rules
 
 ✅ **DO**:
-- Write and edit async files only (`_async_*.py`)
+- Write and edit async files only (`_async.py` and `_async_*.py`), plus `_sync_sqlite.py`
 - Run `./scripts/fix` before committing
-- Let the script generate all sync files
+- Let the script generate all other sync files
 
 ❌ **DON'T**:
-- Manually edit sync files (`_sync_*.py`)
+- Manually edit sync files (`_sync.py` and `_sync_*.py`), other than `_sync_sqlite.py`
 - Commit async changes without running unasync
 - Modify the sync test files directly
 
@@ -135,15 +141,17 @@ This section is for maintainers who have permissions to publish new releases.
 
 ### Release Process
 
+Hishel 2.x is released from the `v2` branch, and Hishel 1.x from `master`. Run these steps on the branch you are releasing. Until 2.0 is ready, use prerelease versions like `2.0.0a2` on `v2`, because a stable version would become what `pip install hishel` installs.
+
 1. **Update the version** in `pyproject.toml`:
    ```toml
    [project]
-   version = "1.1.6"  # Update to new version
+   version = "2.0.0a2"  # Update to new version
    ```
 
 2. **Generate the changelog** using `git cliff`:
    ```bash
-   git cliff --output CHANGELOG.md 0.1.3.. --tag 1.1.6
+   git cliff --output CHANGELOG.md 0.1.3.. --tag 2.0.0a2
    ```
    - Start from `0.1.3` (versions before this didn't use conventional commits)
    - Specify the new release tag with `--tag`
@@ -151,12 +159,12 @@ This section is for maintainers who have permissions to publish new releases.
 3. **Commit the changes** with an unconventional commit message:
    ```bash
    git add pyproject.toml CHANGELOG.md
-   git commit -m "Version 1.1.6"
+   git commit -m "Version 2.0.0a2"
    ```
 
 4. **Create a git tag** for the release:
    ```bash
-   git tag 1.1.6
+   git tag 2.0.0a2
    ```
 
 5. **Push to GitHub** (both commits and tags):

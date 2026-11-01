@@ -35,6 +35,7 @@ from hishel._core._spec import (
     refresh_response_headers,
     vary_headers_match,
 )
+from hishel._utils import parse_date
 
 # =============================================================================
 # Test Helpers
@@ -819,6 +820,22 @@ class TestExcludeUnstorableHeaders:
         assert "etag" in filtered.headers
         assert "last-modified" in filtered.headers
 
+    def test_repeated_values_stay_separate(self) -> None:
+        """
+        Test: Removing other headers doesn't join repeated ones.
+
+        Set-Cookie values can contain commas, so they can't be joined (RFC 9110 Section 5.3).
+        """
+        # Arrange
+        response = Response(status_code=200, headers=Headers({"set-cookie": ["a=1", "b=2"], "connection": "close"}))
+
+        # Act
+        filtered = exclude_unstorable_headers(response, is_cache_shared=True)
+
+        # Assert
+        assert filtered.headers.get_list("set-cookie") == ["a=1", "b=2"]
+        assert "connection" not in filtered.headers
+
 
 # =============================================================================
 # Test Suite 8: refresh_response_headers for shared cache
@@ -991,6 +1008,34 @@ class TestRefreshResponseHeaders:
         assert "connection" not in refreshed.headers
         assert "keep-alive" not in refreshed.headers
 
+    def test_repeated_stored_values_stay_separate(self) -> None:
+        """
+        Test: A stored header the 304 doesn't mention keeps its separate values.
+        """
+        # Arrange
+        stored = Response(status_code=200, headers=Headers({"set-cookie": ["a=1", "b=2"]}))
+        revalidation = create_response(status_code=304, headers={"cache-control": "max-age=7200"})
+
+        # Act
+        refreshed = refresh_response_headers(stored, revalidation, self.is_cache_shared)
+
+        # Assert
+        assert refreshed.headers.get_list("set-cookie") == ["a=1", "b=2"]
+
+    def test_repeated_revalidation_values_stay_separate(self) -> None:
+        """
+        Test: A header in the 304 replaces the stored one and keeps its separate values.
+        """
+        # Arrange
+        stored = Response(status_code=200, headers=Headers({"set-cookie": ["old=1"]}))
+        revalidation = Response(status_code=304, headers=Headers({"set-cookie": ["a=1", "b=2"]}))
+
+        # Act
+        refreshed = refresh_response_headers(stored, revalidation, self.is_cache_shared)
+
+        # Assert
+        assert refreshed.headers.get_list("set-cookie") == ["a=1", "b=2"]
+
 
 # =============================================================================
 # Test Suite 9: refresh_response_headers for private cache
@@ -999,3 +1044,19 @@ class TestRefreshResponseHeaders:
 
 class TestRefreshResponseHeadersPrivateCache(TestRefreshResponseHeaders):
     is_cache_shared = False
+
+
+class TestParseDate:
+    def test_valid_date(self) -> None:
+        assert parse_date("Thu, 01 Jan 2026 00:00:00 GMT") == 1767225600
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "",
+            "not a date",
+            "Mon, 01 Jan 99999 00:00:00 GMT",
+        ],
+    )
+    def test_anything_else_is_none(self, value: str) -> None:
+        assert parse_date(value) is None

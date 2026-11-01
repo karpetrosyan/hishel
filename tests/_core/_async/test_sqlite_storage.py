@@ -568,25 +568,159 @@ def create_v1_database(path):
 
 
 @pytest.mark.anyio
-async def test_old_database_is_reset_and_file_shrinks(tmp_path):
+async def test_old_database_is_refused_and_left_untouched(tmp_path):
     path = tmp_path / "cache.db"
     create_v1_database(path)
-    old_size = path.stat().st_size
-    assert old_size > 9_000_000
+    before = path.read_bytes()
 
-    new = AsyncSqliteStorage(database_path=path)
-    assert await new.get_entries("k0") == []
-    await store(new)
-    assert len(await new.get_entries("k")) == 1
-    conn = await new._ensure_connection()
-    await conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-    await new.close()
-    assert path.stat().st_size < 200_000
+    storage = AsyncSqliteStorage(database_path=path)
+    with pytest.raises(RuntimeError, match="Hishel 1.x"):
+        await storage.get_entries("k0")
+    with pytest.raises(RuntimeError, match="Hishel 1.x"):
+        await store(storage)
+    await storage.close()
 
-    # Reopening a current database keeps its data
+    assert path.read_bytes() == before
+
+
+@pytest.mark.anyio
+async def test_default_path_leaves_a_1x_cache_alone(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    old = tmp_path / ".cache" / "hishel" / "hishel_cache.db"
+    old.parent.mkdir(parents=True)
+    create_v1_database(old)
+    before = old.read_bytes()
+
+    storage = AsyncSqliteStorage()
+    await store(storage)
+    assert len(await storage.get_entries("k")) == 1
+    await storage.close()
+
+    assert old.read_bytes() == before
+
+
+@pytest.mark.anyio
+async def test_connection_with_tables_of_its_own_is_left_untouched():
+    connection = await anysqlite.connect(":memory:")
+    await connection.execute("CREATE TABLE entries (name TEXT)")
+    await connection.execute("INSERT INTO entries VALUES ('mine')")
+    await connection.execute("PRAGMA user_version=7")
+    await connection.commit()
+
+    storage = AsyncSqliteStorage(connection=connection)
+    with pytest.raises(RuntimeError, match="connection"):
+        await storage.get_entries("k")
+
+    cursor = await connection.execute("SELECT name FROM entries")
+    assert await cursor.fetchall() == [("mine",)]
+    cursor = await connection.execute("PRAGMA user_version")
+    assert await cursor.fetchall() == [(7,)]
+    cursor = await connection.execute("PRAGMA table_info(streams)")
+    assert await cursor.fetchall() == []
+
+
+@pytest.mark.anyio
+async def test_connection_keeps_its_user_version():
+    connection = await anysqlite.connect(":memory:")
+    await connection.execute("PRAGMA user_version=7")
+    storage = AsyncSqliteStorage(connection=connection)
+    await store(storage)
+    cursor = await connection.execute("PRAGMA user_version")
+    assert await cursor.fetchall() == [(7,)]
+
+
+@pytest.mark.anyio
+async def test_reopening_a_database_keeps_its_entries(tmp_path):
+    path = tmp_path / "cache.db"
+    first = AsyncSqliteStorage(database_path=path)
+    await store(first)
+    await first.close()
+
     again = AsyncSqliteStorage(database_path=path)
     assert len(await again.get_entries("k")) == 1
     await again.close()
+
+
+class FlakyCursor:
+    def __init__(self, cursor, connection):
+        self._cursor = cursor
+        self._connection = connection
+
+    async def execute(self, sql, *args):
+        if "journal_mode" in sql:
+            self._connection.wal_attempts += 1
+            if self._connection.wal_attempts <= self._connection.failures:
+                raise sqlite3.OperationalError(self._connection.message)
+        return await self._cursor.execute(sql, *args)
+
+    def __getattr__(self, name):
+        return getattr(self._cursor, name)
+
+
+class FlakyConnection:
+    """Fails the switch to WAL a given number of times, which is hard to trigger for real in one process."""
+
+    def __init__(self, connection, failures, message="database is locked"):
+        self._connection = connection
+        self.failures = failures
+        self.message = message
+        self.wal_attempts = 0
+
+    async def cursor(self):
+        return FlakyCursor(await self._connection.cursor(), self)
+
+    def __getattr__(self, name):
+        return getattr(self._connection, name)
+
+
+@pytest.mark.anyio
+async def test_switch_to_wal_retries_while_locked():
+    connection = FlakyConnection(await anysqlite.connect(":memory:"), failures=3)
+    storage = AsyncSqliteStorage(connection=connection)  # type: ignore[arg-type]
+    await store(storage)
+    assert connection.wal_attempts == 4
+    assert len(await storage.get_entries("k")) == 1
+
+
+@pytest.mark.anyio
+async def test_switch_to_wal_gives_up_and_tries_again_on_the_next_use(monkeypatch, caplog):
+    monkeypatch.setattr("hishel._core._storages._async_sqlite.WAL_RETRY_SECONDS", 0.05)
+    connection = FlakyConnection(await anysqlite.connect(":memory:"), failures=10**9)
+    storage = AsyncSqliteStorage(connection=connection)  # type: ignore[arg-type]
+    with caplog.at_level(logging.CRITICAL):
+        assert await storage.get_entries("k") == []
+
+    connection.failures = 0
+    await store(storage)
+    assert len(await storage.get_entries("k")) == 1
+
+
+@pytest.mark.anyio
+async def test_switch_to_wal_only_retries_locks(caplog):
+    connection = FlakyConnection(await anysqlite.connect(":memory:"), failures=1, message="disk I/O error")
+    storage = AsyncSqliteStorage(connection=connection)  # type: ignore[arg-type]
+    with caplog.at_level(logging.CRITICAL):
+        assert await storage.get_entries("k") == []
+    assert connection.wal_attempts == 1
+
+
+@pytest.mark.anyio
+async def test_database_failures_do_not_fail_the_caller(caplog):
+    storage = await new_storage()
+    entry = await store(storage)
+
+    async def broken():
+        raise sqlite3.OperationalError("database is locked")
+
+    storage._ensure_connection = broken
+    with caplog.at_level(logging.CRITICAL):
+        assert await storage.get_entries("k") == []
+        await storage.update_headers(entry.id, Headers({"x": "1"}))
+        await storage.remove_entry(entry.id)
+        created = await storage.create_entry(req(), Response(status_code=200, stream=make_async_iterator([b"d"])), "k")
+        without_body = await storage.create_entry(req(), Response(status_code=204), "k")
+    assert await read(created) == b"d"
+    assert await read(without_body) == b""
 
 
 @pytest.mark.anyio

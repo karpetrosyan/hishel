@@ -8,5 +8,5 @@ except ImportError as e:
     ) from e
 
 
-from ._async_httpx import AsyncCacheClient as AsyncCacheClient, AsyncCacheTransport as AsyncCacheTransport
-from ._sync_httpx import SyncCacheClient as SyncCacheClient, SyncCacheTransport as SyncCacheTransport
+from ._async import AsyncCacheClient as AsyncCacheClient, AsyncCacheTransport as AsyncCacheTransport
+from ._sync import SyncCacheClient as SyncCacheClient, SyncCacheTransport as SyncCacheTransport

@@ -3,12 +3,12 @@ from __future__ import annotations
 import hashlib
 import ssl
 import typing as t
-from typing import Iterable, Iterator, Iterator, TypedDict, cast
+from typing import AsyncIterable, AsyncIterator, Iterator, TypedDict, cast
 
-from hishel import SyncSqliteStorage, CacheOptions, Headers, Request, Response
-from hishel._sync_rfc import handle_request_with_rfc
-from hishel._core._storages._sync_base import SyncBaseStorage
-from hishel._utils import make_sync_iterator
+from hishel import AsyncSqliteStorage, CacheOptions, Headers, Request, Response
+from hishel._async_rfc import handle_request_with_rfc
+from hishel._core._storages._async_base import AsyncBaseStorage
+from hishel._utils import make_async_iterator
 
 try:
     import httpx
@@ -26,8 +26,11 @@ CACHEABLE_METHODS = frozenset({"GET", "HEAD"})
 class CacheConfig(TypedDict, total=False):
     """Set on a transport, and overridable per request with the ``caching`` extension."""
 
-    storage: SyncBaseStorage
+    storage: AsyncBaseStorage
     rfc: bool | CacheOptions
+    ttl: float | None
+    tti: float | None
+    key: str
 
 
 def _headers_to_internal(headers: httpx.Headers) -> Headers:
@@ -61,18 +64,18 @@ def _request_to_internal(request: httpx.Request) -> Request:
 def _response_to_internal(response: httpx.Response) -> Response:
     headers = _headers_to_internal(response.headers)
     if not response.is_stream_consumed:
-        return Response(status_code=response.status_code, headers=headers, stream=response.iter_raw())
+        return Response(status_code=response.status_code, headers=headers, stream=response.aiter_raw())
 
     if "content-encoding" in headers:
         # Already read and decoded, so what we have no longer matches these headers.
         del headers["content-encoding"]
         headers.pop("content-length", None)
         headers["content-length"] = str(len(response.content))
-    return Response(status_code=response.status_code, headers=headers, stream=make_sync_iterator([response.content]))
+    return Response(status_code=response.status_code, headers=headers, stream=make_async_iterator([response.content]))
 
 
 def _response_to_httpx(response: Response, upstream: httpx.Response | None = None) -> httpx.Response:
-    assert isinstance(response.stream, (Iterator, Iterable))
+    assert isinstance(response.stream, (AsyncIterator, AsyncIterable))
     return httpx.Response(
         status_code=response.status_code,
         headers=_headers_to_httpx(response.headers),
@@ -82,25 +85,25 @@ def _response_to_httpx(response: Response, upstream: httpx.Response | None = Non
 
 
 class _ResponseStream(httpx.SyncByteStream, httpx.AsyncByteStream):
-    def __init__(self, iterator: Iterator[bytes] | Iterator[bytes], upstream: httpx.Response | None) -> None:
+    def __init__(self, iterator: Iterator[bytes] | AsyncIterator[bytes], upstream: httpx.Response | None) -> None:
         self.iterator = iterator
         self.upstream = upstream
 
-    def __iter__(self) -> Iterator[bytes]:
-        assert isinstance(self.iterator, (Iterator, Iterable))
-        for chunk in self.iterator:
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        assert isinstance(self.iterator, (AsyncIterator, AsyncIterable))
+        async for chunk in self.iterator:
             yield chunk
 
-    def close(self) -> None:
+    async def aclose(self) -> None:
         # Closing the iterator discards a partial save, but it doesn't reach the
         # iterator it was reading from, so the upstream response is closed here.
-        if hasattr(self.iterator, "close"):
-            self.iterator.close()
+        if hasattr(self.iterator, "aclose"):
+            await self.iterator.aclose()
         if self.upstream is not None:
-            self.upstream.close()
+            await self.upstream.aclose()
 
 
-class SyncCacheTransport(httpx.BaseTransport):
+class AsyncCacheTransport(httpx.AsyncBaseTransport):
     """
     By default, caches successful GET and HEAD responses by method and URL, ignoring
     HTTP caching headers, and serves an entry until the storage's TTL or TTI expires
@@ -109,80 +112,113 @@ class SyncCacheTransport(httpx.BaseTransport):
 
     def __init__(
         self,
-        next_transport: httpx.BaseTransport,
-        storage: SyncBaseStorage | None = None,
+        next_transport: httpx.AsyncBaseTransport,
+        storage: AsyncBaseStorage | None = None,
         rfc: bool | CacheOptions = False,
     ) -> None:
         self.next_transport = next_transport
-        self.config = CacheConfig(storage=storage or SyncSqliteStorage(), rfc=rfc)
+        self.config = CacheConfig(storage=storage or AsyncSqliteStorage(), rfc=rfc)
 
-    def handle_request(self, request: httpx.Request) -> httpx.Response:
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         overrides = cast(CacheConfig, request.extensions.get("caching", {}))
         effective_config: CacheConfig = {**self.config, **overrides}
 
         storage = effective_config["storage"]
-        key = hashlib.sha256(f"{request.method} {request.url}".encode()).hexdigest()
-
         rfc = effective_config["rfc"]
-        if rfc is False:
-            return self._handle_without_rfc(request, storage, key)
-        return self._handle_with_rfc(request, storage, key, CacheOptions() if rfc is True else rfc)
+        key = effective_config.get("key")
+        if key is None:
+            # In RFC mode, all methods share a key, so that an unsafe request finds the entries it invalidates.
+            # The prefix keeps it apart from the key 1.x used, which Redis may still hold in another format.
+            identity = f"RFC {request.url}" if rfc is not False else f"{request.method} {request.url}"
+            key = hashlib.sha256(identity.encode()).hexdigest()
 
-    def _handle_with_rfc(
+        ttl, tti = effective_config.get("ttl"), effective_config.get("tti")
+        if rfc is False:
+            return await self._handle_without_rfc(request, storage, key, ttl, tti)
+        return await self._handle_with_rfc(request, storage, key, CacheOptions() if rfc is True else rfc, ttl, tti)
+
+    async def _handle_with_rfc(
         self,
         request: httpx.Request,
-        storage: SyncBaseStorage,
+        storage: AsyncBaseStorage,
         key: str,
         options: CacheOptions,
+        ttl: float | None,
+        tti: float | None,
     ) -> httpx.Response:
         upstream: httpx.Response | None = None
 
-        def send(internal_request: Request) -> Response:
+        async def send(internal_request: Request) -> Response:
             nonlocal upstream
             # The original request is what gets sent, so that nothing about it is
             # lost. The state machine only changes it to add revalidation headers,
             # and those are only for this send, so the caller never sees them.
             original_headers = request.headers
-            request.headers = _request_headers_with_changes(original_headers, internal_request.headers)
+            request.headers = original_headers.copy()
+            for key_, value in internal_request.headers.items():
+                if original_headers.get(key_) != value:
+                    request.headers[key_] = value
             try:
-                response = self.next_transport.handle_request(request)
+                response = await self.next_transport.handle_async_request(request)
             finally:
                 request.headers = original_headers
 
             if response.status_code == 304:
                 # The body served will be the cached one, so this connection is done.
-                response.read()
+                await response.aread()
             else:
                 upstream = response
             return _response_to_internal(response)
 
-        response = handle_request_with_rfc(_request_to_internal(request), send, storage, key, options)
+        response = await handle_request_with_rfc(
+            _request_to_internal(request),
+            send,
+            storage,
+            key,
+            options,
+            ttl=ttl,
+            tti=tti,
+        )
         return _response_to_httpx(response, upstream)
 
-    def _handle_without_rfc(self, request: httpx.Request, storage: SyncBaseStorage, key: str) -> httpx.Response:
+    async def _handle_without_rfc(
+        self,
+        request: httpx.Request,
+        storage: AsyncBaseStorage,
+        key: str,
+        ttl: float | None,
+        tti: float | None,
+    ) -> httpx.Response:
         if request.method not in CACHEABLE_METHODS:
-            return self.next_transport.handle_request(request)
+            return await self.next_transport.handle_async_request(request)
 
-        entries = storage.get_entries(key)
+        # A custom key can be shared by GET and HEAD, whose responses aren't interchangeable.
+        entries = [entry for entry in await storage.get_entries(key) if entry.request.method == request.method]
         if entries:
             return _response_to_httpx(entries[0].response)
 
-        response = self.next_transport.handle_request(request)
+        response = await self.next_transport.handle_async_request(request)
         # A 206 only holds part of the body, so it can't answer later requests.
         if not response.is_success or response.status_code == 206:
             return response
 
-        entry = storage.create_entry(_request_to_internal(request), _response_to_internal(response), key)
+        entry = await storage.create_entry(
+            _request_to_internal(request),
+            _response_to_internal(response),
+            key,
+            ttl=ttl,
+            tti=tti,
+        )
         return _response_to_httpx(entry.response, upstream=response)
 
-    def close(self) -> None:
-        self.next_transport.close()
-        self.config["storage"].close()
+    async def aclose(self) -> None:
+        await self.next_transport.aclose()
+        await self.config["storage"].close()
 
 
-class SyncCacheClient(httpx.Client):
+class AsyncCacheClient(httpx.AsyncClient):
     def __init__(self, *args: t.Any, **kwargs: t.Any) -> None:
-        self.storage: SyncBaseStorage | None = kwargs.pop("storage", None)
+        self.storage: AsyncBaseStorage | None = kwargs.pop("storage", None)
         self.rfc: bool | CacheOptions = kwargs.pop("rfc", False)
         super().__init__(*args, **kwargs)
 
@@ -194,14 +230,14 @@ class SyncCacheClient(httpx.Client):
         http1: bool = True,
         http2: bool = False,
         limits: httpx.Limits = httpx.Limits(max_connections=100, max_keepalive_connections=20),
-        transport: httpx.BaseTransport | None = None,
+        transport: httpx.AsyncBaseTransport | None = None,
         **kwargs: t.Any,
-    ) -> httpx.BaseTransport:
+    ) -> httpx.AsyncBaseTransport:
         if transport is not None:
             return transport
 
-        return SyncCacheTransport(
-            next_transport=httpx.HTTPTransport(
+        return AsyncCacheTransport(
+            next_transport=httpx.AsyncHTTPTransport(
                 verify=verify,
                 cert=cert,
                 trust_env=trust_env,
@@ -223,9 +259,9 @@ class SyncCacheClient(httpx.Client):
         http2: bool = False,
         limits: httpx.Limits = httpx.Limits(max_connections=100, max_keepalive_connections=20),
         **kwargs: t.Any,
-    ) -> httpx.BaseTransport:
-        return SyncCacheTransport(
-            next_transport=httpx.HTTPTransport(
+    ) -> httpx.AsyncBaseTransport:
+        return AsyncCacheTransport(
+            next_transport=httpx.AsyncHTTPTransport(
                 verify=verify,
                 cert=cert,
                 trust_env=trust_env,

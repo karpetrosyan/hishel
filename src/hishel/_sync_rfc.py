@@ -27,6 +27,9 @@ def handle_request_with_rfc(
     storage: SyncBaseStorage,
     key: str,
     options: CacheOptions,
+    *,
+    ttl: float | None = None,
+    tti: float | None = None,
 ) -> Response:
     """
     Answer a request by following the RFC 9111 state machine.
@@ -42,7 +45,7 @@ def handle_request_with_rfc(
         elif isinstance(state, (CacheMiss, NeedRevalidation)):
             state = state.next(send(state.request))
         elif isinstance(state, StoreAndUse):
-            entry = storage.create_entry(request, state.response, key)
+            entry = storage.create_entry(request, state.response, key, ttl=ttl, tti=tti)
             return entry.response
         elif isinstance(state, CouldNotBeStored):
             return state.response

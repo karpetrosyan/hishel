@@ -480,6 +480,24 @@ async def test_create_entry_failure_serves_uncached(caplog):
 
 
 @pytest.mark.anyio
+async def test_outage_does_not_fail_the_caller(caplog):
+    storage = new_storage()
+    entry = await store(storage)
+
+    async def broken(*args, **kwargs):
+        raise RedisError("down")
+
+    for command in ("zrangebyscore", "get", "set", "zrem"):
+        setattr(storage._client, command, broken)
+    with caplog.at_level(logging.CRITICAL):
+        assert await storage.get_entries("k") == []
+        await storage.update_headers(entry.id, Headers({"x": "1"}))
+        await storage.remove_entry(entry.id)
+        without_body = await storage.create_entry(req(), Response(status_code=204), "k")
+    assert await read(without_body) == b""
+
+
+@pytest.mark.anyio
 async def test_corrupt_entry_is_dropped_and_lookup_still_works(caplog):
     storage = new_storage()
     bad = await store(storage)

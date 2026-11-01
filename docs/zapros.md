@@ -2,6 +2,10 @@
 
 [Zapros](https://zapros.dev/) is a modern Python HTTP client developed by the same author as Hishel. It uses **Hishel as its native caching library** out of the box, providing the best integration experience with RFC 9111-compliant HTTP caching without any additional setup.
 
+::: warning
+Zapros currently integrates with Hishel 1.x, so the rest of this documentation doesn't apply to its caching. Use the Zapros guide linked below instead.
+:::
+
 ## Installation
 
 ```bash

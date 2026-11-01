@@ -568,25 +568,159 @@ def create_v1_database(path):
 
 
 
-def test_old_database_is_reset_and_file_shrinks(tmp_path):
+def test_old_database_is_refused_and_left_untouched(tmp_path):
     path = tmp_path / "cache.db"
     create_v1_database(path)
-    old_size = path.stat().st_size
-    assert old_size > 9_000_000
+    before = path.read_bytes()
 
-    new = SyncSqliteStorage(database_path=path)
-    assert new.get_entries("k0") == []
-    store(new)
-    assert len(new.get_entries("k")) == 1
-    conn = new._ensure_connection()
-    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-    new.close()
-    assert path.stat().st_size < 200_000
+    storage = SyncSqliteStorage(database_path=path)
+    with pytest.raises(RuntimeError, match="Hishel 1.x"):
+        storage.get_entries("k0")
+    with pytest.raises(RuntimeError, match="Hishel 1.x"):
+        store(storage)
+    storage.close()
 
-    # Reopening a current database keeps its data
+    assert path.read_bytes() == before
+
+
+
+def test_default_path_leaves_a_1x_cache_alone(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    old = tmp_path / ".cache" / "hishel" / "hishel_cache.db"
+    old.parent.mkdir(parents=True)
+    create_v1_database(old)
+    before = old.read_bytes()
+
+    storage = SyncSqliteStorage()
+    store(storage)
+    assert len(storage.get_entries("k")) == 1
+    storage.close()
+
+    assert old.read_bytes() == before
+
+
+
+def test_connection_with_tables_of_its_own_is_left_untouched():
+    connection = sqlite3.connect(":memory:", check_same_thread=False)
+    connection.execute("CREATE TABLE entries (name TEXT)")
+    connection.execute("INSERT INTO entries VALUES ('mine')")
+    connection.execute("PRAGMA user_version=7")
+    connection.commit()
+
+    storage = SyncSqliteStorage(connection=connection)
+    with pytest.raises(RuntimeError, match="connection"):
+        storage.get_entries("k")
+
+    cursor = connection.execute("SELECT name FROM entries")
+    assert cursor.fetchall() == [("mine",)]
+    cursor = connection.execute("PRAGMA user_version")
+    assert cursor.fetchall() == [(7,)]
+    cursor = connection.execute("PRAGMA table_info(streams)")
+    assert cursor.fetchall() == []
+
+
+
+def test_connection_keeps_its_user_version():
+    connection = sqlite3.connect(":memory:", check_same_thread=False)
+    connection.execute("PRAGMA user_version=7")
+    storage = SyncSqliteStorage(connection=connection)
+    store(storage)
+    cursor = connection.execute("PRAGMA user_version")
+    assert cursor.fetchall() == [(7,)]
+
+
+
+def test_reopening_a_database_keeps_its_entries(tmp_path):
+    path = tmp_path / "cache.db"
+    first = SyncSqliteStorage(database_path=path)
+    store(first)
+    first.close()
+
     again = SyncSqliteStorage(database_path=path)
     assert len(again.get_entries("k")) == 1
     again.close()
+
+
+class FlakyCursor:
+    def __init__(self, cursor, connection):
+        self._cursor = cursor
+        self._connection = connection
+
+    def execute(self, sql, *args):
+        if "journal_mode" in sql:
+            self._connection.wal_attempts += 1
+            if self._connection.wal_attempts <= self._connection.failures:
+                raise sqlite3.OperationalError(self._connection.message)
+        return self._cursor.execute(sql, *args)
+
+    def __getattr__(self, name):
+        return getattr(self._cursor, name)
+
+
+class FlakyConnection:
+    """Fails the switch to WAL a given number of times, which is hard to trigger for real in one process."""
+
+    def __init__(self, connection, failures, message="database is locked"):
+        self._connection = connection
+        self.failures = failures
+        self.message = message
+        self.wal_attempts = 0
+
+    def cursor(self):
+        return FlakyCursor(self._connection.cursor(), self)
+
+    def __getattr__(self, name):
+        return getattr(self._connection, name)
+
+
+
+def test_switch_to_wal_retries_while_locked():
+    connection = FlakyConnection(sqlite3.connect(":memory:", check_same_thread=False), failures=3)
+    storage = SyncSqliteStorage(connection=connection)  # type: ignore[arg-type]
+    store(storage)
+    assert connection.wal_attempts == 4
+    assert len(storage.get_entries("k")) == 1
+
+
+
+def test_switch_to_wal_gives_up_and_tries_again_on_the_next_use(monkeypatch, caplog):
+    monkeypatch.setattr("hishel._core._storages._sync_sqlite.WAL_RETRY_SECONDS", 0.05)
+    connection = FlakyConnection(sqlite3.connect(":memory:", check_same_thread=False), failures=10**9)
+    storage = SyncSqliteStorage(connection=connection)  # type: ignore[arg-type]
+    with caplog.at_level(logging.CRITICAL):
+        assert storage.get_entries("k") == []
+
+    connection.failures = 0
+    store(storage)
+    assert len(storage.get_entries("k")) == 1
+
+
+
+def test_switch_to_wal_only_retries_locks(caplog):
+    connection = FlakyConnection(sqlite3.connect(":memory:", check_same_thread=False), failures=1, message="disk I/O error")
+    storage = SyncSqliteStorage(connection=connection)  # type: ignore[arg-type]
+    with caplog.at_level(logging.CRITICAL):
+        assert storage.get_entries("k") == []
+    assert connection.wal_attempts == 1
+
+
+
+def test_database_failures_do_not_fail_the_caller(caplog):
+    storage = new_storage()
+    entry = store(storage)
+
+    def broken():
+        raise sqlite3.OperationalError("database is locked")
+
+    storage._ensure_connection = broken
+    with caplog.at_level(logging.CRITICAL):
+        assert storage.get_entries("k") == []
+        storage.update_headers(entry.id, Headers({"x": "1"}))
+        storage.remove_entry(entry.id)
+        created = storage.create_entry(req(), Response(status_code=200, stream=make_sync_iterator([b"d"])), "k")
+        without_body = storage.create_entry(req(), Response(status_code=204), "k")
+    assert read(created) == b"d"
+    assert read(without_body) == b""
 
 
 

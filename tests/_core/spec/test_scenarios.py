@@ -14,6 +14,7 @@ from typing import Dict
 import pytest
 import time_machine
 
+from hishel import CacheOptions
 from tests._core.spec.bdd import CacheScenario, http_date
 
 LAST_WEEK = http_date(7 * 24 * 3600)
@@ -142,3 +143,63 @@ def test_lifecycle_fresh_to_stale(cache: CacheScenario) -> None:
         traveller.shift(30)
 
         cache.get().assert_needs_revalidation()
+
+
+@pytest.mark.parametrize("status", [200, 204, 301])
+@pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE", "PROPFIND"])
+def test_unsafe_request_invalidates_on_non_error_response(cache: CacheScenario, method: str, status: int) -> None:
+    """
+    RFC 9111 §4.4: "A cache MUST invalidate the target URI when it receives a
+    non-error status code in response to an unsafe request method (including
+    methods whose safety is unknown)."
+    """
+    entry = cache.seed(response={"max_age": 3600})
+
+    exchange = cache.get(method=method)
+    exchange.assert_cache_miss()
+    assert cache.entries == [entry]  # kept until the response is known
+
+    exchange.responds(status)
+    exchange.assert_not_stored().assert_invalidated(entry)
+
+    cache.get().assert_cache_miss()
+
+
+@pytest.mark.parametrize("status", [400, 404, 500, 503])
+def test_unsafe_request_keeps_entries_on_error_response(cache: CacheScenario, status: int) -> None:
+    """RFC 9111 §4.4 only invalidates on a non-error status code."""
+    cache.seed(response={"max_age": 3600})
+
+    cache.get(method="POST").responds(status).assert_not_stored()
+
+    cache.get().assert_from_cache()
+
+
+def test_unsafe_request_only_invalidates_its_own_url(cache: CacheScenario) -> None:
+    """A custom key can hold entries of other URLs, and §4.4 is about the target URI."""
+    other_url = "https://example.com/other"
+    cache.seed(response={"max_age": 3600})
+    cache.seed(request={"url": other_url}, response={"max_age": 3600})
+
+    cache.get(method="POST").responds(200)
+
+    cache.get().assert_cache_miss()
+    cache.get(other_url).assert_from_cache()
+
+
+def test_unsafe_request_with_range_header_still_invalidates(cache: CacheScenario) -> None:
+    """The Range shortcut only applies to reading from the cache."""
+    entry = cache.seed(response={"max_age": 3600})
+
+    cache.get(method="PUT", headers={"range": "bytes=0-1"}).responds(200).assert_invalidated(entry)
+
+
+def test_invalidating_response_can_also_be_stored(cache: CacheScenario) -> None:
+    """With an unsafe method in `supported_methods`, the old entry goes and the new one stays."""
+    cache.options = CacheOptions(supported_methods=["GET", "HEAD", "POST"])
+    entry = cache.seed(response={"max_age": 3600})
+
+    exchange = cache.get(method="POST").responds(200, max_age=3600)
+
+    exchange.assert_stored().assert_invalidated(entry)
+    assert [stored.request.method for stored in cache.entries] == ["POST"]

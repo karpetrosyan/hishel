@@ -38,11 +38,23 @@ async = [
     "anysqlite>=0.0.5",
 ]
 
+requests = [
+    "requests>=2.34.2",
+]
 httpx = [
     "httpx>=0.28.1",
     # install async extra
     "anyio>=4.14.2",
     "anysqlite>=0.0.5",
+]
+httpx2 = [
+    "httpx2>=2.9.1",
+    # install async extra
+    "anyio>=4.9.0",
+    "anysqlite>=0.0.5",
+]
+fastapi = [
+    "fastapi>=0.141.1",
 ]
 redis = [
     "redis>=8.1.0",
@@ -81,9 +93,11 @@ exclude = [
     "src/hishel/__init__.py",
     "tests/_core/_sync",
     "tests/test_sync_httpx.py",
+    "tests/test_sync_httpx2.py",
     "src/hishel/_core/_storages/_sync_redis.py",
     "src/hishel/_core/_storages/_sync_base.py",
-    "src/hishel/_sync_httpx.py",
+    "src/hishel/httpx/_sync.py",
+    "src/hishel/httpx2/_sync.py",
     "src/hishel/_sync_rfc.py",
 ]
 line-length = 120
@@ -100,6 +114,7 @@ dev = [
     "anyio==4.14.2",
     "anysqlite>=0.0.5",
     "coverage==7.16.0",
+    "fastapi[standard]>=0.141.1",
     "hatch==1.18.0",
     "inline-snapshot>=0.35.4",
     "mike>=2.2.0",
@@ -117,6 +132,7 @@ dev = [
     "trio==0.34.0",
     "types-boto3==1.43.83",
     "types-pyyaml==6.0.12.20260815",
+    "types-requests>=2.33.0.20260712",
     "fakeredis>=2.37.1",
     "redis>=8.1.0",
     "zipp>=4.1.0",

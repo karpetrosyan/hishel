@@ -1,5 +1,6 @@
 import gzip
 import hashlib
+import sqlite3
 import threading
 from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime
@@ -10,6 +11,7 @@ import sqlite3
 import fakeredis
 import httpx
 import pytest
+from redis import RedisError
 from time_machine import travel
 
 from hishel import RedisStorage, SyncSqliteStorage
@@ -218,6 +220,58 @@ def test_repeated_headers_are_kept_separate_on_miss_and_hit():
         response = client.get(URL)
         assert response.headers.get_list("set-cookie") == ["a=1", "b=2, c"]
     assert len(upstream.requests) == 1
+
+
+SET_COOKIES = [("set-cookie", "a=1; Expires=Thu, 01 Jan 2032 00:00:00 GMT"), ("set-cookie", "b=2")]
+SET_COOKIE_VALUES = [value for _, value in SET_COOKIES]
+
+
+
+@pytest.mark.parametrize("kind", ["sqlite", "redis"])
+def test_rfc_keeps_repeated_set_cookie_separate_on_miss_and_hit(kind):
+    headers = [*SET_COOKIES, ("cache-control", "max-age=10"), ("date", date_at(0))]
+    upstream = Upstream(lambda r: httpx.Response(200, headers=headers, content=b"x"))
+    client = client_for(upstream, kind, rfc=True)
+    with at(0):
+        for _ in range(2):
+            response = client.get(URL)
+            assert response.headers.get_list("set-cookie") == SET_COOKIE_VALUES
+    assert len(upstream.requests) == 1
+    assert dict(client.cookies) == {"a": "1", "b": "2"}
+
+
+
+def test_rfc_keeps_repeated_set_cookie_separate_when_not_stored():
+    headers = [*SET_COOKIES, ("cache-control", "no-store")]
+    client = client_for(Upstream(lambda r: httpx.Response(200, headers=headers, content=b"x")), rfc=True)
+    response = client.get(URL)
+    assert response.headers.get_list("set-cookie") == SET_COOKIE_VALUES
+    assert dict(client.cookies) == {"a": "1", "b": "2"}
+
+
+
+@pytest.mark.parametrize("kind", ["sqlite", "redis"])
+def test_rfc_keeps_repeated_set_cookie_separate_after_revalidation(kind):
+    answers = iter(
+        [
+            httpx.Response(
+                200,
+                headers=[*SET_COOKIES, ("cache-control", "max-age=10"), ("etag", '"v1"'), ("date", date_at(0))],
+                content=b"x",
+            ),
+            httpx.Response(304, headers={"etag": '"v1"', "cache-control": "max-age=10", "date": date_at(100)}),
+        ]
+    )
+    upstream = Upstream(lambda r: next(answers))
+    client = client_for(upstream, kind, rfc=True)
+    with at(0):
+        client.get(URL)
+    with at(100):
+        revalidated = client.get(URL)
+        hit = client.get(URL)
+    assert revalidated.headers.get_list("set-cookie") == SET_COOKIE_VALUES
+    assert hit.headers.get_list("set-cookie") == SET_COOKIE_VALUES
+    assert len(upstream.requests) == 2
 
 
 
@@ -573,12 +627,106 @@ def test_supported_methods_option_decides_what_is_stored():
     storage = new_storage()
     transport = SyncCacheTransport(upstream, storage=storage, rfc={"supported_methods": ["GET", "HEAD", "POST"]})
     client = httpx.Client(transport=transport)
-    key = hashlib.sha256(f"POST {URL}".encode()).hexdigest()
+    key = hashlib.sha256(f"RFC {URL}".encode()).hexdigest()
     with at(0):
         client.post(URL, content=b"a")
         assert len(storage.get_entries(key)) == 1  # stored
         client.post(URL, content=b"a")
     assert len(upstream.requests) == 2  # but unsafe methods always reach the server
+
+
+
+def test_rfc_mode_unsafe_request_invalidates_the_entries_of_its_url():
+    upstream = Upstream(
+        lambda r: httpx.Response(200, headers={"cache-control": "max-age=100", "date": date_at(0)}, content=b"x")
+    )
+    client = client_for(upstream, rfc=True)
+    with at(0):
+        client.get(URL)
+        client.get(URL)
+        assert len(upstream.requests) == 1
+
+        client.post(URL, content=b"a")
+        client.get(URL)
+    assert [r.method for r in upstream.requests] == ["GET", "POST", "GET"]
+
+
+
+def test_rfc_mode_failed_unsafe_request_keeps_the_entries():
+    def respond(r):
+        if r.method == "POST":
+            return httpx.Response(500)
+        return httpx.Response(200, headers={"cache-control": "max-age=100", "date": date_at(0)}, content=b"x")
+
+    upstream = Upstream(respond)
+    client = client_for(upstream, rfc=True)
+    with at(0):
+        client.get(URL)
+        client.post(URL, content=b"a")
+        client.get(URL)
+    assert [r.method for r in upstream.requests] == ["GET", "POST"]
+
+
+
+def test_rfc_mode_does_not_use_the_key_left_in_redis_by_1x():
+    redis_client = fakeredis.FakeRedis()
+    redis_client.sadd(f"hishel:idx:{hashlib.sha256(URL.encode()).hexdigest()}", "old")
+    transport = SyncCacheTransport(Upstream(), storage=RedisStorage(redis_client), rfc=True)
+    client = httpx.Client(transport=transport)
+
+    assert (client.get(URL)).status_code == 200
+
+
+
+@pytest.mark.parametrize("rfc", [False, True])
+def test_cache_outage_still_reaches_the_server(rfc):
+    storage = new_storage("redis")
+
+    def broken(*args, **kwargs):
+        raise RedisError("down")
+
+    storage._client.zrangebyscore = broken
+    storage._client.set = broken
+    upstream = Upstream()
+    client = httpx.Client(transport=SyncCacheTransport(upstream, storage=storage, rfc=rfc))
+
+    assert (client.get(URL)).content == b"body"
+    assert len(upstream.requests) == 1
+
+
+
+def test_unsafe_request_still_succeeds_when_the_database_is_locked(tmp_path):
+    path = tmp_path / "cache.db"
+    storage = SyncSqliteStorage(database_path=path)
+    upstream = Upstream(
+        lambda r: httpx.Response(200, headers={"cache-control": "max-age=100", "date": date_at(0)}, content=b"x")
+    )
+    client = httpx.Client(transport=SyncCacheTransport(upstream, storage=storage, rfc=True))
+    with at(0):
+        client.get(URL)
+        connection = storage._ensure_connection()
+        connection.execute("PRAGMA busy_timeout=1")
+
+        blocker = sqlite3.connect(path, isolation_level=None)
+        blocker.execute("BEGIN IMMEDIATE")
+        response = client.post(URL, content=b"a")
+        blocker.close()
+
+    assert response.status_code == 200
+    assert [r.method for r in upstream.requests] == ["GET", "POST"]
+
+
+
+def test_unparsable_date_does_not_break_later_requests():
+    upstream = Upstream(
+        lambda r: httpx.Response(
+            200, headers={"cache-control": "max-age=100", "date": "Mon, 01 Jan 99999 00:00:00 GMT"}, content=b"x"
+        )
+    )
+    client = client_for(upstream, rfc=True)
+
+    assert (client.get(URL)).status_code == 200
+    assert (client.get(URL)).status_code == 200
 
 
 
@@ -894,3 +1042,139 @@ def test_rfc_range_requests_go_to_the_server_whatever_their_form(value):
         response = client.get(URL, headers={"range": value})
     assert response.status_code == 200
     assert len(upstream.requests) == 2
+
+
+
+@pytest.mark.parametrize("kind", ["sqlite", "redis"])
+@pytest.mark.parametrize("rfc", [False, True])
+def test_ttl_extension_overrides_the_storage_default(kind, rfc):
+    upstream = Upstream(lambda r: fresh())
+    client = client_for(upstream, kind, rfc=rfc, default_ttl=1000)
+    extensions = {"caching": {"ttl": 10}}
+    with at(0):
+        client.get(URL, extensions=extensions)
+    with at(5):
+        client.get(URL)
+    assert len(upstream.requests) == 1
+    with at(20):
+        client.get(URL)
+    assert len(upstream.requests) == 2
+
+
+
+@pytest.mark.parametrize("kind", ["sqlite", "redis"])
+@pytest.mark.parametrize("rfc", [False, True])
+def test_tti_extension_expires_an_entry_that_is_not_used(kind, rfc):
+    upstream = Upstream(lambda r: fresh())
+    client = client_for(upstream, kind, rfc=rfc, default_ttl=1000)
+    extensions = {"caching": {"tti": 10}}
+    with at(0):
+        client.get(URL, extensions=extensions)
+    with at(8):
+        client.get(URL)
+    with at(16):
+        client.get(URL)
+    assert len(upstream.requests) == 1
+    with at(40):
+        client.get(URL)
+    assert len(upstream.requests) == 2
+
+
+
+def test_ttl_extension_does_not_change_an_entry_already_stored():
+    upstream = Upstream(lambda r: fresh())
+    client = client_for(upstream)
+    with at(0):
+        client.get(URL)
+    with at(1):
+        client.get(URL, extensions={"caching": {"ttl": 1}})
+    with at(500):
+        client.get(URL)
+    assert len(upstream.requests) == 1
+
+
+
+def test_other_overrides_leave_the_storage_ttl_in_place():
+    upstream = Upstream(lambda r: fresh())
+    client = client_for(upstream, default_ttl=10)
+    with at(0):
+        client.get(URL, extensions={"caching": {"rfc": False}})
+    with at(20):
+        client.get(URL)
+    assert len(upstream.requests) == 2
+
+
+def with_key(key):
+    return {"caching": {"key": key}}
+
+
+
+@pytest.mark.parametrize("kind", ["sqlite", "redis"])
+@pytest.mark.parametrize("key", ["my-key", "ключ"])
+def test_key_extension_replaces_the_key_for_lookup_and_store(kind, key):
+    upstream = Upstream(lambda r: fresh(str(r.url).encode()))
+    client = client_for(upstream, kind)
+
+    client.get(URL, extensions=with_key(key))
+    response = client.get("https://y/", extensions=with_key(key))
+    assert len(upstream.requests) == 1
+    assert response.content == URL.encode()
+
+    # Stored under the key given, so not under the usual one.
+    client.get(URL)
+    assert len(upstream.requests) == 2
+
+
+
+@pytest.mark.parametrize("rfc", [False, True])
+def test_different_keys_keep_one_url_apart(rfc):
+    upstream = Upstream(lambda r: fresh())
+    client = client_for(upstream, rfc=rfc)
+
+    with at(0):
+        for _ in range(2):
+            client.get(URL, extensions=with_key("a"))
+            client.get(URL, extensions=with_key("b"))
+
+    assert len(upstream.requests) == 2
+
+
+
+def test_rfc_mode_does_not_serve_another_url_stored_under_the_key():
+    upstream = Upstream(lambda r: fresh(str(r.url).encode()))
+    client = client_for(upstream, rfc=True)
+
+    with at(0):
+        client.get(URL, extensions=with_key("k"))
+        response = client.get("https://y/", extensions=with_key("k"))
+
+        assert len(upstream.requests) == 2
+        assert response.content == b"https://y/"
+        assert (client.get(URL, extensions=with_key("k"))).content == URL.encode()
+        assert len(upstream.requests) == 2
+
+
+
+@pytest.mark.parametrize("rfc", [False, True])
+def test_key_extension_does_not_make_post_cacheable(rfc):
+    upstream = Upstream(lambda r: fresh())
+    client = client_for(upstream, rfc=rfc)
+
+    client.post(URL, extensions=with_key("k"))
+    client.post(URL, extensions=with_key("k"))
+
+    assert len(upstream.requests) == 2
+
+
+
+@pytest.mark.parametrize("rfc", [False, True])
+def test_get_and_head_sharing_a_key_do_not_answer_each_other(rfc):
+    upstream = Upstream(lambda r: fresh())
+    client = client_for(upstream, rfc=rfc)
+
+    with at(0):
+        for _ in range(2):
+            assert (client.get(URL, extensions=with_key("k"))).content == b"body"
+            client.head(URL, extensions=with_key("k"))
+
+    assert [request.method for request in upstream.requests] == ["GET", "HEAD"]

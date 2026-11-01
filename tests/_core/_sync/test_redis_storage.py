@@ -480,6 +480,24 @@ def test_create_entry_failure_serves_uncached(caplog):
 
 
 
+def test_outage_does_not_fail_the_caller(caplog):
+    storage = new_storage()
+    entry = store(storage)
+
+    def broken(*args, **kwargs):
+        raise RedisError("down")
+
+    for command in ("zrangebyscore", "get", "set", "zrem"):
+        setattr(storage._client, command, broken)
+    with caplog.at_level(logging.CRITICAL):
+        assert storage.get_entries("k") == []
+        storage.update_headers(entry.id, Headers({"x": "1"}))
+        storage.remove_entry(entry.id)
+        without_body = storage.create_entry(req(), Response(status_code=204), "k")
+    assert read(without_body) == b""
+
+
+
 def test_corrupt_entry_is_dropped_and_lookup_still_works(caplog):
     storage = new_storage()
     bad = store(storage)

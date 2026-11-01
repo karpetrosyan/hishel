@@ -3,71 +3,54 @@
 ## Installation
 
 ```bash
-pip install hishel
+pip install "hishel[httpx]"
 ```
 
-### With HTTPX
+## With HTTPX
 
-```python
+::: code-group
+
+```python [Sync]
+from hishel.httpx import SyncCacheClient
+
+with SyncCacheClient() as client:
+    # First request - fetches from origin
+    client.get("https://api.example.com/data")
+    # Second request - served from cache
+    response = client.get("https://api.example.com/data")
+    print(response.text)
+```
+
+```python [Async]
 from hishel.httpx import AsyncCacheClient
 
 async with AsyncCacheClient() as client:
     # First request - fetches from origin
-    await client.get("https://hishel.com")
+    await client.get("https://api.example.com/data")
     # Second request - served from cache
-    response = await client.get("https://hishel.com")
+    response = await client.get("https://api.example.com/data")
     print(response.text)
 ```
 
-## with requests
+:::
+
+By default, Hishel ignores HTTP caching headers and keeps a response until you expire it, which the default SQLite storage never does on its own. You will usually want to set a lifetime:
 
 ```python
-import requests
-from hishel.requests import CacheAdapter
+from hishel import SyncSqliteStorage
+from hishel.httpx import SyncCacheClient
 
-session = requests.Session()
-session.mount("https://", CacheAdapter())
-session.mount("http://", CacheAdapter())
-
-# First request - fetches from origin
-response = session.get("https://hishel.com")
-
-# Second request - served from cache
-response = session.get("https://hishel.com")
+client = SyncCacheClient(storage=SyncSqliteStorage(default_ttl=3600))
 ```
 
-## with FastAPI
+To let servers decide what is cached and for how long, turn on RFC 9111 mode:
 
 ```python
-from fastapi import FastAPI
-from hishel import AsyncSqliteStorage
-from hishel.fastapi import cache
-from hishel.asgi import ASGICacheMiddleware
+from hishel.httpx import SyncCacheClient
 
-app = FastAPI()
-
-
-@app.get("/api/data", dependencies=[cache(max_age=300, public=True)])
-async def get_data():
-    # Cache-Control: public, max-age=300
-    return {"data": "cached for 5 minutes"}
-
-
-app = ASGICacheMiddleware(app, storage=AsyncSqliteStorage())
+client = SyncCacheClient(rfc=True)
 ```
 
-## with BlackSheep
+See [HTTPX](/httpx) for how the two modes differ, and [Storages](/storages) for the storage options.
 
-```python
-from blacksheep import Application, get
-from blacksheep.server.headers.cache import cache_control
-
-app = Application()
-
-
-@get("/api/data")
-@cache_control(max_age=300, public=True)
-async def get_data():
-    # Cache-Control: public, max-age=300
-    return {"data": "cached for 5 minutes"}
-```
+Hishel also works with [Requests](/requests), and on the server with [ASGI](/asgi) and [FastAPI](/fastapi).

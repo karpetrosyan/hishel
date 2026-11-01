@@ -1,20 +1,26 @@
 # Overview
 
-Hishel is a library that provides HTTP caching for both async and sync Python applications and for both clients and servers.
-With Hishel you can easily cache either fully respecting the HTTP caching specification (RFC 9111) which browsers use by default, or you can cache by your own rules.
+Hishel is an HTTP caching library for both async and sync Python applications.
 
-Hishel comes with a backend for storing/retrieving cached responses in a SQLite database, but it was built around fully Sans-IO core which you can use to implement your own caching logic or to integrate it with your library.
+It caches in one of two modes:
 
+- **By default**, it keeps successful `GET` and `HEAD` responses for as long as you configure, ignoring HTTP caching headers. This is the simplest way to avoid repeating requests from a backend.
+- **In RFC mode**, it follows the HTTP caching specification ([RFC 9111](https://www.rfc-editor.org/rfc/rfc9111.html)), so servers decide what is cached and for how long.
+
+Responses are stored in a [SQLite database or Redis](/storages), and bodies are streamed rather than loaded fully into memory.
+
+RFC mode is built on a [Sans-IO core](/sans-io), which you can use to implement your own caching logic or to integrate Hishel with your library.
 
 # Integrations
 
-Hishel comes with a some integrations for popular HTTP libraries, currently supporting:
+Hishel comes with integrations for these clients:
 
-- [httpx](https://www.python-httpx.org/) (client)
-- [requests](https://docs.python-requests.org/) (client)
-- [FastAPI](https://fastapi.tiangolo.com/) (server)
-- [BlackSheep](https://www.blacksheep.rest/) (server)
+- [HTTPX and HTTPX2](/httpx)
+- [Requests](/requests)
 
-We also have an ASGI middleware you can use with any ASGI framework.
+And for these servers, to cache your application's responses:
 
-If you can't find an integration for your library/framework, you can easly implement it yourself, looking at the existing ones as examples or reading the documentation for the Sans-IO core.
+- [ASGI](/asgi)
+- [FastAPI](/fastapi)
+
+If you can't find an integration for your library or framework, you can implement one yourself using the [Sans-IO core](/sans-io).

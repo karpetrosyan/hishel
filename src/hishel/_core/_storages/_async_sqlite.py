@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import random
+import sqlite3
 import time
 import uuid
 from collections.abc import AsyncIterable, AsyncIterator
@@ -16,9 +18,19 @@ from hishel._utils import ensure_cache_dict, make_async_iterator
 
 logger = logging.getLogger(__name__)
 
-# Stored in `PRAGMA user_version`. A database with any other version is reset,
-# since cached data is disposable.
-SCHEMA_VERSION = 1
+# The tables this storage uses. Tables with these names and other columns, such
+# as a 1.x cache or the caller's own, are refused and never changed. So a new
+# schema needs a new default database_path.
+TABLE_COLUMNS = {
+    "entries": {"id", "cache_key", "data", "expires_at", "last_accessed_at", "chunk_count", "ttl_deadline", "tti"},
+    "streams": {"entry_id", "chunk_number", "chunk_data"},
+}
+# The `entries` columns of a Hishel 1.x cache, which gets an error of its own.
+V1_ENTRIES_COLUMNS = {"id", "cache_key", "data", "created_at", "deleted_at"}
+# How long to keep retrying the switch to WAL, which needs a lock that several
+# processes opening a new file at once fight over. SQLite fails right away there
+# instead of waiting for busy_timeout (seconds).
+WAL_RETRY_SECONDS = 5
 # Rows deleted per create_entry when removing expired entries.
 CLEANUP_BATCH_SIZE = 200
 # Eviction stops as soon as the database fits, so it deletes a few rows at a
@@ -39,14 +51,15 @@ HIDDEN = 0.0
 
 if TYPE_CHECKING:
     import anysqlite
-    from anyio import Lock
+    from anyio import Lock, sleep
 else:
     try:
         import anysqlite
-        from anyio import Lock
+        from anyio import Lock, sleep
     except ImportError:
         anysqlite = None
         Lock = None
+        sleep = None
 
 
 class AsyncSqliteStorage(AsyncBaseStorage):
@@ -64,7 +77,7 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         self,
         *,
         connection: Optional[anysqlite.Connection] = None,
-        database_path: Union[str, Path] = "hishel_cache.db",
+        database_path: Union[str, Path] = "hishel_cache_v2.db",
         default_ttl: float | None = None,
         default_tti: float | None = None,
         max_stream_size: int | None = None,
@@ -114,23 +127,25 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         assert self.connection is not None
         cursor = await self.connection.cursor()
 
-        await cursor.execute("PRAGMA journal_mode=WAL")
+        for table, columns in TABLE_COLUMNS.items():
+            await cursor.execute(f"PRAGMA table_info({table})")
+            found = {row[1] for row in await cursor.fetchall()}
+            if found and found != columns:
+                if table == "entries" and found == V1_ENTRIES_COLUMNS:
+                    raise RuntimeError(
+                        "This database is a Hishel 1.x cache, which this version can't use. It was left as it is. "
+                        "Delete it or use another `database_path`."
+                    )
+                raise RuntimeError(
+                    f"The database already has a `{table}` table that Hishel can't use. It was left as it is. "
+                    "Use another `database_path` or `connection`."
+                )
+
+        await self._switch_to_wal(cursor)
         await cursor.execute("PRAGMA busy_timeout=5000")
         await cursor.execute("PRAGMA synchronous=NORMAL")
         await cursor.execute("PRAGMA foreign_keys=ON")
         await cursor.execute(f"PRAGMA journal_size_limit={MAX_WAL_SIZE}")
-
-        await cursor.execute("PRAGMA user_version")
-        row = await cursor.fetchone()
-        if row[0] == SCHEMA_VERSION:
-            return
-
-        await cursor.execute("DROP TABLE IF EXISTS streams")
-        await cursor.execute("DROP TABLE IF EXISTS entries")
-        await self.connection.commit()
-        # Nothing is left to copy, so this is cheap, and it returns the old
-        # file's space to the OS.
-        await cursor.execute("VACUUM")
 
         await cursor.execute("""
             CREATE TABLE IF NOT EXISTS entries (
@@ -156,8 +171,18 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         await cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_cache_key ON entries(cache_key)")
         await cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_expires_at ON entries(expires_at)")
         await cursor.execute("CREATE INDEX IF NOT EXISTS idx_entries_last_accessed_at ON entries(last_accessed_at)")
-        await cursor.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
         await self.connection.commit()
+
+    async def _switch_to_wal(self, cursor: anysqlite.Cursor) -> None:
+        deadline = time.monotonic() + WAL_RETRY_SECONDS
+        while True:
+            try:
+                await cursor.execute("PRAGMA journal_mode=WAL")
+                return
+            except sqlite3.OperationalError as error:
+                if "locked" not in str(error) or time.monotonic() > deadline:
+                    raise
+                await sleep(random.uniform(0.01, 0.1))
 
     async def create_entry(
         self,
@@ -170,17 +195,17 @@ class AsyncSqliteStorage(AsyncBaseStorage):
     ) -> Entry:
         body = response.stream if response.stream is not None else make_async_iterator([])
         assert isinstance(body, (AsyncIterator, AsyncIterable))
-        connection = await self._ensure_connection()
 
         now = time.time()
         ttl_deadline, tti = self._limits(ttl, tti, now)
         entry = Entry(
             id=uuid.uuid4(),
             request=request,
-            response=response,
+            response=replace(response, stream=body),
         )
 
         try:
+            connection = await self._ensure_connection()
             if not await self._reclaim_space(connection, now):
                 return entry
             cursor = await connection.cursor()
@@ -190,6 +215,9 @@ class AsyncSqliteStorage(AsyncBaseStorage):
                 (entry.id.bytes, key.encode("utf-8"), pack(request, response), HIDDEN, now, ttl_deadline, tti),
             )
             await connection.commit()
+        except RuntimeError:
+            # Closed, or a database it can't use, which aren't failures of the cache.
+            raise
         except Exception:
             logger.exception("hishel: could not store entry, serving the response uncached")
             return entry
@@ -198,17 +226,22 @@ class AsyncSqliteStorage(AsyncBaseStorage):
         return replace(entry, response=replace(response, stream=stream))
 
     async def get_entries(self, key: str) -> List[Entry]:
-        connection = await self._ensure_connection()
-        cursor = await connection.cursor()
         now = time.time()
-        await cursor.execute(
-            "SELECT id, data, chunk_count, expires_at, last_accessed_at, ttl_deadline, tti FROM entries"
-            " WHERE cache_key = ? AND (expires_at IS NULL OR expires_at > ?)",
-            (key.encode("utf-8"), now),
-        )
+        try:
+            connection = await self._ensure_connection()
+            cursor = await connection.cursor()
+            await cursor.execute(
+                "SELECT id, data, chunk_count, expires_at, last_accessed_at, ttl_deadline, tti FROM entries"
+                " WHERE cache_key = ? AND (expires_at IS NULL OR expires_at > ?)",
+                (key.encode("utf-8"), now),
+            )
+            rows = await cursor.fetchall()
+        except (sqlite3.Error, OSError):
+            logger.exception("hishel: could not read entries, treating this as a cache miss")
+            return []
 
         entries: List[Entry] = []
-        for id_, data, chunk_count, expires_at, last_accessed_at, ttl_deadline, tti in await cursor.fetchall():
+        for id_, data, chunk_count, expires_at, last_accessed_at, ttl_deadline, tti in rows:
             try:
                 request, response = unpack(bytes(data))
             except Exception:
@@ -254,26 +287,32 @@ class AsyncSqliteStorage(AsyncBaseStorage):
     async def update_headers(self, id: uuid.UUID, headers: Headers) -> None:
         # The blob is only ever rewritten here, so the last writer winning is
         # the correct result if two revalidations race.
-        connection = await self._ensure_connection()
-        cursor = await connection.cursor()
-        await cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
-        row = await cursor.fetchone()
-        if row is None:
-            return
+        try:
+            connection = await self._ensure_connection()
+            cursor = await connection.cursor()
+            await cursor.execute("SELECT data FROM entries WHERE id = ?", (id.bytes,))
+            row = await cursor.fetchone()
+            if row is None:
+                return
 
-        request, response = unpack(bytes(row[0]))
-        updated = pack(request, replace(response, headers=headers))
-        await cursor.execute("UPDATE entries SET data = ? WHERE id = ?", (updated, id.bytes))
-        await connection.commit()
+            request, response = unpack(bytes(row[0]))
+            updated = pack(request, replace(response, headers=headers))
+            await cursor.execute("UPDATE entries SET data = ? WHERE id = ?", (updated, id.bytes))
+            await connection.commit()
+        except (sqlite3.Error, OSError):
+            logger.exception("hishel: could not update entry")
 
     async def remove_entry(self, id: uuid.UUID) -> None:
-        connection = await self._ensure_connection()
-        cursor = await connection.cursor()
-        # An entry still being written has no readers to protect, and hiding it
-        # would not last: completing the stream sets expires_at.
-        await cursor.execute("DELETE FROM entries WHERE id = ? AND chunk_count IS NULL", (id.bytes,))
-        await cursor.execute("UPDATE entries SET expires_at = ? WHERE id = ?", (HIDDEN, id.bytes))
-        await connection.commit()
+        try:
+            connection = await self._ensure_connection()
+            cursor = await connection.cursor()
+            # An entry still being written has no readers to protect, and hiding it
+            # would not last: completing the stream sets expires_at.
+            await cursor.execute("DELETE FROM entries WHERE id = ? AND chunk_count IS NULL", (id.bytes,))
+            await cursor.execute("UPDATE entries SET expires_at = ? WHERE id = ?", (HIDDEN, id.bytes))
+            await connection.commit()
+        except (sqlite3.Error, OSError):
+            logger.exception("hishel: could not remove entry, so it can still be served")
 
     async def close(self) -> None:
         async with self._init_lock:
