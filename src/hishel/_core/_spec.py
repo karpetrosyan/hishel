@@ -1158,8 +1158,14 @@ class IdleClient(State):
             return CacheMiss(options=self.options, request=request)
 
         # §4: unsafe methods must be written through to the origin.
+        # §4.4: a non-error response to them invalidates the stored responses
+        # for the target URI.
         if request.method.upper() not in SAFE_METHODS:
-            return CacheMiss(request=request, options=self.options)
+            return CacheMiss(
+                request=request,
+                options=self.options,
+                invalidated_entry_ids=[entry.id for entry in associated_entries if entry.request.url == request.url],
+            )
 
         # Parsed once — applies uniformly to every candidate.
         request_cache_control = parse_cache_control(request.headers.get("cache-control"))
@@ -1286,7 +1292,13 @@ class CacheMiss(State):
     Indicates whether the cache miss occurred after a revalidation attempt.
     """
 
-    def next(self, response: Response) -> Union["StoreAndUse", "CouldNotBeStored"]:
+    invalidated_entry_ids: list[uuid.UUID] = field(default_factory=list)
+    """
+    Stored entries for the target URI of an unsafe request, removed when the
+    origin answers with a non-error status code (RFC 9111 Section 4.4).
+    """
+
+    def next(self, response: Response) -> Union["StoreAndUse", "CouldNotBeStored", "InvalidateEntries"]:
         """
         Evaluates whether a response can be stored in the cache.
 
@@ -1361,6 +1373,18 @@ class CacheMiss(State):
         # STEP 2: Parse Cache-Control Directive
         # ============================================================================
         # Extract and parse the Cache-Control header to check caching directives
+
+        # RFC 9111 Section 4.4: Invalidating Stored Responses
+        # https://www.rfc-editor.org/rfc/rfc9111.html#section-4.4
+        #
+        # "A cache MUST invalidate the target URI when it receives a non-error
+        # status code in response to an unsafe request method"
+        if self.invalidated_entry_ids and 200 <= response.status_code < 400:
+            return InvalidateEntries(
+                options=self.options,
+                entry_ids=self.invalidated_entry_ids,
+                next_state=replace(self, invalidated_entry_ids=[]).next(response),
+            )
 
         request = self.request
         response_cache_control = parse_cache_control(response.headers.get("cache-control"))
