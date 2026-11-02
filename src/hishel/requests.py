@@ -138,7 +138,6 @@ def _internal_to_requests(
         response.status_code = model.status_code
         response.headers.update(model.headers)
         response.headers.update({snake_to_header(k): str(v) for k, v in model.metadata.items()})
-        response.url = ""  # Will be set by requests
 
         return response
     else:
@@ -190,6 +189,7 @@ class CacheAdapter(HTTPAdapter):
 
         # Set the original request on the response
         response.request = request
+        response.url = str(request.url)
         response.connection = self  # type: ignore
 
         return response
