@@ -154,7 +154,10 @@ class SyncCacheTransport(httpx.BaseTransport):
             # lost. The state machine only changes it to add revalidation headers,
             # and those are only for this send, so the caller never sees them.
             original_headers = request.headers
-            request.headers = _request_headers_with_changes(original_headers, internal_request.headers)
+            request.headers = original_headers.copy()
+            for key_, value in internal_request.headers.items():
+                if original_headers.get(key_) != value:
+                    request.headers[key_] = value
             try:
                 response = self.next_transport.handle_request(request)
             finally:
