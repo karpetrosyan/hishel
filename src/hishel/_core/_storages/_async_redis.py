@@ -6,7 +6,7 @@ import math
 from collections.abc import AsyncIterator
 from dataclasses import replace
 from time import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from uuid import UUID, uuid4
 
 import msgpack
@@ -206,12 +206,16 @@ class AsyncRedisStorage(AsyncBaseStorage):
 
         try:
             async with self._client.pipeline(transaction=True) as pipe:
-                # remove_entry deletes the entry key of an entry being written,
-                # which aborts the transaction below if it happens after this.
-                await pipe.watch(entry_key)
-                if not await self._client.exists(entry_key) or await self._client.llen(stream_key) != chunk_count:
+                # remove_entry deletes the entry key of an entry being written, and
+                # another writer can change the index TTL read below. Either one
+                # aborts the transaction if it happens after this.
+                await pipe.watch(entry_key, idx_key)
+                # Reads go through the watched pipe, so a publish needs one connection.
+                # A watching pipe runs commands right away, though redis-py types
+                # them as buffered.
+                if not await pipe.exists(entry_key) or cast(int, await pipe.llen(stream_key)) != chunk_count:
                     return False
-                idx_ttl_ms = await self._client.pttl(idx_key)
+                idx_ttl_ms = cast(int, await pipe.pttl(idx_key))
 
                 pipe.multi()
                 pipe.set(done_key, msgpack.packb((chunk_count, ttl_deadline, tti, key.encode())))

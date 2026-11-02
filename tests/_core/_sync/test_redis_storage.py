@@ -7,6 +7,7 @@ from typing import Iterator
 import fakeredis
 import pytest
 from redis import RedisError
+from redis.client import Pipeline
 from time_machine import travel
 
 from hishel import Headers, Request, Response
@@ -285,22 +286,23 @@ def test_remove_during_write_stays_removed_and_consumer_is_served():
 
 
 
-def test_remove_just_before_publish_commits_stays_removed(caplog):
+def test_remove_just_before_publish_commits_stays_removed(caplog, monkeypatch):
     storage = new_storage()
     entry = storage.create_entry(req(), Response(status_code=200, stream=make_sync_iterator([b"a"])), "k")
     stream = entry.response.stream
     stream.__next__()
-    original = storage._client.pttl
+    original = Pipeline.execute
 
-    def remove_then_pttl(key):
-        storage.remove_entry(entry.id)
-        return original(key)
+    def remove_then_execute(self, *args, **kwargs):
+        if self.watching:
+            storage.remove_entry(entry.id)
+        return original(self, *args, **kwargs)
 
-    storage._client.pttl = remove_then_pttl
+    monkeypatch.setattr(Pipeline, "execute", remove_then_execute)
     with caplog.at_level(logging.CRITICAL):
         for _ in stream:
             pass
-    storage._client.pttl = original
+    monkeypatch.undo()
     assert storage.get_entries("k") == []
     assert keys(storage) == []
 
@@ -560,3 +562,30 @@ def test_response_without_a_stream_is_stored_with_an_empty_body():
     [got] = storage.get_entries("k")
     assert got.response.status_code == 204
     assert read(got) == b""
+
+
+
+def test_publish_needs_only_one_connection():
+    storage = RedisStorage(fakeredis.FakeRedis(max_connections=1), default_ttl=None)
+    store(storage)
+    assert len(storage.get_entries("k")) == 1
+
+
+
+def test_concurrent_publish_cannot_shorten_the_index_ttl(monkeypatch):
+    storage = new_storage()
+    original = Pipeline.execute
+    started: list[bool] = []
+
+    def execute(self, *args, **kwargs):
+        # Another writer publishes to the same key while this publish is watching.
+        if self.watching and not started:
+            started.append(True)
+            store(storage, ttl=None)
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Pipeline, "execute", execute)
+    store(storage, ttl=60)
+
+    assert storage._client.pttl("hishel:idx:k") == -1
+    assert len(storage.get_entries("k")) == 1

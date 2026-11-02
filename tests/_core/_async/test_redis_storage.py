@@ -7,6 +7,7 @@ from typing import AsyncIterator
 import fakeredis.aioredis
 import pytest
 from redis import RedisError
+from redis.asyncio.client import Pipeline
 from time_machine import travel
 
 from hishel import Headers, Request, Response
@@ -285,22 +286,23 @@ async def test_remove_during_write_stays_removed_and_consumer_is_served():
 
 
 @pytest.mark.anyio
-async def test_remove_just_before_publish_commits_stays_removed(caplog):
+async def test_remove_just_before_publish_commits_stays_removed(caplog, monkeypatch):
     storage = new_storage()
     entry = await storage.create_entry(req(), Response(status_code=200, stream=make_async_iterator([b"a"])), "k")
     stream = entry.response.stream
     await stream.__anext__()
-    original = storage._client.pttl
+    original = Pipeline.execute
 
-    async def remove_then_pttl(key):
-        await storage.remove_entry(entry.id)
-        return await original(key)
+    async def remove_then_execute(self, *args, **kwargs):
+        if self.watching:
+            await storage.remove_entry(entry.id)
+        return await original(self, *args, **kwargs)
 
-    storage._client.pttl = remove_then_pttl
+    monkeypatch.setattr(Pipeline, "execute", remove_then_execute)
     with caplog.at_level(logging.CRITICAL):
         async for _ in stream:
             pass
-    storage._client.pttl = original
+    monkeypatch.undo()
     assert await storage.get_entries("k") == []
     assert await keys(storage) == []
 
@@ -560,3 +562,30 @@ async def test_response_without_a_stream_is_stored_with_an_empty_body():
     [got] = await storage.get_entries("k")
     assert got.response.status_code == 204
     assert await read(got) == b""
+
+
+@pytest.mark.anyio
+async def test_publish_needs_only_one_connection():
+    storage = AsyncRedisStorage(fakeredis.aioredis.FakeRedis(max_connections=1), default_ttl=None)
+    await store(storage)
+    assert len(await storage.get_entries("k")) == 1
+
+
+@pytest.mark.anyio
+async def test_concurrent_publish_cannot_shorten_the_index_ttl(monkeypatch):
+    storage = new_storage()
+    original = Pipeline.execute
+    started: list[bool] = []
+
+    async def execute(self, *args, **kwargs):
+        # Another writer publishes to the same key while this publish is watching.
+        if self.watching and not started:
+            started.append(True)
+            await store(storage, ttl=None)
+        return await original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Pipeline, "execute", execute)
+    await store(storage, ttl=60)
+
+    assert await storage._client.pttl("hishel:idx:k") == -1
+    assert len(await storage.get_entries("k")) == 1
