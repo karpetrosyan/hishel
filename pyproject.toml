@@ -27,14 +27,14 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = [
-    "msgpack>=1.2.2",
+    "msgpack>=1.2.4",
     "typing-extensions>=4.16.0",
 ]
 
 [project.optional-dependencies]
 
 async = [
-    "anyio>=4.14.2",
+    "anyio>=4.15.1",
     "anysqlite>=0.0.5",
 ]
 
@@ -44,17 +44,17 @@ requests = [
 httpx = [
     "httpx>=0.28.1",
     # install async extra
-    "anyio>=4.14.2",
+    "anyio>=4.15.1",
     "anysqlite>=0.0.5",
 ]
 httpx2 = [
-    "httpx2>=2.9.1",
+    "httpx2>=2.14.0",
     # install async extra
-    "anyio>=4.9.0",
+    "anyio>=4.15.1",
     "anysqlite>=0.0.5",
 ]
 fastapi = [
-    "fastapi>=0.141.1",
+    "fastapi>=0.162.0",
 ]
 redis = [
     "redis>=8.1.0",
@@ -114,30 +114,30 @@ combine-as-imports = true
 
 [dependency-groups]
 dev = [
-    "anyio==4.14.2",
+    "anyio==4.15.1",
     "anysqlite>=0.0.5",
-    "coverage==7.16.0",
-    "fastapi[standard]>=0.141.1",
-    "hatch==1.18.0",
-    "inline-snapshot>=0.35.4",
+    "coverage==7.16.2",
+    "fastapi[standard]>=0.162.0",
+    "hatch==1.18.2",
+    "inline-snapshot>=0.36.1",
     "mike>=2.2.0",
     "mkdocs==1.6.1",
     "mkdocs-git-committers-plugin>=0.2.3",
-    "mkdocs-git-revision-date-localized-plugin>=1.5.4",
+    "mkdocs-git-revision-date-localized-plugin>=1.6.2",
     "mkdocs-material==9.7.7",
-    "mypy==2.3.1",
-    "pyright>=1.1.411",
-    "pytest==9.1.1",
+    "mypy==2.4.1",
+    "pyright>=1.1.414",
+    "pytest==9.2.0",
     "pytest-cov>=7.1.0",
     "pytest-icdiff>=0.9",
-    "ruff==0.16.5",
-    "time-machine>=3.5.0",
+    "ruff==0.17.3",
+    "time-machine>=3.5.1",
     "trio==0.34.0",
-    "types-boto3==1.43.83",
-    "types-pyyaml==6.0.12.20260815",
-    "types-requests>=2.33.0.20260712",
-    "fakeredis>=2.37.1",
+    "types-boto3==1.43.121",
+    "types-pyyaml==6.0.12.20260906",
+    "types-requests>=2.33.0.20261006",
+    "fakeredis>=2.40.0",
     "redis>=8.1.0",
-    "zipp>=4.1.0",
+    "zipp>=4.1.2",
     "types-redis>=4.6.0.20241004",
 ]
