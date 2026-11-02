@@ -103,7 +103,7 @@ class ASGICacheMiddleware:
             response = await self._respond_without_rfc(request, call_app, key)
         else:
             options = CacheOptions() if self.rfc is True else self.rfc
-            response = await handle_request_with_rfc(request, call_app, self.storage, key, options)
+            response, _ = await handle_request_with_rfc(request, call_app, self.storage, key, options)
 
         await self._send_response(response, send)
 

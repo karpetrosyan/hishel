@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import (
     AsyncIterator,
     Iterator,
+    TypedDict,
 )
 
 from hishel._core._headers import Headers
@@ -29,3 +30,12 @@ class Entry:
     id: uuid.UUID
     request: Request
     response: Response
+
+
+class CacheStatus(TypedDict):
+    """What the cache did to answer a request."""
+
+    from_cache: bool
+    # The response answers a conditional request, sent to check a stored one.
+    revalidated: bool
+    stored: bool

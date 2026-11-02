@@ -115,6 +115,29 @@ session.mount("https://api.example.com/", CacheAdapter(rfc=True))
 
 To skip caching for a URL, mount a plain `requests.adapters.HTTPAdapter` on its prefix.
 
+## Hits and Misses
+
+Every response has three headers that say what the cache did, each set to `true` or `false`:
+
+```python
+import requests
+from hishel.requests import CacheAdapter
+
+session = requests.Session()
+session.mount("https://", CacheAdapter())
+
+response = session.get("https://api.example.com/data")
+print(response.headers["X-Hishel-From-Cache"])  # false
+print(response.headers["X-Hishel-Stored"])  # true
+
+response = session.get("https://api.example.com/data")
+print(response.headers["X-Hishel-From-Cache"])  # true
+```
+
+- `X-Hishel-From-Cache`: the body comes from the cache.
+- `X-Hishel-Revalidated`: the response answers a conditional request, which the cache sent to check whether a stored response was still valid. With a 304, `X-Hishel-From-Cache` is also `true`. Only in RFC mode.
+- `X-Hishel-Stored`: the response is being stored. It is saved once its body has been read in full, so a stream you close early isn't stored after all.
+
 ## Things to Know
 
 - **Cookies:** a response from the server updates the session's cookies as usual. A response served from the cache doesn't, although its `Set-Cookie` header is still there.

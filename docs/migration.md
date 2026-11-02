@@ -2,23 +2,6 @@
 
 Hishel 2.0 is a redesign with a smaller API. Policies, proxies and metadata are gone, and the storages have changed. This page covers what to change in your code, and what happens to the data you have already cached.
 
-::: warning
-[Zapros](/zapros) currently integrates with Hishel 1.x. If you use it, stay on 1.x with `pip install "hishel<2"`.
-:::
-
-## Find What Needs Changing
-
-Search your code for everything that was removed. This also finds the old default database name, `hishel_cache.db`. The default is now `hishel_cache_v2.db`, so this only matters if you pass that name yourself:
-
-```bash
-grep -rniE 'hishel_[a-z]+|x-hishel-|(Specification|Filter|Cache)Policy|BaseFilter|CacheProxy|refresh_ttl_on_access' --include='*.py' .
-```
-
-Most of the old API raises an error as soon as you use it, including `policy=`, the removed imports and the old storage options. Two things fail silently, so make sure you remove them:
-
-- `hishel_*` extensions on HTTPX requests are ignored.
-- `X-Hishel-*` request headers are no longer read, and are **sent to the server** along with the rest of your headers. The exceptions are `X-Hishel-Ttl` and `X-Hishel-Tti` on Requests, which still work.
-
 ## The Default Mode Changed
 
 This is the change most likely to catch you out, because your code keeps running without it.
@@ -93,7 +76,7 @@ client = SyncCacheClient()
 
 :::
 
-There are no filters in 2.0. To choose which requests are cached, send them through different transports:
+There are no filters in 2.0. Choosing which requests are cached is left to the HTTP library you use. With HTTPX, for example, you can send them through different transports:
 
 ```python
 import httpx
@@ -120,7 +103,7 @@ Response filters have no direct replacement. In RFC mode, the server's headers d
 
 ## Metadata
 
-The `hishel_*` extensions and `X-Hishel-*` headers are gone, on both requests and responses, other than the two expiry headers on Requests.
+The `hishel_*` extensions and `X-Hishel-*` request headers are gone, other than the two expiry headers on Requests. Response metadata has moved, as described below.
 
 ### Request Metadata
 
@@ -131,9 +114,25 @@ The `hishel_*` extensions and `X-Hishel-*` headers are gone, on both requests an
 
 ### Response Metadata
 
-`hishel_from_cache`, `hishel_revalidated`, `hishel_stored` and `hishel_created_at` have no replacement, so responses no longer say what the cache did.
+With HTTPX, `hishel_from_cache`, `hishel_revalidated` and `hishel_stored` are now in the `caching` extension of the response:
 
-In RFC mode, a response served from the cache has an `Age` header, as the specification requires. In the default mode, nothing distinguishes a hit from a miss. To measure your hit rate, wrap the `next_transport` of a cache transport and count the requests that reach it.
+::: code-group
+
+```python [1.x]
+response.extensions["hishel_from_cache"]
+```
+
+```python [2.0]
+response.extensions["caching"]["from_cache"]
+```
+
+:::
+
+With Requests, the `X-Hishel-From-Cache`, `X-Hishel-Revalidated` and `X-Hishel-Stored` response headers are unchanged, other than their values, which are now `true` or `false`.
+
+See Hits and Misses for [HTTPX](/httpx#hits-and-misses) and [Requests](/requests#hits-and-misses).
+
+`hishel_created_at` has no replacement.
 
 ## Storages
 

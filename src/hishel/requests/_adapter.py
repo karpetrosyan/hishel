@@ -7,6 +7,7 @@ from io import RawIOBase
 from typing import Callable, Iterator, Mapping
 
 from hishel import CacheOptions, Headers, Request, Response, SyncBaseStorage, SyncSqliteStorage
+from hishel._core.models import CacheStatus
 from hishel._sync_rfc import handle_request_with_rfc
 
 try:
@@ -27,6 +28,10 @@ CACHEABLE_METHODS = frozenset({"GET", "HEAD"})
 TTL_HEADER = "X-Hishel-Ttl"
 TTI_HEADER = "X-Hishel-Tti"
 KEY_HEADER = "X-Hishel-Key"
+
+FROM_CACHE_HEADER = "X-Hishel-From-Cache"
+REVALIDATED_HEADER = "X-Hishel-Revalidated"
+STORED_HEADER = "X-Hishel-Stored"
 
 
 class _IteratorStream(RawIOBase):
@@ -113,6 +118,17 @@ def _response_to_internal(response: requests.Response) -> Response:
     )
 
 
+def _with_status(response: requests.Response, status: CacheStatus) -> requests.Response:
+    response.headers[FROM_CACHE_HEADER] = "true" if status["from_cache"] else "false"
+    response.headers[REVALIDATED_HEADER] = "true" if status["revalidated"] else "false"
+    response.headers[STORED_HEADER] = "true" if status["stored"] else "false"
+    return response
+
+
+def _not_stored(response: requests.Response) -> requests.Response:
+    return _with_status(response, CacheStatus(from_cache=False, revalidated=False, stored=False))
+
+
 class CacheAdapter(HTTPAdapter):
     """
     By default, caches successful GET and HEAD responses by method and URL, ignoring
@@ -122,6 +138,9 @@ class CacheAdapter(HTTPAdapter):
     The ``X-Hishel-Ttl`` and ``X-Hishel-Tti`` request headers override the storage's
     TTL and TTI for a response being stored, and ``X-Hishel-Key`` overrides the cache
     key. None of them are sent to the server.
+
+    Every response gets ``X-Hishel-From-Cache``, ``X-Hishel-Revalidated`` and
+    ``X-Hishel-Stored`` headers, set to ``true`` or ``false``, saying what the cache did.
     """
 
     def __init__(
@@ -203,8 +222,8 @@ class CacheAdapter(HTTPAdapter):
                 upstream = response
             return _response_to_internal(response)
 
-        response = handle_request_with_rfc(internal_request, send, self.storage, key, options, ttl=ttl, tti=tti)
-        return self._response_to_requests(request, response, upstream)
+        response, status = handle_request_with_rfc(internal_request, send, self.storage, key, options, ttl=ttl, tti=tti)
+        return _with_status(self._response_to_requests(request, response, upstream), status)
 
     def _send_without_rfc(
         self,
@@ -215,17 +234,20 @@ class CacheAdapter(HTTPAdapter):
         tti: float | None,
     ) -> requests.Response:
         if request.method not in CACHEABLE_METHODS:
-            return send_upstream(request)
+            return _not_stored(send_upstream(request))
 
         # A custom key can be shared by GET and HEAD, whose responses aren't interchangeable.
         entries = [entry for entry in self.storage.get_entries(key) if entry.request.method == request.method]
         if entries:
-            return self._response_to_requests(request, entries[0].response)
+            return _with_status(
+                self._response_to_requests(request, entries[0].response),
+                CacheStatus(from_cache=True, revalidated=False, stored=False),
+            )
 
         response = send_upstream(request)
         # A 206 only holds part of the body, so it can't answer later requests.
         if not 200 <= response.status_code < 300 or response.status_code == 206:
-            return response
+            return _not_stored(response)
 
         entry = self.storage.create_entry(
             _request_to_internal(request),
@@ -234,7 +256,10 @@ class CacheAdapter(HTTPAdapter):
             ttl=ttl,
             tti=tti,
         )
-        return self._response_to_requests(request, entry.response, upstream=response)
+        return _with_status(
+            self._response_to_requests(request, entry.response, upstream=response),
+            CacheStatus(from_cache=False, revalidated=False, stored=True),
+        )
 
     def _response_to_requests(
         self,

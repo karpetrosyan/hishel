@@ -19,6 +19,7 @@ from hishel import (
     StoreAndUse,
 )
 from hishel._core._spec import InvalidateEntries
+from hishel._core.models import CacheStatus
 
 
 async def handle_request_with_rfc(
@@ -30,7 +31,7 @@ async def handle_request_with_rfc(
     *,
     ttl: float | None = None,
     tti: float | None = None,
-) -> Response:
+) -> tuple[Response, CacheStatus]:
     """
     Answer a request by following the RFC 9111 state machine.
 
@@ -38,19 +39,22 @@ async def handle_request_with_rfc(
     it: ``send`` is how a request reaches the server.
     """
     state: AnyState = IdleClient(options=options)
+    revalidated = False
 
     while True:
         if isinstance(state, IdleClient):
             state = state.next(request, await storage.get_entries(key))
         elif isinstance(state, (CacheMiss, NeedRevalidation)):
+            # A 304 that matches nothing leads to a plain request, whose response isn't revalidated.
+            revalidated = isinstance(state, NeedRevalidation)
             state = state.next(await send(state.request))
         elif isinstance(state, StoreAndUse):
             entry = await storage.create_entry(request, state.response, key, ttl=ttl, tti=tti)
-            return entry.response
+            return entry.response, CacheStatus(from_cache=False, revalidated=revalidated, stored=True)
         elif isinstance(state, CouldNotBeStored):
-            return state.response
+            return state.response, CacheStatus(from_cache=False, revalidated=revalidated, stored=False)
         elif isinstance(state, FromCache):
-            return state.entry.response
+            return state.entry.response, CacheStatus(from_cache=True, revalidated=revalidated, stored=False)
         elif isinstance(state, NeedToBeUpdated):
             for updating_entry in state.updating_entries:
                 await storage.update_headers(updating_entry.id, updating_entry.response.headers)

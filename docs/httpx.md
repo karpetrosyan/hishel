@@ -213,4 +213,20 @@ response = await client.get("https://api.example.com/data")
 
 ## Hits and Misses
 
-Responses don't record whether they came from the cache. In RFC mode, a response served from the cache has an `Age` header, as the specification requires. In the default mode, nothing distinguishes the two.
+Every response has a `caching` extension that says what the cache did:
+
+```python
+from hishel.httpx import SyncCacheClient
+
+client = SyncCacheClient()
+
+response = client.get("https://api.example.com/data")
+print(response.extensions["caching"])  # {'from_cache': False, 'revalidated': False, 'stored': True}
+
+response = client.get("https://api.example.com/data")
+print(response.extensions["caching"])  # {'from_cache': True, 'revalidated': False, 'stored': False}
+```
+
+- `from_cache`: the body comes from the cache.
+- `revalidated`: the response answers a conditional request, which the cache sent to check whether a stored response was still valid. With a 304, `from_cache` is also true. Only in RFC mode.
+- `stored`: the response is being stored. It is saved once its body has been read in full, so a stream you close early isn't stored after all.

@@ -1178,3 +1178,65 @@ async def test_get_and_head_sharing_a_key_do_not_answer_each_other(rfc):
             await client.head(URL, extensions=with_key("k"))
 
     assert [request.method for request in upstream.requests] == ["GET", "HEAD"]
+
+
+def cache_status(from_cache=False, revalidated=False, stored=False):
+    return {"from_cache": from_cache, "revalidated": revalidated, "stored": stored}
+
+
+@pytest.mark.anyio
+async def test_default_mode_reports_what_the_cache_did():
+    upstream = Upstream(lambda r: httpx.Response(404 if r.url.path == "/missing" else 200, content=b"body"))
+    client = await client_for(upstream)
+    assert (await client.get(URL)).extensions["caching"] == cache_status(stored=True)
+    assert (await client.get(URL)).extensions["caching"] == cache_status(from_cache=True)
+    assert (await client.post(URL)).extensions["caching"] == cache_status()
+    assert (await client.get(URL + "missing")).extensions["caching"] == cache_status()
+
+
+@pytest.mark.anyio
+async def test_rfc_mode_reports_what_the_cache_did():
+    upstream = Upstream(
+        lambda r: httpx.Response(200, headers={"cache-control": "no-store"}) if r.url.path == "/private" else fresh()
+    )
+    client = await client_for(upstream, rfc=True)
+    with at(0):
+        assert (await client.get(URL)).extensions["caching"] == cache_status(stored=True)
+        assert (await client.get(URL)).extensions["caching"] == cache_status(from_cache=True)
+        assert (await client.get(URL + "private")).extensions["caching"] == cache_status()
+
+
+@pytest.mark.anyio
+async def test_rfc_mode_reports_a_revalidated_response_from_the_cache():
+    upstream = stale_then(httpx.Response(304, headers={"etag": '"v1"', "date": date_at(100)}))
+    client = await client_for(upstream, rfc=True)
+    with at(0):
+        await client.get(URL)
+    with at(100):
+        response = await client.get(URL)
+    assert response.extensions["caching"] == cache_status(from_cache=True, revalidated=True)
+
+
+@pytest.mark.anyio
+async def test_rfc_mode_reports_a_new_response_to_revalidation():
+    upstream = stale_then(httpx.Response(200, headers={"cache-control": "max-age=10", "date": date_at(100)}))
+    client = await client_for(upstream, rfc=True)
+    with at(0):
+        await client.get(URL)
+    with at(100):
+        response = await client.get(URL)
+    assert response.extensions["caching"] == cache_status(revalidated=True, stored=True)
+
+
+@pytest.mark.anyio
+async def test_rfc_mode_does_not_report_revalidation_after_a_304_that_matches_nothing():
+    upstream = stale_then(
+        httpx.Response(304, headers={"etag": '"other"', "date": date_at(100)}),
+        httpx.Response(200, headers={"cache-control": "max-age=10", "date": date_at(100)}),
+    )
+    client = await client_for(upstream, rfc=True)
+    with at(0):
+        await client.get(URL)
+    with at(100):
+        response = await client.get(URL)
+    assert response.extensions["caching"] == cache_status(stored=True)

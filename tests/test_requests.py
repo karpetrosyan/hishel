@@ -471,3 +471,41 @@ def test_get_and_head_sharing_a_key_do_not_answer_each_other(origin, rfc):
         assert session.head(origin.url, headers={"X-Hishel-Key": "k"}).content == b""
 
     assert origin.hits == 2
+
+
+def cache_status(response):
+    return {
+        "from_cache": response.headers["X-Hishel-From-Cache"],
+        "revalidated": response.headers["X-Hishel-Revalidated"],
+        "stored": response.headers["X-Hishel-Stored"],
+    }
+
+
+def test_default_mode_reports_what_the_cache_did(origin):
+    origin.handler = lambda request: (404 if request.path == "/missing" else 200, {}, b"body")
+    session = new_session()
+
+    assert cache_status(session.get(origin.url)) == {"from_cache": "false", "revalidated": "false", "stored": "true"}
+    assert cache_status(session.get(origin.url)) == {"from_cache": "true", "revalidated": "false", "stored": "false"}
+    assert cache_status(session.post(origin.url)) == {"from_cache": "false", "revalidated": "false", "stored": "false"}
+    assert cache_status(session.get(origin.url + "missing")) == {
+        "from_cache": "false",
+        "revalidated": "false",
+        "stored": "false",
+    }
+
+
+def test_rfc_mode_reports_what_the_cache_did(origin):
+    def handler(request):
+        headers = {"ETag": '"v1"', "Cache-Control": "max-age=0", "Date": formatdate(usegmt=True)}
+        if request.headers.get("If-None-Match") == '"v1"':
+            return 304, {**headers, "Content-Length": "0"}, b""
+        return 200, headers, b"body"
+
+    origin.handler = handler
+    session = new_session(rfc=True)
+
+    assert cache_status(session.get(origin.url)) == {"from_cache": "false", "revalidated": "false", "stored": "true"}
+    response = session.get(origin.url)
+    assert response.content == b"body"
+    assert cache_status(response) == {"from_cache": "true", "revalidated": "true", "stored": "false"}

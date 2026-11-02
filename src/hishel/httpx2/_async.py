@@ -8,6 +8,7 @@ from typing import AsyncIterable, AsyncIterator, Iterator, TypedDict, cast
 from hishel import AsyncSqliteStorage, CacheOptions, Headers, Request, Response
 from hishel._async_rfc import handle_request_with_rfc
 from hishel._core._storages._async_base import AsyncBaseStorage
+from hishel._core.models import CacheStatus
 from hishel._utils import make_async_iterator
 
 try:
@@ -74,14 +75,21 @@ def _response_to_internal(response: httpx2.Response) -> Response:
     return Response(status_code=response.status_code, headers=headers, stream=make_async_iterator([response.content]))
 
 
-def _response_to_httpx2(response: Response, upstream: httpx2.Response | None = None) -> httpx2.Response:
+def _response_to_httpx2(
+    response: Response, status: CacheStatus, upstream: httpx2.Response | None = None
+) -> httpx2.Response:
     assert isinstance(response.stream, (AsyncIterator, AsyncIterable))
     return httpx2.Response(
         status_code=response.status_code,
         headers=_headers_to_httpx2(response.headers),
         stream=_ResponseStream(response.stream, upstream),
-        extensions=upstream.extensions if upstream is not None else {},
+        extensions={**(upstream.extensions if upstream is not None else {}), "caching": status},
     )
+
+
+def _not_stored(response: httpx2.Response) -> httpx2.Response:
+    response.extensions["caching"] = CacheStatus(from_cache=False, revalidated=False, stored=False)
+    return response
 
 
 class _ResponseStream(httpx2.SyncByteStream, httpx2.AsyncByteStream):
@@ -167,7 +175,7 @@ class AsyncCacheTransport(httpx2.AsyncBaseTransport):
                 upstream = response
             return _response_to_internal(response)
 
-        response = await handle_request_with_rfc(
+        response, status = await handle_request_with_rfc(
             _request_to_internal(request),
             send,
             storage,
@@ -176,7 +184,7 @@ class AsyncCacheTransport(httpx2.AsyncBaseTransport):
             ttl=ttl,
             tti=tti,
         )
-        return _response_to_httpx2(response, upstream)
+        return _response_to_httpx2(response, status, upstream)
 
     async def _handle_without_rfc(
         self,
@@ -187,17 +195,19 @@ class AsyncCacheTransport(httpx2.AsyncBaseTransport):
         tti: float | None,
     ) -> httpx2.Response:
         if request.method not in CACHEABLE_METHODS:
-            return await self.next_transport.handle_async_request(request)
+            return _not_stored(await self.next_transport.handle_async_request(request))
 
         # A custom key can be shared by GET and HEAD, whose responses aren't interchangeable.
         entries = [entry for entry in await storage.get_entries(key) if entry.request.method == request.method]
         if entries:
-            return _response_to_httpx2(entries[0].response)
+            return _response_to_httpx2(
+                entries[0].response, CacheStatus(from_cache=True, revalidated=False, stored=False)
+            )
 
         response = await self.next_transport.handle_async_request(request)
         # A 206 only holds part of the body, so it can't answer later requests.
         if not response.is_success or response.status_code == 206:
-            return response
+            return _not_stored(response)
 
         entry = await storage.create_entry(
             _request_to_internal(request),
@@ -206,7 +216,9 @@ class AsyncCacheTransport(httpx2.AsyncBaseTransport):
             ttl=ttl,
             tti=tti,
         )
-        return _response_to_httpx2(entry.response, upstream=response)
+        return _response_to_httpx2(
+            entry.response, CacheStatus(from_cache=False, revalidated=False, stored=True), upstream=response
+        )
 
     async def aclose(self) -> None:
         await self.next_transport.aclose()
