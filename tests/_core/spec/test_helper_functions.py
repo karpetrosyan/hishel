@@ -404,7 +404,7 @@ class TestAllowedStale:
         response = create_response(headers={"cache-control": "max-age=3600"})
 
         # Act
-        result = allowed_stale(response, allow_stale_option=False)
+        result = allowed_stale(response, allow_stale_option=False, is_cache_shared=True)
 
         # Assert
         assert result is False
@@ -419,7 +419,7 @@ class TestAllowedStale:
         response = create_response(headers={"cache-control": "max-age=3600, no-cache"})
 
         # Act
-        result = allowed_stale(response, allow_stale_option=True)
+        result = allowed_stale(response, allow_stale_option=True, is_cache_shared=True)
 
         # Assert
         assert result is False
@@ -437,7 +437,7 @@ class TestAllowedStale:
         response = create_response(headers={"cache-control": "max-age=3600, must-revalidate"})
 
         # Act
-        result = allowed_stale(response, allow_stale_option=True)
+        result = allowed_stale(response, allow_stale_option=True, is_cache_shared=True)
 
         # Assert
         assert result is False
@@ -450,10 +450,62 @@ class TestAllowedStale:
         response = create_response(headers={"cache-control": "max-age=3600"})
 
         # Act
-        result = allowed_stale(response, allow_stale_option=True)
+        result = allowed_stale(response, allow_stale_option=True, is_cache_shared=True)
 
         # Assert
         assert result is True
+
+    def test_s_maxage_prevents_serving_stale_in_shared_cache(self) -> None:
+        """
+        Test: an applicable s-maxage directive prevents serving stale.
+
+        RFC 9111 Section 4.2.4:
+        "A cache MUST NOT generate a stale response if it is prohibited by an
+        explicit in-protocol directive (e.g., by a no-cache response directive,
+        a must-revalidate response directive, or an applicable s-maxage or
+        proxy-revalidate response directive; see Section 5.2.2)."
+        """
+        # Arrange
+        response = create_response(headers={"cache-control": "max-age=3600, s-maxage=7200"})
+
+        # Act
+        result = allowed_stale(response, allow_stale_option=True, is_cache_shared=True)
+
+        # Assert
+        assert result is False
+
+    def test_s_maxage_allows_serving_stale_in_private_cache(self) -> None:
+        """
+        Test: a private cache is not affected by s-maxage.
+
+        RFC 9111 Section 5.2.2.10: s-maxage only applies to shared caches,
+        so it is not an "applicable" directive for a private cache.
+        """
+        # Arrange
+        response = create_response(headers={"cache-control": "max-age=3600, s-maxage=7200"})
+
+        # Act
+        result = allowed_stale(response, allow_stale_option=True, is_cache_shared=False)
+
+        # Assert
+        assert result is True
+
+    def test_proxy_revalidate_prevents_serving_stale_in_shared_cache(self) -> None:
+        """
+        Test: proxy-revalidate prevents serving stale in shared caches.
+
+        RFC 9111 Section 5.2.2.8: proxy-revalidate Response Directive
+        "The proxy-revalidate response directive... has the same semantics as
+        must-revalidate, except that it applies only to shared caches"
+        """
+        # Arrange
+        response = create_response(headers={"cache-control": "max-age=3600, proxy-revalidate"})
+
+        # Act
+        result = allowed_stale(response, allow_stale_option=True, is_cache_shared=True)
+
+        # Assert
+        assert result is False
 
 
 # =============================================================================
