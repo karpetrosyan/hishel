@@ -1,3 +1,38 @@
+## What's Changed in 2.0.0
+### ♻️ Refactoring
+
+* version 2 by @karpetrosyan
+### ⚙️ Miscellaneous Tasks
+
+* run and release the v2 branch separately from master by @karpetrosyan
+* regenerate sync test from async after rebase by @rprodhomme
+* use time_machine.travel to freeze clock in flaky tests by @karpetrosyan
+### 🐛 Bug Fixes
+
+* lint by @karpetrosyan
+* make Redis publish use one connection and watch the index by @karpetrosyan
+* check the current request when storing a revalidation response by @karpetrosyan
+* fix: honor the body-key metadata header by @feiiiiii5 in [#490](https://github.com/karpetrosyan/hishel/pull/490)
+* ensure that we don't lose the original request metadata by @karpetrosyan
+* preserve httpx request extensions through cache transport round-trip by @rprodhomme
+* don't re-run failed sqlite batch cleanup on every request by @karpetrosyan
+### 📦 Dependencies
+
+* chore(deps): bump the python-packages group across 1 directory with 24 updates by @dependabot[bot] in [#469](https://github.com/karpetrosyan/hishel/pull/469)
+### 🚀 Features
+
+* drop the Sync prefix from the public API by @karpetrosyan
+* add response metadata from hishel v1 by @karpetrosyan
+* replace hishel with the 2.0 redesign by @karpetrosyan
+
+### Contributors
+* @karpetrosyan
+* @feiiiiii5
+* @rprodhomme
+* @dependabot[bot]
+
+**Full Changelog**: https://github.com/karpetrosyan/hishel/compare/1.4.0...2.0.0
+
 ## What's Changed in 1.4.0
 ### ♻️ Refactoring
 
