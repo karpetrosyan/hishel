@@ -21,11 +21,11 @@ This guide will help you understand the development process and repository struc
 
 1. **Fork the repository**: Fork [Hishel](https://github.com/karpetrosyan/hishel/) to your GitHub account
 
-2. **Clone and create a branch**, starting from `v2` for Hishel 2.x or `master` for Hishel 1.x:
+2. **Clone and create a branch**, starting from `master` for Hishel 2.x or `hishelv1` for Hishel 1.x:
 ```bash
 git clone https://github.com/username/hishel
 cd hishel
-git switch v2
+git switch hishelv1  # only for Hishel 1.x
 git switch -c my-feature-name
 ```
 
@@ -141,17 +141,17 @@ This section is for maintainers who have permissions to publish new releases.
 
 ### Release Process
 
-Hishel 2.x is released from the `v2` branch, and Hishel 1.x from `master`. Run these steps on the branch you are releasing. Until 2.0 is ready, use prerelease versions like `2.0.0a2` on `v2`, because a stable version would become what `pip install hishel` installs.
+Hishel 2.x is released from `master`, and Hishel 1.x from `hishelv1`. Run these steps on the branch you are releasing. The documentation at hishel.com is deployed from `master` when a release tag is pushed.
 
 1. **Update the version** in `pyproject.toml`:
    ```toml
    [project]
-   version = "2.0.0a2"  # Update to new version
+   version = "2.0.1"  # Update to new version
    ```
 
 2. **Generate the changelog** using `git cliff`:
    ```bash
-   git cliff --output CHANGELOG.md 0.1.3.. --tag 2.0.0a2
+   git cliff --output CHANGELOG.md 0.1.3.. --tag 2.0.1
    ```
    - Start from `0.1.3` (versions before this didn't use conventional commits)
    - Specify the new release tag with `--tag`
@@ -159,12 +159,12 @@ Hishel 2.x is released from the `v2` branch, and Hishel 1.x from `master`. Run t
 3. **Commit the changes** with an unconventional commit message:
    ```bash
    git add pyproject.toml CHANGELOG.md
-   git commit -m "Version 2.0.0a2"
+   git commit -m "Version 2.0.1"
    ```
 
 4. **Create a git tag** for the release:
    ```bash
-   git tag 2.0.0a2
+   git tag 2.0.1
    ```
 
 5. **Push to GitHub** (both commits and tags):
