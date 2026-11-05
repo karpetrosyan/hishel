@@ -2,6 +2,7 @@ import tempfile
 from email.utils import formatdate
 from pathlib import Path
 
+import anyio
 import anysqlite
 import httpx
 import pytest
@@ -274,8 +275,14 @@ async def test_a_file_served_with_pathsend_is_stored_with_its_body():
         async def send(message):
             messages.append(message)
 
+        received: list[None] = []
+
         async def receive():
-            return {"type": "http.request", "body": b"", "more_body": False}
+            # Like a server: the request once, then nothing until the client leaves.
+            received.append(None)
+            if len(received) == 1:
+                return {"type": "http.request", "body": b"", "more_body": False}
+            await anyio.sleep_forever()
 
         scope = {
             "type": "http",

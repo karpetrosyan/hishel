@@ -6,7 +6,7 @@ from typing_extensions import assert_never
 
 from hishel import (
     AnyState,
-    SyncBaseStorage,
+    BaseStorage,
     CacheMiss,
     CacheOptions,
     CouldNotBeStored,
@@ -25,7 +25,7 @@ from hishel._core.models import CacheStatus
 def handle_request_with_rfc(
     request: Request,
     send: Callable[[Request], Response],
-    storage: SyncBaseStorage,
+    storage: BaseStorage,
     key: str,
     options: CacheOptions,
     *,

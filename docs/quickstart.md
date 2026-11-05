@@ -11,9 +11,9 @@ pip install "hishel[httpx]"
 ::: code-group
 
 ```python [Sync]
-from hishel.httpx import SyncCacheClient
+from hishel.httpx import CacheClient
 
-with SyncCacheClient() as client:
+with CacheClient() as client:
     # First request - fetches from origin
     client.get("https://api.example.com/data")
     # Second request - served from cache
@@ -37,18 +37,18 @@ async with AsyncCacheClient() as client:
 By default, Hishel ignores HTTP caching headers and keeps a response until you expire it, which the default SQLite storage never does on its own. You will usually want to set a lifetime:
 
 ```python
-from hishel import SyncSqliteStorage
-from hishel.httpx import SyncCacheClient
+from hishel import SqliteStorage
+from hishel.httpx import CacheClient
 
-client = SyncCacheClient(storage=SyncSqliteStorage(default_ttl=3600))
+client = CacheClient(storage=SqliteStorage(default_ttl=3600))
 ```
 
 To let servers decide what is cached and for how long, turn on RFC 9111 mode:
 
 ```python
-from hishel.httpx import SyncCacheClient
+from hishel.httpx import CacheClient
 
-client = SyncCacheClient(rfc=True)
+client = CacheClient(rfc=True)
 ```
 
 See [HTTPX](/httpx) for how the two modes differ, and [Storages](/storages) for the storage options.

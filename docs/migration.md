@@ -19,14 +19,27 @@ client = SyncCacheClient()
 ```
 
 ```python [2.0]
-from hishel.httpx import SyncCacheClient
+from hishel.httpx import CacheClient
 
-client = SyncCacheClient(rfc=True)
+client = CacheClient(rfc=True)
 ```
 
 :::
 
 `rfc` is accepted in the same way by `AsyncCacheClient`, by the cache transports and by `CacheAdapter`. `ASGICacheMiddleware` still follows RFC 9111 by default. See [Caching Modes](/httpx#caching-modes) for how the two modes differ.
+
+## Renamed Classes
+
+The sync classes have lost their `Sync` prefix, so every sync name is its async name without `Async`:
+
+| 1.x | 2.0 |
+| --- | --- |
+| `SyncSqliteStorage` | `SqliteStorage` |
+| `SyncBaseStorage` | `BaseStorage` |
+| `hishel.httpx.SyncCacheClient` | `hishel.httpx.CacheClient` |
+| `hishel.httpx.SyncCacheTransport` | `hishel.httpx.CacheTransport` |
+
+The same goes for `hishel.httpx2`. `RedisStorage` keeps its name. The old names are removed, so importing them raises an `ImportError`.
 
 ## Policies
 
@@ -48,9 +61,9 @@ client = SyncCacheClient(policy=policy)
 
 ```python [2.0]
 from hishel import CacheOptions
-from hishel.httpx import SyncCacheClient
+from hishel.httpx import CacheClient
 
-client = SyncCacheClient(rfc=CacheOptions(shared=False))
+client = CacheClient(rfc=CacheOptions(shared=False))
 ```
 
 :::
@@ -69,9 +82,9 @@ client = SyncCacheClient(policy=FilterPolicy())
 ```
 
 ```python [2.0]
-from hishel.httpx import SyncCacheClient
+from hishel.httpx import CacheClient
 
-client = SyncCacheClient()
+client = CacheClient()
 ```
 
 :::
@@ -80,13 +93,13 @@ There are no filters in 2.0. Choosing which requests are cached is left to the H
 
 ```python
 import httpx
-from hishel.httpx import SyncCacheTransport
+from hishel.httpx import CacheTransport
 
 
 class CacheReportsOnly(httpx.BaseTransport):
     def __init__(self):
         self.plain = httpx.HTTPTransport()
-        self.cached = SyncCacheTransport(next_transport=self.plain)
+        self.cached = CacheTransport(next_transport=self.plain)
 
     def handle_request(self, request):
         transport = self.cached if request.url.path.startswith("/reports/") else self.plain
@@ -136,7 +149,7 @@ See Hits and Misses for [HTTPX](/httpx#hits-and-misses) and [Requests](/requests
 
 ## Storages
 
-The storages are still `SyncSqliteStorage`, `AsyncSqliteStorage`, `RedisStorage` and `AsyncRedisStorage`, but some options have changed:
+The storages are `SqliteStorage`, `AsyncSqliteStorage`, `RedisStorage` and `AsyncRedisStorage`. `SyncSqliteStorage` is now `SqliteStorage`, as described in [Renamed Classes](#renamed-classes). Some options have changed too:
 
 - `refresh_ttl_on_access` is removed from the SQLite storages. It already had no effect in 1.x, so you can delete it.
 - `ttl` on the Redis storages is now `default_ttl`.

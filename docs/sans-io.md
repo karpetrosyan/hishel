@@ -64,14 +64,14 @@ from hishel import (
     Request,
     Response,
     StoreAndUse,
-    SyncBaseStorage,
+    BaseStorage,
 )
 
 
 def handle_request(
     request: Request,
     send: Callable[[Request], Response],
-    storage: SyncBaseStorage,
+    storage: BaseStorage,
     options: CacheOptions,
 ) -> Response:
     # The key is the same for all methods, so that an unsafe request finds the entries it invalidates.

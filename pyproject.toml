@@ -55,6 +55,9 @@ httpx2 = [
 ]
 fastapi = [
     "fastapi>=0.141.1",
+    # ASGICacheMiddleware defaults to AsyncSqliteStorage
+    "anyio>=4.14.2",
+    "anysqlite>=0.0.5",
 ]
 redis = [
     "redis>=8.1.0",

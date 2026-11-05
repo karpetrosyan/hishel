@@ -14,8 +14,8 @@ import pytest
 from redis import RedisError
 from time_machine import travel
 
-from hishel import RedisStorage, SyncSqliteStorage
-from hishel.httpx2 import SyncCacheClient, SyncCacheTransport
+from hishel import RedisStorage, SqliteStorage
+from hishel.httpx2 import CacheClient, CacheTransport
 
 START = datetime(2026, 1, 1, tzinfo=timezone.utc)
 URL = "https://x/"
@@ -32,7 +32,7 @@ def at(seconds):
 
 def new_storage(kind="sqlite", **kwargs):
     if kind == "sqlite":
-        return SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False), **kwargs)
+        return SqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False), **kwargs)
     kwargs.setdefault("default_ttl", None)
     return RedisStorage(fakeredis.FakeRedis(), **kwargs)
 
@@ -69,7 +69,7 @@ class TrackedStream(httpx2.SyncByteStream, httpx2.AsyncByteStream):
 
 def client_for(upstream, kind="sqlite", rfc=False, **kwargs):
     storage = new_storage(kind, **kwargs)
-    return httpx2.Client(transport=SyncCacheTransport(upstream, storage=storage, rfc=rfc))
+    return httpx2.Client(transport=CacheTransport(upstream, storage=storage, rfc=rfc))
 
 
 
@@ -124,7 +124,7 @@ def test_unsuccessful_and_partial_responses_are_not_cached(status):
 
 def test_uncacheable_response_is_returned_as_is():
     response = httpx2.Response(500, content=b"x")
-    transport = SyncCacheTransport(Upstream(lambda r: response), storage=new_storage(), rfc=False)
+    transport = CacheTransport(Upstream(lambda r: response), storage=new_storage(), rfc=False)
     assert transport.handle_request(httpx2.Request("GET", URL)) is response
 
 
@@ -167,7 +167,7 @@ def test_streamed_body_is_cached_and_upstream_is_closed():
 def test_abandoned_stream_is_not_cached_and_upstream_is_closed():
     stream = TrackedStream([b"a", b"b", b"c"])
     upstream = Upstream(lambda r: httpx2.Response(200, stream=stream))
-    transport = SyncCacheTransport(upstream, storage=new_storage(), rfc=False)
+    transport = CacheTransport(upstream, storage=new_storage(), rfc=False)
     client = httpx2.Client(transport=transport)
     with client.stream("GET", URL) as response:
         for _ in response.iter_raw():
@@ -189,7 +189,7 @@ def test_compressed_body_is_stored_raw_and_decoded_on_every_read():
             stream=TrackedStream([raw]),
         )
     )
-    transport = SyncCacheTransport(upstream, storage=new_storage(), rfc=False)
+    transport = CacheTransport(upstream, storage=new_storage(), rfc=False)
     client = httpx2.Client(transport=transport)
     assert (client.get(URL)).content == b"hello"
     second = client.get(URL)
@@ -322,7 +322,7 @@ def test_closing_transport_closes_upstream_and_storage():
         def close(self):
             closed.append("upstream")
 
-    transport = SyncCacheTransport(Next(), storage=storage)
+    transport = CacheTransport(Next(), storage=storage)
     transport.close()
     assert closed == ["upstream"]
     with pytest.raises(RuntimeError, match="closed"):
@@ -368,8 +368,8 @@ def server():
 @pytest.mark.parametrize("kind", ["sqlite", "redis"])
 def test_client_against_a_real_server(server, kind):
     storage = new_storage(kind)
-    with SyncCacheClient(storage=storage, trust_env=False, rfc=False) as client:
-        assert isinstance(client._transport, SyncCacheTransport)
+    with CacheClient(storage=storage, trust_env=False, rfc=False) as client:
+        assert isinstance(client._transport, CacheTransport)
         first = client.get(server)
         second = client.get(server)
         assert first.text == second.text == "hello " * 100000
@@ -381,7 +381,7 @@ def test_client_against_a_real_server(server, kind):
 
 def test_client_with_default_sqlite_storage_in_a_file(server, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    with SyncCacheClient(trust_env=False, rfc=False) as client:
+    with CacheClient(trust_env=False, rfc=False) as client:
         assert (client.get(server)).status_code == 200
         assert (client.get(server)).status_code == 200
     assert Handler.hits == 1
@@ -420,7 +420,7 @@ def stale_then(*later):
 def test_rfc_serves_fresh_responses(kind):
     upstream = Upstream(lambda r: fresh())
     storage = new_storage(kind)
-    client = httpx2.Client(transport=SyncCacheTransport(upstream, storage=storage, rfc=True))
+    client = httpx2.Client(transport=CacheTransport(upstream, storage=storage, rfc=True))
     with at(0):
         assert (client.get(URL)).content == b"body"
     with at(50):
@@ -537,7 +537,7 @@ def test_request_can_turn_rfc_on():
 def test_request_can_use_another_storage_which_the_transport_does_not_close():
     other = new_storage()
     upstream = Upstream()
-    transport = SyncCacheTransport(upstream, storage=new_storage(), rfc=False)
+    transport = CacheTransport(upstream, storage=new_storage(), rfc=False)
     client = httpx2.Client(transport=transport)
     client.get(URL, extensions={"caching": {"storage": other}})
     client.get(URL, extensions={"caching": {"storage": other}})
@@ -551,9 +551,9 @@ def test_request_can_use_another_storage_which_the_transport_does_not_close():
 
 def test_client_rfc_argument_reaches_the_transport(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    with SyncCacheClient(trust_env=False) as client:
+    with CacheClient(trust_env=False) as client:
         assert client._transport.config["rfc"] is False  # type: ignore[attr-defined]
-    with SyncCacheClient(trust_env=False, rfc=True) as client:
+    with CacheClient(trust_env=False, rfc=True) as client:
         assert client._transport.config["rfc"] is True  # type: ignore[attr-defined]
 
 
@@ -625,7 +625,7 @@ def test_supported_methods_option_decides_what_is_stored():
 
     upstream = Upstream(ok)
     storage = new_storage()
-    transport = SyncCacheTransport(upstream, storage=storage, rfc={"supported_methods": ["GET", "HEAD", "POST"]})
+    transport = CacheTransport(upstream, storage=storage, rfc={"supported_methods": ["GET", "HEAD", "POST"]})
     client = httpx2.Client(transport=transport)
     key = hashlib.sha256(f"RFC {URL}".encode()).hexdigest()
     with at(0):
@@ -671,7 +671,7 @@ def test_rfc_mode_failed_unsafe_request_keeps_the_entries():
 def test_rfc_mode_does_not_use_the_key_left_in_redis_by_1x():
     redis_client = fakeredis.FakeRedis()
     redis_client.sadd(f"hishel:idx:{hashlib.sha256(URL.encode()).hexdigest()}", "old")
-    transport = SyncCacheTransport(Upstream(), storage=RedisStorage(redis_client), rfc=True)
+    transport = CacheTransport(Upstream(), storage=RedisStorage(redis_client), rfc=True)
     client = httpx2.Client(transport=transport)
 
     assert (client.get(URL)).status_code == 200
@@ -688,7 +688,7 @@ def test_cache_outage_still_reaches_the_server(rfc):
     storage._client.zrangebyscore = broken
     storage._client.set = broken
     upstream = Upstream()
-    client = httpx2.Client(transport=SyncCacheTransport(upstream, storage=storage, rfc=rfc))
+    client = httpx2.Client(transport=CacheTransport(upstream, storage=storage, rfc=rfc))
 
     assert (client.get(URL)).content == b"body"
     assert len(upstream.requests) == 1
@@ -697,11 +697,11 @@ def test_cache_outage_still_reaches_the_server(rfc):
 
 def test_unsafe_request_still_succeeds_when_the_database_is_locked(tmp_path):
     path = tmp_path / "cache.db"
-    storage = SyncSqliteStorage(database_path=path)
+    storage = SqliteStorage(database_path=path)
     upstream = Upstream(
         lambda r: httpx2.Response(200, headers={"cache-control": "max-age=100", "date": date_at(0)}, content=b"x")
     )
-    client = httpx2.Client(transport=SyncCacheTransport(upstream, storage=storage, rfc=True))
+    client = httpx2.Client(transport=CacheTransport(upstream, storage=storage, rfc=True))
     with at(0):
         client.get(URL)
         connection = storage._ensure_connection()
@@ -746,7 +746,7 @@ def test_request_can_pass_options():
 
 def test_client_accepts_options(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    with SyncCacheClient(trust_env=False, rfc={"shared": False}) as client:
+    with CacheClient(trust_env=False, rfc={"shared": False}) as client:
         assert client._transport.config["rfc"] == {"shared": False}  # type: ignore[attr-defined]
 
 
@@ -998,7 +998,7 @@ def test_non_ascii_response_headers_survive_miss_and_hit(rfc, raw_value, text):
 
 def test_rfc_is_off_by_default():
     upstream = Upstream(lambda r: httpx2.Response(200, headers={"cache-control": "no-store"}, content=b"body"))
-    client = httpx2.Client(transport=SyncCacheTransport(upstream, storage=new_storage()))
+    client = httpx2.Client(transport=CacheTransport(upstream, storage=new_storage()))
     client.get(URL)
     client.get(URL)
     assert len(upstream.requests) == 1

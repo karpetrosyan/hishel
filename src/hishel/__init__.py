@@ -1,8 +1,8 @@
 from hishel._core._storages._async_sqlite import AsyncSqliteStorage
 from hishel._core._storages._async_base import AsyncBaseStorage
 from hishel._core._storages._async_redis import AsyncRedisStorage
-from hishel._core._storages._sync_sqlite import SyncSqliteStorage
-from hishel._core._storages._sync_base import SyncBaseStorage
+from hishel._core._storages._sync_sqlite import SqliteStorage
+from hishel._core._storages._sync_base import BaseStorage
 from hishel._core._storages._sync_redis import RedisStorage
 from hishel._core._headers import Headers as Headers
 from hishel._core._spec import (
@@ -19,6 +19,7 @@ from hishel._core._spec import (
     StoreAndUse as StoreAndUse,
 )
 from hishel._core.models import (
+    CacheStatus as CacheStatus,
     Entry as Entry,
     Request as Request,
     Response as Response,
@@ -42,12 +43,13 @@ __all__ = (
     "Request",
     "Response",
     "Entry",
+    "CacheStatus",
     ## Headers
     "Headers",
     ## Storages
-    "SyncBaseStorage",
+    "BaseStorage",
     "AsyncBaseStorage",
-    "SyncSqliteStorage",
+    "SqliteStorage",
     "AsyncSqliteStorage",
     "RedisStorage",
     "AsyncRedisStorage",

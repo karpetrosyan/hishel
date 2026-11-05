@@ -8,7 +8,7 @@ from hishel._core._headers import Headers
 from hishel._core.models import Entry, Request, Response
 
 
-class SyncBaseStorage(abc.ABC):
+class BaseStorage(abc.ABC):
     """
     What the cache layer needs from a storage backend.
 

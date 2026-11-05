@@ -5,7 +5,7 @@ Hishel adds HTTP caching to your [HTTPX](https://www.python-httpx.org/) applicat
 This page also applies to [HTTPX2](https://httpx2.pydantic.dev/), a fork of HTTPX maintained by Pydantic. Install the `httpx2` extra and import from `hishel.httpx2` instead:
 
 ```python
-from hishel.httpx2 import AsyncCacheClient, AsyncCacheTransport, SyncCacheClient, SyncCacheTransport
+from hishel.httpx2 import AsyncCacheClient, AsyncCacheTransport, CacheClient, CacheTransport
 ```
 
 ## Installation
@@ -21,9 +21,9 @@ The easiest way to add caching to your HTTPX application is using the cache-enab
 ::: code-group
 
 ```python [Sync]
-from hishel.httpx import SyncCacheClient
+from hishel.httpx import CacheClient
 
-with SyncCacheClient() as client:
+with CacheClient() as client:
     # First request - fetches from origin
     client.get("https://api.example.com/data")
 
@@ -66,9 +66,9 @@ With `rfc=True`, Hishel follows the HTTP caching specification instead, so cachi
 ::: code-group
 
 ```python [Sync]
-from hishel.httpx import SyncCacheClient
+from hishel.httpx import CacheClient
 
-client = SyncCacheClient(rfc=True)
+client = CacheClient(rfc=True)
 ```
 
 ```python [Async]
@@ -83,9 +83,9 @@ To configure it, pass `CacheOptions` instead of `True`:
 
 ```python
 from hishel import CacheOptions
-from hishel.httpx import SyncCacheClient
+from hishel.httpx import CacheClient
 
-client = SyncCacheClient(rfc=CacheOptions(shared=False))
+client = CacheClient(rfc=CacheOptions(shared=False))
 ```
 
 `CacheOptions` accepts these options:
@@ -103,10 +103,10 @@ Clients and transports use a [SQLite storage](/storages#sqlite-storage) unless y
 ::: code-group
 
 ```python [Sync]
-from hishel import SyncSqliteStorage
-from hishel.httpx import SyncCacheClient
+from hishel import SqliteStorage
+from hishel.httpx import CacheClient
 
-client = SyncCacheClient(storage=SyncSqliteStorage(default_ttl=3600))
+client = CacheClient(storage=SqliteStorage(default_ttl=3600))
 ```
 
 ```python [Async]
@@ -127,10 +127,10 @@ Closing a client or transport also closes its storage, including one you passed 
 Use the `caching` extension to override the mode, the storage, the expiry or the cache key for a single request:
 
 ```python
-from hishel import CacheOptions, SyncSqliteStorage
-from hishel.httpx import SyncCacheClient
+from hishel import CacheOptions, SqliteStorage
+from hishel.httpx import CacheClient
 
-client = SyncCacheClient()
+client = CacheClient()
 
 # Follow RFC 9111 for this request only
 client.get("https://api.example.com/data", extensions={"caching": {"rfc": True}})
@@ -139,7 +139,7 @@ client.get("https://api.example.com/data", extensions={"caching": {"rfc": True}}
 client.get("https://api.example.com/data", extensions={"caching": {"rfc": CacheOptions(shared=False)}})
 
 # Use a different storage for this request only
-other_storage = SyncSqliteStorage(database_path="other.db")
+other_storage = SqliteStorage(database_path="other.db")
 client.get("https://api.example.com/data", extensions={"caching": {"storage": other_storage}})
 
 # Expire this response after 1 hour, or after 5 minutes without being used
@@ -148,6 +148,8 @@ client.get("https://api.example.com/data", extensions={"caching": {"ttl": 3600, 
 # Use your own cache key instead of the method and URL
 client.get("https://api.example.com/data", extensions={"caching": {"key": "user-42:data"}})
 ```
+
+The extension is typed as `CacheConfig` for `CacheClient` and `CacheTransport`, and as `AsyncCacheConfig` for their async counterparts, both importable from `hishel.httpx`.
 
 `ttl` and `tti` are in seconds and override the storage's `default_ttl` and `default_tti`. They apply when a response is stored, so a request answered by an existing entry doesn't change when that entry expires. They can't remove a limit set on the storage: `None` means the same as leaving them out.
 
@@ -169,13 +171,13 @@ For more control or to integrate with existing HTTPX clients, use cache transpor
 
 ```python [Sync]
 import httpx
-from hishel import SyncSqliteStorage
-from hishel.httpx import SyncCacheTransport
+from hishel import SqliteStorage
+from hishel.httpx import CacheTransport
 
 # Create transport with caching
-transport = SyncCacheTransport(
+transport = CacheTransport(
     next_transport=httpx.HTTPTransport(),
-    storage=SyncSqliteStorage(),
+    storage=SqliteStorage(),
     rfc=True,
 )
 
@@ -206,7 +208,7 @@ response = await client.get("https://api.example.com/data")
 :::
 
 ::: warning
-`SyncCacheClient(transport=...)` and `AsyncCacheClient(transport=...)` use the transport you pass as it is, without any caching. To cache on top of your own transport, wrap it in a cache transport as shown above.
+`CacheClient(transport=...)` and `AsyncCacheClient(transport=...)` use the transport you pass as it is, without any caching. To cache on top of your own transport, wrap it in a cache transport as shown above.
 :::
 
 ---
@@ -216,9 +218,9 @@ response = await client.get("https://api.example.com/data")
 Every response has a `caching` extension that says what the cache did:
 
 ```python
-from hishel.httpx import SyncCacheClient
+from hishel.httpx import CacheClient
 
-client = SyncCacheClient()
+client = CacheClient()
 
 response = client.get("https://api.example.com/data")
 print(response.extensions["caching"])  # {'from_cache': False, 'revalidated': False, 'stored': True}
@@ -226,6 +228,8 @@ print(response.extensions["caching"])  # {'from_cache': False, 'revalidated': Fa
 response = client.get("https://api.example.com/data")
 print(response.extensions["caching"])  # {'from_cache': True, 'revalidated': False, 'stored': False}
 ```
+
+Its value is a `hishel.CacheStatus`:
 
 - `from_cache`: the body comes from the cache.
 - `revalidated`: the response answers a conditional request, which the cache sent to check whether a stored response was still valid. With a 304, `from_cache` is also true. Only in RFC mode.

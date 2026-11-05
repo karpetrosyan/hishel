@@ -5,9 +5,9 @@ import ssl
 import typing as t
 from typing import Iterable, Iterator, Iterator, TypedDict, cast
 
-from hishel import SyncSqliteStorage, CacheOptions, Headers, Request, Response
+from hishel import SqliteStorage, CacheOptions, Headers, Request, Response
 from hishel._sync_rfc import handle_request_with_rfc
-from hishel._core._storages._sync_base import SyncBaseStorage
+from hishel._core._storages._sync_base import BaseStorage
 from hishel._core.models import CacheStatus
 from hishel._utils import make_sync_iterator
 
@@ -27,7 +27,7 @@ CACHEABLE_METHODS = frozenset({"GET", "HEAD"})
 class CacheConfig(TypedDict, total=False):
     """Set on a transport, and overridable per request with the ``caching`` extension."""
 
-    storage: SyncBaseStorage
+    storage: BaseStorage
     rfc: bool | CacheOptions
     ttl: float | None
     tti: float | None
@@ -111,7 +111,7 @@ class _ResponseStream(httpx.SyncByteStream, httpx.AsyncByteStream):
             self.upstream.close()
 
 
-class SyncCacheTransport(httpx.BaseTransport):
+class CacheTransport(httpx.BaseTransport):
     """
     By default, caches successful GET and HEAD responses by method and URL, ignoring
     HTTP caching headers, and serves an entry until the storage's TTL or TTI expires
@@ -121,11 +121,11 @@ class SyncCacheTransport(httpx.BaseTransport):
     def __init__(
         self,
         next_transport: httpx.BaseTransport,
-        storage: SyncBaseStorage | None = None,
+        storage: BaseStorage | None = None,
         rfc: bool | CacheOptions = False,
     ) -> None:
         self.next_transport = next_transport
-        self.config = CacheConfig(storage=storage or SyncSqliteStorage(), rfc=rfc)
+        self.config = CacheConfig(storage=storage or SqliteStorage(), rfc=rfc)
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         overrides = cast(CacheConfig, request.extensions.get("caching", {}))
@@ -148,7 +148,7 @@ class SyncCacheTransport(httpx.BaseTransport):
     def _handle_with_rfc(
         self,
         request: httpx.Request,
-        storage: SyncBaseStorage,
+        storage: BaseStorage,
         key: str,
         options: CacheOptions,
         ttl: float | None,
@@ -189,7 +189,7 @@ class SyncCacheTransport(httpx.BaseTransport):
     def _handle_without_rfc(
         self,
         request: httpx.Request,
-        storage: SyncBaseStorage,
+        storage: BaseStorage,
         key: str,
         ttl: float | None,
         tti: float | None,
@@ -225,9 +225,9 @@ class SyncCacheTransport(httpx.BaseTransport):
         self.config["storage"].close()
 
 
-class SyncCacheClient(httpx.Client):
+class CacheClient(httpx.Client):
     def __init__(self, *args: t.Any, **kwargs: t.Any) -> None:
-        self.storage: SyncBaseStorage | None = kwargs.pop("storage", None)
+        self.storage: BaseStorage | None = kwargs.pop("storage", None)
         self.rfc: bool | CacheOptions = kwargs.pop("rfc", False)
         super().__init__(*args, **kwargs)
 
@@ -245,7 +245,7 @@ class SyncCacheClient(httpx.Client):
         if transport is not None:
             return transport
 
-        return SyncCacheTransport(
+        return CacheTransport(
             next_transport=httpx.HTTPTransport(
                 verify=verify,
                 cert=cert,
@@ -269,7 +269,7 @@ class SyncCacheClient(httpx.Client):
         limits: httpx.Limits = httpx.Limits(max_connections=100, max_keepalive_connections=20),
         **kwargs: t.Any,
     ) -> httpx.BaseTransport:
-        return SyncCacheTransport(
+        return CacheTransport(
             next_transport=httpx.HTTPTransport(
                 verify=verify,
                 cert=cert,

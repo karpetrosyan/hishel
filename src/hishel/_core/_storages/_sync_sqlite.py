@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any, List, Optional, Union
 
 from hishel._core._headers import Headers
 from hishel._core._storages._packing import pack, unpack
-from hishel._core._storages._sync_base import SyncBaseStorage
+from hishel._core._storages._sync_base import BaseStorage
 from hishel._core.models import Entry, Request, Response
 from hishel._utils import ensure_cache_dict, make_sync_iterator
 
@@ -88,7 +88,7 @@ else:
         RLock = None
 
 
-class SyncSqliteStorage(SyncBaseStorage):
+class SqliteStorage(BaseStorage):
     """
     An entry is removed in two steps. Lookups stop returning it as soon as
     expires_at passes, and its row is deleted once it has also gone unused for
@@ -113,13 +113,13 @@ class SyncSqliteStorage(SyncBaseStorage):
     ) -> None:
         if sqlite3 is None:
             raise ImportError(
-                "The 'sqlite3' module is required to use the `SyncSqliteStorage` integration, "
+                "The 'sqlite3' module is required to use the `SqliteStorage` integration, "
                 "but it is not available in this Python installation."
             )
 
         # If the user supplied their own connection, check up front
         # whether it can be used from threads other than the one that
-        # created it. SyncSqliteStorage is meant to work from any
+        # created it. SqliteStorage is meant to work from any
         # thread; a connection created with the default
         # check_same_thread=True will raise sqlite3.ProgrammingError
         # the moment a non-creator thread touches it, regardless of
@@ -131,13 +131,13 @@ class SyncSqliteStorage(SyncBaseStorage):
         # connection's threading mode.
         if connection is not None and not _connection_is_cross_thread_safe(connection):
             warnings.warn(
-                "SyncSqliteStorage was given a sqlite3.Connection created with "
+                "SqliteStorage was given a sqlite3.Connection created with "
                 "check_same_thread=True (the default). This storage will only "
                 "work from the thread that created the connection; any call "
                 "from another thread will raise sqlite3.ProgrammingError. If "
                 "you intend to use the storage from multiple threads, re-create "
                 "your connection with check_same_thread=False, or omit the "
-                "`connection=` argument and let SyncSqliteStorage create one.",
+                "`connection=` argument and let SqliteStorage create one.",
                 stacklevel=2,
             )
 
@@ -158,7 +158,7 @@ class SyncSqliteStorage(SyncBaseStorage):
     def _ensure_connection(self) -> sqlite3.Connection:
         with self._lock:
             if self._closed:
-                raise RuntimeError("SyncSqliteStorage is closed and can no longer be used.")
+                raise RuntimeError("SqliteStorage is closed and can no longer be used.")
             if self.connection is None:
                 parent = self.database_path.parent if self.database_path.parent != Path(".") else None
                 full_path = ensure_cache_dict(parent) / self.database_path.name

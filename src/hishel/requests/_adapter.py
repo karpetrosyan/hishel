@@ -6,7 +6,7 @@ import math
 from io import RawIOBase
 from typing import Callable, Iterator, Mapping
 
-from hishel import CacheOptions, Headers, Request, Response, SyncBaseStorage, SyncSqliteStorage
+from hishel import BaseStorage, CacheOptions, Headers, Request, Response, SqliteStorage
 from hishel._core.models import CacheStatus
 from hishel._sync_rfc import handle_request_with_rfc
 
@@ -149,11 +149,11 @@ class CacheAdapter(HTTPAdapter):
         pool_maxsize: int = 10,
         max_retries: int | Retry = 0,
         pool_block: bool = False,
-        storage: SyncBaseStorage | None = None,
+        storage: BaseStorage | None = None,
         rfc: bool | CacheOptions = False,
     ) -> None:
         super().__init__(pool_connections, pool_maxsize, max_retries, pool_block)
-        self.storage = storage or SyncSqliteStorage()
+        self.storage = storage or SqliteStorage()
         self.rfc = rfc
 
     def send(

@@ -16,10 +16,10 @@ Every storage accepts two limits, in seconds. An entry expires at whichever come
 ::: code-group
 
 ```python [Sync]
-from hishel import SyncSqliteStorage
+from hishel import SqliteStorage
 
 # Expires after 1 day, or after 1 hour without being used
-storage = SyncSqliteStorage(default_ttl=86400, default_tti=3600)
+storage = SqliteStorage(default_ttl=86400, default_tti=3600)
 ```
 
 ```python [Async]
@@ -40,9 +40,9 @@ The default storage puts all cached responses in a single SQLite database file.
 ::: code-group
 
 ```python [Sync]
-from hishel import SyncSqliteStorage
+from hishel import SqliteStorage
 
-storage = SyncSqliteStorage()
+storage = SqliteStorage()
 ```
 
 ```python [Async]
@@ -76,9 +76,9 @@ A path with a directory is used as it is. A bare file name goes in `.cache/hishe
 ::: code-group
 
 ```python [Sync]
-from hishel import SyncSqliteStorage
+from hishel import SqliteStorage
 
-storage = SyncSqliteStorage(database_path="/path/to/cache.db")
+storage = SqliteStorage(database_path="/path/to/cache.db")
 ```
 
 ```python [Async]
@@ -98,9 +98,9 @@ When the database grows past `max_size`, Hishel removes the least recently used 
 ::: code-group
 
 ```python [Sync]
-from hishel import SyncSqliteStorage
+from hishel import SqliteStorage
 
-storage = SyncSqliteStorage(max_size=100 * 1024 * 1024)
+storage = SqliteStorage(max_size=100 * 1024 * 1024)
 ```
 
 ```python [Async]
@@ -124,11 +124,11 @@ You can pass your own connection, which is also how you get an in-memory cache:
 
 ```python [Sync]
 import sqlite3
-from hishel import SyncSqliteStorage
+from hishel import SqliteStorage
 
 # check_same_thread=False lets the storage be used from other threads
 connection = sqlite3.connect(":memory:", check_same_thread=False)
-storage = SyncSqliteStorage(connection=connection)
+storage = SqliteStorage(connection=connection)
 ```
 
 ```python [Async]
@@ -217,9 +217,9 @@ When an entry is removed or expires, new requests stop receiving it straight awa
 ::: code-group
 
 ```python [Sync]
-from hishel import SyncSqliteStorage
+from hishel import SqliteStorage
 
-storage = SyncSqliteStorage(soft_delete_ttl=60)
+storage = SqliteStorage(soft_delete_ttl=60)
 ```
 
 ```python [Async]
@@ -258,7 +258,7 @@ storage = AsyncRedisStorage(client=client, max_stream_size=50 * 1024 * 1024)
 
 ## Custom Storages
 
-To use another backend, subclass `AsyncBaseStorage` or `SyncBaseStorage` and pass your storage to any integration. The interface is deliberately small: cleanup, eviction and size limits are private to each backend.
+To use another backend, subclass `AsyncBaseStorage` or `BaseStorage` and pass your storage to any integration. The interface is deliberately small: cleanup, eviction and size limits are private to each backend.
 
 ```python
 import uuid

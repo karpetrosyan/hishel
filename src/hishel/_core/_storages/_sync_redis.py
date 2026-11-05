@@ -12,7 +12,7 @@ from uuid import UUID, uuid4
 import msgpack
 
 from hishel._core._headers import Headers
-from hishel._core._storages._sync_base import SyncBaseStorage
+from hishel._core._storages._sync_base import BaseStorage
 from hishel._core._storages._packing import pack, unpack
 from hishel._core.models import Entry, Request, Response
 from hishel._utils import make_sync_iterator
@@ -39,7 +39,7 @@ STORAGE_CHUNK_SIZE = 131072
 MAX_TOUCH_INTERVAL = 60
 
 
-class RedisStorage(SyncBaseStorage):
+class RedisStorage(BaseStorage):
     """
     An entry is visible while it is in its cache key's index, a sorted set
     scored by expires_at. It joins once its body is complete and leaves when it

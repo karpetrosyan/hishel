@@ -46,13 +46,13 @@ adapter = CacheAdapter(rfc=CacheOptions(shared=False))
 
 ## Choosing a Storage
 
-`CacheAdapter` uses a `SyncSqliteStorage` unless you pass another. See [Storages](/storages) for the options.
+`CacheAdapter` uses a `SqliteStorage` unless you pass another. See [Storages](/storages) for the options.
 
 ```python
-from hishel import SyncSqliteStorage
+from hishel import SqliteStorage
 from hishel.requests import CacheAdapter
 
-adapter = CacheAdapter(storage=SyncSqliteStorage(default_ttl=3600))
+adapter = CacheAdapter(storage=SqliteStorage(default_ttl=3600))
 ```
 
 The other arguments, `pool_connections`, `pool_maxsize`, `max_retries` and `pool_block`, are the same as on Requests' `HTTPAdapter`.

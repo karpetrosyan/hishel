@@ -21,9 +21,9 @@ SUBS = [
     ("__anext__", "__next__"),
     (r"Awaitable\[([^\]]+)\]", r"\1"),
     # our public API
-    ("AsyncBaseStorage", "SyncBaseStorage"),
-    ("AsyncCacheClient", "SyncCacheClient"),
-    ("AsyncSqliteStorage", "SyncSqliteStorage"),
+    ("AsyncBaseStorage", "BaseStorage"),
+    ("AsyncCacheClient", "CacheClient"),
+    ("AsyncSqliteStorage", "SqliteStorage"),
     ("AsyncRedisStorage", "RedisStorage"),
     (r'anysqlite\.connect\(":memory:"\)', 'sqlite3.connect(":memory:", check_same_thread=False)'),
     ("anysqlite", "sqlite3"),
@@ -36,7 +36,8 @@ SUBS = [
     ("@pytest.mark.anyio", ""),
     ("aiter_raw", "iter_raw"),
     ("make_async_iterator", "make_sync_iterator"),
-    ("AsyncCacheTransport", "SyncCacheTransport"),
+    ("AsyncCacheTransport", "CacheTransport"),
+    ("AsyncCacheConfig", "CacheConfig"),
     (
         "hishel._core._storages._async_base",
         "hishel._core._storages._sync_base",

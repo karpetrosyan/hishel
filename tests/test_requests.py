@@ -10,7 +10,7 @@ import pytest
 import requests
 from time_machine import travel
 
-from hishel import CacheOptions, SyncSqliteStorage
+from hishel import CacheOptions, SqliteStorage
 from hishel.requests import CacheAdapter
 
 
@@ -71,7 +71,7 @@ def _key(method, url, rfc=False):
 
 
 def new_session(rfc=False, **kwargs):
-    storage = SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False), **kwargs)
+    storage = SqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False), **kwargs)
     session = requests.Session()
     session.mount("http://", CacheAdapter(storage=storage, rfc=rfc))
     return session
@@ -295,7 +295,7 @@ def test_rfc_mode_revalidates_and_serves_the_cached_body(origin):
 
 
 def test_closing_a_session_with_one_adapter_mounted_twice(origin):
-    adapter = CacheAdapter(storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False)))
+    adapter = CacheAdapter(storage=SqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False)))
     session = requests.Session()
     session.mount("http://", adapter)
     session.mount("https://", adapter)

@@ -11,7 +11,7 @@ from time_machine import travel
 from hishel import (
     Request,
     Response,
-    SyncSqliteStorage,
+    SqliteStorage,
 )
 from hishel._core._storages._sync_sqlite import STORAGE_CHUNK_SIZE
 
@@ -49,7 +49,7 @@ def store(storage, key, body):
 
 
 def test_one_storage_used_from_many_threads(tmp_path):
-    storage = SyncSqliteStorage(database_path=tmp_path / "c.db")
+    storage = SqliteStorage(database_path=tmp_path / "c.db")
     body = b"x" * (STORAGE_CHUNK_SIZE + 10)
 
     def work(i):
@@ -65,7 +65,7 @@ def test_one_storage_used_from_many_threads(tmp_path):
 
 
 def test_stream_read_from_another_thread(tmp_path):
-    storage = SyncSqliteStorage(database_path=tmp_path / "c.db")
+    storage = SqliteStorage(database_path=tmp_path / "c.db")
     store(storage, "k", b"data")
     [entry] = storage.get_entries("k")
     result = []
@@ -78,7 +78,7 @@ def test_stream_read_from_another_thread(tmp_path):
 
 def test_two_storages_sharing_a_file_from_threads(tmp_path):
     path = tmp_path / "shared.db"
-    first, second = SyncSqliteStorage(database_path=path), SyncSqliteStorage(database_path=path)
+    first, second = SqliteStorage(database_path=path), SqliteStorage(database_path=path)
     first.get_entries("init")
     second.get_entries("init")
     body = b"x" * (STORAGE_CHUNK_SIZE + 10)
@@ -97,14 +97,14 @@ def test_two_storages_sharing_a_file_from_threads(tmp_path):
 
 def test_warns_about_connection_bound_to_its_thread():
     with pytest.warns(UserWarning, match="check_same_thread"):
-        SyncSqliteStorage(connection=sqlite3.connect(":memory:"))
+        SqliteStorage(connection=sqlite3.connect(":memory:"))
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        SyncSqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
+        SqliteStorage(connection=sqlite3.connect(":memory:", check_same_thread=False))
 
 
 def test_close_stops_lingering_stream(tmp_path):
-    storage = SyncSqliteStorage(database_path=tmp_path / "c.db")
+    storage = SqliteStorage(database_path=tmp_path / "c.db")
     store(storage, "k", b"data")
     [entry] = storage.get_entries("k")
     storage.close()
@@ -114,8 +114,8 @@ def test_close_stops_lingering_stream(tmp_path):
 
 def test_failed_write_leaves_no_open_transaction(tmp_path):
     path = tmp_path / "shared.db"
-    storage = SyncSqliteStorage(database_path=path)
-    other_process = SyncSqliteStorage(database_path=path)
+    storage = SqliteStorage(database_path=path)
+    other_process = SqliteStorage(database_path=path)
     store(storage, "first", b"data")
     [entry] = storage.get_entries("first")
     storage._ensure_connection().execute("PRAGMA busy_timeout=50")

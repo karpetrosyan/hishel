@@ -24,7 +24,7 @@ except ImportError as e:
 CACHEABLE_METHODS = frozenset({"GET", "HEAD"})
 
 
-class CacheConfig(TypedDict, total=False):
+class AsyncCacheConfig(TypedDict, total=False):
     """Set on a transport, and overridable per request with the ``caching`` extension."""
 
     storage: AsyncBaseStorage
@@ -125,11 +125,11 @@ class AsyncCacheTransport(httpx.AsyncBaseTransport):
         rfc: bool | CacheOptions = False,
     ) -> None:
         self.next_transport = next_transport
-        self.config = CacheConfig(storage=storage or AsyncSqliteStorage(), rfc=rfc)
+        self.config = AsyncCacheConfig(storage=storage or AsyncSqliteStorage(), rfc=rfc)
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        overrides = cast(CacheConfig, request.extensions.get("caching", {}))
-        effective_config: CacheConfig = {**self.config, **overrides}
+        overrides = cast(AsyncCacheConfig, request.extensions.get("caching", {}))
+        effective_config: AsyncCacheConfig = {**self.config, **overrides}
 
         storage = effective_config["storage"]
         rfc = effective_config["rfc"]

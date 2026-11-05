@@ -12,10 +12,10 @@
 
 import sqlite3
 
-from hishel import SyncSqliteStorage
-from hishel.httpx import SyncCacheClient
+from hishel import SqliteStorage
+from hishel.httpx import CacheClient
 
-cl = SyncCacheClient(storage=SyncSqliteStorage(connection=sqlite3.connect(":memory:")))
+cl = CacheClient(storage=SqliteStorage(connection=sqlite3.connect(":memory:")))
 
 cl.get("https://hishel.com/")
 response = cl.get("https://hishel.com/")

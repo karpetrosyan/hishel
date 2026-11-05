@@ -11,12 +11,6 @@ Hishel integrates with [FastAPI](https://fastapi.tiangolo.com/) in two ways:
 pip install "hishel[fastapi]"
 ```
 
-To also cache on your server, add the `async` extra:
-
-```bash
-pip install "hishel[fastapi,async]"
-```
-
 ## Cache-Control Headers
 
 Add `cache()` to the dependencies of an endpoint:
