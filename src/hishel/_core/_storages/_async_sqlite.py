@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import random
-import sqlite3
 import time
 import uuid
 from collections.abc import AsyncIterable, AsyncIterator
@@ -50,13 +49,18 @@ HIDDEN = 0.0
 
 
 if TYPE_CHECKING:
+    import sqlite3
+
     import anysqlite
     from anyio import Lock, sleep
 else:
     try:
+        import sqlite3
+
         import anysqlite
         from anyio import Lock, sleep
     except ImportError:
+        sqlite3 = None
         anysqlite = None
         Lock = None
         sleep = None
