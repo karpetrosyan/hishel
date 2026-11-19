@@ -431,6 +431,54 @@ async def test_rfc_serves_fresh_responses(kind):
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("kind", ["sqlite", "redis"])
+@pytest.mark.parametrize("allow_stale", [False, True])
+@pytest.mark.parametrize(
+    "cache_control, revalidate",
+    [
+        ("", False),
+        ("max-age=0", True),
+        ("max-age=9", True),
+        ("max-age=10", False),
+        ("max-age=11", False),
+        ("min-fresh=51", True),
+        ("min-fresh=50", False),
+        ("min-fresh=49", False),
+        ("max-age=60, min-fresh=51", True),
+        ("max-age=9, min-fresh=0", True),
+        ("max-age=invalid, min-fresh=invalid", False),
+        ("no-cache, max-age=60, min-fresh=0", True),
+    ],
+)
+async def test_rfc_request_freshness_constraints(kind, allow_stale, cache_control, revalidate):
+    upstream = Upstream(
+        lambda r: httpx.Response(
+            304 if "if-none-match" in r.headers else 200,
+            headers={
+                "cache-control": "max-age=60",
+                "etag": '"v1"',
+                "date": date_at(10 if "if-none-match" in r.headers else 0),
+            },
+            content=b"" if "if-none-match" in r.headers else b"cached",
+        )
+    )
+    client = await client_for(upstream, kind, rfc={"allow_stale": allow_stale})
+    async with client:
+        with at(0):
+            assert (await client.get(URL)).content == b"cached"
+        with at(10):
+            response = await client.get(URL, headers={"cache-control": cache_control})
+        assert response.content == b"cached"
+        assert response.status_code == 200
+        assert response.extensions["caching"]["from_cache"] is True
+        assert response.extensions["caching"]["revalidated"] is revalidate
+        assert len(upstream.requests) == (2 if revalidate else 1)
+        if revalidate:
+            assert upstream.sent_headers[1]["if-none-match"] == '"v1"'
+            assert upstream.sent_headers[1]["cache-control"] == cache_control
+
+
+@pytest.mark.anyio
 async def test_rfc_respects_no_store():
     upstream = Upstream(lambda r: httpx.Response(200, headers={"cache-control": "no-store"}, content=b"body"))
     client = await client_for(upstream, rfc=True)

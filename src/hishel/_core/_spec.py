@@ -1157,9 +1157,10 @@ class IdleClient(State):
         `associated_entries` is pre-filtered by cache key (typically URI) by the
         caller; this method applies the full set of §4 reuse conditions.
 
-        The five RFC 9111 §4 reuse conditions are split into two groups:
+        The RFC 9111 reuse conditions are split into two groups:
           - Hard (URI match, method match): failure discards the entry.
-          - Soft (Vary, response no-cache, freshness/allowed-stale): failure
+          - Soft (Vary, response no-cache, freshness/allowed-stale, request
+            freshness constraints): failure
             demotes the entry to a revalidation candidate rather than discarding
             it, since §4.3 explicitly permits serving it after successful
             validation.
@@ -1206,7 +1207,21 @@ class IdleClient(State):
             is_fresh = freshness_lifetime is not None and age < freshness_lifetime
             fresh_or_stale_ok = is_fresh or allowed_stale(pair.response, allow_stale_option=self.allow_stale)
 
-            if not has_no_cache and vary_ok and fresh_or_stale_ok and not request_forces_revalidation:
+            # Request freshness preferences (§5.2.1.1 and §5.2.1.3) can require
+            # validation even when the stored response is still fresh.
+            request_age_ok = request_cache_control.max_age is None or age <= request_cache_control.max_age
+            request_freshness_ok = request_cache_control.min_fresh is None or (
+                freshness_lifetime is not None and freshness_lifetime >= age + request_cache_control.min_fresh
+            )
+
+            if (
+                not has_no_cache
+                and vary_ok
+                and fresh_or_stale_ok
+                and not request_forces_revalidation
+                and request_age_ok
+                and request_freshness_ok
+            ):
                 ready_to_use.append(pair)
             else:
                 need_revalidation.append(pair)
