@@ -145,6 +145,47 @@ def test_lifecycle_fresh_to_stale(cache: CacheScenario) -> None:
         cache.get().assert_needs_revalidation()
 
 
+@pytest.mark.parametrize(
+    "cache_control",
+    ["max-age=0", "max-age=9", "min-fresh=51", "max-age=60, min-fresh=51", "max-age=9, min-fresh=0"],
+)
+def test_request_freshness_constraints_require_revalidation(cache: CacheScenario, cache_control: str) -> None:
+    """RFC 9111 §5.2.1: request preferences can require validating a fresh response."""
+    with time_machine.travel("2026-08-01 12:00 +0000", tick=False) as traveller:
+        cache.get().responds(200, max_age=60, etag='"v1"').assert_stored()
+        traveller.shift(10)
+
+        exchange = cache.get(cache_control=cache_control)
+        exchange.assert_needs_revalidation(if_none_match='"v1"')
+        assert exchange.sent_request is not None
+        assert exchange.sent_request.headers["cache-control"] == cache_control
+        exchange.responds(304, max_age=60, etag='"v1"').assert_from_cache()
+
+
+@pytest.mark.parametrize(
+    "cache_control",
+    ["", "max-age=10", "max-age=11", "min-fresh=50", "min-fresh=49", "max-age=invalid, min-fresh=invalid"],
+)
+def test_request_freshness_constraints_allow_matching_responses(cache: CacheScenario, cache_control: str) -> None:
+    """The exact max-age/min-fresh boundaries allow reuse; invalid directives are ignored."""
+    with time_machine.travel("2026-08-01 12:00 +0000", tick=False) as traveller:
+        cache.get().responds(200, max_age=60).assert_stored()
+        traveller.shift(10)
+
+        cache.get(cache_control=cache_control).assert_from_cache()
+
+
+@pytest.mark.parametrize("cache_control", ["max-age=19", "min-fresh=0"])
+def test_request_freshness_constraints_override_allow_stale(cache: CacheScenario, cache_control: str) -> None:
+    """Allowing stale responses does not override the client's freshness constraints."""
+    cache.options = CacheOptions(allow_stale=True)
+    with time_machine.travel("2026-08-01 12:00 +0000", tick=False) as traveller:
+        cache.get().responds(200, max_age=10, etag='"v1"').assert_stored()
+        traveller.shift(20)
+
+        cache.get(cache_control=cache_control).assert_needs_revalidation(if_none_match='"v1"')
+
+
 @pytest.mark.parametrize("status", [200, 204, 301])
 @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE", "PROPFIND"])
 def test_unsafe_request_invalidates_on_non_error_response(cache: CacheScenario, method: str, status: int) -> None:
